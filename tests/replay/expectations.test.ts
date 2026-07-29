@@ -233,3 +233,21 @@ describe('regression detection', () => {
     expect(comparison.differences.some((d) => d.kind === 'position')).toBe(true);
   });
 });
+
+describe('dodge-jump-queued', () => {
+  const trace = traceOf('dodge-jump-queued');
+  const dodgeTicks = trace.ticks.filter((t) => t.actionState === 'dodge');
+  const jumpTick = trace.ticks.find((t) => t.locomotionState === 'jump');
+
+  it('refuses the jump while the dodge owns the root at 100%', () => {
+    const locked = dodgeTicks.filter((t) => t.actionNormalizedTime < 0.72);
+    expect(locked.length).toBeGreaterThan(10);
+    expect(locked.some((t) => t.locomotionState === 'jump')).toBe(false);
+  });
+
+  it('replays the queued press once the recovery window opens', () => {
+    expect(jumpTick).toBeDefined();
+    expect(jumpTick!.tick).toBeGreaterThan(dodgeTicks[0]!.tick);
+    expect(jumpTick!.tick).toBeLessThan(dodgeTicks[dodgeTicks.length - 1]!.tick + 20);
+  });
+});

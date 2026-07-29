@@ -2,6 +2,7 @@ import type { AnimationClipDefinition, ProjectDefinition, SemanticEventKind, Ter
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
   AnimationGraphRuntime,
+  DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
   dodgeRecoveryBlendWeight,
   isFootPlanted,
   sampleRootMotion,
@@ -11,6 +12,9 @@ import {
 } from '@atc/animation-runtime';
 import { InputState, type ActionSample } from '@atc/input-runtime';
 import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type FootIkResult, type TerrainResolution } from '@atc/terrain-runtime';
+
+/** How long a lock-queued jump survives after the root unlocks. */
+const QUEUED_JUMP_GRACE_MS = 140;
 
 export interface SimulationInit {
   project: ProjectDefinition;
@@ -87,6 +91,10 @@ export class Simulation {
   /** Set for one tick when the graph enters a jump state, so the impulse fires once. */
   private pendingJumpImpulse = false;
 
+  /** A jump pressed while the root was locked, held until the lock opens. */
+  private queuedJump = false;
+  private queuedJumpGraceTicks = 0;
+
   constructor(init: SimulationInit) {
     this.project = init.project;
     this.terrain = init.terrain;
@@ -155,7 +163,9 @@ export class Simulation {
       getNumber: (name) => {
         switch (name) {
           case 'moveMagnitude':
-            return input.moveMagnitude;
+            // A stationary action pins the character, so locomotion must see a
+            // released stick and fall back to idle instead of walking in place.
+            return this.actionIsStationary() ? 0 : input.moveMagnitude;
           case 'speed':
             return speed;
           case 'verticalVelocity':
@@ -178,10 +188,14 @@ export class Simulation {
             return !terrain.grounded;
           case 'actionActive':
             return graph.isActionActive();
+          case 'rootLocked':
+            return this.rootLocked();
           case 'guardHeld':
             return input.isDown('Guard');
           case 'jumpHeld':
             return input.isDown('Jump');
+          case 'jumpRequested':
+            return input.isDown('Jump') || input.isBuffered('Jump', 140) || this.queuedJump;
           case 'primaryActionPressed':
             return input.justPressed('PrimaryAction');
           case 'secondaryActionPressed':
@@ -206,8 +220,15 @@ export class Simulation {
             return '';
         }
       },
-      isBuffered: (action, bufferMs) => input.isBuffered(action as Parameters<InputState['isBuffered']>[0], bufferMs),
-      consumeBuffered: (action, bufferMs) => input.consumeBuffered(action as Parameters<InputState['consumeBuffered']>[0], bufferMs),
+      isBuffered: (action, bufferMs) =>
+        (action === 'Jump' && this.queuedJump) ||
+        input.isBuffered(action as Parameters<InputState['isBuffered']>[0], bufferMs),
+      // The queued jump is deliberately not cleared on consume: locomotion is
+      // evaluated first, and the action layer still needs to see the request on
+      // the same tick to release the dodge.
+      consumeBuffered: (action, bufferMs) =>
+        input.consumeBuffered(action as Parameters<InputState['consumeBuffered']>[0], bufferMs) ||
+        (action === 'Jump' && this.queuedJump),
     };
   }
 
@@ -215,6 +236,8 @@ export class Simulation {
   step(sample: ActionSample): TickRecord {
     this.input.beginTick(this.tickIndex, sample);
     this.input.markGrounded(this.lastTerrain.grounded);
+
+    this.updateQueuedJump();
 
     const previousLocomotion = this.graph.getLayer('locomotion').stateId;
     const graphResult = this.graph.tick(this.parameterSource());
@@ -303,12 +326,16 @@ export class Simulation {
       this.graph.getLayer('locomotion').stateId,
       actionClip?.recoveryTransitionStartNormalized,
     );
+    const actionIsStationary = this.actionIsStationary();
+
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.
-    const actionScale = this.graph.isActionActive()
-      ? movement.actionMovementAuthority +
-        (1 - movement.actionMovementAuthority) * recoveryWeight
-      : 1;
+    const actionScale = actionIsStationary
+      ? 0
+      : this.graph.isActionActive()
+        ? movement.actionMovementAuthority +
+          (1 - movement.actionMovementAuthority) * recoveryWeight
+        : 1;
     const airScale = terrain.grounded ? 1 : movement.airControl;
     const surfaceScale = terrain.grounded ? terrain.accelerationScale : 1;
 
@@ -320,7 +347,7 @@ export class Simulation {
     const accelerating = magnitude > 0;
     const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT;
 
-    if (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded) {
+    if (actionIsStationary || (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)) {
       this.velocity.x = 0;
       this.velocity.z = 0;
     } else {
@@ -332,7 +359,7 @@ export class Simulation {
     // character turns crisply even while sliding.
     if (magnitude > 0.01) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
-      const authority = this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
+      const authority = actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
       this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
     }
 
@@ -348,7 +375,14 @@ export class Simulation {
 
     // Root motion contribution, blended against code-driven velocity by authority.
     const rootDelta = this.sampleRootMotionDelta(recoveryWeight);
-    const horizontalAuthority = rootMotion.mode === 'InPlace' ? 0 : rootMotion.horizontalAuthority;
+    // Locomotion root motion is the other half of the same movement the code
+    // path damps during an action; leaving it at full authority is what made
+    // upper-body attacks keep gliding forward.
+    const locomotionRootScale = this.actionOwnsRoot() ? 1 : actionScale;
+    const horizontalAuthority =
+      actionIsStationary || rootMotion.mode === 'InPlace'
+        ? 0
+        : rootMotion.horizontalAuthority * locomotionRootScale;
     const codeWeight = 1 - horizontalAuthority;
 
     let deltaX = this.velocity.x * FIXED_DT * codeWeight;
@@ -394,6 +428,15 @@ export class Simulation {
     }
   }
 
+  /**
+   * A clip authored as InPlace (guard, attack, hit, ...) must hold its ground and
+   * its facing while it plays, regardless of stick input or the authority sliders.
+   */
+  private actionIsStationary(): boolean {
+    if (!this.graph.isActionActive()) return false;
+    return this.graph.getClipFor(this.graph.getLayer('action').stateId)?.rootMotionMode === 'InPlace';
+  }
+
   private currentRotationAuthority(): number {
     const layer = this.graph.getLayer('action');
     const transitionId = layer.lastTransitionId;
@@ -401,9 +444,48 @@ export class Simulation {
     return transition?.rotationAuthority ?? this.project.rootMotion.rotationAuthority;
   }
 
+  /**
+   * A jump pressed during the root lock would otherwise expire inside it, since
+   * the lock outlasts the 140ms input buffer. Latch it, then let it live a
+   * buffer's worth of ticks past the unlock so the press fires on the way out.
+   */
+  private updateQueuedJump(): void {
+    if (this.rootLocked()) {
+      if (this.input.justPressed('Jump')) this.queuedJump = true;
+      this.queuedJumpGraceTicks = 0;
+      return;
+    }
+    if (!this.queuedJump) return;
+    this.queuedJumpGraceTicks += 1;
+    if (this.queuedJumpGraceTicks * FIXED_DT * 1000 > QUEUED_JUMP_GRACE_MS) {
+      this.queuedJump = false;
+      this.queuedJumpGraceTicks = 0;
+    }
+  }
+
+  /**
+   * True while a full-body action owns the root at 100% — before its recovery
+   * window opens. Locomotion transitions that move the character (jump) must
+   * stay out until the action starts handing authority back.
+   */
+  private rootLocked(): boolean {
+    if (!this.actionOwnsRoot()) return false;
+    const layer = this.graph.getLayer('action');
+    const recoveryStart =
+      this.graph.getClipFor(layer.stateId)?.recoveryTransitionStartNormalized ??
+      DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
+    return layer.normalizedTime < recoveryStart;
+  }
+
+  /** Full-body action states drive the root; upper-body ones leave it to locomotion. */
+  private actionOwnsRoot(): boolean {
+    const stateId = this.graph.getLayer('action').stateId;
+    return this.graph.isActionActive() && this.graph.getStateDefinition(stateId)?.bodyMask === 'full';
+  }
+
   private sampleRootMotionDelta(recoveryWeight: number): Vec3 {
     const action = this.graph.getLayer('action');
-    const actionOwnsRoot = this.graph.isActionActive() && this.graph.getStateDefinition(action.stateId)?.bodyMask === 'full';
+    const actionOwnsRoot = this.actionOwnsRoot();
     const locomotion = this.graph.getLayer('locomotion');
     const sampleLayer = (layer: LayerRuntimeState): Vec3 => {
       const clip = this.graph.getClipFor(layer.stateId);

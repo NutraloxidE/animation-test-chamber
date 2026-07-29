@@ -429,9 +429,9 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0.45
+        "z": 0
       },
-      "rootMotionMode": "RootMotion",
+      "rootMotionMode": "InPlace",
       "events": [
         {
           "id": "a1-windup",
@@ -478,9 +478,9 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0.7
+        "z": 0
       },
-      "rootMotionMode": "RootMotion",
+      "rootMotionMode": "InPlace",
       "events": [
         {
           "id": "a2-windup",
@@ -923,6 +923,11 @@
             "parameter": "grounded",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "rootLocked",
+            "operator": "equals",
+            "value": false
           }
         ],
         "blendDurationSec": 0.06,
@@ -1217,6 +1222,28 @@
         "interruptible": true,
         "inputBufferMs": 180,
         "priority": 170
+      },
+      {
+        "schemaVersion": 1,
+        "id": "dodge-to-none-on-jump",
+        "from": "dodge",
+        "to": "action-none",
+        "conditions": [
+          {
+            "parameter": "jumpRequested",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 140,
+        "priority": 190,
+        "exitTimeNormalized": 0.72
       },
       {
         "schemaVersion": 1,
