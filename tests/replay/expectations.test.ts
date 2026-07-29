@@ -45,6 +45,13 @@ describe('attack-01-to-attack-02', () => {
 
 describe('late-dodge-cancel', () => {
   const trace = traceOf('late-dodge-cancel');
+  const movingReplay = findReplayFixture('late-dodge-cancel');
+  const movingTrace = runReplay(project, {
+    ...movingReplay,
+    frames: movingReplay.frames.map((frame) =>
+      frame.tick >= 36 ? { ...frame, moveY: 1 } : frame,
+    ),
+  });
 
   it('cancels the attack into a dodge rather than waiting for recovery', () => {
     expect(trace.metrics.actionSequence).toEqual(['attack-01', 'dodge', 'action-none']);
@@ -60,8 +67,36 @@ describe('late-dodge-cancel', () => {
     const dodgeTicks = trace.ticks.filter((tick) => tick.actionState === 'dodge');
     expect(dodgeTicks).toHaveLength(88);
     expect(dodgeTicks.at(-1)!.actionNormalizedTime).toBeGreaterThan(0.98);
-    expect(trace.metrics.finalPosition.z).toBeGreaterThan(0.8);
+    expect(dodgeTicks.at(-1)!.position.z - dodgeTicks[0]!.position.z).toBeGreaterThan(1.8);
     expect(dodgeTicks.every((tick) => tick.grounded && tick.position.y === 0)).toBe(true);
+  });
+
+  it('accelerates quickly, then eases out for the recovery', () => {
+    const dodgeTicks = trace.ticks.filter((tick) => tick.actionState === 'dodge');
+    const deltas = dodgeTicks.slice(1).map((tick, index) =>
+      tick.position.z - dodgeTicks[index]!.position.z,
+    );
+    const peak = Math.max(...deltas);
+    expect(deltas.indexOf(peak)).toBeLessThan(deltas.length * 0.15);
+    expect(deltas[10]).toBeGreaterThan(deltas[1]!);
+    expect(deltas.at(-1)!).toBeLessThan(peak * 0.15);
+  });
+
+  it('keeps locomotion active through dodge recovery when movement is held', () => {
+    const recovery = movingTrace.ticks.filter(
+      (tick) => tick.actionState === 'dodge' && tick.actionNormalizedTime >= 0.72,
+    );
+    const afterDodge = movingTrace.ticks.find(
+      (tick, index) =>
+        index > 0 &&
+        movingTrace.ticks[index - 1]!.actionState === 'dodge' &&
+        tick.actionState === 'action-none',
+    );
+
+    expect(recovery.length).toBeGreaterThan(0);
+    expect(recovery.every((tick) => tick.locomotionState === 'run')).toBe(true);
+    expect(afterDodge?.locomotionState).toBe('run');
+    expect(afterDodge?.velocity.z).toBeGreaterThan(0);
   });
 });
 
@@ -196,5 +231,23 @@ describe('regression detection', () => {
     const edited = setAtPath(project, '/movement/runSpeed', 7);
     const comparison = compareTraces(before, runReplay(edited, replay));
     expect(comparison.differences.some((d) => d.kind === 'position')).toBe(true);
+  });
+});
+
+describe('dodge-jump-queued', () => {
+  const trace = traceOf('dodge-jump-queued');
+  const dodgeTicks = trace.ticks.filter((t) => t.actionState === 'dodge');
+  const jumpTick = trace.ticks.find((t) => t.locomotionState === 'jump');
+
+  it('refuses the jump while the dodge owns the root at 100%', () => {
+    const locked = dodgeTicks.filter((t) => t.actionNormalizedTime < 0.72);
+    expect(locked.length).toBeGreaterThan(10);
+    expect(locked.some((t) => t.locomotionState === 'jump')).toBe(false);
+  });
+
+  it('replays the queued press once the recovery window opens', () => {
+    expect(jumpTick).toBeDefined();
+    expect(jumpTick!.tick).toBeGreaterThan(dodgeTicks[0]!.tick);
+    expect(jumpTick!.tick).toBeLessThan(dodgeTicks[dodgeTicks.length - 1]!.tick + 20);
   });
 });

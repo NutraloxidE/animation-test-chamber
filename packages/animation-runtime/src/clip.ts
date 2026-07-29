@@ -1,6 +1,16 @@
 import type { AnimationClipDefinition, SemanticEventDefinition, Vec3 } from '@atc/schema';
 import { scaleVec3 } from '@atc/runtime-core';
 
+const FAST_IN_END = 0.1;
+
+function rootMotionProgress(clip: AnimationClipDefinition, normalized: number): number {
+  if (clip.rootMotionCurve !== 'FastInSlowOut') return normalized;
+  const time = Math.max(0, Math.min(normalized, 1));
+  return time <= FAST_IN_END
+    ? (time * time) / FAST_IN_END
+    : 1 - ((1 - time) * (1 - time)) / (1 - FAST_IN_END);
+}
+
 /** Normalized position within a clip, honouring its loop flag. */
 export function normalizedTimeOf(clip: AnimationClipDefinition, timeSec: number): number {
   if (clip.durationSec <= 0) return 0;
@@ -24,7 +34,7 @@ export function sampleRootMotion(
   fromNormalized: number,
   toNormalized: number,
 ): Vec3 {
-  let delta = toNormalized - fromNormalized;
+  let delta = rootMotionProgress(clip, toNormalized) - rootMotionProgress(clip, fromNormalized);
   // A loop wrap shows up as a large negative step; treat it as forward progress.
   if (delta < -0.5) delta += 1;
   return scaleVec3(clip.rootDisplacement, delta);

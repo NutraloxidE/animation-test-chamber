@@ -16,6 +16,7 @@ import {
   type TickRecord,
 } from '@atc/replay-runtime';
 import type { ReplayDefinition } from '@atc/schema';
+import type { LayerId, LayerRuntimeState } from '@atc/animation-runtime';
 import { HapticPlayer, detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
 
 export type PlaybackMode = 'live' | 'replay';
@@ -31,6 +32,7 @@ export interface EngineSnapshot {
   locomotionNormalizedTime: number;
   actionNormalizedTime: number;
   blendWeight: number;
+  stateMachine: Record<LayerId, LayerRuntimeState>;
   speed: number;
   mode: PlaybackMode;
   recording: boolean;
@@ -340,17 +342,20 @@ export class ChamberEngine {
   snapshot(): EngineSnapshot {
     const state = this.simulation.state;
     const record = this.lastRecord;
+    const stateMachine = this.simulation.graphRuntime.snapshot();
     return {
       tick: state.tick,
       position: state.position,
       yawRad: state.yawRad,
       grounded: state.grounded,
       terrainState: state.terrain.state,
-      locomotionState: record?.locomotionState ?? 'idle',
-      actionState: record?.actionState ?? 'action-none',
-      locomotionNormalizedTime: record?.locomotionNormalizedTime ?? 0,
-      actionNormalizedTime: record?.actionNormalizedTime ?? 0,
-      blendWeight: record?.blendWeight ?? 1,
+      locomotionState: record?.locomotionState ?? stateMachine.locomotion.stateId,
+      actionState: record?.actionState ?? stateMachine.action.stateId,
+      locomotionNormalizedTime:
+        record?.locomotionNormalizedTime ?? stateMachine.locomotion.normalizedTime,
+      actionNormalizedTime: record?.actionNormalizedTime ?? stateMachine.action.normalizedTime,
+      blendWeight: record?.blendWeight ?? stateMachine.locomotion.blendWeight,
+      stateMachine,
       speed: Math.hypot(state.velocity.x, state.velocity.z),
       mode: this.mode,
       recording: this.recorder !== null,

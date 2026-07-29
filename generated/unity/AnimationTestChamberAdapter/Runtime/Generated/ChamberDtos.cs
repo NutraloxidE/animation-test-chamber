@@ -148,6 +148,10 @@ namespace AnimationTestChamber.Generated
         public bool loop;
         public Vec3 rootDisplacement;
         public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
+        // optional
+        public string /* Linear | FastInSlowOut */ rootMotionCurve;
+        // optional
+        public float recoveryTransitionStartNormalized;
         public List<SemanticEventDefinition> events;
         public AnimationClipDefinitionFootContacts footContacts;
         // optional

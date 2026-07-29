@@ -89,7 +89,7 @@ export function DiffPanel() {
       )}
 
       <section className="commit-box">
-        <h3>Commit</h3>
+        <h3>Apply to repository</h3>
         {!validation.valid && (
           <ul className="findings">
             {validation.issues.slice(0, 5).map((issue, index) => (
@@ -112,7 +112,7 @@ export function DiffPanel() {
             onClick={() => commit(intent)}
             data-testid="commit-button"
           >
-            Commit staged to session branch
+            Apply staged to repository
           </button>
           <button type="button" onClick={createPullRequest}>
             Create pull request

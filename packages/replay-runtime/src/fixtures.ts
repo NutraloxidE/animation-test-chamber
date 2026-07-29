@@ -114,6 +114,23 @@ export const REPLAY_FIXTURES: ReplayDefinition[] = [
   }),
 
   buildFixture({
+    id: 'dodge-jump-queued',
+    label: 'Jump pressed inside the dodge lock fires on the way out',
+    terrainPresetId: 'flat',
+    tickCount: 220,
+    script: [
+      { tick: 0, move: [0, 1] },
+      { tick: 20, move: [0, 1], hold: ['Dodge'] },
+      { tick: 24, move: [0, 1] },
+      // Deep inside the dodge's 100% authority window: this press must be
+      // refused there and replayed once the recovery window opens.
+      { tick: 40, move: [0, 1], hold: ['Jump'] },
+      { tick: 44, move: [0, 1] },
+      { tick: 200, move: [0, 0] },
+    ],
+  }),
+
+  buildFixture({
     id: 'downhill-root-motion',
     label: 'Running downhill with root motion projection',
     terrainPresetId: 'gentle-downhill',

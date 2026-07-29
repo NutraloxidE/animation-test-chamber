@@ -13,8 +13,13 @@ export function TransitionInspector() {
   const selectedId = useChamber((state) => state.selectedTransitionId);
   const selectTransition = useChamber((state) => state.selectTransition);
   const [unit, setUnit] = useState<TimeUnit>('seconds');
+  const [selectedClipId, setSelectedClipId] = useState(
+    project.clips.some((clip) => clip.id === 'dodge') ? 'dodge' : project.clips[0]?.id ?? '',
+  );
 
   const transition = project.graph.transitions.find((entry) => entry.id === selectedId);
+  const selectedClip =
+    project.clips.find((clip) => clip.id === selectedClipId) ?? project.clips[0];
   const base = `/graph/transitions/${selectedId}`;
 
   const formatTime = (seconds: number): string => {
@@ -50,6 +55,41 @@ export function TransitionInspector() {
           </option>
         ))}
       </select>
+
+      {selectedClip && (
+        <section>
+          <h3>Clip tuning</h3>
+          <select
+            className="wide"
+            value={selectedClip.id}
+            onChange={(event) => setSelectedClipId(event.target.value)}
+            data-testid="clip-select"
+          >
+            {project.clips.map((clip) => (
+              <option key={clip.id} value={clip.id}>
+                {clip.id}
+              </option>
+            ))}
+          </select>
+          <Field
+            path={`/clips/${selectedClip.id}/rootDisplacement/z`}
+            label="Forward displacement"
+            min={0}
+            max={10}
+            step={0.1}
+            format={(value) => `${value.toFixed(1)} m`}
+          />
+          {selectedClip.recoveryTransitionStartNormalized !== undefined && (
+            <Field
+              path={`/clips/${selectedClip.id}/recoveryTransitionStartNormalized`}
+              label="Recovery transition start"
+              min={0.5}
+              max={0.95}
+              step={0.01}
+            />
+          )}
+        </section>
+      )}
 
       {transition.provenance?.intent && (
         <p className="provenance">
