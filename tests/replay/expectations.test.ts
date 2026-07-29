@@ -55,6 +55,14 @@ describe('late-dodge-cancel', () => {
     expect(events).toContain('DodgeStart');
     expect(events).toContain('DodgeEnd');
   });
+
+  it('plays the full-body dodge through while its root stays grounded', () => {
+    const dodgeTicks = trace.ticks.filter((tick) => tick.actionState === 'dodge');
+    expect(dodgeTicks).toHaveLength(88);
+    expect(dodgeTicks.at(-1)!.actionNormalizedTime).toBeGreaterThan(0.98);
+    expect(trace.metrics.finalPosition.z).toBeGreaterThan(0.8);
+    expect(dodgeTicks.every((tick) => tick.grounded && tick.position.y === 0)).toBe(true);
+  });
 });
 
 describe('jump-buffer-before-landing', () => {
@@ -75,9 +83,7 @@ describe('jump-buffer-before-landing', () => {
     const replay = findReplayFixture('jump-buffer-before-landing');
     const early = {
       ...replay,
-      frames: replay.frames.map((frame) =>
-        frame.tick === 66 ? { ...frame, tick: 40 } : frame.tick === 70 ? { ...frame, tick: 44 } : frame,
-      ),
+      frames: replay.frames.map((frame) => (frame.tick === 66 ? { ...frame, tick: 40 } : frame.tick === 70 ? { ...frame, tick: 44 } : frame)),
     };
     const jumps = runReplay(project, early).metrics.stateSequence.filter((s) => s === 'jump');
     expect(jumps).toHaveLength(1);
@@ -150,10 +156,12 @@ describe('ice-surface-stop', () => {
     // Compare the distance travelled *after* the stick is released, which
     // isolates deceleration. Total distance would also fold in ice's slow
     // acceleration and tell us nothing about how it stops.
-    const glideAfterRelease = (traceToMeasure: typeof trace): number =>
-      traceToMeasure.metrics.finalPosition.z - traceToMeasure.ticks[90]!.position.z;
+    const glideAfterRelease = (traceToMeasure: typeof trace): number => traceToMeasure.metrics.finalPosition.z - traceToMeasure.ticks[90]!.position.z;
 
-    const gripReplay = { ...findReplayFixture('ice-surface-stop'), terrainPresetId: 'high-friction' };
+    const gripReplay = {
+      ...findReplayFixture('ice-surface-stop'),
+      terrainPresetId: 'high-friction',
+    };
     const gripTrace = runReplay(project, gripReplay);
 
     expect(glideAfterRelease(trace)).toBeGreaterThan(glideAfterRelease(gripTrace) * 3);

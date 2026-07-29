@@ -1,39 +1,8 @@
-import type {
-  AnimationClipDefinition,
-  ProjectDefinition,
-  SemanticEventKind,
-  TerrainPreset,
-  TerrainState,
-  Vec3,
-} from '@atc/schema';
-import {
-  FIXED_DT,
-  addVec3,
-  clamp01,
-  createRandom,
-  horizontalLength,
-  moveTowards,
-  quantize,
-  rotateTowardsAngle,
-  scaleVec3,
-  vec3,
-} from '@atc/runtime-core';
-import {
-  AnimationGraphRuntime,
-  isFootPlanted,
-  sampleRootMotion,
-  type LayerId,
-  type ParameterSource,
-} from '@atc/animation-runtime';
+import type { AnimationClipDefinition, ProjectDefinition, SemanticEventKind, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
+import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
+import { AnimationGraphRuntime, isFootPlanted, sampleRootMotion, type LayerId, type ParameterSource } from '@atc/animation-runtime';
 import { InputState, type ActionSample } from '@atc/input-runtime';
-import {
-  applyGroundSnap,
-  createFootIkState,
-  resolveTerrain,
-  solveFootIk,
-  type FootIkResult,
-  type TerrainResolution,
-} from '@atc/terrain-runtime';
+import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type FootIkResult, type TerrainResolution } from '@atc/terrain-runtime';
 
 export interface SimulationInit {
   project: ProjectDefinition;
@@ -229,10 +198,8 @@ export class Simulation {
             return '';
         }
       },
-      isBuffered: (action, bufferMs) =>
-        input.isBuffered(action as Parameters<InputState['isBuffered']>[0], bufferMs),
-      consumeBuffered: (action, bufferMs) =>
-        input.consumeBuffered(action as Parameters<InputState['consumeBuffered']>[0], bufferMs),
+      isBuffered: (action, bufferMs) => input.isBuffered(action as Parameters<InputState['isBuffered']>[0], bufferMs),
+      consumeBuffered: (action, bufferMs) => input.consumeBuffered(action as Parameters<InputState['consumeBuffered']>[0], bufferMs),
     };
   }
 
@@ -281,10 +248,7 @@ export class Simulation {
       actionNormalizedTime: quantize(this.graph.getLayer('action').normalizedTime, 4),
       blendWeight: quantize(locomotion.blendWeight, 4),
       events,
-      footSlidingDistance: quantize(
-        (this.lastFootIk?.left.slidingDistance ?? 0) + (this.lastFootIk?.right.slidingDistance ?? 0),
-        6,
-      ),
+      footSlidingDistance: quantize((this.lastFootIk?.left.slidingDistance ?? 0) + (this.lastFootIk?.right.slidingDistance ?? 0), 6),
       penetration: quantize(this.lastTerrain.penetration, 6),
       floating: quantize(this.lastTerrain.floating, 6),
       pelvisOffset: quantize(this.lastFootIk?.pelvisOffset ?? 0, 6),
@@ -320,8 +284,7 @@ export class Simulation {
     }
 
     // Walking below the stick threshold, running above it.
-    const targetSpeed =
-      magnitude < 0.6 ? movement.walkSpeed * (magnitude / 0.6) : movement.runSpeed * magnitude;
+    const targetSpeed = magnitude < 0.6 ? movement.walkSpeed * (magnitude / 0.6) : movement.runSpeed * magnitude;
 
     // While an action state owns the body, movement authority is reduced.
     const actionScale = this.graph.isActionActive() ? movement.actionMovementAuthority : 1;
@@ -334,11 +297,7 @@ export class Simulation {
     const desiredVz = magnitude > 0 ? (desiredZ / Math.max(magnitude, 1e-6)) * effectiveTarget : 0;
 
     const accelerating = magnitude > 0;
-    const rate =
-      (accelerating ? movement.acceleration : movement.deceleration) *
-      airScale *
-      surfaceScale *
-      FIXED_DT;
+    const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT;
 
     if (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded) {
       this.velocity.x = 0;
@@ -352,14 +311,8 @@ export class Simulation {
     // character turns crisply even while sliding.
     if (magnitude > 0.01) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
-      const authority = this.graph.isActionActive()
-        ? this.currentRotationAuthority()
-        : 1;
-      this.yawRad = rotateTowardsAngle(
-        this.yawRad,
-        targetYaw,
-        movement.rotationSpeed * FIXED_DT * authority,
-      );
+      const authority = this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
+      this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
     }
 
     if (this.pendingJumpImpulse) {
@@ -392,8 +345,7 @@ export class Simulation {
     }
 
     const verticalAuthority = rootMotion.mode === 'InPlace' ? 0 : rootMotion.verticalAuthority;
-    const deltaY =
-      this.velocity.y * FIXED_DT * (1 - verticalAuthority) + rootDelta.y * verticalAuthority;
+    const deltaY = this.velocity.y * FIXED_DT * (1 - verticalAuthority) + rootDelta.y * verticalAuthority;
 
     const platform = terrain.platformVelocity;
     this.position = addVec3(this.position, {
@@ -429,7 +381,9 @@ export class Simulation {
   }
 
   private sampleRootMotionDelta(): Vec3 {
-    const layer = this.graph.getLayer('locomotion');
+    const action = this.graph.getLayer('action');
+    const actionOwnsRoot = this.graph.isActionActive() && this.graph.getStateDefinition(action.stateId)?.bodyMask === 'full';
+    const layer = actionOwnsRoot ? action : this.graph.getLayer('locomotion');
     const clip = this.graph.getClipFor(layer.stateId);
     if (!clip) return vec3();
     const previous = layer.normalizedTime - (FIXED_DT * layer.playbackSpeed) / clip.durationSec;
@@ -448,12 +402,7 @@ export class Simulation {
 
     if (resolution.grounded) {
       const descending = this.velocity.y <= 0;
-      this.position.y = applyGroundSnap(
-        this.project.terrain,
-        this.position.y,
-        resolution.groundHeight,
-        descending,
-      );
+      this.position.y = applyGroundSnap(this.project.terrain, this.position.y, resolution.groundHeight, descending);
       if (this.velocity.y < 0) this.velocity.y = 0;
 
       // Re-measure against the snapped position. resolveTerrain sees the

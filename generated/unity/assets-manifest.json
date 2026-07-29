@@ -83,7 +83,7 @@
       "id": "dodge",
       "assetPath": null,
       "proceduralGenerator": "dodge",
-      "durationSec": 0.55,
+      "durationSec": 1.4666667,
       "rootMotionMode": "RootMotion"
     },
     {

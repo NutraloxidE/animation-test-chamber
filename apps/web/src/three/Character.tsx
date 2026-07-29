@@ -171,37 +171,35 @@ const CLIP_FOR_STATE: Record<string, string> = {
   'attack-02': 'HumanArmature|swordAttackJump',
 };
 
-function GltfCharacter({
-  engine,
-  character,
-  motion,
-}: {
-  engine: ChamberEngine;
-  character: CharacterPreset;
-  motion: MotionSet;
-}) {
+function GltfCharacter({ engine, character, motion }: { engine: ChamberEngine; character: CharacterPreset; motion: MotionSet }) {
   const root = useRef<THREE.Group>(null);
   const { scene: model } = useGLTF(character.modelUrl!);
-  const animationUrl =
-    (character.animationUrl ? motion.animationUrl : undefined) ?? character.animationUrl ?? character.modelUrl!;
+  const animationUrl = (character.animationUrl ? motion.animationUrl : undefined) ?? character.animationUrl ?? character.modelUrl!;
   const { animations: sourceAnimations } = useGLTF(animationUrl);
   const animations = useMemo(() => {
     if (animationUrl === character.modelUrl) return sourceAnimations;
 
-    const wanted = new Set(
-      Object.values((character.animationUrl ? motion.clipMap : undefined) ?? character.clipMap ?? {}),
-    );
+    const wanted = new Set(Object.values((character.animationUrl ? motion.clipMap : undefined) ?? character.clipMap ?? {}));
     return sourceAnimations
       .filter((clip) => wanted.has(clip.name))
       .map((sourceClip) => {
         const retargeted = sourceClip.clone();
-        // Chamber movement owns translation; retain only the clip's bone rotations.
-        retargeted.tracks = retargeted.tracks.filter((track) => !(track instanceof THREE.VectorKeyframeTrack));
+        // Chamber movement owns the world root, but bone-local translation is
+        // pose data: Quaternius' pelvis track keeps the roll on the ground.
+        retargeted.tracks = retargeted.tracks.filter((track) => track.name !== 'root.position');
+        for (const track of retargeted.tracks) {
+          if (!(track instanceof THREE.VectorKeyframeTrack) || !track.name.endsWith('.position')) continue;
+          const scale = character.animationPositionScale ?? 1;
+          for (let index = 0; index < track.values.length; index += 1) {
+            track.values[index] = track.values[index]! * scale;
+          }
+        }
         return retargeted;
       });
-  }, [animationUrl, character.clipMap, character.modelUrl, motion.clipMap, sourceAnimations]);
+  }, [animationUrl, character.animationPositionScale, character.clipMap, character.modelUrl, motion.clipMap, sourceAnimations]);
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const currentClip = useRef('');
+  const currentAction = useRef<THREE.AnimationAction | null>(null);
 
   useEffect(() => {
     model.traverse((object) => {
@@ -216,6 +214,8 @@ function GltfCharacter({
     });
     return () => {
       mixer.stopAllAction();
+      currentAction.current = null;
+      currentClip.current = '';
     };
   }, [mixer, model]);
 
@@ -227,18 +227,31 @@ function GltfCharacter({
     group.position.set(state.position.x, state.position.y, state.position.z);
     group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
 
-    const stateId = record?.actionState && record.actionState !== 'action-none'
-      ? record.actionState
-      : record?.locomotionState ?? 'idle';
+    const actionActive = record !== null && record.actionState !== 'action-none';
+    const stateId = actionActive ? record.actionState : (record?.locomotionState ?? 'idle');
+    const normalizedTime = actionActive ? record.actionNormalizedTime : (record?.locomotionNormalizedTime ?? 0);
     const clipMap = (character.animationUrl ? motion.clipMap : undefined) ?? character.clipMap ?? CLIP_FOR_STATE;
     const clipName = clipMap[stateId] ?? clipMap.idle ?? CLIP_FOR_STATE.idle!;
     if (clipName !== currentClip.current) {
-      mixer.stopAllAction();
       const clip = animations.find((animation) => animation.name === clipName);
-      if (clip) mixer.clipAction(clip, model).reset().fadeIn(0.12).play();
-      currentClip.current = clipName;
+      if (clip) {
+        const loop = engine.currentProject.graph.states.find((state) => state.id === stateId)?.loop ?? true;
+        const nextAction = mixer
+          .clipAction(clip, model)
+          .reset()
+          .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
+          .play();
+        nextAction.clampWhenFinished = !loop;
+        currentAction.current?.crossFadeTo(nextAction, 0.12, false);
+        currentAction.current = nextAction;
+        currentClip.current = clipName;
+      }
     }
     mixer.update(delta);
+    if (currentAction.current && currentClip.current === clipName) {
+      currentAction.current.time = normalizedTime * currentAction.current.getClip().duration;
+      mixer.update(0);
+    }
   });
 
   const scale = character.modelScale ?? 1;

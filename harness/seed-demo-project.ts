@@ -10,23 +10,13 @@
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type {
-  AnimationClipDefinition,
-  ProjectDefinition,
-  StateDefinition,
-  TransitionDefinition,
-} from '@atc/schema';
+import type { AnimationClipDefinition, ProjectDefinition, StateDefinition, TransitionDefinition } from '@atc/schema';
 import { validateProject, validateProjectReferences } from '@atc/schema';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outputPath = resolve(here, '../projects/demo-character/project.json');
 
-const clip = (
-  id: string,
-  durationSec: number,
-  loop: boolean,
-  overrides: Partial<AnimationClipDefinition> = {},
-): AnimationClipDefinition => ({
+const clip = (id: string, durationSec: number, loop: boolean, overrides: Partial<AnimationClipDefinition> = {}): AnimationClipDefinition => ({
   schemaVersion: 1,
   id,
   assetPath: null,
@@ -45,7 +35,10 @@ const clips: AnimationClipDefinition[] = [
   clip('walk', 1, true, {
     rootDisplacement: { x: 0, y: 0, z: 1.6 },
     rootMotionMode: 'Hybrid',
-    footContacts: { left: [{ start: 0, end: 0.45 }], right: [{ start: 0.5, end: 0.95 }] },
+    footContacts: {
+      left: [{ start: 0, end: 0.45 }],
+      right: [{ start: 0.5, end: 0.95 }],
+    },
     events: [
       { id: 'walk-foot-l', kind: 'FootContactLeft', at: 0.02 },
       { id: 'walk-foot-r', kind: 'FootContactRight', at: 0.52 },
@@ -54,7 +47,10 @@ const clips: AnimationClipDefinition[] = [
   clip('run', 0.7, true, {
     rootDisplacement: { x: 0, y: 0, z: 4.2 },
     rootMotionMode: 'Hybrid',
-    footContacts: { left: [{ start: 0, end: 0.3 }], right: [{ start: 0.5, end: 0.8 }] },
+    footContacts: {
+      left: [{ start: 0, end: 0.3 }],
+      right: [{ start: 0.5, end: 0.8 }],
+    },
     events: [
       { id: 'run-foot-l', kind: 'FootContactLeft', at: 0.05 },
       { id: 'run-foot-r', kind: 'FootContactRight', at: 0.55 },
@@ -69,13 +65,19 @@ const clips: AnimationClipDefinition[] = [
     events: [{ id: 'land-impact', kind: 'Landing', at: 0.05 }],
   }),
   clip('slide', 0.6, true, {
-    footContacts: { left: [{ start: 0, end: 1 }], right: [{ start: 0, end: 1 }] },
+    footContacts: {
+      left: [{ start: 0, end: 1 }],
+      right: [{ start: 0, end: 1 }],
+    },
   }),
   clip('action-none', 0.5, true, { footContacts: { left: [], right: [] } }),
   clip('attack-01', 0.75, false, {
     rootDisplacement: { x: 0, y: 0, z: 0.45 },
     rootMotionMode: 'RootMotion',
-    footContacts: { left: [{ start: 0, end: 0.6 }], right: [{ start: 0.2, end: 1 }] },
+    footContacts: {
+      left: [{ start: 0, end: 0.6 }],
+      right: [{ start: 0.2, end: 1 }],
+    },
     events: [
       { id: 'a1-windup', kind: 'AttackWindup', at: 0.15 },
       {
@@ -84,7 +86,10 @@ const clips: AnimationClipDefinition[] = [
         at: 0.42,
         // The hit event and its hitbox window must stay in sync; tuning the
         // transition must not silently desynchronize them.
-        protection: { level: 'approval-required', reason: 'hit timing confirmed by hand' },
+        protection: {
+          level: 'approval-required',
+          reason: 'hit timing confirmed by hand',
+        },
       },
       { id: 'a1-recoil', kind: 'AttackRecoil', at: 0.7 },
     ],
@@ -92,17 +97,23 @@ const clips: AnimationClipDefinition[] = [
   clip('attack-02', 0.85, false, {
     rootDisplacement: { x: 0, y: 0, z: 0.7 },
     rootMotionMode: 'RootMotion',
-    footContacts: { left: [{ start: 0, end: 0.5 }], right: [{ start: 0.3, end: 1 }] },
+    footContacts: {
+      left: [{ start: 0, end: 0.5 }],
+      right: [{ start: 0.3, end: 1 }],
+    },
     events: [
       { id: 'a2-windup', kind: 'AttackWindup', at: 0.2 },
       { id: 'a2-hit', kind: 'AttackHit', at: 0.5 },
       { id: 'a2-recoil', kind: 'AttackRecoil', at: 0.78 },
     ],
   }),
-  clip('dodge', 0.55, false, {
+  clip('dodge', 1.4666667, false, {
     rootDisplacement: { x: 0, y: 0, z: 2.4 },
     rootMotionMode: 'RootMotion',
-    footContacts: { left: [{ start: 0.7, end: 1 }], right: [{ start: 0.7, end: 1 }] },
+    footContacts: {
+      left: [{ start: 0.7, end: 1 }],
+      right: [{ start: 0.7, end: 1 }],
+    },
     events: [
       { id: 'dodge-start', kind: 'DodgeStart', at: 0.05 },
       { id: 'dodge-end', kind: 'DodgeEnd', at: 0.85 },
@@ -114,12 +125,7 @@ const clips: AnimationClipDefinition[] = [
   }),
 ];
 
-const state = (
-  id: string,
-  clipId: string,
-  layer: 'locomotion' | 'action',
-  overrides: Partial<StateDefinition> = {},
-): StateDefinition => ({
+const state = (id: string, clipId: string, layer: 'locomotion' | 'action', overrides: Partial<StateDefinition> = {}): StateDefinition => ({
   schemaVersion: 1,
   id,
   clipId,
@@ -160,15 +166,14 @@ const states: StateDefinition[] = [
     bodyMask: 'full',
   }),
   state('guard', 'guard', 'action'),
-  state('hit', 'hit', 'action', { loop: false, fallbackState: 'action-none', bodyMask: 'full' }),
+  state('hit', 'hit', 'action', {
+    loop: false,
+    fallbackState: 'action-none',
+    bodyMask: 'full',
+  }),
 ];
 
-const transition = (
-  id: string,
-  from: string,
-  to: string,
-  overrides: Partial<TransitionDefinition> = {},
-): TransitionDefinition => ({
+const transition = (id: string, from: string, to: string, overrides: Partial<TransitionDefinition> = {}): TransitionDefinition => ({
   schemaVersion: 1,
   id,
   from,
@@ -353,22 +358,102 @@ const project: ProjectDefinition = {
       leftFootBone: 'foot_l',
       rightFootBone: 'foot_r',
       bones: [
-        { name: 'hips', parent: null, humanoid: 'Hips', restPosition: { x: 0, y: 0.95, z: 0 } },
-        { name: 'spine', parent: 'hips', humanoid: 'Spine', restPosition: { x: 0, y: 1.2, z: 0 } },
-        { name: 'chest', parent: 'spine', humanoid: 'Chest', restPosition: { x: 0, y: 1.4, z: 0 } },
-        { name: 'head', parent: 'chest', humanoid: 'Head', restPosition: { x: 0, y: 1.68, z: 0 } },
-        { name: 'upperarm_l', parent: 'chest', humanoid: 'LeftUpperArm', restPosition: { x: -0.2, y: 1.45, z: 0 } },
-        { name: 'lowerarm_l', parent: 'upperarm_l', humanoid: 'LeftLowerArm', restPosition: { x: -0.45, y: 1.45, z: 0 } },
-        { name: 'hand_l', parent: 'lowerarm_l', humanoid: 'LeftHand', restPosition: { x: -0.65, y: 1.45, z: 0 } },
-        { name: 'upperarm_r', parent: 'chest', humanoid: 'RightUpperArm', restPosition: { x: 0.2, y: 1.45, z: 0 } },
-        { name: 'lowerarm_r', parent: 'upperarm_r', humanoid: 'RightLowerArm', restPosition: { x: 0.45, y: 1.45, z: 0 } },
-        { name: 'hand_r', parent: 'lowerarm_r', humanoid: 'RightHand', restPosition: { x: 0.65, y: 1.45, z: 0 } },
-        { name: 'upperleg_l', parent: 'hips', humanoid: 'LeftUpperLeg', restPosition: { x: -0.12, y: 0.9, z: 0 } },
-        { name: 'lowerleg_l', parent: 'upperleg_l', humanoid: 'LeftLowerLeg', restPosition: { x: -0.12, y: 0.5, z: 0 } },
-        { name: 'foot_l', parent: 'lowerleg_l', humanoid: 'LeftFoot', restPosition: { x: -0.12, y: 0.08, z: 0.05 } },
-        { name: 'upperleg_r', parent: 'hips', humanoid: 'RightUpperLeg', restPosition: { x: 0.12, y: 0.9, z: 0 } },
-        { name: 'lowerleg_r', parent: 'upperleg_r', humanoid: 'RightLowerLeg', restPosition: { x: 0.12, y: 0.5, z: 0 } },
-        { name: 'foot_r', parent: 'lowerleg_r', humanoid: 'RightFoot', restPosition: { x: 0.12, y: 0.08, z: 0.05 } },
+        {
+          name: 'hips',
+          parent: null,
+          humanoid: 'Hips',
+          restPosition: { x: 0, y: 0.95, z: 0 },
+        },
+        {
+          name: 'spine',
+          parent: 'hips',
+          humanoid: 'Spine',
+          restPosition: { x: 0, y: 1.2, z: 0 },
+        },
+        {
+          name: 'chest',
+          parent: 'spine',
+          humanoid: 'Chest',
+          restPosition: { x: 0, y: 1.4, z: 0 },
+        },
+        {
+          name: 'head',
+          parent: 'chest',
+          humanoid: 'Head',
+          restPosition: { x: 0, y: 1.68, z: 0 },
+        },
+        {
+          name: 'upperarm_l',
+          parent: 'chest',
+          humanoid: 'LeftUpperArm',
+          restPosition: { x: -0.2, y: 1.45, z: 0 },
+        },
+        {
+          name: 'lowerarm_l',
+          parent: 'upperarm_l',
+          humanoid: 'LeftLowerArm',
+          restPosition: { x: -0.45, y: 1.45, z: 0 },
+        },
+        {
+          name: 'hand_l',
+          parent: 'lowerarm_l',
+          humanoid: 'LeftHand',
+          restPosition: { x: -0.65, y: 1.45, z: 0 },
+        },
+        {
+          name: 'upperarm_r',
+          parent: 'chest',
+          humanoid: 'RightUpperArm',
+          restPosition: { x: 0.2, y: 1.45, z: 0 },
+        },
+        {
+          name: 'lowerarm_r',
+          parent: 'upperarm_r',
+          humanoid: 'RightLowerArm',
+          restPosition: { x: 0.45, y: 1.45, z: 0 },
+        },
+        {
+          name: 'hand_r',
+          parent: 'lowerarm_r',
+          humanoid: 'RightHand',
+          restPosition: { x: 0.65, y: 1.45, z: 0 },
+        },
+        {
+          name: 'upperleg_l',
+          parent: 'hips',
+          humanoid: 'LeftUpperLeg',
+          restPosition: { x: -0.12, y: 0.9, z: 0 },
+        },
+        {
+          name: 'lowerleg_l',
+          parent: 'upperleg_l',
+          humanoid: 'LeftLowerLeg',
+          restPosition: { x: -0.12, y: 0.5, z: 0 },
+        },
+        {
+          name: 'foot_l',
+          parent: 'lowerleg_l',
+          humanoid: 'LeftFoot',
+          restPosition: { x: -0.12, y: 0.08, z: 0.05 },
+        },
+        {
+          name: 'upperleg_r',
+          parent: 'hips',
+          humanoid: 'RightUpperLeg',
+          restPosition: { x: 0.12, y: 0.9, z: 0 },
+        },
+        {
+          name: 'lowerleg_r',
+          parent: 'upperleg_r',
+          humanoid: 'RightLowerLeg',
+          restPosition: { x: 0.12, y: 0.5, z: 0 },
+        },
+        {
+          name: 'foot_r',
+          parent: 'lowerleg_r',
+          humanoid: 'RightFoot',
+          restPosition: { x: 0.12, y: 0.08, z: 0.05 },
+        },
       ],
     },
   },
@@ -377,28 +462,25 @@ const project: ProjectDefinition = {
     schemaVersion: 1,
     id: 'demo-graph',
     layers: [
-      { id: 'locomotion', order: 0, defaultState: 'idle', weight: 1, bodyMask: 'full' },
-      { id: 'action', order: 1, defaultState: 'action-none', weight: 1, bodyMask: 'upper' },
+      {
+        id: 'locomotion',
+        order: 0,
+        defaultState: 'idle',
+        weight: 1,
+        bodyMask: 'full',
+      },
+      {
+        id: 'action',
+        order: 1,
+        defaultState: 'action-none',
+        weight: 1,
+        bodyMask: 'upper',
+      },
     ],
     states,
     transitions,
     // Death is reserved even though the MVP has no death state (PLAN 7.1).
-    forcedTransitionOrder: [
-      'death',
-      'hit',
-      'dodge',
-      'guard',
-      'attack-02',
-      'attack-01',
-      'jump',
-      'slide',
-      'fall',
-      'land',
-      'run',
-      'walk',
-      'idle',
-      'action-none',
-    ],
+    forcedTransitionOrder: ['death', 'hit', 'dodge', 'guard', 'attack-02', 'attack-01', 'jump', 'slide', 'fall', 'land', 'run', 'walk', 'idle', 'action-none'],
   },
   inputMap: {
     schemaVersion: 1,
@@ -620,10 +702,7 @@ const project: ProjectDefinition = {
 
 const force = process.argv.includes('--force');
 if (existsSync(outputPath) && !force) {
-  console.error(
-    `refusing to overwrite canonical data at ${outputPath}\n` +
-      'project.json is edited by humans through the chamber. Pass --force if you really mean it.',
-  );
+  console.error(`refusing to overwrite canonical data at ${outputPath}\n` + 'project.json is edited by humans through the chamber. Pass --force if you really mean it.');
   process.exit(1);
 }
 

@@ -518,7 +518,7 @@
       "id": "dodge",
       "assetPath": null,
       "proceduralGenerator": "dodge",
-      "durationSec": 0.55,
+      "durationSec": 1.4666667,
       "loop": false,
       "rootDisplacement": {
         "x": 0,
@@ -1319,105 +1319,69 @@
     "keyboard": [
       {
         "action": "Jump",
-        "codes": [
-          "Space"
-        ]
+        "codes": ["Space"]
       },
       {
         "action": "Dodge",
-        "codes": [
-          "ShiftLeft",
-          "ShiftRight"
-        ]
+        "codes": ["ShiftLeft", "ShiftRight"]
       },
       {
         "action": "PrimaryAction",
-        "codes": [
-          "KeyJ",
-          "KeyF"
-        ]
+        "codes": ["KeyJ", "KeyF"]
       },
       {
         "action": "SecondaryAction",
-        "codes": [
-          "KeyK"
-        ]
+        "codes": ["KeyK"]
       },
       {
         "action": "Guard",
-        "codes": [
-          "KeyL"
-        ]
+        "codes": ["KeyL"]
       },
       {
         "action": "LockOn",
-        "codes": [
-          "KeyQ"
-        ]
+        "codes": ["KeyQ"]
       },
       {
         "action": "Interact",
-        "codes": [
-          "KeyE"
-        ]
+        "codes": ["KeyE"]
       },
       {
         "action": "Pause",
-        "codes": [
-          "Escape"
-        ]
+        "codes": ["Escape"]
       }
     ],
     "gamepad": [
       {
         "action": "Jump",
-        "buttons": [
-          0
-        ]
+        "buttons": [0]
       },
       {
         "action": "PrimaryAction",
-        "buttons": [
-          2
-        ]
+        "buttons": [2]
       },
       {
         "action": "SecondaryAction",
-        "buttons": [
-          3
-        ]
+        "buttons": [3]
       },
       {
         "action": "Dodge",
-        "buttons": [
-          1,
-          5
-        ]
+        "buttons": [1, 5]
       },
       {
         "action": "Guard",
-        "buttons": [
-          6,
-          4
-        ]
+        "buttons": [6, 4]
       },
       {
         "action": "LockOn",
-        "buttons": [
-          10
-        ]
+        "buttons": [10]
       },
       {
         "action": "Interact",
-        "buttons": [
-          7
-        ]
+        "buttons": [7]
       },
       {
         "action": "Pause",
-        "buttons": [
-          9
-        ]
+        "buttons": [9]
       }
     ],
     "stickDeadzone": 0.12,

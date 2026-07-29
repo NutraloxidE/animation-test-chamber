@@ -8,6 +8,8 @@ export interface CharacterPreset {
   modelScale?: number;
   modelRotationY?: number;
   animationUrl?: string;
+  /** Converts external animation position keys into the model rig's local scale. */
+  animationPositionScale?: number;
   clipMap?: Record<string, string>;
 }
 
@@ -44,6 +46,7 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
     modelUrl: '/assets/characters/quaternius-universal-base/Superhero_Female_FullBody.gltf',
     modelScale: 1,
     animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
+    animationPositionScale: 100,
     clipMap: {
       idle: 'Rig|Idle_Loop',
       walk: 'Rig|Walk_Loop',
