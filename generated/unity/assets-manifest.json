@@ -15,7 +15,8 @@
       "proceduralGenerator": "idle",
       "durationSec": 2,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "walk",
@@ -23,7 +24,8 @@
       "proceduralGenerator": "walk",
       "durationSec": 1,
       "rootMotionMode": "Hybrid",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "run",
@@ -31,7 +33,8 @@
       "proceduralGenerator": "run",
       "durationSec": 0.7,
       "rootMotionMode": "Hybrid",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "jump",
@@ -39,7 +42,8 @@
       "proceduralGenerator": "jump",
       "durationSec": 0.5,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "fall",
@@ -47,7 +51,8 @@
       "proceduralGenerator": "fall",
       "durationSec": 0.8,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "land",
@@ -55,7 +60,8 @@
       "proceduralGenerator": "land",
       "durationSec": 0.35,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "slide",
@@ -63,7 +69,8 @@
       "proceduralGenerator": "slide",
       "durationSec": 0.6,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "action-none",
@@ -71,7 +78,8 @@
       "proceduralGenerator": "action-none",
       "durationSec": 0.5,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "attack-01",
@@ -79,7 +87,8 @@
       "proceduralGenerator": "attack-01",
       "durationSec": 0.75,
       "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "attack-02",
@@ -87,7 +96,8 @@
       "proceduralGenerator": "attack-02",
       "durationSec": 0.85,
       "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "dodge",
@@ -95,7 +105,8 @@
       "proceduralGenerator": "dodge",
       "durationSec": 1.4666667,
       "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "FastInSlowOut"
+      "rootMotionCurve": "FastInSlowOut",
+      "recoveryTransitionStartNormalized": 0.72
     },
     {
       "id": "guard",
@@ -103,7 +114,8 @@
       "proceduralGenerator": "guard",
       "durationSec": 0.6,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     },
     {
       "id": "hit",
@@ -111,7 +123,8 @@
       "proceduralGenerator": "hit",
       "durationSec": 0.45,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear"
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
     }
   ],
   "candidates": []

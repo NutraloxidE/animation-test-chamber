@@ -527,6 +527,7 @@
       },
       "rootMotionMode": "RootMotion",
       "rootMotionCurve": "FastInSlowOut",
+      "recoveryTransitionStartNormalized": 0.72,
       "events": [
         {
           "id": "dodge-start",

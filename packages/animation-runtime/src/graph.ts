@@ -11,17 +11,18 @@ import { eventsInRange, findClip, isClipFinished, normalizedTimeOf } from './cli
 
 export type LayerId = 'locomotion' | 'action';
 
-export const DODGE_RECOVERY_START_NORMALIZED = 0.78;
+export const DEFAULT_DODGE_RECOVERY_START_NORMALIZED = 0.78;
 export const DODGE_RECOVERY_BLEND_SEC = 0.28;
 
 export function isDodgeRecoveryTransition(
   actionState: string,
   actionNormalizedTime: number,
   locomotionState: string,
+  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
 ): boolean {
   return (
     actionState === 'dodge' &&
-    actionNormalizedTime >= DODGE_RECOVERY_START_NORMALIZED &&
+    actionNormalizedTime >= recoveryStartNormalized &&
     (locomotionState === 'walk' || locomotionState === 'run')
   );
 }
@@ -31,15 +32,21 @@ export function dodgeRecoveryBlendWeight(
   actionNormalizedTime: number,
   actionDurationSec: number,
   locomotionState: string,
+  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
 ): number {
   if (
     actionDurationSec <= 0 ||
-    !isDodgeRecoveryTransition(actionState, actionNormalizedTime, locomotionState)
+    !isDodgeRecoveryTransition(
+      actionState,
+      actionNormalizedTime,
+      locomotionState,
+      recoveryStartNormalized,
+    )
   ) {
     return 0;
   }
   return clamp01(
-    ((actionNormalizedTime - DODGE_RECOVERY_START_NORMALIZED) * actionDurationSec) /
+    ((actionNormalizedTime - recoveryStartNormalized) * actionDurationSec) /
       DODGE_RECOVERY_BLEND_SEC,
   );
 }

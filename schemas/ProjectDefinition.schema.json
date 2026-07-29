@@ -349,6 +349,11 @@
               }
             ]
           },
+          "recoveryTransitionStartNormalized": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
           "events": {
             "type": "array",
             "items": {

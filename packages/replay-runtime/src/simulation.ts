@@ -301,6 +301,7 @@ export class Simulation {
       action.normalizedTime,
       actionClip?.durationSec ?? 0,
       this.graph.getLayer('locomotion').stateId,
+      actionClip?.recoveryTransitionStartNormalized,
     );
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.

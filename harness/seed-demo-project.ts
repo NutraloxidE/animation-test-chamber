@@ -111,6 +111,7 @@ const clips: AnimationClipDefinition[] = [
     rootDisplacement: { x: 0, y: 0, z: 5.5 },
     rootMotionMode: 'RootMotion',
     rootMotionCurve: 'FastInSlowOut',
+    recoveryTransitionStartNormalized: 0.72,
     footContacts: {
       left: [{ start: 0.7, end: 1 }],
       right: [{ start: 0.7, end: 1 }],

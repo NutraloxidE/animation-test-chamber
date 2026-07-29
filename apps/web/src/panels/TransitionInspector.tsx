@@ -79,6 +79,15 @@ export function TransitionInspector() {
             step={0.1}
             format={(value) => `${value.toFixed(1)} m`}
           />
+          {selectedClip.recoveryTransitionStartNormalized !== undefined && (
+            <Field
+              path={`/clips/${selectedClip.id}/recoveryTransitionStartNormalized`}
+              label="Recovery transition start"
+              min={0.5}
+              max={0.95}
+              step={0.01}
+            />
+          )}
         </section>
       )}
 

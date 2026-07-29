@@ -109,6 +109,9 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');
   await expect(distance).toBeVisible();
   await expect(distance).toContainText('5.5 m');
+  await expect(
+    page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized'),
+  ).toContainText('0.720');
   await distance.locator('input[type=range]').fill('6.2');
   await expect(distance).toContainText('human preview');
   await distance.getByRole('button', { name: 'stage', exact: true }).click();
@@ -207,9 +210,18 @@ test('a replay plays back and reports a before/after comparison', async ({ page 
 
 test('the state graph reports no unreachable states or priority conflicts', async ({ page }) => {
   await openPanel(page, 'graph');
-  await expect(page.getByTestId('state-graph')).toContainText(
+  const graph = page.getByTestId('state-graph');
+  await expect(graph).toContainText(
     'No unreachable states, priority conflicts or illegal self-loops',
   );
+  await expect(page.getByTestId('graph-live-locomotion')).toContainText('idle');
+
+  await page.keyboard.down('KeyW');
+  await expect(page.getByTestId('graph-live-locomotion')).toContainText(/walk|run/);
+  await expect(
+    graph.locator('.graph-layer').first().locator('.graph-node.is-active'),
+  ).toContainText(/walk|run/);
+  await page.keyboard.up('KeyW');
 });
 
 test('the timeline shows the semantic event and cancel window tracks', async ({ page }) => {

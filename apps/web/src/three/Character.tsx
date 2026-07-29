@@ -231,12 +231,19 @@ function GltfCharacter({ engine, character, motion }: { engine: ChamberEngine; c
     group.position.set(state.position.x, state.position.y, state.position.z);
     group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
 
+    const actionState = engine.currentProject.graph.states.find(
+      (entry) => entry.id === record?.actionState,
+    );
+    const actionClip = engine.currentProject.clips.find(
+      (entry) => entry.id === actionState?.clipId,
+    );
     const dodgeRecovery =
       record !== null &&
       isDodgeRecoveryTransition(
         record.actionState,
         record.actionNormalizedTime,
         record.locomotionState,
+        actionClip?.recoveryTransitionStartNormalized,
       );
     const actionActive =
       record !== null && record.actionState !== 'action-none' && !dodgeRecovery;

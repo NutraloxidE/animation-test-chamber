@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useChamber } from '../store.ts';
 
 interface GraphWarning {
@@ -16,7 +16,10 @@ export function StateGraph() {
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const selectTransition = useChamber((state) => state.selectTransition);
-  const snapshot = useChamber((state) => state.engine).snapshot();
+  const engine = useChamber((state) => state.engine);
+  const [snapshot, setSnapshot] = useState(() => engine.snapshot());
+
+  useEffect(() => engine.subscribe(() => setSnapshot(engine.snapshot())), [engine]);
 
   const warnings = useMemo<GraphWarning[]>(() => {
     const found: GraphWarning[] = [];
@@ -75,10 +78,39 @@ export function StateGraph() {
     <div className="panel" data-testid="state-graph">
       <header className="panel__header">
         <h2>State Graph</h2>
+        <span className="muted">live</span>
       </header>
 
       {project.graph.layers.map((layer) => (
         <section key={layer.id} className="graph-layer">
+          {(() => {
+            const runtime = snapshot.stateMachine[layer.id];
+            const transitioning = runtime.previousStateId !== null;
+            return (
+              <div className="graph-live" data-testid={`graph-live-${layer.id}`}>
+                <div>
+                  <span className="graph-live__layer">{layer.id}</span>
+                  <strong>{runtime.stateId}</strong>
+                </div>
+                <span className="muted">
+                  {transitioning
+                    ? `${runtime.previousStateId} → ${runtime.stateId} · blend ${Math.round(
+                        runtime.blendWeight * 100,
+                      )}%`
+                    : `playing ${Math.round(runtime.normalizedTime * 100)}%`}
+                </span>
+                <span className="graph-live__track" aria-hidden="true">
+                  <span
+                    style={{
+                      width: `${(transitioning
+                        ? runtime.blendWeight
+                        : runtime.normalizedTime) * 100}%`,
+                    }}
+                  />
+                </span>
+              </div>
+            );
+          })()}
           <h3>
             {layer.id} <span className="muted">default: {layer.defaultState}</span>
           </h3>
@@ -90,6 +122,11 @@ export function StateGraph() {
                   layer.id === 'locomotion'
                     ? snapshot.locomotionState === state.id
                     : snapshot.actionState === state.id;
+                const progress = active
+                  ? layer.id === 'locomotion'
+                    ? snapshot.locomotionNormalizedTime
+                    : snapshot.actionNormalizedTime
+                  : 0;
                 return (
                   <button
                     type="button"
@@ -99,7 +136,12 @@ export function StateGraph() {
                     }`}
                     onClick={() => selectState(state.id)}
                   >
-                    {state.id}
+                    <span
+                      className="graph-node__progress"
+                      style={{ width: `${progress * 100}%` }}
+                      aria-hidden="true"
+                    />
+                    <span className="graph-node__label">{state.id}</span>
                   </button>
                 );
               })}
@@ -110,14 +152,25 @@ export function StateGraph() {
               .filter((transition) => {
                 const target = project.graph.states.find((s) => s.id === transition.to);
                 if (target?.layer !== layer.id) return false;
+                const runtime = snapshot.stateMachine[layer.id];
                 return (
                   transition.from === selectedStateId ||
                   transition.to === selectedStateId ||
+                  transition.from === runtime.stateId ||
+                  transition.to === runtime.stateId ||
+                  transition.id === runtime.lastTransitionId ||
                   transition.from === '*'
                 );
               })
               .map((transition) => (
-                <li key={transition.id}>
+                <li
+                  key={transition.id}
+                  className={
+                    snapshot.stateMachine[layer.id].lastTransitionId === transition.id
+                      ? 'is-live'
+                      : ''
+                  }
+                >
                   <button type="button" onClick={() => selectTransition(transition.id)}>
                     <code>
                       {transition.from} → {transition.to}

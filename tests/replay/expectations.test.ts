@@ -84,7 +84,7 @@ describe('late-dodge-cancel', () => {
 
   it('keeps locomotion active through dodge recovery when movement is held', () => {
     const recovery = movingTrace.ticks.filter(
-      (tick) => tick.actionState === 'dodge' && tick.actionNormalizedTime >= 0.78,
+      (tick) => tick.actionState === 'dodge' && tick.actionNormalizedTime >= 0.72,
     );
     const afterDodge = movingTrace.ticks.find(
       (tick, index) =>

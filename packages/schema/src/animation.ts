@@ -97,6 +97,10 @@ export const AnimationClipDefinition = Type.Object(
     rootMotionMode: RootMotionMode,
     /** Optional timing curve applied without changing total displacement. */
     rootMotionCurve: Type.Optional(RootMotionCurve),
+    /** Normalized point where a moving dodge begins blending back to locomotion. */
+    recoveryTransitionStartNormalized: Type.Optional(
+      Type.Number({ minimum: 0, maximum: 1 }),
+    ),
     events: Type.Array(SemanticEventDefinition),
     /** Normalized times at which each foot is planted. Drives foot-IK and metrics. */
     footContacts: Type.Object(
