@@ -321,6 +321,75 @@ textarea {
   margin-bottom: 12px;
 }
 
+.state-graph {
+  position: relative;
+  padding-left: 52px;
+}
+
+.layer-mix {
+  position: absolute;
+  inset: 44px auto 12px 10px;
+  width: 34px;
+  margin: 0;
+}
+
+.layer-mix__sticky {
+  position: sticky;
+  top: 8px;
+  height: min(calc(100dvh - 128px), 100%);
+}
+
+.layer-mix__gauge {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 10px;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+
+.layer-mix__gauge > span {
+  display: block;
+  width: 100%;
+  transition: height 80ms linear;
+}
+
+.layer-mix__action {
+  background: var(--warn);
+}
+
+.layer-mix__locomotion {
+  background: var(--accent);
+}
+
+.layer-mix__labels {
+  position: absolute;
+  inset: 0 0 0 14px;
+  font-size: 8px;
+}
+
+.layer-mix__labels span {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+}
+
+.layer-mix__labels span:first-child {
+  top: 0;
+}
+
+.layer-mix__labels span:last-child {
+  bottom: 0;
+}
+
+.layer-mix__labels strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
 .graph-live {
   display: grid;
   gap: 4px;
@@ -907,6 +976,10 @@ textarea {
   .tabs button {
     flex: 1 0 auto;
     font-size: 11px;
+  }
+
+  .layer-mix__sticky {
+    height: min(calc(62dvh - 108px), 100%);
   }
 }
 

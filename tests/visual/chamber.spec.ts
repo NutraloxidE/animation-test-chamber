@@ -215,12 +215,20 @@ test('the state graph reports no unreachable states or priority conflicts', asyn
     'No unreachable states, priority conflicts or illegal self-loops',
   );
   await expect(page.getByTestId('graph-live-locomotion')).toContainText('idle');
+  await expect(page.getByTestId('layer-mix')).toContainText('LOCOMOTION 100%');
+  await expect(page.getByTestId('layer-mix')).toContainText('ACTION 0%');
 
   await page.keyboard.down('KeyW');
   await expect(page.getByTestId('graph-live-locomotion')).toContainText(/walk|run/);
   await expect(
     graph.locator('.graph-layer').first().locator('.graph-node.is-active'),
   ).toContainText(/walk|run/);
+  await page.keyboard.press('ShiftLeft');
+  await expect
+    .poll(async () =>
+      Number(await graph.locator('.layer-mix__action').getAttribute('data-weight')),
+    )
+    .toBeGreaterThan(0);
   await page.keyboard.up('KeyW');
 });
 

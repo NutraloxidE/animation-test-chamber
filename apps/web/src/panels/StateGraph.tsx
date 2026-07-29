@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { dodgeRecoveryBlendWeight } from '@atc/animation-runtime';
 import { useChamber } from '../store.ts';
 
 interface GraphWarning {
@@ -20,6 +21,30 @@ export function StateGraph() {
   const [snapshot, setSnapshot] = useState(() => engine.snapshot());
 
   useEffect(() => engine.subscribe(() => setSnapshot(engine.snapshot())), [engine]);
+
+  const actionRuntime = snapshot.stateMachine.action;
+  const actionDefault =
+    project.graph.layers.find((layer) => layer.id === 'action')?.defaultState ?? 'action-none';
+  const actionState = project.graph.states.find((state) => state.id === actionRuntime.stateId);
+  const actionClip = project.clips.find((clip) => clip.id === actionState?.clipId);
+  const recoveryWeight = dodgeRecoveryBlendWeight(
+    actionRuntime.stateId,
+    actionRuntime.normalizedTime,
+    actionClip?.durationSec ?? 0,
+    snapshot.locomotionState,
+    actionClip?.recoveryTransitionStartNormalized,
+  );
+  const actionWeight =
+    recoveryWeight > 0
+      ? 1 - recoveryWeight
+      : actionRuntime.stateId === actionDefault
+        ? actionRuntime.previousStateId
+          ? 1 - actionRuntime.blendWeight
+          : 0
+        : actionRuntime.previousStateId === actionDefault
+          ? actionRuntime.blendWeight
+          : 1;
+  const locomotionWeight = 1 - actionWeight;
 
   const warnings = useMemo<GraphWarning[]>(() => {
     const found: GraphWarning[] = [];
@@ -75,11 +100,36 @@ export function StateGraph() {
   }, [project]);
 
   return (
-    <div className="panel" data-testid="state-graph">
+    <div className="panel state-graph" data-testid="state-graph">
       <header className="panel__header">
         <h2>State Graph</h2>
         <span className="muted">live</span>
       </header>
+
+      <section className="layer-mix" data-testid="layer-mix">
+        <div className="layer-mix__sticky">
+          <div className="layer-mix__gauge" aria-label="Locomotion and action layer mix">
+            <span
+              className="layer-mix__action"
+              style={{ height: `${actionWeight * 100}%` }}
+              data-weight={actionWeight.toFixed(3)}
+            />
+            <span
+              className="layer-mix__locomotion"
+              style={{ height: `${locomotionWeight * 100}%` }}
+              data-weight={locomotionWeight.toFixed(3)}
+            />
+          </div>
+          <div className="layer-mix__labels">
+            <span>
+              ACTION <strong>{Math.round(actionWeight * 100)}%</strong>
+            </span>
+            <span>
+              LOCOMOTION <strong>{Math.round(locomotionWeight * 100)}%</strong>
+            </span>
+          </div>
+        </div>
+      </section>
 
       {project.graph.layers.map((layer) => (
         <section key={layer.id} className="graph-layer">
