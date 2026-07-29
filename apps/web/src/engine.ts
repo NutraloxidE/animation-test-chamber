@@ -1,6 +1,11 @@
 import type { ProjectDefinition, TerrainPreset, SemanticEventKind } from '@atc/schema';
 import { FixedStepAccumulator } from '@atc/runtime-core';
-import { BrowserInputSampler, emptyVirtualPad, type VirtualPadState } from '@atc/input-runtime';
+import {
+  BrowserInputSampler,
+  emptyVirtualPad,
+  type MouseLookMode,
+  type VirtualPadState,
+} from '@atc/input-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
 import {
   ReplayRecorder,
@@ -151,6 +156,10 @@ export class ChamberEngine {
 
   clearVirtualPad(): void {
     this.sampler.setVirtualPad(emptyVirtualPad());
+  }
+
+  setMouseLookMode(mode: MouseLookMode): void {
+    this.sampler.setMouseLookMode(mode);
   }
 
   setTimeScale(scale: number): void {

@@ -12,6 +12,7 @@ import { CapabilityPanel } from './panels/CapabilityPanel.tsx';
 import { TerrainPanel } from './panels/TerrainPanel.tsx';
 import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
+import type { MouseLookMode } from '@atc/input-runtime';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
@@ -107,6 +108,7 @@ function Hud() {
 }
 
 export function App() {
+  const engine = useChamber((state) => state.engine);
   const activePanel = useChamber((state) => state.activePanel);
   const setPanel = useChamber((state) => state.setPanel);
   const statusMessage = useChamber((state) => state.statusMessage);
@@ -121,6 +123,13 @@ export function App() {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [padAuto] = useState(() => detectTouchDevice());
+  const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
+
+  const toggleMouseLookMode = (): void => {
+    const next = mouseLookMode === 'free' ? 'drag' : 'free';
+    setMouseLookMode(next);
+    engine.setMouseLookMode(next);
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -151,6 +160,14 @@ export function App() {
 
         {!hideUi && (
           <div className="viewport-controls">
+            <button
+              type="button"
+              onClick={toggleMouseLookMode}
+              data-testid="toggle-camera-control"
+              title="Switch camera control mode"
+            >
+              Camera: {mouseLookMode === 'free' ? 'Mouse move' : 'Click-drag'}
+            </button>
             <button type="button" onClick={toggleMobilePad} data-testid="toggle-pad">
               {padVisible ? 'Hide pad' : 'Show pad'}
             </button>

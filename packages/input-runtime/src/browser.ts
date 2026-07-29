@@ -12,6 +12,8 @@ export interface VirtualPadState {
   buttons: Partial<Record<ButtonAction, boolean>>;
 }
 
+export type MouseLookMode = 'free' | 'drag';
+
 export function emptyVirtualPad(): VirtualPadState {
   return { moveX: 0, moveY: 0, lookX: 0, lookY: 0, buttons: {} };
 }
@@ -36,6 +38,8 @@ export class BrowserInputSampler {
 
   private mouseDeltaX = 0;
   private mouseDeltaY = 0;
+  private mouseLookMode: MouseLookMode = 'free';
+  private mouseDragging = false;
   private virtualPad: VirtualPadState = emptyVirtualPad();
   private lastDevice: InputDeviceKind = 'keyboard';
   private attached = false;
@@ -54,15 +58,25 @@ export class BrowserInputSampler {
   };
 
   private readonly onMouseMove = (event: MouseEvent): void => {
+    if (this.mouseLookMode === 'drag' && !this.mouseDragging) return;
     this.mouseDeltaX += event.movementX;
     this.mouseDeltaY += event.movementY;
     if (event.movementX !== 0 || event.movementY !== 0) this.lastDevice = 'mouse';
+  };
+
+  private readonly onMouseDown = (event: MouseEvent): void => {
+    if (event.button === 0 && event.target instanceof HTMLCanvasElement) this.mouseDragging = true;
+  };
+
+  private readonly onMouseUp = (event: MouseEvent): void => {
+    if (event.button === 0) this.mouseDragging = false;
   };
 
   private readonly onBlur = (): void => {
     // Without this, a key held while the tab loses focus stays down forever.
     this.pressedCodes.clear();
     this.latchedCodes.clear();
+    this.mouseDragging = false;
   };
 
   constructor(private inputMap: InputMapDefinition) {}
@@ -78,6 +92,8 @@ export class BrowserInputSampler {
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
     (target as HTMLElement).addEventListener('mousemove', this.onMouseMove as EventListener);
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
   }
 
   detach(target: HTMLElement | Window = window): void {
@@ -87,6 +103,15 @@ export class BrowserInputSampler {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     (target as HTMLElement).removeEventListener('mousemove', this.onMouseMove as EventListener);
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
+  }
+
+  setMouseLookMode(mode: MouseLookMode): void {
+    this.mouseLookMode = mode;
+    this.mouseDragging = false;
+    this.mouseDeltaX = 0;
+    this.mouseDeltaY = 0;
   }
 
   setVirtualPad(state: VirtualPadState): void {
