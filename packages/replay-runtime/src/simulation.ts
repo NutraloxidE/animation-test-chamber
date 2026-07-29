@@ -315,8 +315,8 @@ export class Simulation {
     if (movement.cameraRelative) {
       const cos = Math.cos(this.cameraYawRad);
       const sin = Math.sin(this.cameraYawRad);
-      desiredX = stickX * cos + stickY * sin;
-      desiredZ = -stickX * sin + stickY * cos;
+      desiredX = -stickX * cos + stickY * sin;
+      desiredZ = stickX * sin + stickY * cos;
     }
 
     // Walking below the stick threshold, running above it.

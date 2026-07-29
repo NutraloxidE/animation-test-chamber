@@ -8,6 +8,7 @@ import {
   runReplay,
 } from '@atc/replay-runtime';
 import { frameAt } from '@atc/replay-runtime';
+import { emptyButtons } from '@atc/input-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
 import { loadDemoProject } from '../fixtures/project.ts';
 
@@ -81,6 +82,22 @@ describe('replay determinism', () => {
 });
 
 describe('simulation time base', () => {
+  it('maps positive horizontal input to screen-right camera-relative movement', () => {
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset('flat'),
+      seed: 1,
+      initialPosition: { x: 0, y: 0, z: 0 },
+      initialYawRad: 0,
+      cameraYawRad: 0,
+    });
+    const right = { moveX: 1, moveY: 0, lookX: 0, lookY: 0, buttons: emptyButtons() };
+
+    for (let i = 0; i < 60; i += 1) simulation.step(right);
+
+    expect(simulation.state.position.x).toBeLessThan(0);
+  });
+
   it('advances simulation time by exactly the fixed step', () => {
     const simulation = new Simulation({
       project,
