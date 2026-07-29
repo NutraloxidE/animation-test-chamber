@@ -523,9 +523,10 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 2.4
+        "z": 5.5
       },
       "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "FastInSlowOut",
       "events": [
         {
           "id": "dodge-start",

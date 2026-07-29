@@ -76,6 +76,12 @@ export const RootMotionMode = Type.Union(
 );
 export type RootMotionMode = Static<typeof RootMotionMode>;
 
+export const RootMotionCurve = Type.Union(
+  [Type.Literal('Linear'), Type.Literal('FastInSlowOut')],
+  { $id: 'RootMotionCurve' },
+);
+export type RootMotionCurve = Static<typeof RootMotionCurve>;
+
 export const AnimationClipDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -89,6 +95,8 @@ export const AnimationClipDefinition = Type.Object(
     /** Authored root displacement over the whole clip, in meters. */
     rootDisplacement: Vec3,
     rootMotionMode: RootMotionMode,
+    /** Optional timing curve applied without changing total displacement. */
+    rootMotionCurve: Type.Optional(RootMotionCurve),
     events: Type.Array(SemanticEventDefinition),
     /** Normalized times at which each foot is planted. Drives foot-IK and metrics. */
     footContacts: Type.Object(

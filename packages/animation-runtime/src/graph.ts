@@ -11,6 +11,39 @@ import { eventsInRange, findClip, isClipFinished, normalizedTimeOf } from './cli
 
 export type LayerId = 'locomotion' | 'action';
 
+export const DODGE_RECOVERY_START_NORMALIZED = 0.78;
+export const DODGE_RECOVERY_BLEND_SEC = 0.28;
+
+export function isDodgeRecoveryTransition(
+  actionState: string,
+  actionNormalizedTime: number,
+  locomotionState: string,
+): boolean {
+  return (
+    actionState === 'dodge' &&
+    actionNormalizedTime >= DODGE_RECOVERY_START_NORMALIZED &&
+    (locomotionState === 'walk' || locomotionState === 'run')
+  );
+}
+
+export function dodgeRecoveryBlendWeight(
+  actionState: string,
+  actionNormalizedTime: number,
+  actionDurationSec: number,
+  locomotionState: string,
+): number {
+  if (
+    actionDurationSec <= 0 ||
+    !isDodgeRecoveryTransition(actionState, actionNormalizedTime, locomotionState)
+  ) {
+    return 0;
+  }
+  return clamp01(
+    ((actionNormalizedTime - DODGE_RECOVERY_START_NORMALIZED) * actionDurationSec) /
+      DODGE_RECOVERY_BLEND_SEC,
+  );
+}
+
 /** Values transition conditions are evaluated against. */
 export interface ParameterSource {
   getNumber(name: string): number;

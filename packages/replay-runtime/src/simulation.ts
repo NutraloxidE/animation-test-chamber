@@ -1,6 +1,14 @@
 import type { AnimationClipDefinition, ProjectDefinition, SemanticEventKind, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
-import { AnimationGraphRuntime, isFootPlanted, sampleRootMotion, type LayerId, type ParameterSource } from '@atc/animation-runtime';
+import {
+  AnimationGraphRuntime,
+  dodgeRecoveryBlendWeight,
+  isFootPlanted,
+  sampleRootMotion,
+  type LayerId,
+  type LayerRuntimeState,
+  type ParameterSource,
+} from '@atc/animation-runtime';
 import { InputState, type ActionSample } from '@atc/input-runtime';
 import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type FootIkResult, type TerrainResolution } from '@atc/terrain-runtime';
 
@@ -286,8 +294,20 @@ export class Simulation {
     // Walking below the stick threshold, running above it.
     const targetSpeed = magnitude < 0.6 ? movement.walkSpeed * (magnitude / 0.6) : movement.runSpeed * magnitude;
 
-    // While an action state owns the body, movement authority is reduced.
-    const actionScale = this.graph.isActionActive() ? movement.actionMovementAuthority : 1;
+    const action = this.graph.getLayer('action');
+    const actionClip = this.graph.getClipFor(action.stateId);
+    const recoveryWeight = dodgeRecoveryBlendWeight(
+      action.stateId,
+      action.normalizedTime,
+      actionClip?.durationSec ?? 0,
+      this.graph.getLayer('locomotion').stateId,
+    );
+    // Match the visual crossfade: code-driven locomotion regains authority as
+    // the dodge pose fades out instead of snapping on at clip completion.
+    const actionScale = this.graph.isActionActive()
+      ? movement.actionMovementAuthority +
+        (1 - movement.actionMovementAuthority) * recoveryWeight
+      : 1;
     const airScale = terrain.grounded ? 1 : movement.airControl;
     const surfaceScale = terrain.grounded ? terrain.accelerationScale : 1;
 
@@ -326,7 +346,7 @@ export class Simulation {
     }
 
     // Root motion contribution, blended against code-driven velocity by authority.
-    const rootDelta = this.sampleRootMotionDelta();
+    const rootDelta = this.sampleRootMotionDelta(recoveryWeight);
     const horizontalAuthority = rootMotion.mode === 'InPlace' ? 0 : rootMotion.horizontalAuthority;
     const codeWeight = 1 - horizontalAuthority;
 
@@ -380,14 +400,24 @@ export class Simulation {
     return transition?.rotationAuthority ?? this.project.rootMotion.rotationAuthority;
   }
 
-  private sampleRootMotionDelta(): Vec3 {
+  private sampleRootMotionDelta(recoveryWeight: number): Vec3 {
     const action = this.graph.getLayer('action');
     const actionOwnsRoot = this.graph.isActionActive() && this.graph.getStateDefinition(action.stateId)?.bodyMask === 'full';
-    const layer = actionOwnsRoot ? action : this.graph.getLayer('locomotion');
-    const clip = this.graph.getClipFor(layer.stateId);
-    if (!clip) return vec3();
-    const previous = layer.normalizedTime - (FIXED_DT * layer.playbackSpeed) / clip.durationSec;
-    return sampleRootMotion(clip, previous, layer.normalizedTime);
+    const locomotion = this.graph.getLayer('locomotion');
+    const sampleLayer = (layer: LayerRuntimeState): Vec3 => {
+      const clip = this.graph.getClipFor(layer.stateId);
+      if (!clip) return vec3();
+      const previous =
+        layer.normalizedTime - (FIXED_DT * layer.playbackSpeed) / clip.durationSec;
+      return sampleRootMotion(clip, previous, layer.normalizedTime);
+    };
+
+    if (!actionOwnsRoot) return sampleLayer(locomotion);
+    if (recoveryWeight <= 0) return sampleLayer(action);
+    return addVec3(
+      scaleVec3(sampleLayer(action), 1 - recoveryWeight),
+      scaleVec3(sampleLayer(locomotion), recoveryWeight),
+    );
   }
 
   private resolveGrounding(): void {

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import {
+  DODGE_RECOVERY_BLEND_SEC,
+  isDodgeRecoveryTransition,
+} from '@atc/animation-runtime';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../engine.ts';
 import type { CharacterPreset, MotionSet } from './catalog.ts';
@@ -227,7 +231,15 @@ function GltfCharacter({ engine, character, motion }: { engine: ChamberEngine; c
     group.position.set(state.position.x, state.position.y, state.position.z);
     group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
 
-    const actionActive = record !== null && record.actionState !== 'action-none';
+    const dodgeRecovery =
+      record !== null &&
+      isDodgeRecoveryTransition(
+        record.actionState,
+        record.actionNormalizedTime,
+        record.locomotionState,
+      );
+    const actionActive =
+      record !== null && record.actionState !== 'action-none' && !dodgeRecovery;
     const stateId = actionActive ? record.actionState : (record?.locomotionState ?? 'idle');
     const normalizedTime = actionActive ? record.actionNormalizedTime : (record?.locomotionNormalizedTime ?? 0);
     const clipMap = (character.animationUrl ? motion.clipMap : undefined) ?? character.clipMap ?? CLIP_FOR_STATE;
@@ -242,7 +254,11 @@ function GltfCharacter({ engine, character, motion }: { engine: ChamberEngine; c
           .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
           .play();
         nextAction.clampWhenFinished = !loop;
-        currentAction.current?.crossFadeTo(nextAction, 0.12, false);
+        currentAction.current?.crossFadeTo(
+          nextAction,
+          dodgeRecovery ? DODGE_RECOVERY_BLEND_SEC : 0.12,
+          false,
+        );
         currentAction.current = nextAction;
         currentClip.current = clipName;
       }

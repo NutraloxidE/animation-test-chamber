@@ -336,6 +336,19 @@
               }
             ]
           },
+          "rootMotionCurve": {
+            "$id": "RootMotionCurve",
+            "anyOf": [
+              {
+                "const": "Linear",
+                "type": "string"
+              },
+              {
+                "const": "FastInSlowOut",
+                "type": "string"
+              }
+            ]
+          },
           "events": {
             "type": "array",
             "items": {

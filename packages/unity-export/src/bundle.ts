@@ -101,6 +101,7 @@ export function buildUnityBundle(
           proceduralGenerator: clip.proceduralGenerator ?? null,
           durationSec: clip.durationSec,
           rootMotionMode: clip.rootMotionMode,
+          rootMotionCurve: clip.rootMotionCurve ?? 'Linear',
         })),
         // Licence terms travel with the manifest so an export cannot quietly
         // strip provenance from an asset that had restrictions attached.

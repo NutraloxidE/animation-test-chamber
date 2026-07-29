@@ -98,16 +98,68 @@ interface ChamberActions {
 }
 
 const initialProject = seedProject as ProjectDefinition;
+const stagedDraftKey = `atc:staged-draft:${initialProject.id}`;
 
 const sessionId = `s${Date.now().toString(36)}`;
 
+function restoreStagedDraft(session: EditSession): number {
+  try {
+    const raw = window.localStorage.getItem(stagedDraftKey);
+    if (!raw) return 0;
+    const draft = JSON.parse(raw) as {
+      revisionId?: string;
+      changes?: { path: string; value: unknown }[];
+    };
+    if (draft.revisionId !== initialProject.revisionId || !Array.isArray(draft.changes)) {
+      window.localStorage.removeItem(stagedDraftKey);
+      return 0;
+    }
+    let restored = 0;
+    for (const change of draft.changes) {
+      const outcome = session.setPreviewValue({
+        path: change.path,
+        value: change.value,
+        actor: 'human',
+      });
+      if (!outcome.applied) continue;
+      session.stage(change.path);
+      restored += 1;
+    }
+    return restored;
+  } catch {
+    return 0;
+  }
+}
+
+function persistStagedDraft(session: EditSession): void {
+  try {
+    const staged = new Set(session.stagedPaths);
+    const changes = session
+      .diff()
+      .changes.filter((change) => staged.has(change.path))
+      .map((change) => ({ path: change.path, value: change.after }));
+    if (changes.length === 0) {
+      window.localStorage.removeItem(stagedDraftKey);
+      return;
+    }
+    window.localStorage.setItem(
+      stagedDraftKey,
+      JSON.stringify({ revisionId: session.repositoryProject.revisionId, changes }),
+    );
+  } catch {
+    // Storage may be unavailable in privacy modes; the in-memory session still works.
+  }
+}
+
 export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
   const session = new EditSession(initialProject);
-  const engine = new ChamberEngine(initialProject);
+  const restoredChanges = restoreStagedDraft(session);
+  const engine = new ChamberEngine(session.previewProject);
 
   /** Pushes the current preview document into the running simulation. */
   const syncPreview = (): void => {
     const preview = session.previewProject;
+    persistStagedDraft(session);
     engine.setProject(preview);
     set({ project: preview, revision: get().revision + 1 });
   };
@@ -115,7 +167,7 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
   return {
     session,
     engine,
-    project: initialProject,
+    project: session.previewProject,
 
     selectedTransitionId: 'run-to-attack-01',
     selectedStateId: 'run',
@@ -141,7 +193,10 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     hideUiForRecording: false,
 
     commitLog: [],
-    statusMessage: 'Ready. Editing the demo character with the fake Git adapter.',
+    statusMessage:
+      restoredChanges > 0
+        ? `Restored ${restoredChanges} staged change(s).`
+        : 'Ready. Editing the demo character with the fake Git adapter.',
     revision: 0,
 
     setPreviewValue(path, value, options) {
@@ -192,14 +247,19 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
 
     stage(path) {
       session.stage(path);
-      set({ revision: get().revision + 1 });
+      persistStagedDraft(session);
+      set({
+        revision: get().revision + 1,
+        statusMessage: `Staged locally. Use "Apply staged to repository" to write project.json.`,
+      });
     },
 
     stageAll() {
       session.stageAll();
+      persistStagedDraft(session);
       set({
         revision: get().revision + 1,
-        statusMessage: `Staged ${session.stagedPaths.length} change(s).`,
+        statusMessage: `Staged ${session.stagedPaths.length} change(s) locally. Use "Apply staged to repository" to write project.json.`,
       });
     },
 

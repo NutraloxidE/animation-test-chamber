@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { AnimationGraphRuntime, type ParameterSource } from '@atc/animation-runtime';
+import {
+  AnimationGraphRuntime,
+  dodgeRecoveryBlendWeight,
+  type ParameterSource,
+} from '@atc/animation-runtime';
 import { FIXED_DT } from '@atc/runtime-core';
 import { loadDemoProject } from '../fixtures/project.ts';
 
@@ -31,6 +35,17 @@ function makeParams(overrides: {
 }
 
 describe('graph initialisation', () => {
+  it('blends dodge movement authority over the visual transition duration', () => {
+    const duration = 1.4666667;
+    const midpoint = 0.78 + 0.14 / duration;
+    const endpoint = 0.78 + 0.28 / duration;
+
+    expect(dodgeRecoveryBlendWeight('dodge', 0.78, duration, 'run')).toBe(0);
+    expect(dodgeRecoveryBlendWeight('dodge', midpoint, duration, 'run')).toBeCloseTo(0.5);
+    expect(dodgeRecoveryBlendWeight('dodge', endpoint, duration, 'run')).toBe(1);
+    expect(dodgeRecoveryBlendWeight('dodge', endpoint, duration, 'idle')).toBe(0);
+  });
+
   it('starts each layer in its declared default state', () => {
     const graph = new AnimationGraphRuntime(project.graph, project.clips);
     expect(graph.getLayer('locomotion').stateId).toBe('idle');
