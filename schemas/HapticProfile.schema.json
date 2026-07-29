@@ -1,0 +1,410 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "HapticProfile",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "masterIntensity",
+    "bindings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "masterIntensity": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "$id": "HapticEventBinding",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "event",
+          "startDelayMs",
+          "durationMs",
+          "lowFrequencyMagnitude",
+          "highFrequencyMagnitude",
+          "curve",
+          "leftTriggerMagnitude",
+          "rightTriggerMagnitude",
+          "adaptiveTriggerPreset",
+          "resistanceStart",
+          "resistanceStrength",
+          "breakPoint",
+          "requiresTier"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          },
+          "event": {
+            "$id": "SemanticEventKind",
+            "anyOf": [
+              {
+                "const": "FootContactLeft",
+                "type": "string"
+              },
+              {
+                "const": "FootContactRight",
+                "type": "string"
+              },
+              {
+                "const": "AttackWindup",
+                "type": "string"
+              },
+              {
+                "const": "AttackHit",
+                "type": "string"
+              },
+              {
+                "const": "AttackRecoil",
+                "type": "string"
+              },
+              {
+                "const": "JumpTakeoff",
+                "type": "string"
+              },
+              {
+                "const": "Landing",
+                "type": "string"
+              },
+              {
+                "const": "DamageReceived",
+                "type": "string"
+              },
+              {
+                "const": "DodgeStart",
+                "type": "string"
+              },
+              {
+                "const": "DodgeEnd",
+                "type": "string"
+              },
+              {
+                "const": "GuardImpact",
+                "type": "string"
+              }
+            ]
+          },
+          "startDelayMs": {
+            "minimum": 0,
+            "maximum": 2000,
+            "type": "number"
+          },
+          "durationMs": {
+            "minimum": 1,
+            "maximum": 5000,
+            "type": "number"
+          },
+          "lowFrequencyMagnitude": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "highFrequencyMagnitude": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "curve": {
+            "$id": "CurveKind",
+            "anyOf": [
+              {
+                "const": "linear",
+                "type": "string"
+              },
+              {
+                "const": "ease-in",
+                "type": "string"
+              },
+              {
+                "const": "ease-out",
+                "type": "string"
+              },
+              {
+                "const": "ease-in-out",
+                "type": "string"
+              },
+              {
+                "const": "step",
+                "type": "string"
+              }
+            ]
+          },
+          "leftTriggerMagnitude": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "rightTriggerMagnitude": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "adaptiveTriggerPreset": {
+            "$id": "AdaptiveTriggerPreset",
+            "anyOf": [
+              {
+                "const": "off",
+                "type": "string"
+              },
+              {
+                "const": "resistance",
+                "type": "string"
+              },
+              {
+                "const": "weapon",
+                "type": "string"
+              },
+              {
+                "const": "pulse",
+                "type": "string"
+              },
+              {
+                "const": "recoil",
+                "type": "string"
+              }
+            ]
+          },
+          "resistanceStart": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "resistanceStrength": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "breakPoint": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "requiresTier": {
+            "$id": "HapticTier",
+            "anyOf": [
+              {
+                "const": "none",
+                "type": "string"
+              },
+              {
+                "const": "generic-rumble",
+                "type": "string"
+              },
+              {
+                "const": "trigger-rumble",
+                "type": "string"
+              },
+              {
+                "const": "advanced",
+                "type": "string"
+              }
+            ]
+          },
+          "protection": {
+            "$id": "ProtectionMetadata",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "level"
+            ],
+            "properties": {
+              "level": {
+                "$id": "ProtectionLevel",
+                "anyOf": [
+                  {
+                    "const": "editable",
+                    "type": "string"
+                  },
+                  {
+                    "const": "approval-required",
+                    "type": "string"
+                  },
+                  {
+                    "const": "locked",
+                    "type": "string"
+                  },
+                  {
+                    "const": "invariant",
+                    "type": "string"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "setBy": {
+                "type": "string"
+              },
+              "setAt": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "patternProperties": {
+                  "^(.*)$": {
+                    "$id": "ProtectionLevel",
+                    "anyOf": [
+                      {
+                        "const": "editable",
+                        "type": "string"
+                      },
+                      {
+                        "const": "approval-required",
+                        "type": "string"
+                      },
+                      {
+                        "const": "locked",
+                        "type": "string"
+                      },
+                      {
+                        "const": "invariant",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "$id": "ValueProvenance",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "const": "repository",
+              "type": "string"
+            },
+            {
+              "const": "human-adjustment",
+              "type": "string"
+            },
+            {
+              "const": "ai-proposal",
+              "type": "string"
+            },
+            {
+              "const": "import",
+              "type": "string"
+            },
+            {
+              "const": "default",
+              "type": "string"
+            }
+          ]
+        },
+        "basedOnAiProposal": {
+          "type": "number"
+        },
+        "humanFinal": {
+          "type": "number"
+        },
+        "replayId": {
+          "type": "string"
+        },
+        "terrainPresetId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

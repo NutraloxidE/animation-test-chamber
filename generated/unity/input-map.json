@@ -1,0 +1,128 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "inputMap": {
+    "schemaVersion": 1,
+    "id": "default-input",
+    "keyboard": [
+      {
+        "action": "Jump",
+        "codes": [
+          "Space"
+        ]
+      },
+      {
+        "action": "Dodge",
+        "codes": [
+          "ShiftLeft",
+          "ShiftRight"
+        ]
+      },
+      {
+        "action": "PrimaryAction",
+        "codes": [
+          "KeyJ",
+          "KeyF"
+        ]
+      },
+      {
+        "action": "SecondaryAction",
+        "codes": [
+          "KeyK"
+        ]
+      },
+      {
+        "action": "Guard",
+        "codes": [
+          "KeyL"
+        ]
+      },
+      {
+        "action": "LockOn",
+        "codes": [
+          "KeyQ"
+        ]
+      },
+      {
+        "action": "Interact",
+        "codes": [
+          "KeyE"
+        ]
+      },
+      {
+        "action": "Pause",
+        "codes": [
+          "Escape"
+        ]
+      }
+    ],
+    "gamepad": [
+      {
+        "action": "Jump",
+        "buttons": [
+          0
+        ]
+      },
+      {
+        "action": "PrimaryAction",
+        "buttons": [
+          2
+        ]
+      },
+      {
+        "action": "SecondaryAction",
+        "buttons": [
+          3
+        ]
+      },
+      {
+        "action": "Dodge",
+        "buttons": [
+          1,
+          5
+        ]
+      },
+      {
+        "action": "Guard",
+        "buttons": [
+          6,
+          4
+        ]
+      },
+      {
+        "action": "LockOn",
+        "buttons": [
+          10
+        ]
+      },
+      {
+        "action": "Interact",
+        "buttons": [
+          7
+        ]
+      },
+      {
+        "action": "Pause",
+        "buttons": [
+          9
+        ]
+      }
+    ],
+    "stickDeadzone": 0.12,
+    "lookSensitivity": 1,
+    "invertLookY": false,
+    "mobilePad": {
+      "visibility": "auto",
+      "stickMode": "floating",
+      "leftHanded": false,
+      "buttonScale": 1,
+      "opacity": 0.75,
+      "hideForRecording": false
+    },
+    "defaultInputBufferMs": 150,
+    "coyoteTimeMs": 120,
+    "jumpBufferMs": 140
+  }
+}

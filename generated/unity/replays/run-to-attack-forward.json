@@ -1,0 +1,57 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "replay": {
+    "schemaVersion": 1,
+    "id": "run-to-attack-forward",
+    "label": "Run forward, then attack at speed",
+    "revisionId": "rev-0001",
+    "fixedTimestepVersion": 1,
+    "seed": 1,
+    "terrainPresetId": "flat",
+    "initialPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "initialYawRad": 0,
+    "cameraYawRad": 0,
+    "tickCount": 150,
+    "frames": [
+      {
+        "tick": 0,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 70,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 8
+      },
+      {
+        "tick": 74,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 140,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      }
+    ]
+  }
+}

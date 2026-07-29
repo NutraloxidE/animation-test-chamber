@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "steep-slope",
+  "label": "Steep slope",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    },
+    {
+      "kind": "slope",
+      "startZ": 2,
+      "endZ": 7,
+      "rise": 8,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

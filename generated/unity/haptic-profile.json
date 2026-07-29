@@ -1,0 +1,77 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "haptics": {
+    "schemaVersion": 1,
+    "id": "demo-haptics",
+    "masterIntensity": 0.8,
+    "bindings": [
+      {
+        "id": "haptic-attack-hit",
+        "event": "AttackHit",
+        "startDelayMs": 0,
+        "durationMs": 90,
+        "lowFrequencyMagnitude": 0.85,
+        "highFrequencyMagnitude": 0.5,
+        "curve": "ease-out",
+        "leftTriggerMagnitude": 0,
+        "rightTriggerMagnitude": 0.7,
+        "adaptiveTriggerPreset": "recoil",
+        "resistanceStart": 0.3,
+        "resistanceStrength": 0.6,
+        "breakPoint": 0.75,
+        "requiresTier": "generic-rumble"
+      },
+      {
+        "id": "haptic-landing",
+        "event": "Landing",
+        "startDelayMs": 0,
+        "durationMs": 120,
+        "lowFrequencyMagnitude": 0.6,
+        "highFrequencyMagnitude": 0.25,
+        "curve": "ease-out",
+        "leftTriggerMagnitude": 0,
+        "rightTriggerMagnitude": 0,
+        "adaptiveTriggerPreset": "off",
+        "resistanceStart": 0,
+        "resistanceStrength": 0,
+        "breakPoint": 0,
+        "requiresTier": "generic-rumble"
+      },
+      {
+        "id": "haptic-dodge",
+        "event": "DodgeStart",
+        "startDelayMs": 0,
+        "durationMs": 60,
+        "lowFrequencyMagnitude": 0.3,
+        "highFrequencyMagnitude": 0.55,
+        "curve": "ease-in-out",
+        "leftTriggerMagnitude": 0.4,
+        "rightTriggerMagnitude": 0.4,
+        "adaptiveTriggerPreset": "pulse",
+        "resistanceStart": 0.2,
+        "resistanceStrength": 0.4,
+        "breakPoint": 0.5,
+        "requiresTier": "trigger-rumble"
+      },
+      {
+        "id": "haptic-footstep",
+        "event": "FootContactLeft",
+        "startDelayMs": 0,
+        "durationMs": 35,
+        "lowFrequencyMagnitude": 0.12,
+        "highFrequencyMagnitude": 0.08,
+        "curve": "linear",
+        "leftTriggerMagnitude": 0,
+        "rightTriggerMagnitude": 0,
+        "adaptiveTriggerPreset": "off",
+        "resistanceStart": 0,
+        "resistanceStrength": 0,
+        "breakPoint": 0,
+        "requiresTier": "generic-rumble"
+      }
+    ]
+  }
+}

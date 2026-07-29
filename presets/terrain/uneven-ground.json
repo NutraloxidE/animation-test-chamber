@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "uneven-ground",
+  "label": "Uneven ground",
+  "features": [
+    {
+      "kind": "plane",
+      "height": -0.4,
+      "surface": "default"
+    },
+    {
+      "kind": "uneven",
+      "amplitude": 0.22,
+      "frequencyX": 0.9,
+      "frequencyZ": 0.7,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

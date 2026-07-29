@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "ice",
+  "label": "Ice",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "ice"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    },
+    {
+      "id": "ice",
+      "friction": 0.98,
+      "accelerationScale": 0.15,
+      "dragScale": 0.05
+    }
+  ]
+}

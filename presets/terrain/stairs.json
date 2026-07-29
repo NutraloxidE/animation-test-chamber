@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "stairs",
+  "label": "Stairs",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    },
+    {
+      "kind": "steps",
+      "startZ": 3,
+      "stepDepth": 0.32,
+      "stepHeight": 0.18,
+      "count": 14,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

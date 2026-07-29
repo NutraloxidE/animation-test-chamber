@@ -1,0 +1,73 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "replay": {
+    "schemaVersion": 1,
+    "id": "jump-buffer-before-landing",
+    "label": "Jump pressed just before touchdown is honoured",
+    "revisionId": "rev-0001",
+    "fixedTimestepVersion": 1,
+    "seed": 1,
+    "terrainPresetId": "flat",
+    "initialPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "initialYawRad": 0,
+    "cameraYawRad": 0,
+    "tickCount": 200,
+    "frames": [
+      {
+        "tick": 0,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 30,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 4
+      },
+      {
+        "tick": 34,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 66,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 4
+      },
+      {
+        "tick": 70,
+        "moveX": 0,
+        "moveY": 1,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 190,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      }
+    ]
+  }
+}

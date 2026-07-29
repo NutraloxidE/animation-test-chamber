@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+.chamber-fake-git/
+reports/*.json
+reports/*.md
+!reports/.gitkeep
+test-results/
+playwright-report/
+.vite/
+coverage/

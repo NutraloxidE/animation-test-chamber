@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "wall",
+  "label": "Wall and low obstacle",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    },
+    {
+      "kind": "box",
+      "center": {
+        "x": 0,
+        "y": 1,
+        "z": 8
+      },
+      "size": {
+        "x": 10,
+        "y": 2,
+        "z": 1
+      },
+      "surface": "default"
+    },
+    {
+      "kind": "box",
+      "center": {
+        "x": 0,
+        "y": 0.15,
+        "z": 4
+      },
+      "size": {
+        "x": 3,
+        "y": 0.3,
+        "z": 0.8
+      },
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

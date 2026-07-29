@@ -1,0 +1,701 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "graph": {
+    "schemaVersion": 1,
+    "id": "demo-graph",
+    "layers": [
+      {
+        "id": "locomotion",
+        "order": 0,
+        "defaultState": "idle",
+        "weight": 1,
+        "bodyMask": "full"
+      },
+      {
+        "id": "action",
+        "order": 1,
+        "defaultState": "action-none",
+        "weight": 1,
+        "bodyMask": "upper"
+      }
+    ],
+    "states": [
+      {
+        "schemaVersion": 1,
+        "id": "idle",
+        "clipId": "idle",
+        "layer": "locomotion",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "walk",
+        "clipId": "walk",
+        "layer": "locomotion",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "run",
+        "clipId": "run",
+        "layer": "locomotion",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "jump",
+        "clipId": "jump",
+        "layer": "locomotion",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "fall",
+        "clipId": "fall",
+        "layer": "locomotion",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "land",
+        "clipId": "land",
+        "layer": "locomotion",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full",
+        "fallbackState": "idle"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "slide",
+        "clipId": "slide",
+        "layer": "locomotion",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "action-none",
+        "clipId": "action-none",
+        "layer": "action",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "upper"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01",
+        "clipId": "attack-01",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "upper",
+        "fallbackState": "action-none"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02",
+        "clipId": "attack-02",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "upper",
+        "fallbackState": "action-none"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "dodge",
+        "clipId": "dodge",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "full",
+        "fallbackState": "action-none"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard",
+        "clipId": "guard",
+        "layer": "action",
+        "loop": true,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "upper"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "hit",
+        "clipId": "hit",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "full",
+        "fallbackState": "action-none"
+      }
+    ],
+    "transitions": [
+      {
+        "schemaVersion": 1,
+        "id": "idle-to-walk",
+        "from": "idle",
+        "to": "walk",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "greaterThan",
+            "value": 0.05
+          }
+        ],
+        "blendDurationSec": 0.18,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "walk-to-idle",
+        "from": "walk",
+        "to": "idle",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "lessOrEqual",
+            "value": 0.05
+          }
+        ],
+        "blendDurationSec": 0.2,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "walk-to-run",
+        "from": "walk",
+        "to": "run",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "greaterThan",
+            "value": 0.6
+          }
+        ],
+        "blendDurationSec": 0.16,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "run-to-walk",
+        "from": "run",
+        "to": "walk",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "lessOrEqual",
+            "value": 0.6
+          }
+        ],
+        "blendDurationSec": 0.16,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "run-to-idle",
+        "from": "run",
+        "to": "idle",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "lessOrEqual",
+            "value": 0.05
+          }
+        ],
+        "blendDurationSec": 0.24,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 60
+      },
+      {
+        "schemaVersion": 1,
+        "id": "any-to-jump",
+        "from": "*",
+        "to": "jump",
+        "conditions": [
+          {
+            "parameter": "Jump",
+            "operator": "buffered",
+            "value": 140
+          },
+          {
+            "parameter": "grounded",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": false,
+        "inputBufferMs": 140,
+        "priority": 200
+      },
+      {
+        "schemaVersion": 1,
+        "id": "jump-to-fall",
+        "from": "jump",
+        "to": "fall",
+        "conditions": [
+          {
+            "parameter": "verticalVelocity",
+            "operator": "lessThan",
+            "value": 0
+          }
+        ],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50,
+        "exitTimeNormalized": 0.2
+      },
+      {
+        "schemaVersion": 1,
+        "id": "any-to-fall",
+        "from": "*",
+        "to": "fall",
+        "conditions": [
+          {
+            "parameter": "airborne",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.14,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 120
+      },
+      {
+        "schemaVersion": 1,
+        "id": "fall-to-land",
+        "from": "fall",
+        "to": "land",
+        "conditions": [
+          {
+            "parameter": "grounded",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 150
+      },
+      {
+        "schemaVersion": 1,
+        "id": "land-to-idle",
+        "from": "land",
+        "to": "idle",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "lessOrEqual",
+            "value": 0.05
+          }
+        ],
+        "blendDurationSec": 0.15,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50,
+        "exitTimeNormalized": 0.6
+      },
+      {
+        "schemaVersion": 1,
+        "id": "land-to-run",
+        "from": "land",
+        "to": "run",
+        "conditions": [
+          {
+            "parameter": "moveMagnitude",
+            "operator": "greaterThan",
+            "value": 0.6
+          }
+        ],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50,
+        "exitTimeNormalized": 0.25
+      },
+      {
+        "schemaVersion": 1,
+        "id": "any-to-slide",
+        "from": "*",
+        "to": "slide",
+        "conditions": [
+          {
+            "parameter": "terrainState",
+            "operator": "equals",
+            "value": "Sliding"
+          }
+        ],
+        "blendDurationSec": 0.1,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 160
+      },
+      {
+        "schemaVersion": 1,
+        "id": "slide-to-idle",
+        "from": "slide",
+        "to": "idle",
+        "conditions": [
+          {
+            "parameter": "sliding",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.2,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "idle-to-attack-01",
+        "from": "action-none",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 160
+          }
+        ],
+        "blendDurationSec": 0.09,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 160,
+        "priority": 100
+      },
+      {
+        "schemaVersion": 1,
+        "id": "run-to-attack-01",
+        "from": "action-none",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 160
+          },
+          {
+            "parameter": "speed",
+            "operator": "greaterThan",
+            "value": 3
+          }
+        ],
+        "blendDurationSec": 0.11,
+        "startOffsetNormalized": 0.03,
+        "playbackSpeed": 1,
+        "momentumRetention": 0.78,
+        "rotationAuthority": 1,
+        "interruptible": false,
+        "inputBufferMs": 160,
+        "priority": 110,
+        "protection": {
+          "level": "approval-required",
+          "reason": "human-tuned",
+          "setBy": "human",
+          "fields": {
+            "momentumRetention": "locked"
+          }
+        },
+        "provenance": {
+          "source": "human-adjustment",
+          "basedOnAiProposal": 0.08,
+          "humanFinal": 0.11,
+          "replayId": "run-to-attack-forward",
+          "terrainPresetId": "flat",
+          "intent": "初動を早めるが、切り替わりの硬さは残さない"
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-attack-02",
+        "from": "attack-01",
+        "to": "attack-02",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 200
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 200,
+        "priority": 120,
+        "cancelWindow": {
+          "start": 0.35,
+          "end": 0.8
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-dodge",
+        "from": "attack-01",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 180,
+        "cancelWindow": {
+          "start": 0.5,
+          "end": 0.95
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "any-to-dodge",
+        "from": "action-none",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 170
+      },
+      {
+        "schemaVersion": 1,
+        "id": "idle-to-guard",
+        "from": "action-none",
+        "to": "guard",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 90
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-none",
+        "from": "guard",
+        "to": "action-none",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.14,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "hit-to-none",
+        "from": "hit",
+        "to": "action-none",
+        "conditions": [],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50,
+        "exitTimeNormalized": 0.9
+      },
+      {
+        "schemaVersion": 1,
+        "id": "any-to-hit",
+        "from": "*",
+        "to": "hit",
+        "conditions": [
+          {
+            "parameter": "damaged",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 250
+      }
+    ],
+    "forcedTransitionOrder": [
+      "death",
+      "hit",
+      "dodge",
+      "guard",
+      "attack-02",
+      "attack-01",
+      "jump",
+      "slide",
+      "fall",
+      "land",
+      "run",
+      "walk",
+      "idle",
+      "action-none"
+    ]
+  }
+}

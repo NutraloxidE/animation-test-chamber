@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "MovementProfile",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "walkSpeed",
+    "runSpeed",
+    "acceleration",
+    "deceleration",
+    "rotationSpeed",
+    "airControl",
+    "jumpHeight",
+    "gravity",
+    "coyoteTimeMs",
+    "jumpBufferMs",
+    "stopBehavior",
+    "actionMovementAuthority",
+    "momentumRetention",
+    "cameraRelative"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "walkSpeed": {
+      "minimum": 0,
+      "maximum": 20,
+      "type": "number"
+    },
+    "runSpeed": {
+      "minimum": 0,
+      "maximum": 40,
+      "type": "number"
+    },
+    "acceleration": {
+      "minimum": 0.1,
+      "maximum": 200,
+      "type": "number"
+    },
+    "deceleration": {
+      "minimum": 0.1,
+      "maximum": 200,
+      "type": "number"
+    },
+    "rotationSpeed": {
+      "minimum": 0.1,
+      "maximum": 40,
+      "type": "number"
+    },
+    "airControl": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "jumpHeight": {
+      "minimum": 0.05,
+      "maximum": 10,
+      "type": "number"
+    },
+    "gravity": {
+      "minimum": 0.1,
+      "maximum": 100,
+      "type": "number"
+    },
+    "coyoteTimeMs": {
+      "minimum": 0,
+      "maximum": 500,
+      "type": "number"
+    },
+    "jumpBufferMs": {
+      "minimum": 0,
+      "maximum": 500,
+      "type": "number"
+    },
+    "stopBehavior": {
+      "anyOf": [
+        {
+          "const": "instant",
+          "type": "string"
+        },
+        {
+          "const": "decelerate",
+          "type": "string"
+        },
+        {
+          "const": "slide",
+          "type": "string"
+        }
+      ]
+    },
+    "actionMovementAuthority": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "momentumRetention": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "cameraRelative": {
+      "type": "boolean"
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "$id": "ValueProvenance",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "const": "repository",
+              "type": "string"
+            },
+            {
+              "const": "human-adjustment",
+              "type": "string"
+            },
+            {
+              "const": "ai-proposal",
+              "type": "string"
+            },
+            {
+              "const": "import",
+              "type": "string"
+            },
+            {
+              "const": "default",
+              "type": "string"
+            }
+          ]
+        },
+        "basedOnAiProposal": {
+          "type": "number"
+        },
+        "humanFinal": {
+          "type": "number"
+        },
+        "replayId": {
+          "type": "string"
+        },
+        "terrainPresetId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

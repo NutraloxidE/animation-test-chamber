@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "ledge",
+  "label": "Ledge",
+  "features": [
+    {
+      "kind": "ledge",
+      "edgeZ": 6,
+      "height": 0,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

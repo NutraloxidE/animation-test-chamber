@@ -1,0 +1,3489 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ProjectDefinition",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "displayName",
+    "revisionId",
+    "character",
+    "clips",
+    "graph",
+    "inputMap",
+    "movement",
+    "rootMotion",
+    "terrain",
+    "camera",
+    "haptics",
+    "preferences",
+    "defaultTerrainPresetId",
+    "candidates",
+    "revisions",
+    "invariants"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "revisionId": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "character": {
+      "$id": "CharacterDefinition",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "displayName",
+        "modelAssetPath",
+        "skeleton",
+        "capsuleRadius",
+        "capsuleHeight"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "modelAssetPath": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "skeleton": {
+          "$id": "SkeletonDefinition",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "id",
+            "height",
+            "bones",
+            "leftFootBone",
+            "rightFootBone",
+            "hipsBone"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "id": {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "minLength": 1,
+              "maxLength": 96,
+              "type": "string"
+            },
+            "height": {
+              "minimum": 0.1,
+              "maximum": 10,
+              "type": "number"
+            },
+            "bones": {
+              "type": "array",
+              "items": {
+                "$id": "SkeletonBone",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "name",
+                  "parent",
+                  "restPosition"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "humanoid": {
+                    "type": "string"
+                  },
+                  "restPosition": {
+                    "$id": "Vec3",
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "x",
+                      "y",
+                      "z"
+                    ],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "leftFootBone": {
+              "type": "string"
+            },
+            "rightFootBone": {
+              "type": "string"
+            },
+            "hipsBone": {
+              "type": "string"
+            }
+          }
+        },
+        "capsuleRadius": {
+          "minimum": 0.05,
+          "maximum": 2,
+          "type": "number"
+        },
+        "capsuleHeight": {
+          "minimum": 0.2,
+          "maximum": 4,
+          "type": "number"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "clips": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$id": "AnimationClipDefinition",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "id",
+          "assetPath",
+          "durationSec",
+          "loop",
+          "rootDisplacement",
+          "rootMotionMode",
+          "events",
+          "footContacts"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          },
+          "assetPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proceduralGenerator": {
+            "type": "string"
+          },
+          "durationSec": {
+            "minimum": 0.01,
+            "maximum": 120,
+            "type": "number"
+          },
+          "loop": {
+            "type": "boolean"
+          },
+          "rootDisplacement": {
+            "$id": "Vec3",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "z"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              }
+            }
+          },
+          "rootMotionMode": {
+            "$id": "RootMotionMode",
+            "anyOf": [
+              {
+                "const": "InPlace",
+                "type": "string"
+              },
+              {
+                "const": "RootMotion",
+                "type": "string"
+              },
+              {
+                "const": "Hybrid",
+                "type": "string"
+              }
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$id": "SemanticEventDefinition",
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "at"
+              ],
+              "properties": {
+                "id": {
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "minLength": 1,
+                  "maxLength": 96,
+                  "type": "string"
+                },
+                "kind": {
+                  "$id": "SemanticEventKind",
+                  "anyOf": [
+                    {
+                      "const": "FootContactLeft",
+                      "type": "string"
+                    },
+                    {
+                      "const": "FootContactRight",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AttackWindup",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AttackHit",
+                      "type": "string"
+                    },
+                    {
+                      "const": "AttackRecoil",
+                      "type": "string"
+                    },
+                    {
+                      "const": "JumpTakeoff",
+                      "type": "string"
+                    },
+                    {
+                      "const": "Landing",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DamageReceived",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DodgeStart",
+                      "type": "string"
+                    },
+                    {
+                      "const": "DodgeEnd",
+                      "type": "string"
+                    },
+                    {
+                      "const": "GuardImpact",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "at": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "payload": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^(.*)$": {}
+                  }
+                },
+                "protection": {
+                  "$id": "ProtectionMetadata",
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "level"
+                  ],
+                  "properties": {
+                    "level": {
+                      "$id": "ProtectionLevel",
+                      "anyOf": [
+                        {
+                          "const": "editable",
+                          "type": "string"
+                        },
+                        {
+                          "const": "approval-required",
+                          "type": "string"
+                        },
+                        {
+                          "const": "locked",
+                          "type": "string"
+                        },
+                        {
+                          "const": "invariant",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "setBy": {
+                      "type": "string"
+                    },
+                    "setAt": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "patternProperties": {
+                        "^(.*)$": {
+                          "$id": "ProtectionLevel",
+                          "anyOf": [
+                            {
+                              "const": "editable",
+                              "type": "string"
+                            },
+                            {
+                              "const": "approval-required",
+                              "type": "string"
+                            },
+                            {
+                              "const": "locked",
+                              "type": "string"
+                            },
+                            {
+                              "const": "invariant",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "footContacts": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "left",
+              "right"
+            ],
+            "properties": {
+              "left": {
+                "type": "array",
+                "items": {
+                  "$id": "NormalizedWindow",
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "properties": {
+                    "start": {
+                      "minimum": 0,
+                      "maximum": 1,
+                      "type": "number"
+                    },
+                    "end": {
+                      "minimum": 0,
+                      "maximum": 1,
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "right": {
+                "type": "array",
+                "items": {
+                  "$id": "NormalizedWindow",
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "properties": {
+                    "start": {
+                      "minimum": 0,
+                      "maximum": 1,
+                      "type": "number"
+                    },
+                    "end": {
+                      "minimum": 0,
+                      "maximum": 1,
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "protection": {
+            "$id": "ProtectionMetadata",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "level"
+            ],
+            "properties": {
+              "level": {
+                "$id": "ProtectionLevel",
+                "anyOf": [
+                  {
+                    "const": "editable",
+                    "type": "string"
+                  },
+                  {
+                    "const": "approval-required",
+                    "type": "string"
+                  },
+                  {
+                    "const": "locked",
+                    "type": "string"
+                  },
+                  {
+                    "const": "invariant",
+                    "type": "string"
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "setBy": {
+                "type": "string"
+              },
+              "setAt": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "patternProperties": {
+                  "^(.*)$": {
+                    "$id": "ProtectionLevel",
+                    "anyOf": [
+                      {
+                        "const": "editable",
+                        "type": "string"
+                      },
+                      {
+                        "const": "approval-required",
+                        "type": "string"
+                      },
+                      {
+                        "const": "locked",
+                        "type": "string"
+                      },
+                      {
+                        "const": "invariant",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "provenance": {
+            "$id": "ValueProvenance",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "const": "repository",
+                    "type": "string"
+                  },
+                  {
+                    "const": "human-adjustment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ai-proposal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "import",
+                    "type": "string"
+                  },
+                  {
+                    "const": "default",
+                    "type": "string"
+                  }
+                ]
+              },
+              "basedOnAiProposal": {
+                "type": "number"
+              },
+              "humanFinal": {
+                "type": "number"
+              },
+              "replayId": {
+                "type": "string"
+              },
+              "terrainPresetId": {
+                "type": "string"
+              },
+              "intent": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "graph": {
+      "$id": "AnimationGraphDefinition",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "layers",
+        "states",
+        "transitions",
+        "forcedTransitionOrder"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "layers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$id": "LayerDefinition",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "order",
+              "defaultState",
+              "weight",
+              "bodyMask"
+            ],
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "const": "locomotion",
+                    "type": "string"
+                  },
+                  {
+                    "const": "action",
+                    "type": "string"
+                  }
+                ]
+              },
+              "order": {
+                "minimum": 0,
+                "maximum": 8,
+                "type": "integer"
+              },
+              "defaultState": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "weight": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "bodyMask": {
+                "anyOf": [
+                  {
+                    "const": "full",
+                    "type": "string"
+                  },
+                  {
+                    "const": "upper",
+                    "type": "string"
+                  },
+                  {
+                    "const": "lower",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "states": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$id": "StateDefinition",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "id",
+              "clipId",
+              "layer",
+              "loop",
+              "speed",
+              "timeoutSec",
+              "allowReEntry",
+              "interruptible"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "id": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "clipId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "layer": {
+                "anyOf": [
+                  {
+                    "const": "locomotion",
+                    "type": "string"
+                  },
+                  {
+                    "const": "action",
+                    "type": "string"
+                  }
+                ]
+              },
+              "loop": {
+                "type": "boolean"
+              },
+              "speed": {
+                "minimum": 0.05,
+                "maximum": 4,
+                "type": "number"
+              },
+              "timeoutSec": {
+                "minimum": 0,
+                "maximum": 60,
+                "type": "number"
+              },
+              "fallbackState": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "allowReEntry": {
+                "type": "boolean"
+              },
+              "interruptible": {
+                "type": "boolean"
+              },
+              "bodyMask": {
+                "anyOf": [
+                  {
+                    "const": "full",
+                    "type": "string"
+                  },
+                  {
+                    "const": "upper",
+                    "type": "string"
+                  },
+                  {
+                    "const": "lower",
+                    "type": "string"
+                  }
+                ]
+              },
+              "protection": {
+                "$id": "ProtectionMetadata",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "level"
+                ],
+                "properties": {
+                  "level": {
+                    "$id": "ProtectionLevel",
+                    "anyOf": [
+                      {
+                        "const": "editable",
+                        "type": "string"
+                      },
+                      {
+                        "const": "approval-required",
+                        "type": "string"
+                      },
+                      {
+                        "const": "locked",
+                        "type": "string"
+                      },
+                      {
+                        "const": "invariant",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "setBy": {
+                    "type": "string"
+                  },
+                  "setAt": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$id": "ProtectionLevel",
+                        "anyOf": [
+                          {
+                            "const": "editable",
+                            "type": "string"
+                          },
+                          {
+                            "const": "approval-required",
+                            "type": "string"
+                          },
+                          {
+                            "const": "locked",
+                            "type": "string"
+                          },
+                          {
+                            "const": "invariant",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "$id": "TransitionDefinition",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "id",
+              "from",
+              "to",
+              "conditions",
+              "blendDurationSec",
+              "startOffsetNormalized",
+              "playbackSpeed",
+              "momentumRetention",
+              "rotationAuthority",
+              "interruptible",
+              "inputBufferMs",
+              "priority"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "id": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "from": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "to": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "conditions": {
+                "type": "array",
+                "items": {
+                  "$id": "TransitionCondition",
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "parameter",
+                    "operator",
+                    "value"
+                  ],
+                  "properties": {
+                    "parameter": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "operator": {
+                      "$id": "ConditionOperator",
+                      "anyOf": [
+                        {
+                          "const": "equals",
+                          "type": "string"
+                        },
+                        {
+                          "const": "notEquals",
+                          "type": "string"
+                        },
+                        {
+                          "const": "greaterThan",
+                          "type": "string"
+                        },
+                        {
+                          "const": "lessThan",
+                          "type": "string"
+                        },
+                        {
+                          "const": "greaterOrEqual",
+                          "type": "string"
+                        },
+                        {
+                          "const": "lessOrEqual",
+                          "type": "string"
+                        },
+                        {
+                          "const": "buffered",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "blendDurationSec": {
+                "minimum": 0,
+                "maximum": 2,
+                "type": "number"
+              },
+              "startOffsetNormalized": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "exitTimeNormalized": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "playbackSpeed": {
+                "minimum": 0.05,
+                "maximum": 4,
+                "type": "number"
+              },
+              "momentumRetention": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "rotationAuthority": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "interruptible": {
+                "type": "boolean"
+              },
+              "inputBufferMs": {
+                "minimum": 0,
+                "maximum": 1000,
+                "type": "number"
+              },
+              "cancelWindow": {
+                "$id": "NormalizedWindow",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "start": {
+                    "minimum": 0,
+                    "maximum": 1,
+                    "type": "number"
+                  },
+                  "end": {
+                    "minimum": 0,
+                    "maximum": 1,
+                    "type": "number"
+                  }
+                }
+              },
+              "priority": {
+                "minimum": 0,
+                "maximum": 1000,
+                "type": "integer"
+              },
+              "rootMotionMode": {
+                "$id": "RootMotionMode",
+                "anyOf": [
+                  {
+                    "const": "InPlace",
+                    "type": "string"
+                  },
+                  {
+                    "const": "RootMotion",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Hybrid",
+                    "type": "string"
+                  }
+                ]
+              },
+              "protection": {
+                "$id": "ProtectionMetadata",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "level"
+                ],
+                "properties": {
+                  "level": {
+                    "$id": "ProtectionLevel",
+                    "anyOf": [
+                      {
+                        "const": "editable",
+                        "type": "string"
+                      },
+                      {
+                        "const": "approval-required",
+                        "type": "string"
+                      },
+                      {
+                        "const": "locked",
+                        "type": "string"
+                      },
+                      {
+                        "const": "invariant",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "setBy": {
+                    "type": "string"
+                  },
+                  "setAt": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$id": "ProtectionLevel",
+                        "anyOf": [
+                          {
+                            "const": "editable",
+                            "type": "string"
+                          },
+                          {
+                            "const": "approval-required",
+                            "type": "string"
+                          },
+                          {
+                            "const": "locked",
+                            "type": "string"
+                          },
+                          {
+                            "const": "invariant",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "provenance": {
+                "$id": "ValueProvenance",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "anyOf": [
+                      {
+                        "const": "repository",
+                        "type": "string"
+                      },
+                      {
+                        "const": "human-adjustment",
+                        "type": "string"
+                      },
+                      {
+                        "const": "ai-proposal",
+                        "type": "string"
+                      },
+                      {
+                        "const": "import",
+                        "type": "string"
+                      },
+                      {
+                        "const": "default",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "basedOnAiProposal": {
+                    "type": "number"
+                  },
+                  "humanFinal": {
+                    "type": "number"
+                  },
+                  "replayId": {
+                    "type": "string"
+                  },
+                  "terrainPresetId": {
+                    "type": "string"
+                  },
+                  "intent": {
+                    "type": "string"
+                  },
+                  "at": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "forcedTransitionOrder": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inputMap": {
+      "$id": "InputMapDefinition",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "keyboard",
+        "gamepad",
+        "stickDeadzone",
+        "lookSensitivity",
+        "invertLookY",
+        "mobilePad",
+        "defaultInputBufferMs",
+        "coyoteTimeMs",
+        "jumpBufferMs"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "keyboard": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "codes"
+            ],
+            "properties": {
+              "action": {
+                "$id": "ActionName",
+                "anyOf": [
+                  {
+                    "const": "Move",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Look",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Jump",
+                    "type": "string"
+                  },
+                  {
+                    "const": "PrimaryAction",
+                    "type": "string"
+                  },
+                  {
+                    "const": "SecondaryAction",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Dodge",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Guard",
+                    "type": "string"
+                  },
+                  {
+                    "const": "LockOn",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Interact",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Pause",
+                    "type": "string"
+                  }
+                ]
+              },
+              "codes": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "gamepad": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "action",
+              "buttons"
+            ],
+            "properties": {
+              "action": {
+                "$id": "ActionName",
+                "anyOf": [
+                  {
+                    "const": "Move",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Look",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Jump",
+                    "type": "string"
+                  },
+                  {
+                    "const": "PrimaryAction",
+                    "type": "string"
+                  },
+                  {
+                    "const": "SecondaryAction",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Dodge",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Guard",
+                    "type": "string"
+                  },
+                  {
+                    "const": "LockOn",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Interact",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Pause",
+                    "type": "string"
+                  }
+                ]
+              },
+              "buttons": {
+                "type": "array",
+                "items": {
+                  "minimum": 0,
+                  "maximum": 17,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "stickDeadzone": {
+          "minimum": 0,
+          "maximum": 0.9,
+          "type": "number"
+        },
+        "lookSensitivity": {
+          "minimum": 0.05,
+          "maximum": 10,
+          "type": "number"
+        },
+        "invertLookY": {
+          "type": "boolean"
+        },
+        "mobilePad": {
+          "$id": "MobilePadLayout",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "visibility",
+            "stickMode",
+            "leftHanded",
+            "buttonScale",
+            "opacity",
+            "hideForRecording"
+          ],
+          "properties": {
+            "visibility": {
+              "anyOf": [
+                {
+                  "const": "auto",
+                  "type": "string"
+                },
+                {
+                  "const": "always-on",
+                  "type": "string"
+                },
+                {
+                  "const": "always-off",
+                  "type": "string"
+                }
+              ]
+            },
+            "stickMode": {
+              "anyOf": [
+                {
+                  "const": "fixed",
+                  "type": "string"
+                },
+                {
+                  "const": "floating",
+                  "type": "string"
+                }
+              ]
+            },
+            "leftHanded": {
+              "type": "boolean"
+            },
+            "buttonScale": {
+              "minimum": 0.5,
+              "maximum": 2,
+              "type": "number"
+            },
+            "opacity": {
+              "minimum": 0.1,
+              "maximum": 1,
+              "type": "number"
+            },
+            "hideForRecording": {
+              "type": "boolean"
+            }
+          }
+        },
+        "defaultInputBufferMs": {
+          "minimum": 0,
+          "maximum": 1000,
+          "type": "number"
+        },
+        "coyoteTimeMs": {
+          "minimum": 0,
+          "maximum": 500,
+          "type": "number"
+        },
+        "jumpBufferMs": {
+          "minimum": 0,
+          "maximum": 500,
+          "type": "number"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "movement": {
+      "$id": "MovementProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "walkSpeed",
+        "runSpeed",
+        "acceleration",
+        "deceleration",
+        "rotationSpeed",
+        "airControl",
+        "jumpHeight",
+        "gravity",
+        "coyoteTimeMs",
+        "jumpBufferMs",
+        "stopBehavior",
+        "actionMovementAuthority",
+        "momentumRetention",
+        "cameraRelative"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "walkSpeed": {
+          "minimum": 0,
+          "maximum": 20,
+          "type": "number"
+        },
+        "runSpeed": {
+          "minimum": 0,
+          "maximum": 40,
+          "type": "number"
+        },
+        "acceleration": {
+          "minimum": 0.1,
+          "maximum": 200,
+          "type": "number"
+        },
+        "deceleration": {
+          "minimum": 0.1,
+          "maximum": 200,
+          "type": "number"
+        },
+        "rotationSpeed": {
+          "minimum": 0.1,
+          "maximum": 40,
+          "type": "number"
+        },
+        "airControl": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "jumpHeight": {
+          "minimum": 0.05,
+          "maximum": 10,
+          "type": "number"
+        },
+        "gravity": {
+          "minimum": 0.1,
+          "maximum": 100,
+          "type": "number"
+        },
+        "coyoteTimeMs": {
+          "minimum": 0,
+          "maximum": 500,
+          "type": "number"
+        },
+        "jumpBufferMs": {
+          "minimum": 0,
+          "maximum": 500,
+          "type": "number"
+        },
+        "stopBehavior": {
+          "anyOf": [
+            {
+              "const": "instant",
+              "type": "string"
+            },
+            {
+              "const": "decelerate",
+              "type": "string"
+            },
+            {
+              "const": "slide",
+              "type": "string"
+            }
+          ]
+        },
+        "actionMovementAuthority": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "momentumRetention": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "cameraRelative": {
+          "type": "boolean"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "provenance": {
+          "$id": "ValueProvenance",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "anyOf": [
+                {
+                  "const": "repository",
+                  "type": "string"
+                },
+                {
+                  "const": "human-adjustment",
+                  "type": "string"
+                },
+                {
+                  "const": "ai-proposal",
+                  "type": "string"
+                },
+                {
+                  "const": "import",
+                  "type": "string"
+                },
+                {
+                  "const": "default",
+                  "type": "string"
+                }
+              ]
+            },
+            "basedOnAiProposal": {
+              "type": "number"
+            },
+            "humanFinal": {
+              "type": "number"
+            },
+            "replayId": {
+              "type": "string"
+            },
+            "terrainPresetId": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "rootMotion": {
+      "$id": "RootMotionProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "mode",
+        "horizontalAuthority",
+        "verticalAuthority",
+        "rotationAuthority",
+        "terrainProjection",
+        "physicsAuthority"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "mode": {
+          "$id": "RootMotionMode",
+          "anyOf": [
+            {
+              "const": "InPlace",
+              "type": "string"
+            },
+            {
+              "const": "RootMotion",
+              "type": "string"
+            },
+            {
+              "const": "Hybrid",
+              "type": "string"
+            }
+          ]
+        },
+        "horizontalAuthority": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "verticalAuthority": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "rotationAuthority": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "terrainProjection": {
+          "type": "boolean"
+        },
+        "physicsAuthority": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "provenance": {
+          "$id": "ValueProvenance",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "anyOf": [
+                {
+                  "const": "repository",
+                  "type": "string"
+                },
+                {
+                  "const": "human-adjustment",
+                  "type": "string"
+                },
+                {
+                  "const": "ai-proposal",
+                  "type": "string"
+                },
+                {
+                  "const": "import",
+                  "type": "string"
+                },
+                {
+                  "const": "default",
+                  "type": "string"
+                }
+              ]
+            },
+            "basedOnAiProposal": {
+              "type": "number"
+            },
+            "humanFinal": {
+              "type": "number"
+            },
+            "replayId": {
+              "type": "string"
+            },
+            "terrainPresetId": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "terrain": {
+      "$id": "TerrainInteractionProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "groundProbeDistance",
+        "probeRadius",
+        "maxWalkableSlopeRad",
+        "slideStartAngleRad",
+        "stepUpHeight",
+        "groundSnapStrength",
+        "downhillAdhesion",
+        "slopeSpeedCompensation",
+        "bodyTiltStrength",
+        "footIkStrength",
+        "footTargetSmoothing",
+        "pelvisOffsetStrength",
+        "rootMotionTerrainProjection",
+        "heavyLandingSpeed",
+        "lightLandingSpeed",
+        "obstaclePushback",
+        "ledgeDetectDistance",
+        "movingPlatformVelocityInheritance",
+        "movingPlatformRotationInheritance"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "groundProbeDistance": {
+          "minimum": 0.01,
+          "maximum": 5,
+          "type": "number"
+        },
+        "probeRadius": {
+          "minimum": 0.01,
+          "maximum": 2,
+          "type": "number"
+        },
+        "maxWalkableSlopeRad": {
+          "minimum": 0,
+          "maximum": 1.5,
+          "type": "number"
+        },
+        "slideStartAngleRad": {
+          "minimum": 0,
+          "maximum": 1.5,
+          "type": "number"
+        },
+        "stepUpHeight": {
+          "minimum": 0,
+          "maximum": 2,
+          "type": "number"
+        },
+        "groundSnapStrength": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "downhillAdhesion": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "slopeSpeedCompensation": {
+          "minimum": -2,
+          "maximum": 2,
+          "type": "number"
+        },
+        "bodyTiltStrength": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "footIkStrength": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "footTargetSmoothing": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "pelvisOffsetStrength": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "rootMotionTerrainProjection": {
+          "type": "boolean"
+        },
+        "heavyLandingSpeed": {
+          "minimum": 0.1,
+          "maximum": 50,
+          "type": "number"
+        },
+        "lightLandingSpeed": {
+          "minimum": 0.01,
+          "maximum": 50,
+          "type": "number"
+        },
+        "obstaclePushback": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "ledgeDetectDistance": {
+          "minimum": 0,
+          "maximum": 3,
+          "type": "number"
+        },
+        "movingPlatformVelocityInheritance": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "movingPlatformRotationInheritance": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "provenance": {
+          "$id": "ValueProvenance",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "anyOf": [
+                {
+                  "const": "repository",
+                  "type": "string"
+                },
+                {
+                  "const": "human-adjustment",
+                  "type": "string"
+                },
+                {
+                  "const": "ai-proposal",
+                  "type": "string"
+                },
+                {
+                  "const": "import",
+                  "type": "string"
+                },
+                {
+                  "const": "default",
+                  "type": "string"
+                }
+              ]
+            },
+            "basedOnAiProposal": {
+              "type": "number"
+            },
+            "humanFinal": {
+              "type": "number"
+            },
+            "replayId": {
+              "type": "string"
+            },
+            "terrainPresetId": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "camera": {
+      "$id": "CameraProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "distance",
+        "height",
+        "lookAtHeight",
+        "followLagSec",
+        "minPitchRad",
+        "maxPitchRad",
+        "fovDeg"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "distance": {
+          "minimum": 0.5,
+          "maximum": 40,
+          "type": "number"
+        },
+        "height": {
+          "minimum": 0,
+          "maximum": 20,
+          "type": "number"
+        },
+        "lookAtHeight": {
+          "minimum": 0,
+          "maximum": 5,
+          "type": "number"
+        },
+        "followLagSec": {
+          "minimum": 0,
+          "maximum": 2,
+          "type": "number"
+        },
+        "minPitchRad": {
+          "minimum": -1.5,
+          "maximum": 0,
+          "type": "number"
+        },
+        "maxPitchRad": {
+          "minimum": 0,
+          "maximum": 1.5,
+          "type": "number"
+        },
+        "fovDeg": {
+          "minimum": 20,
+          "maximum": 120,
+          "type": "number"
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "haptics": {
+      "$id": "HapticProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "masterIntensity",
+        "bindings"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "masterIntensity": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$id": "HapticEventBinding",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "id",
+              "event",
+              "startDelayMs",
+              "durationMs",
+              "lowFrequencyMagnitude",
+              "highFrequencyMagnitude",
+              "curve",
+              "leftTriggerMagnitude",
+              "rightTriggerMagnitude",
+              "adaptiveTriggerPreset",
+              "resistanceStart",
+              "resistanceStrength",
+              "breakPoint",
+              "requiresTier"
+            ],
+            "properties": {
+              "id": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "event": {
+                "$id": "SemanticEventKind",
+                "anyOf": [
+                  {
+                    "const": "FootContactLeft",
+                    "type": "string"
+                  },
+                  {
+                    "const": "FootContactRight",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AttackWindup",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AttackHit",
+                    "type": "string"
+                  },
+                  {
+                    "const": "AttackRecoil",
+                    "type": "string"
+                  },
+                  {
+                    "const": "JumpTakeoff",
+                    "type": "string"
+                  },
+                  {
+                    "const": "Landing",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DamageReceived",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DodgeStart",
+                    "type": "string"
+                  },
+                  {
+                    "const": "DodgeEnd",
+                    "type": "string"
+                  },
+                  {
+                    "const": "GuardImpact",
+                    "type": "string"
+                  }
+                ]
+              },
+              "startDelayMs": {
+                "minimum": 0,
+                "maximum": 2000,
+                "type": "number"
+              },
+              "durationMs": {
+                "minimum": 1,
+                "maximum": 5000,
+                "type": "number"
+              },
+              "lowFrequencyMagnitude": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "highFrequencyMagnitude": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "curve": {
+                "$id": "CurveKind",
+                "anyOf": [
+                  {
+                    "const": "linear",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ease-in",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ease-out",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ease-in-out",
+                    "type": "string"
+                  },
+                  {
+                    "const": "step",
+                    "type": "string"
+                  }
+                ]
+              },
+              "leftTriggerMagnitude": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "rightTriggerMagnitude": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "adaptiveTriggerPreset": {
+                "$id": "AdaptiveTriggerPreset",
+                "anyOf": [
+                  {
+                    "const": "off",
+                    "type": "string"
+                  },
+                  {
+                    "const": "resistance",
+                    "type": "string"
+                  },
+                  {
+                    "const": "weapon",
+                    "type": "string"
+                  },
+                  {
+                    "const": "pulse",
+                    "type": "string"
+                  },
+                  {
+                    "const": "recoil",
+                    "type": "string"
+                  }
+                ]
+              },
+              "resistanceStart": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "resistanceStrength": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "breakPoint": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "requiresTier": {
+                "$id": "HapticTier",
+                "anyOf": [
+                  {
+                    "const": "none",
+                    "type": "string"
+                  },
+                  {
+                    "const": "generic-rumble",
+                    "type": "string"
+                  },
+                  {
+                    "const": "trigger-rumble",
+                    "type": "string"
+                  },
+                  {
+                    "const": "advanced",
+                    "type": "string"
+                  }
+                ]
+              },
+              "protection": {
+                "$id": "ProtectionMetadata",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "level"
+                ],
+                "properties": {
+                  "level": {
+                    "$id": "ProtectionLevel",
+                    "anyOf": [
+                      {
+                        "const": "editable",
+                        "type": "string"
+                      },
+                      {
+                        "const": "approval-required",
+                        "type": "string"
+                      },
+                      {
+                        "const": "locked",
+                        "type": "string"
+                      },
+                      {
+                        "const": "invariant",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "setBy": {
+                    "type": "string"
+                  },
+                  "setAt": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$id": "ProtectionLevel",
+                        "anyOf": [
+                          {
+                            "const": "editable",
+                            "type": "string"
+                          },
+                          {
+                            "const": "approval-required",
+                            "type": "string"
+                          },
+                          {
+                            "const": "locked",
+                            "type": "string"
+                          },
+                          {
+                            "const": "invariant",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "protection": {
+          "$id": "ProtectionMetadata",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "level"
+          ],
+          "properties": {
+            "level": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "setBy": {
+              "type": "string"
+            },
+            "setAt": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "object",
+              "patternProperties": {
+                "^(.*)$": {
+                  "$id": "ProtectionLevel",
+                  "anyOf": [
+                    {
+                      "const": "editable",
+                      "type": "string"
+                    },
+                    {
+                      "const": "approval-required",
+                      "type": "string"
+                    },
+                    {
+                      "const": "locked",
+                      "type": "string"
+                    },
+                    {
+                      "const": "invariant",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "provenance": {
+          "$id": "ValueProvenance",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "anyOf": [
+                {
+                  "const": "repository",
+                  "type": "string"
+                },
+                {
+                  "const": "human-adjustment",
+                  "type": "string"
+                },
+                {
+                  "const": "ai-proposal",
+                  "type": "string"
+                },
+                {
+                  "const": "import",
+                  "type": "string"
+                },
+                {
+                  "const": "default",
+                  "type": "string"
+                }
+              ]
+            },
+            "basedOnAiProposal": {
+              "type": "number"
+            },
+            "humanFinal": {
+              "type": "number"
+            },
+            "replayId": {
+              "type": "string"
+            },
+            "terrainPresetId": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "at": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "preferences": {
+      "$id": "PreferenceProfile",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "preferredBlendMinSec",
+        "preferredBlendMaxSec",
+        "responsiveness",
+        "momentumPreference",
+        "rootMotionPolicy",
+        "ikCorrectionPreference",
+        "hapticIntensityPreference",
+        "acceptanceHistory"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "preferredBlendMinSec": {
+          "minimum": 0,
+          "maximum": 2,
+          "type": "number"
+        },
+        "preferredBlendMaxSec": {
+          "minimum": 0,
+          "maximum": 2,
+          "type": "number"
+        },
+        "responsiveness": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "momentumPreference": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "rootMotionPolicy": {
+          "anyOf": [
+            {
+              "const": "prefer-in-place",
+              "type": "string"
+            },
+            {
+              "const": "prefer-root-motion",
+              "type": "string"
+            },
+            {
+              "const": "prefer-hybrid",
+              "type": "string"
+            }
+          ]
+        },
+        "ikCorrectionPreference": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "hapticIntensityPreference": {
+          "minimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "acceptanceHistory": {
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "proposalVariant",
+              "accepted",
+              "humanAdjustedAfter",
+              "at"
+            ],
+            "properties": {
+              "proposalVariant": {
+                "type": "string"
+              },
+              "accepted": {
+                "type": "boolean"
+              },
+              "humanAdjustedAfter": {
+                "type": "boolean"
+              },
+              "at": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "defaultTerrainPresetId": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "$id": "CandidateAsset",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "id",
+          "state",
+          "provenance",
+          "discoveredClips",
+          "durationSec",
+          "issues",
+          "replacesClipId"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          },
+          "state": {
+            "$id": "AssetState",
+            "anyOf": [
+              {
+                "const": "Imported",
+                "type": "string"
+              },
+              {
+                "const": "Candidate",
+                "type": "string"
+              },
+              {
+                "const": "Retargeted",
+                "type": "string"
+              },
+              {
+                "const": "Validated",
+                "type": "string"
+              },
+              {
+                "const": "HumanAccepted",
+                "type": "string"
+              },
+              {
+                "const": "Registered",
+                "type": "string"
+              },
+              {
+                "const": "Rejected",
+                "type": "string"
+              }
+            ]
+          },
+          "brief": {
+            "$id": "MotionBrief",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "id",
+              "action",
+              "purpose",
+              "style",
+              "minDurationSec",
+              "maxDurationSec",
+              "rootMotionRequired",
+              "loop",
+              "startPose",
+              "endPose",
+              "direction",
+              "weapon",
+              "footContactExpectation",
+              "mirroringAllowed"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "id": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "action": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "style": {
+                "type": "string"
+              },
+              "minDurationSec": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "maxDurationSec": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "rootMotionRequired": {
+                "type": "boolean"
+              },
+              "loop": {
+                "type": "boolean"
+              },
+              "startPose": {
+                "type": "string"
+              },
+              "endPose": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "weapon": {
+                "type": "string"
+              },
+              "footContactExpectation": {
+                "type": "string"
+              },
+              "mirroringAllowed": {
+                "type": "boolean"
+              }
+            }
+          },
+          "provenance": {
+            "$id": "AssetProvenance",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "contentHash",
+              "originalFilename",
+              "originalFormat",
+              "importedAt",
+              "pipeline",
+              "license"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "contentHash": {
+                "minLength": 8,
+                "type": "string"
+              },
+              "originalFilename": {
+                "type": "string"
+              },
+              "originalFormat": {
+                "anyOf": [
+                  {
+                    "const": "glb",
+                    "type": "string"
+                  },
+                  {
+                    "const": "gltf",
+                    "type": "string"
+                  },
+                  {
+                    "const": "fbx",
+                    "type": "string"
+                  },
+                  {
+                    "const": "bvh",
+                    "type": "string"
+                  }
+                ]
+              },
+              "importedAt": {
+                "type": "string"
+              },
+              "pipeline": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "license": {
+                "$id": "LicenseManifest",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "schemaVersion",
+                  "provider",
+                  "sourceType",
+                  "sourceRef",
+                  "acquiredBy",
+                  "acquiredAt",
+                  "commercialUse",
+                  "rawAssetRedistribution",
+                  "teamSharing",
+                  "publicRepository",
+                  "attributionRequired",
+                  "verificationStatus"
+                ],
+                "properties": {
+                  "schemaVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "provider": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sourceType": {
+                    "anyOf": [
+                      {
+                        "const": "search",
+                        "type": "string"
+                      },
+                      {
+                        "const": "generate",
+                        "type": "string"
+                      },
+                      {
+                        "const": "capture",
+                        "type": "string"
+                      },
+                      {
+                        "const": "import",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "sourceRef": {
+                    "type": "string"
+                  },
+                  "acquiredBy": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "acquiredAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "commercialUse": {
+                    "$id": "LicenseFlag",
+                    "anyOf": [
+                      {
+                        "const": "allowed",
+                        "type": "string"
+                      },
+                      {
+                        "const": "forbidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "unknown",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "rawAssetRedistribution": {
+                    "$id": "LicenseFlag",
+                    "anyOf": [
+                      {
+                        "const": "allowed",
+                        "type": "string"
+                      },
+                      {
+                        "const": "forbidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "unknown",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "teamSharing": {
+                    "$id": "LicenseFlag",
+                    "anyOf": [
+                      {
+                        "const": "allowed",
+                        "type": "string"
+                      },
+                      {
+                        "const": "forbidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "unknown",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "publicRepository": {
+                    "$id": "LicenseFlag",
+                    "anyOf": [
+                      {
+                        "const": "allowed",
+                        "type": "string"
+                      },
+                      {
+                        "const": "forbidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "unknown",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "attributionRequired": {
+                    "$id": "LicenseFlag",
+                    "anyOf": [
+                      {
+                        "const": "allowed",
+                        "type": "string"
+                      },
+                      {
+                        "const": "forbidden",
+                        "type": "string"
+                      },
+                      {
+                        "const": "unknown",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "attributionText": {
+                    "type": "string"
+                  },
+                  "verificationStatus": {
+                    "anyOf": [
+                      {
+                        "const": "unverified",
+                        "type": "string"
+                      },
+                      {
+                        "const": "human-verified",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "discoveredClips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "durationSec": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "replacesClipId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "revisions": {
+      "type": "array",
+      "items": {
+        "$id": "RevisionDefinition",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "id",
+          "parentId",
+          "createdAt",
+          "author",
+          "message",
+          "changedPaths"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "changedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provenance": {
+            "$id": "ValueProvenance",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "const": "repository",
+                    "type": "string"
+                  },
+                  {
+                    "const": "human-adjustment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ai-proposal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "import",
+                    "type": "string"
+                  },
+                  {
+                    "const": "default",
+                    "type": "string"
+                  }
+                ]
+              },
+              "basedOnAiProposal": {
+                "type": "number"
+              },
+              "humanFinal": {
+                "type": "number"
+              },
+              "replayId": {
+                "type": "string"
+              },
+              "terrainPresetId": {
+                "type": "string"
+              },
+              "intent": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            }
+          },
+          "commitSha": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "RootMotionProfile",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "mode",
+    "horizontalAuthority",
+    "verticalAuthority",
+    "rotationAuthority",
+    "terrainProjection",
+    "physicsAuthority"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "mode": {
+      "$id": "RootMotionMode",
+      "anyOf": [
+        {
+          "const": "InPlace",
+          "type": "string"
+        },
+        {
+          "const": "RootMotion",
+          "type": "string"
+        },
+        {
+          "const": "Hybrid",
+          "type": "string"
+        }
+      ]
+    },
+    "horizontalAuthority": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "verticalAuthority": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "rotationAuthority": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "terrainProjection": {
+      "type": "boolean"
+    },
+    "physicsAuthority": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "$id": "ValueProvenance",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "const": "repository",
+              "type": "string"
+            },
+            {
+              "const": "human-adjustment",
+              "type": "string"
+            },
+            {
+              "const": "ai-proposal",
+              "type": "string"
+            },
+            {
+              "const": "import",
+              "type": "string"
+            },
+            {
+              "const": "default",
+              "type": "string"
+            }
+          ]
+        },
+        "basedOnAiProposal": {
+          "type": "number"
+        },
+        "humanFinal": {
+          "type": "number"
+        },
+        "replayId": {
+          "type": "string"
+        },
+        "terrainPresetId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

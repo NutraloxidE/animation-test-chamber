@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "mud",
+  "label": "Mud",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "mud"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    },
+    {
+      "id": "mud",
+      "friction": 0.55,
+      "accelerationScale": 0.6,
+      "dragScale": 2.5
+    }
+  ]
+}

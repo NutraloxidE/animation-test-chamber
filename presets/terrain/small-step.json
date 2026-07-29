@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "small-step",
+  "label": "Small step",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    },
+    {
+      "kind": "box",
+      "center": {
+        "x": 0,
+        "y": 0.1,
+        "z": 6
+      },
+      "size": {
+        "x": 12,
+        "y": 0.2,
+        "z": 8
+      },
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

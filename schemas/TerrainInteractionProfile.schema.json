@@ -1,0 +1,252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "TerrainInteractionProfile",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "groundProbeDistance",
+    "probeRadius",
+    "maxWalkableSlopeRad",
+    "slideStartAngleRad",
+    "stepUpHeight",
+    "groundSnapStrength",
+    "downhillAdhesion",
+    "slopeSpeedCompensation",
+    "bodyTiltStrength",
+    "footIkStrength",
+    "footTargetSmoothing",
+    "pelvisOffsetStrength",
+    "rootMotionTerrainProjection",
+    "heavyLandingSpeed",
+    "lightLandingSpeed",
+    "obstaclePushback",
+    "ledgeDetectDistance",
+    "movingPlatformVelocityInheritance",
+    "movingPlatformRotationInheritance"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "groundProbeDistance": {
+      "minimum": 0.01,
+      "maximum": 5,
+      "type": "number"
+    },
+    "probeRadius": {
+      "minimum": 0.01,
+      "maximum": 2,
+      "type": "number"
+    },
+    "maxWalkableSlopeRad": {
+      "minimum": 0,
+      "maximum": 1.5,
+      "type": "number"
+    },
+    "slideStartAngleRad": {
+      "minimum": 0,
+      "maximum": 1.5,
+      "type": "number"
+    },
+    "stepUpHeight": {
+      "minimum": 0,
+      "maximum": 2,
+      "type": "number"
+    },
+    "groundSnapStrength": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "downhillAdhesion": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "slopeSpeedCompensation": {
+      "minimum": -2,
+      "maximum": 2,
+      "type": "number"
+    },
+    "bodyTiltStrength": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "footIkStrength": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "footTargetSmoothing": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "pelvisOffsetStrength": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "rootMotionTerrainProjection": {
+      "type": "boolean"
+    },
+    "heavyLandingSpeed": {
+      "minimum": 0.1,
+      "maximum": 50,
+      "type": "number"
+    },
+    "lightLandingSpeed": {
+      "minimum": 0.01,
+      "maximum": 50,
+      "type": "number"
+    },
+    "obstaclePushback": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "ledgeDetectDistance": {
+      "minimum": 0,
+      "maximum": 3,
+      "type": "number"
+    },
+    "movingPlatformVelocityInheritance": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "movingPlatformRotationInheritance": {
+      "minimum": 0,
+      "maximum": 1,
+      "type": "number"
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "$id": "ValueProvenance",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "const": "repository",
+              "type": "string"
+            },
+            {
+              "const": "human-adjustment",
+              "type": "string"
+            },
+            {
+              "const": "ai-proposal",
+              "type": "string"
+            },
+            {
+              "const": "import",
+              "type": "string"
+            },
+            {
+              "const": "default",
+              "type": "string"
+            }
+          ]
+        },
+        "basedOnAiProposal": {
+          "type": "number"
+        },
+        "humanFinal": {
+          "type": "number"
+        },
+        "replayId": {
+          "type": "string"
+        },
+        "terrainPresetId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
