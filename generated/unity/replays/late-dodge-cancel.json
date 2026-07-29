@@ -1,0 +1,57 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "replay": {
+    "schemaVersion": 1,
+    "id": "late-dodge-cancel",
+    "label": "Dodge cancel late in the attack recovery",
+    "revisionId": "rev-0001",
+    "fixedTimestepVersion": 1,
+    "seed": 1,
+    "terrainPresetId": "flat",
+    "initialPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "initialYawRad": 0,
+    "cameraYawRad": 0,
+    "tickCount": 160,
+    "frames": [
+      {
+        "tick": 0,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 8
+      },
+      {
+        "tick": 4,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      },
+      {
+        "tick": 36,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 32
+      },
+      {
+        "tick": 40,
+        "moveX": 0,
+        "moveY": 0,
+        "lookX": 0,
+        "lookY": 0,
+        "buttons": 0
+      }
+    ]
+  }
+}

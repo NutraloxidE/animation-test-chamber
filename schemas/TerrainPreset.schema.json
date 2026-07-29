@@ -1,0 +1,466 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "TerrainPreset",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "label",
+    "features",
+    "surfaces"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "features": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$id": "TerrainFeature",
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "height",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "plane",
+                "type": "string"
+              },
+              "height": {
+                "type": "number"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "startZ",
+              "endZ",
+              "rise",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "slope",
+                "type": "string"
+              },
+              "startZ": {
+                "type": "number"
+              },
+              "endZ": {
+                "type": "number"
+              },
+              "rise": {
+                "type": "number"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "startZ",
+              "stepDepth",
+              "stepHeight",
+              "count",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "steps",
+                "type": "string"
+              },
+              "startZ": {
+                "type": "number"
+              },
+              "stepDepth": {
+                "minimum": 0.05,
+                "type": "number"
+              },
+              "stepHeight": {
+                "minimum": 0.01,
+                "type": "number"
+              },
+              "count": {
+                "minimum": 1,
+                "maximum": 64,
+                "type": "integer"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "center",
+              "size",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "box",
+                "type": "string"
+              },
+              "center": {
+                "$id": "Vec3",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                }
+              },
+              "size": {
+                "$id": "Vec3",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                }
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "edgeZ",
+              "height",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "ledge",
+                "type": "string"
+              },
+              "edgeZ": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "center",
+              "size",
+              "axis",
+              "amplitude",
+              "periodSec",
+              "angularVelocity",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "moving-platform",
+                "type": "string"
+              },
+              "center": {
+                "$id": "Vec3",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                }
+              },
+              "size": {
+                "$id": "Vec3",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  }
+                }
+              },
+              "axis": {
+                "anyOf": [
+                  {
+                    "const": "x",
+                    "type": "string"
+                  },
+                  {
+                    "const": "y",
+                    "type": "string"
+                  },
+                  {
+                    "const": "z",
+                    "type": "string"
+                  }
+                ]
+              },
+              "amplitude": {
+                "minimum": 0,
+                "maximum": 20,
+                "type": "number"
+              },
+              "periodSec": {
+                "minimum": 0.5,
+                "maximum": 60,
+                "type": "number"
+              },
+              "angularVelocity": {
+                "minimum": -6.28,
+                "maximum": 6.28,
+                "type": "number"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "kind",
+              "amplitude",
+              "frequencyX",
+              "frequencyZ",
+              "surface"
+            ],
+            "properties": {
+              "kind": {
+                "const": "uneven",
+                "type": "string"
+              },
+              "amplitude": {
+                "minimum": 0,
+                "maximum": 2,
+                "type": "number"
+              },
+              "frequencyX": {
+                "minimum": 0.01,
+                "maximum": 10,
+                "type": "number"
+              },
+              "frequencyZ": {
+                "minimum": 0.01,
+                "maximum": 10,
+                "type": "number"
+              },
+              "surface": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "surfaces": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$id": "SurfaceMaterial",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "friction",
+          "accelerationScale",
+          "dragScale"
+        ],
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          },
+          "friction": {
+            "minimum": 0,
+            "maximum": 2,
+            "type": "number"
+          },
+          "accelerationScale": {
+            "minimum": 0,
+            "maximum": 2,
+            "type": "number"
+          },
+          "dragScale": {
+            "minimum": 0,
+            "maximum": 4,
+            "type": "number"
+          }
+        }
+      }
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

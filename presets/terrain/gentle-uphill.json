@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "gentle-uphill",
+  "label": "Gentle uphill",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    },
+    {
+      "kind": "slope",
+      "startZ": 2,
+      "endZ": 12,
+      "rise": 2,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

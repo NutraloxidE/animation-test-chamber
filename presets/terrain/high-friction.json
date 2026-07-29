@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "high-friction",
+  "label": "High-friction surface",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "grip"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    },
+    {
+      "id": "grip",
+      "friction": 1,
+      "accelerationScale": 1.6,
+      "dragScale": 1.8
+    }
+  ]
+}

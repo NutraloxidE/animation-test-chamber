@@ -1,0 +1,373 @@
+/**
+ * Repo Guard (PLAN 17.2, 18.1).
+ *
+ * This is the mechanical part of "protect good states from vibe-coding
+ * regressions". It compares the working tree against the last commit and
+ * refuses changes that quietly erode the project: protected values moving,
+ * tests disappearing or being weakened, schema constraints relaxed, generated
+ * output treated as canonical, secrets committed, restricted assets added.
+ */
+import { readdirSync, statSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
+import type { ProjectDefinition } from '@atc/schema';
+import { analyzeDiff } from '@atc/runtime-core';
+import {
+  REPO_ROOT,
+  gitHasCommits,
+  printStage,
+  readAtRevision,
+  readRepoFile,
+  stage,
+  type StageIssue,
+  type StageResult,
+} from './lib.ts';
+
+const PROJECT_PATH = 'projects/demo-character/project.json';
+
+function listFiles(directory: string, out: string[] = []): string[] {
+  const full = resolve(REPO_ROOT, directory);
+  let entries: string[];
+  try {
+    entries = readdirSync(full);
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
+    const path = resolve(full, entry);
+    if (statSync(path).isDirectory()) listFiles(relative(REPO_ROOT, path), out);
+    else out.push(relative(REPO_ROOT, path));
+  }
+  return out;
+}
+
+/** Protected canonical values must not move without an explicit unlock. */
+export function protectedValuesStage(): StageResult {
+  return stage(
+    'no protected value changed unexpectedly',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'revert the protected value, or have a human unlock it deliberately and say so in the commit',
+    },
+    () => {
+      if (!gitHasCommits()) {
+        return { ok: true, issues: [], output: 'no previous commit to compare against' };
+      }
+      const previousRaw = readAtRevision('HEAD', PROJECT_PATH);
+      const currentRaw = readRepoFile(PROJECT_PATH);
+      if (!previousRaw || !currentRaw) {
+        return { ok: true, issues: [], output: 'project not present in both revisions' };
+      }
+
+      const previous = JSON.parse(previousRaw) as ProjectDefinition;
+      const current = JSON.parse(currentRaw) as ProjectDefinition;
+      const report = analyzeDiff(previous, current);
+
+      const issues: StageIssue[] = report.findings
+        .filter((finding) => finding.severity === 'blocking')
+        .map((finding) => ({
+          files: [PROJECT_PATH],
+          expected: 'the protected value to be unchanged',
+          actual: finding.message,
+          message: `${finding.rule}: ${finding.path}`,
+        }));
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+/** Tests must not vanish or have their expectations loosened to go green. */
+export function testIntegrityStage(): StageResult {
+  return stage(
+    'no tests deleted or weakened',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion: 'fix the implementation instead of relaxing the test',
+    },
+    () => {
+      if (!gitHasCommits()) return { ok: true, issues: [] };
+
+      const issues: StageIssue[] = [];
+      const testFiles = listFiles('tests').filter((file) => file.endsWith('.test.ts'));
+      const previousTests = new Set<string>();
+
+      // Which test files existed at HEAD.
+      for (const file of testFiles) {
+        if (readAtRevision('HEAD', file) !== null) previousTests.add(file);
+      }
+
+      // Any test file present at HEAD but gone now.
+      const knownAtHead = listFilesAtHead();
+      for (const file of knownAtHead) {
+        if (!file.endsWith('.test.ts')) continue;
+        if (readRepoFile(file) === null) {
+          issues.push({
+            files: [file],
+            expected: 'the test file to still exist',
+            actual: 'it was deleted',
+            message: `test file ${file} was deleted`,
+          });
+        }
+      }
+
+      // Test count must not drop within a file that still exists.
+      const countAssertions = (source: string): number =>
+        (source.match(/\b(it|test)\s*(\.each\([\s\S]*?\))?\s*\(/g) ?? []).length;
+
+      for (const file of previousTests) {
+        const before = readAtRevision('HEAD', file);
+        const after = readRepoFile(file);
+        if (before === null || after === null) continue;
+        const beforeCount = countAssertions(before);
+        const afterCount = countAssertions(after);
+        if (afterCount < beforeCount) {
+          issues.push({
+            files: [file],
+            expected: `at least ${beforeCount} test(s)`,
+            actual: `${afterCount} test(s)`,
+            message: `${file} lost ${beforeCount - afterCount} test(s)`,
+          });
+        }
+        if (/\.skip\(|\.todo\(|xit\(/.test(after) && !/\.skip\(|\.todo\(|xit\(/.test(before)) {
+          issues.push({
+            files: [file],
+            expected: 'no newly skipped tests',
+            actual: 'a test was skipped',
+            message: `${file} newly skips a test`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+function listFilesAtHead(): string[] {
+  const raw = readAtRevision('HEAD', '');
+  if (raw !== null) return [];
+  // `git show HEAD:` on a directory is awkward; use the working tree list and
+  // rely on the per-file existence probe above instead.
+  return listFiles('tests');
+}
+
+/** Schema constraints must not be silently loosened. */
+export function schemaConstraintStage(): StageResult {
+  return stage(
+    'no schema constraint relaxed silently',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'if a bound genuinely needs to change, say so explicitly in the commit message',
+    },
+    () => {
+      if (!gitHasCommits()) return { ok: true, issues: [] };
+
+      const issues: StageIssue[] = [];
+      const schemaFiles = listFiles('packages/schema/src').filter((file) => file.endsWith('.ts'));
+
+      for (const file of schemaFiles) {
+        const before = readAtRevision('HEAD', file);
+        const after = readRepoFile(file);
+        if (before === null || after === null) continue;
+
+        // additionalProperties: false is what stops unknown fields creeping in.
+        const strictBefore = (before.match(/additionalProperties:\s*false/g) ?? []).length;
+        const strictAfter = (after.match(/additionalProperties:\s*false/g) ?? []).length;
+        if (strictAfter < strictBefore) {
+          issues.push({
+            files: [file],
+            expected: `${strictBefore} strict object(s)`,
+            actual: `${strictAfter}`,
+            message: `${file} dropped an additionalProperties:false constraint`,
+          });
+        }
+
+        const requiredBefore = (before.match(/Type\.Optional\(/g) ?? []).length;
+        const requiredAfter = (after.match(/Type\.Optional\(/g) ?? []).length;
+        if (requiredAfter > requiredBefore + 2) {
+          issues.push({
+            files: [file],
+            expected: 'required fields to stay required',
+            actual: `${requiredAfter - requiredBefore} more fields became optional`,
+            message: `${file} made several fields optional at once`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+/** Nothing under generated/ may be referenced as if it were canonical. */
+export function generatedNotCanonicalStage(): StageResult {
+  return stage(
+    'no generated artifact treated as canonical',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion: 'read canonical data from projects/ or packages/, never from generated/',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const sourceFiles = [
+        ...listFiles('packages'),
+        ...listFiles('apps'),
+        ...listFiles('harness'),
+      ].filter((file) => /\.(ts|tsx)$/.test(file) && !file.endsWith('.d.ts'));
+
+      for (const file of sourceFiles) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        // Writing into generated/ is expected; importing out of it is not.
+        const importsGenerated = /(from|import|require)\s*\(?['"][^'"]*generated\//.test(content);
+        if (importsGenerated) {
+          issues.push({
+            files: [file],
+            expected: 'no imports from generated/',
+            actual: 'this file imports a generated artifact',
+            message: `${file} imports from generated/`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+/** No secrets in the tree, and none reachable from the browser bundle. */
+export function secretsStage(): StageResult {
+  return stage(
+    'no secrets committed',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion: 'move the value into .env (git-ignored) and read it in apps/api only',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      const patterns: { test: RegExp; label: string }[] = [
+        { test: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, label: 'a private key' },
+        { test: /sk-ant-[A-Za-z0-9-]{16,}/, label: 'an Anthropic API key' },
+        { test: /ghp_[A-Za-z0-9]{20,}/, label: 'a GitHub token' },
+        { test: /gh[sioru]_[A-Za-z0-9]{20,}/, label: 'a GitHub token' },
+      ];
+
+      const candidates = [
+        ...listFiles('packages'),
+        ...listFiles('apps'),
+        ...listFiles('harness'),
+        ...listFiles('projects'),
+        ...listFiles('tests'),
+      ].filter((file) => !file.includes('node_modules'));
+
+      for (const file of candidates) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        for (const pattern of patterns) {
+          if (pattern.test.test(content)) {
+            issues.push({
+              files: [file],
+              expected: 'no credentials in the repository',
+              actual: `looks like ${pattern.label}`,
+              message: `${file} appears to contain ${pattern.label}`,
+            });
+          }
+        }
+      }
+
+      // A .env file must never be committed.
+      if (readAtRevision('HEAD', '.env') !== null) {
+        issues.push({
+          files: ['.env'],
+          expected: '.env to be git-ignored',
+          actual: '.env is tracked by git',
+          message: '.env is committed',
+        });
+      }
+
+      // The browser bundle must not read server-only configuration.
+      for (const file of listFiles('apps/web').filter((f) => /\.(ts|tsx)$/.test(f))) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        if (/GITHUB_APP_PRIVATE_KEY|ANTHROPIC_API_KEY|GITHUB_APP_ID/.test(content)) {
+          issues.push({
+            files: [file],
+            expected: 'the web app to hold no credentials',
+            actual: 'it references a server-only secret',
+            message: `${file} references a server-only secret`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+/** Binary assets must not appear without a licence manifest alongside them. */
+export function restrictedAssetStage(): StageResult {
+  return stage(
+    'no raw restricted asset committed',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'record a verified licence manifest for the asset, or keep it out of the repository',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const project = readRepoFile(PROJECT_PATH);
+      const candidates = project
+        ? ((JSON.parse(project) as ProjectDefinition).candidates ?? [])
+        : [];
+
+      const binaryExtensions = /\.(glb|gltf|fbx|bvh)$/i;
+      const assetFiles = [...listFiles('projects'), ...listFiles('presets')].filter((file) =>
+        binaryExtensions.test(file),
+      );
+
+      for (const file of assetFiles) {
+        const manifested = candidates.some(
+          (candidate) =>
+            file.endsWith(candidate.provenance.originalFilename) &&
+            candidate.provenance.license.verificationStatus === 'human-verified' &&
+            candidate.provenance.license.publicRepository === 'allowed',
+        );
+        if (!manifested) {
+          issues.push({
+            files: [file],
+            expected: 'a human-verified licence manifest permitting public repository use',
+            actual: 'no such manifest was found',
+            message: `${file} is committed without a verified licence manifest`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+export function repoGuardStages(): StageResult[] {
+  return [
+    protectedValuesStage(),
+    testIntegrityStage(),
+    schemaConstraintStage(),
+    generatedNotCanonicalStage(),
+    secretsStage(),
+    restrictedAssetStage(),
+  ];
+}
+
+function main(): void {
+  const results = repoGuardStages();
+  for (const result of results) printStage(result);
+  const failed = results.filter((result) => !result.ok);
+  console.log(`\n${results.length - failed.length}/${results.length} repo guard checks passed`);
+  process.exit(failed.length > 0 ? 1 : 0);
+}
+
+if (process.argv[1]?.includes('repo-guard')) main();

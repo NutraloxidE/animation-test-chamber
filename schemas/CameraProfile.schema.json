@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CameraProfile",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "distance",
+    "height",
+    "lookAtHeight",
+    "followLagSec",
+    "minPitchRad",
+    "maxPitchRad",
+    "fovDeg"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "distance": {
+      "minimum": 0.5,
+      "maximum": 40,
+      "type": "number"
+    },
+    "height": {
+      "minimum": 0,
+      "maximum": 20,
+      "type": "number"
+    },
+    "lookAtHeight": {
+      "minimum": 0,
+      "maximum": 5,
+      "type": "number"
+    },
+    "followLagSec": {
+      "minimum": 0,
+      "maximum": 2,
+      "type": "number"
+    },
+    "minPitchRad": {
+      "minimum": -1.5,
+      "maximum": 0,
+      "type": "number"
+    },
+    "maxPitchRad": {
+      "minimum": 0,
+      "maximum": 1.5,
+      "type": "number"
+    },
+    "fovDeg": {
+      "minimum": 20,
+      "maximum": 120,
+      "type": "number"
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

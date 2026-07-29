@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "LicenseManifest",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "provider",
+    "sourceType",
+    "sourceRef",
+    "acquiredBy",
+    "acquiredAt",
+    "commercialUse",
+    "rawAssetRedistribution",
+    "teamSharing",
+    "publicRepository",
+    "attributionRequired",
+    "verificationStatus"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "provider": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "sourceType": {
+      "anyOf": [
+        {
+          "const": "search",
+          "type": "string"
+        },
+        {
+          "const": "generate",
+          "type": "string"
+        },
+        {
+          "const": "capture",
+          "type": "string"
+        },
+        {
+          "const": "import",
+          "type": "string"
+        }
+      ]
+    },
+    "sourceRef": {
+      "type": "string"
+    },
+    "acquiredBy": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "acquiredAt": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "commercialUse": {
+      "$id": "LicenseFlag",
+      "anyOf": [
+        {
+          "const": "allowed",
+          "type": "string"
+        },
+        {
+          "const": "forbidden",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "type": "string"
+        }
+      ]
+    },
+    "rawAssetRedistribution": {
+      "$id": "LicenseFlag",
+      "anyOf": [
+        {
+          "const": "allowed",
+          "type": "string"
+        },
+        {
+          "const": "forbidden",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "type": "string"
+        }
+      ]
+    },
+    "teamSharing": {
+      "$id": "LicenseFlag",
+      "anyOf": [
+        {
+          "const": "allowed",
+          "type": "string"
+        },
+        {
+          "const": "forbidden",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "type": "string"
+        }
+      ]
+    },
+    "publicRepository": {
+      "$id": "LicenseFlag",
+      "anyOf": [
+        {
+          "const": "allowed",
+          "type": "string"
+        },
+        {
+          "const": "forbidden",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "type": "string"
+        }
+      ]
+    },
+    "attributionRequired": {
+      "$id": "LicenseFlag",
+      "anyOf": [
+        {
+          "const": "allowed",
+          "type": "string"
+        },
+        {
+          "const": "forbidden",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "type": "string"
+        }
+      ]
+    },
+    "attributionText": {
+      "type": "string"
+    },
+    "verificationStatus": {
+      "anyOf": [
+        {
+          "const": "unverified",
+          "type": "string"
+        },
+        {
+          "const": "human-verified",
+          "type": "string"
+        }
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

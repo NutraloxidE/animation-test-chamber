@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "narrow-platform",
+  "label": "Narrow platform",
+  "features": [
+    {
+      "kind": "box",
+      "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "size": {
+        "x": 1.4,
+        "y": 0.4,
+        "z": 24
+      },
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

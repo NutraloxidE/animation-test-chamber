@@ -1,0 +1,44 @@
+{
+  "name": "animation-test-chamber",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:web": "pnpm --filter @atc/web dev",
+    "dev:api": "pnpm --filter @atc/api dev",
+    "schema:generate": "tsx harness/generate-schemas.ts",
+    "unity:export": "tsx harness/export-unity.ts",
+    "harness:check": "tsx harness/check-static.ts",
+    "harness:unit": "vitest run tests/unit",
+    "harness:integration": "vitest run tests/integration",
+    "harness:replay": "vitest run tests/replay",
+    "harness:visual": "playwright test",
+    "harness:repo-guard": "tsx harness/repo-guard.ts",
+    "harness:build": "tsx harness/build.ts",
+    "harness:one-shot": "tsx harness/one-shot.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "seed:demo": "tsx harness/seed-demo-project.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^2.1.8"
+  }
+}

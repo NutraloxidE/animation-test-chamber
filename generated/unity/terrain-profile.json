@@ -1,0 +1,482 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "terrain": {
+    "schemaVersion": 1,
+    "id": "demo-terrain",
+    "groundProbeDistance": 0.32,
+    "probeRadius": 0.28,
+    "maxWalkableSlopeRad": 0.85,
+    "slideStartAngleRad": 0.95,
+    "stepUpHeight": 0.42,
+    "groundSnapStrength": 0.85,
+    "downhillAdhesion": 0.6,
+    "slopeSpeedCompensation": 0.35,
+    "bodyTiltStrength": 0.4,
+    "footIkStrength": 0.8,
+    "footTargetSmoothing": 0.35,
+    "pelvisOffsetStrength": 0.6,
+    "rootMotionTerrainProjection": true,
+    "heavyLandingSpeed": 8,
+    "lightLandingSpeed": 1.5,
+    "obstaclePushback": 0.9,
+    "ledgeDetectDistance": 0.6,
+    "movingPlatformVelocityInheritance": 1,
+    "movingPlatformRotationInheritance": 1
+  },
+  "presets": [
+    {
+      "schemaVersion": 1,
+      "id": "flat",
+      "label": "Flat",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "gentle-uphill",
+      "label": "Gentle uphill",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        },
+        {
+          "kind": "slope",
+          "startZ": 2,
+          "endZ": 12,
+          "rise": 2,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "gentle-downhill",
+      "label": "Gentle downhill",
+      "features": [
+        {
+          "kind": "slope",
+          "startZ": 2,
+          "endZ": 12,
+          "rise": -2,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "steep-slope",
+      "label": "Steep slope",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        },
+        {
+          "kind": "slope",
+          "startZ": 2,
+          "endZ": 7,
+          "rise": 8,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "small-step",
+      "label": "Small step",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        },
+        {
+          "kind": "box",
+          "center": {
+            "x": 0,
+            "y": 0.1,
+            "z": 6
+          },
+          "size": {
+            "x": 12,
+            "y": 0.2,
+            "z": 8
+          },
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "stairs",
+      "label": "Stairs",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        },
+        {
+          "kind": "steps",
+          "startZ": 3,
+          "stepDepth": 0.32,
+          "stepHeight": 0.18,
+          "count": 14,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "ledge",
+      "label": "Ledge",
+      "features": [
+        {
+          "kind": "ledge",
+          "edgeZ": 6,
+          "height": 0,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "narrow-platform",
+      "label": "Narrow platform",
+      "features": [
+        {
+          "kind": "box",
+          "center": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "size": {
+            "x": 1.4,
+            "y": 0.4,
+            "z": 24
+          },
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "uneven-ground",
+      "label": "Uneven ground",
+      "features": [
+        {
+          "kind": "plane",
+          "height": -0.4,
+          "surface": "default"
+        },
+        {
+          "kind": "uneven",
+          "amplitude": 0.22,
+          "frequencyX": 0.9,
+          "frequencyZ": 0.7,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "wall",
+      "label": "Wall and low obstacle",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "default"
+        },
+        {
+          "kind": "box",
+          "center": {
+            "x": 0,
+            "y": 1,
+            "z": 8
+          },
+          "size": {
+            "x": 10,
+            "y": 2,
+            "z": 1
+          },
+          "surface": "default"
+        },
+        {
+          "kind": "box",
+          "center": {
+            "x": 0,
+            "y": 0.15,
+            "z": 4
+          },
+          "size": {
+            "x": 3,
+            "y": 0.3,
+            "z": 0.8
+          },
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "moving-platform",
+      "label": "Moving platform",
+      "features": [
+        {
+          "kind": "plane",
+          "height": -3,
+          "surface": "default"
+        },
+        {
+          "kind": "box",
+          "center": {
+            "x": 0,
+            "y": -0.1,
+            "z": 0
+          },
+          "size": {
+            "x": 6,
+            "y": 0.2,
+            "z": 6
+          },
+          "surface": "default"
+        },
+        {
+          "kind": "moving-platform",
+          "center": {
+            "x": 0,
+            "y": -0.1,
+            "z": 8
+          },
+          "size": {
+            "x": 4,
+            "y": 0.2,
+            "z": 4
+          },
+          "axis": "x",
+          "amplitude": 3,
+          "periodSec": 6,
+          "angularVelocity": 0,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rotating-platform",
+      "label": "Rotating platform",
+      "features": [
+        {
+          "kind": "plane",
+          "height": -3,
+          "surface": "default"
+        },
+        {
+          "kind": "moving-platform",
+          "center": {
+            "x": 0,
+            "y": -0.1,
+            "z": 0
+          },
+          "size": {
+            "x": 6,
+            "y": 0.2,
+            "z": 6
+          },
+          "axis": "y",
+          "amplitude": 0,
+          "periodSec": 8,
+          "angularVelocity": 0.6,
+          "surface": "default"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "ice",
+      "label": "Ice",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "ice"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        },
+        {
+          "id": "ice",
+          "friction": 0.98,
+          "accelerationScale": 0.15,
+          "dragScale": 0.05
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "mud",
+      "label": "Mud",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "mud"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        },
+        {
+          "id": "mud",
+          "friction": 0.55,
+          "accelerationScale": 0.6,
+          "dragScale": 2.5
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "high-friction",
+      "label": "High-friction surface",
+      "features": [
+        {
+          "kind": "plane",
+          "height": 0,
+          "surface": "grip"
+        }
+      ],
+      "surfaces": [
+        {
+          "id": "default",
+          "friction": 1,
+          "accelerationScale": 1,
+          "dragScale": 1
+        },
+        {
+          "id": "grip",
+          "friction": 1,
+          "accelerationScale": 1.6,
+          "dragScale": 1.8
+        }
+      ]
+    }
+  ]
+}

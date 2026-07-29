@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "rotating-platform",
+  "label": "Rotating platform",
+  "features": [
+    {
+      "kind": "plane",
+      "height": -3,
+      "surface": "default"
+    },
+    {
+      "kind": "moving-platform",
+      "center": {
+        "x": 0,
+        "y": -0.1,
+        "z": 0
+      },
+      "size": {
+        "x": 6,
+        "y": 0.2,
+        "z": 6
+      },
+      "axis": "y",
+      "amplitude": 0,
+      "periodSec": 8,
+      "angularVelocity": 0.6,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

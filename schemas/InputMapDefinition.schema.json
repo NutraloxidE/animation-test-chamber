@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "InputMapDefinition",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "keyboard",
+    "gamepad",
+    "stickDeadzone",
+    "lookSensitivity",
+    "invertLookY",
+    "mobilePad",
+    "defaultInputBufferMs",
+    "coyoteTimeMs",
+    "jumpBufferMs"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "keyboard": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "codes"
+        ],
+        "properties": {
+          "action": {
+            "$id": "ActionName",
+            "anyOf": [
+              {
+                "const": "Move",
+                "type": "string"
+              },
+              {
+                "const": "Look",
+                "type": "string"
+              },
+              {
+                "const": "Jump",
+                "type": "string"
+              },
+              {
+                "const": "PrimaryAction",
+                "type": "string"
+              },
+              {
+                "const": "SecondaryAction",
+                "type": "string"
+              },
+              {
+                "const": "Dodge",
+                "type": "string"
+              },
+              {
+                "const": "Guard",
+                "type": "string"
+              },
+              {
+                "const": "LockOn",
+                "type": "string"
+              },
+              {
+                "const": "Interact",
+                "type": "string"
+              },
+              {
+                "const": "Pause",
+                "type": "string"
+              }
+            ]
+          },
+          "codes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "gamepad": {
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "buttons"
+        ],
+        "properties": {
+          "action": {
+            "$id": "ActionName",
+            "anyOf": [
+              {
+                "const": "Move",
+                "type": "string"
+              },
+              {
+                "const": "Look",
+                "type": "string"
+              },
+              {
+                "const": "Jump",
+                "type": "string"
+              },
+              {
+                "const": "PrimaryAction",
+                "type": "string"
+              },
+              {
+                "const": "SecondaryAction",
+                "type": "string"
+              },
+              {
+                "const": "Dodge",
+                "type": "string"
+              },
+              {
+                "const": "Guard",
+                "type": "string"
+              },
+              {
+                "const": "LockOn",
+                "type": "string"
+              },
+              {
+                "const": "Interact",
+                "type": "string"
+              },
+              {
+                "const": "Pause",
+                "type": "string"
+              }
+            ]
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "minimum": 0,
+              "maximum": 17,
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "stickDeadzone": {
+      "minimum": 0,
+      "maximum": 0.9,
+      "type": "number"
+    },
+    "lookSensitivity": {
+      "minimum": 0.05,
+      "maximum": 10,
+      "type": "number"
+    },
+    "invertLookY": {
+      "type": "boolean"
+    },
+    "mobilePad": {
+      "$id": "MobilePadLayout",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "visibility",
+        "stickMode",
+        "leftHanded",
+        "buttonScale",
+        "opacity",
+        "hideForRecording"
+      ],
+      "properties": {
+        "visibility": {
+          "anyOf": [
+            {
+              "const": "auto",
+              "type": "string"
+            },
+            {
+              "const": "always-on",
+              "type": "string"
+            },
+            {
+              "const": "always-off",
+              "type": "string"
+            }
+          ]
+        },
+        "stickMode": {
+          "anyOf": [
+            {
+              "const": "fixed",
+              "type": "string"
+            },
+            {
+              "const": "floating",
+              "type": "string"
+            }
+          ]
+        },
+        "leftHanded": {
+          "type": "boolean"
+        },
+        "buttonScale": {
+          "minimum": 0.5,
+          "maximum": 2,
+          "type": "number"
+        },
+        "opacity": {
+          "minimum": 0.1,
+          "maximum": 1,
+          "type": "number"
+        },
+        "hideForRecording": {
+          "type": "boolean"
+        }
+      }
+    },
+    "defaultInputBufferMs": {
+      "minimum": 0,
+      "maximum": 1000,
+      "type": "number"
+    },
+    "coyoteTimeMs": {
+      "minimum": 0,
+      "maximum": 500,
+      "type": "number"
+    },
+    "jumpBufferMs": {
+      "minimum": 0,
+      "maximum": 500,
+      "type": "number"
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

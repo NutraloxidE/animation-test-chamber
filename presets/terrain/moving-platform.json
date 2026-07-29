@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "moving-platform",
+  "label": "Moving platform",
+  "features": [
+    {
+      "kind": "plane",
+      "height": -3,
+      "surface": "default"
+    },
+    {
+      "kind": "box",
+      "center": {
+        "x": 0,
+        "y": -0.1,
+        "z": 0
+      },
+      "size": {
+        "x": 6,
+        "y": 0.2,
+        "z": 6
+      },
+      "surface": "default"
+    },
+    {
+      "kind": "moving-platform",
+      "center": {
+        "x": 0,
+        "y": -0.1,
+        "z": 8
+      },
+      "size": {
+        "x": 4,
+        "y": 0.2,
+        "z": 4
+      },
+      "axis": "x",
+      "amplitude": 3,
+      "periodSec": 6,
+      "angularVelocity": 0,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

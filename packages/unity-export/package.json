@@ -1,0 +1,17 @@
+{
+  "name": "@atc/unity-export",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@atc/schema": "workspace:*",
+    "@atc/runtime-core": "workspace:*",
+    "@atc/terrain-runtime": "workspace:*",
+    "@atc/replay-runtime": "workspace:*",
+    "@sinclair/typebox": "^0.34.9"
+  }
+}

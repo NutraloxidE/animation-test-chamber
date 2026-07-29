@@ -1,0 +1,42 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "movement": {
+    "schemaVersion": 1,
+    "id": "demo-movement",
+    "walkSpeed": 1.8,
+    "runSpeed": 5.2,
+    "acceleration": 28,
+    "deceleration": 34,
+    "rotationSpeed": 12,
+    "airControl": 0.35,
+    "jumpHeight": 1.15,
+    "gravity": 18,
+    "coyoteTimeMs": 120,
+    "jumpBufferMs": 140,
+    "stopBehavior": "decelerate",
+    "actionMovementAuthority": 0.25,
+    "momentumRetention": 0.8,
+    "cameraRelative": true,
+    "protection": {
+      "level": "editable",
+      "fields": {
+        "jumpHeight": "locked"
+      },
+      "reason": "jump height confirmed against moving-platform-jump replay",
+      "setBy": "human"
+    }
+  },
+  "rootMotion": {
+    "schemaVersion": 1,
+    "id": "demo-root-motion",
+    "mode": "Hybrid",
+    "horizontalAuthority": 0.35,
+    "verticalAuthority": 0,
+    "rotationAuthority": 0.5,
+    "terrainProjection": true,
+    "physicsAuthority": 0
+  }
+}

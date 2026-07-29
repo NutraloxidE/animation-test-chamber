@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "flat",
+  "label": "Flat",
+  "features": [
+    {
+      "kind": "plane",
+      "height": 0,
+      "surface": "default"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "default",
+      "friction": 1,
+      "accelerationScale": 1,
+      "dragScale": 1
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CandidateAsset",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "state",
+    "provenance",
+    "discoveredClips",
+    "durationSec",
+    "issues",
+    "replacesClipId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "state": {
+      "$id": "AssetState",
+      "anyOf": [
+        {
+          "const": "Imported",
+          "type": "string"
+        },
+        {
+          "const": "Candidate",
+          "type": "string"
+        },
+        {
+          "const": "Retargeted",
+          "type": "string"
+        },
+        {
+          "const": "Validated",
+          "type": "string"
+        },
+        {
+          "const": "HumanAccepted",
+          "type": "string"
+        },
+        {
+          "const": "Registered",
+          "type": "string"
+        },
+        {
+          "const": "Rejected",
+          "type": "string"
+        }
+      ]
+    },
+    "brief": {
+      "$id": "MotionBrief",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "action",
+        "purpose",
+        "style",
+        "minDurationSec",
+        "maxDurationSec",
+        "rootMotionRequired",
+        "loop",
+        "startPose",
+        "endPose",
+        "direction",
+        "weapon",
+        "footContactExpectation",
+        "mirroringAllowed"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "action": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "minDurationSec": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "maxDurationSec": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "rootMotionRequired": {
+          "type": "boolean"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "startPose": {
+          "type": "string"
+        },
+        "endPose": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "weapon": {
+          "type": "string"
+        },
+        "footContactExpectation": {
+          "type": "string"
+        },
+        "mirroringAllowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "provenance": {
+      "$id": "AssetProvenance",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "contentHash",
+        "originalFilename",
+        "originalFormat",
+        "importedAt",
+        "pipeline",
+        "license"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "contentHash": {
+          "minLength": 8,
+          "type": "string"
+        },
+        "originalFilename": {
+          "type": "string"
+        },
+        "originalFormat": {
+          "anyOf": [
+            {
+              "const": "glb",
+              "type": "string"
+            },
+            {
+              "const": "gltf",
+              "type": "string"
+            },
+            {
+              "const": "fbx",
+              "type": "string"
+            },
+            {
+              "const": "bvh",
+              "type": "string"
+            }
+          ]
+        },
+        "importedAt": {
+          "type": "string"
+        },
+        "pipeline": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "license": {
+          "$id": "LicenseManifest",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "provider",
+            "sourceType",
+            "sourceRef",
+            "acquiredBy",
+            "acquiredAt",
+            "commercialUse",
+            "rawAssetRedistribution",
+            "teamSharing",
+            "publicRepository",
+            "attributionRequired",
+            "verificationStatus"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "provider": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "sourceType": {
+              "anyOf": [
+                {
+                  "const": "search",
+                  "type": "string"
+                },
+                {
+                  "const": "generate",
+                  "type": "string"
+                },
+                {
+                  "const": "capture",
+                  "type": "string"
+                },
+                {
+                  "const": "import",
+                  "type": "string"
+                }
+              ]
+            },
+            "sourceRef": {
+              "type": "string"
+            },
+            "acquiredBy": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "acquiredAt": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "commercialUse": {
+              "$id": "LicenseFlag",
+              "anyOf": [
+                {
+                  "const": "allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "forbidden",
+                  "type": "string"
+                },
+                {
+                  "const": "unknown",
+                  "type": "string"
+                }
+              ]
+            },
+            "rawAssetRedistribution": {
+              "$id": "LicenseFlag",
+              "anyOf": [
+                {
+                  "const": "allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "forbidden",
+                  "type": "string"
+                },
+                {
+                  "const": "unknown",
+                  "type": "string"
+                }
+              ]
+            },
+            "teamSharing": {
+              "$id": "LicenseFlag",
+              "anyOf": [
+                {
+                  "const": "allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "forbidden",
+                  "type": "string"
+                },
+                {
+                  "const": "unknown",
+                  "type": "string"
+                }
+              ]
+            },
+            "publicRepository": {
+              "$id": "LicenseFlag",
+              "anyOf": [
+                {
+                  "const": "allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "forbidden",
+                  "type": "string"
+                },
+                {
+                  "const": "unknown",
+                  "type": "string"
+                }
+              ]
+            },
+            "attributionRequired": {
+              "$id": "LicenseFlag",
+              "anyOf": [
+                {
+                  "const": "allowed",
+                  "type": "string"
+                },
+                {
+                  "const": "forbidden",
+                  "type": "string"
+                },
+                {
+                  "const": "unknown",
+                  "type": "string"
+                }
+              ]
+            },
+            "attributionText": {
+              "type": "string"
+            },
+            "verificationStatus": {
+              "anyOf": [
+                {
+                  "const": "unverified",
+                  "type": "string"
+                },
+                {
+                  "const": "human-verified",
+                  "type": "string"
+                }
+              ]
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "discoveredClips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "durationSec": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "replacesClipId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

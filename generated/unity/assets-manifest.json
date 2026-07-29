@@ -1,0 +1,105 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0001",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "character": {
+    "id": "demo-humanoid",
+    "modelAssetPath": null,
+    "skeletonId": "canonical-humanoid"
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "assetPath": null,
+      "proceduralGenerator": "idle",
+      "durationSec": 2,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "walk",
+      "assetPath": null,
+      "proceduralGenerator": "walk",
+      "durationSec": 1,
+      "rootMotionMode": "Hybrid"
+    },
+    {
+      "id": "run",
+      "assetPath": null,
+      "proceduralGenerator": "run",
+      "durationSec": 0.7,
+      "rootMotionMode": "Hybrid"
+    },
+    {
+      "id": "jump",
+      "assetPath": null,
+      "proceduralGenerator": "jump",
+      "durationSec": 0.5,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "fall",
+      "assetPath": null,
+      "proceduralGenerator": "fall",
+      "durationSec": 0.8,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "land",
+      "assetPath": null,
+      "proceduralGenerator": "land",
+      "durationSec": 0.35,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "slide",
+      "assetPath": null,
+      "proceduralGenerator": "slide",
+      "durationSec": 0.6,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "action-none",
+      "assetPath": null,
+      "proceduralGenerator": "action-none",
+      "durationSec": 0.5,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion"
+    },
+    {
+      "id": "attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion"
+    },
+    {
+      "id": "dodge",
+      "assetPath": null,
+      "proceduralGenerator": "dodge",
+      "durationSec": 0.55,
+      "rootMotionMode": "RootMotion"
+    },
+    {
+      "id": "guard",
+      "assetPath": null,
+      "proceduralGenerator": "guard",
+      "durationSec": 0.6,
+      "rootMotionMode": "InPlace"
+    },
+    {
+      "id": "hit",
+      "assetPath": null,
+      "proceduralGenerator": "hit",
+      "durationSec": 0.45,
+      "rootMotionMode": "InPlace"
+    }
+  ],
+  "candidates": []
+}
