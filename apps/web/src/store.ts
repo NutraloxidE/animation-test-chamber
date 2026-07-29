@@ -8,6 +8,7 @@ import type { ReplayTrace } from '@atc/replay-runtime';
 import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
+import { CHARACTER_PRESETS, MOTION_SETS } from './three/catalog.ts';
 import seedProject from '@chamber/project';
 
 export type PanelId =
@@ -37,6 +38,8 @@ interface ChamberState {
   selectedStateId: string;
   activePanel: PanelId;
   terrainPresetId: string;
+  characterPresetId: string;
+  motionSetId: string;
 
   proposals: AdjustmentProposal[];
   aiBusy: boolean;
@@ -74,6 +77,8 @@ interface ChamberActions {
   selectState(id: string): void;
   setPanel(panel: PanelId): void;
   setTerrainPreset(id: string): void;
+  setCharacterPreset(id: string): void;
+  setMotionSet(id: string): void;
   requestProposals(request: string): Promise<void>;
   applyProposal(proposal: AdjustmentProposal, approve: boolean): void;
   buildCompareSlots(): void;
@@ -116,6 +121,8 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     selectedStateId: 'run',
     activePanel: 'inspector',
     terrainPresetId: initialProject.defaultTerrainPresetId,
+    characterPresetId: CHARACTER_PRESETS[0]!.id,
+    motionSetId: MOTION_SETS[0]!.id,
 
     proposals: [],
     aiBusy: false,
@@ -217,6 +224,16 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     setTerrainPreset(id) {
       engine.setTerrainPreset(id);
       set({ terrainPresetId: id });
+    },
+
+    setCharacterPreset(id) {
+      if (!CHARACTER_PRESETS.some((preset) => preset.id === id)) return;
+      set({ characterPresetId: id, statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}` });
+    },
+
+    setMotionSet(id) {
+      if (!MOTION_SETS.some((set) => set.id === id)) return;
+      set({ motionSetId: id, statusMessage: `Motion set: ${MOTION_SETS.find((set) => set.id === id)!.label}` });
     },
 
     async requestProposals(request) {

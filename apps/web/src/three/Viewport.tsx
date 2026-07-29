@@ -7,6 +7,7 @@ import type { ChamberEngine } from '../engine.ts';
 import { Character } from './Character.tsx';
 import { TerrainMesh } from './TerrainMesh.tsx';
 import { DebugOverlays } from './DebugOverlays.tsx';
+import { characterPreset, motionSet } from './catalog.ts';
 
 /** Advances the simulation from render deltas and keeps the camera behind the character. */
 function ChamberLoop({ engine }: { engine: ChamberEngine }) {
@@ -42,6 +43,10 @@ export function Viewport() {
   const terrainPresetId = useChamber((state) => state.terrainPresetId);
   const ghostEnabled = useChamber((state) => state.ghostEnabled);
   const refreshCapability = useChamber((state) => state.refreshCapability);
+  const characterPresetId = useChamber((state) => state.characterPresetId);
+  const motionSetId = useChamber((state) => state.motionSetId);
+  const character = characterPreset(characterPresetId);
+  const motion = motionSet(motionSetId);
 
   useEffect(() => {
     engine.attachInput();
@@ -91,8 +96,8 @@ export function Viewport() {
 
       <ChamberLoop engine={engine} />
       <TerrainMesh key={terrainPresetId} preset={engine.terrainPreset} engine={engine} />
-      <Character engine={engine} />
-      {ghostEnabled && <Character engine={engine} ghost color="#f472b6" />}
+      <Character engine={engine} character={character} motion={motion} />
+      {ghostEnabled && <Character engine={engine} ghost color="#f472b6" motion={motion} />}
       <DebugOverlays engine={engine} />
     </Canvas>
   );

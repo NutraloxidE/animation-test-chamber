@@ -62,6 +62,13 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
+test('character and motion presets can be selected', async ({ page }) => {
+  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+  await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  await page.getByTestId('motion-set-select').selectOption('power');
+  await expect(page.getByTestId('status-bar')).toContainText('Power stride');
+});
+
 test('jump and attack drive the two layers independently', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await page.locator('canvas').click({ position: { x: 200, y: 200 } });

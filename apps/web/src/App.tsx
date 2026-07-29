@@ -13,6 +13,7 @@ import { TerrainPanel } from './panels/TerrainPanel.tsx';
 import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
+import { CHARACTER_PRESETS, MOTION_SETS } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
@@ -120,6 +121,10 @@ export function App() {
   const redo = useChamber((state) => state.redo);
   const exportUnity = useChamber((state) => state.exportUnity);
   const project = useChamber((state) => state.project);
+  const characterPresetId = useChamber((state) => state.characterPresetId);
+  const motionSetId = useChamber((state) => state.motionSetId);
+  const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
+  const setMotionSet = useChamber((state) => state.setMotionSet);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [padAuto] = useState(() => detectTouchDevice());
@@ -160,6 +165,18 @@ export function App() {
 
         {!hideUi && (
           <div className="viewport-controls">
+            <label className="viewport-select">
+              Character
+              <select value={characterPresetId} onChange={(event) => setCharacterPreset(event.target.value)} data-testid="character-select">
+                {CHARACTER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+              </select>
+            </label>
+            <label className="viewport-select">
+              Motion
+              <select value={motionSetId} onChange={(event) => setMotionSet(event.target.value)} data-testid="motion-set-select">
+                {MOTION_SETS.map((set) => <option key={set.id} value={set.id}>{set.label}</option>)}
+              </select>
+            </label>
             <button
               type="button"
               onClick={toggleMouseLookMode}

@@ -706,6 +706,23 @@ textarea {
   background: rgba(11, 17, 32, 0.85);
 }
 
+.viewport-select {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(11, 17, 32, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.viewport-select select {
+  padding: 2px 4px;
+  font-size: 11px;
+}
+
 .restore-ui {
   position: absolute;
   top: 8px;
