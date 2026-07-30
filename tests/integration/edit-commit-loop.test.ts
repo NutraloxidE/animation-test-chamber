@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { EditSession, buildCommitDraft } from '@atc/editor-core';
 import { FakeGitAdapter, GitConflictError, ProtectedBranchError, sessionBranchName } from '@atc/git-adapter';
 import { RuleBasedProvider } from '@atc/ai-adapter';
-import { getAtPath } from '@atc/runtime-core';
+import { analyzeDiff, getAtPath } from '@atc/runtime-core';
 import { buildUnityBundle } from '@atc/unity-export';
 import { REPLAY_FIXTURES, compareTraces, findReplayFixture, runReplay } from '@atc/replay-runtime';
 import { validateProject } from '@atc/schema';
@@ -152,6 +152,21 @@ describe('the full human tuning loop', () => {
     });
     session.stage(BLEND_PATH);
     expect(session.stagedPaths).not.toContain(BLEND_PATH);
+  });
+
+  it('stage all keeps a recovery clip when adding its timing curve', () => {
+    session.setPreviewValue({
+      path: '/clips/attack-01-recovery/timeCurve',
+      value: { x1: 0.42, y1: 0, x2: 0.58, y2: 1 },
+      actor: 'human',
+    });
+    session.stageAll();
+
+    const staged = session.buildStagedDocument();
+    expect(staged.clips.some((clip) => clip.id === 'attack-01-recovery')).toBe(true);
+    expect(analyzeDiff(session.repositoryProject, staged).findings).not.toContainEqual(
+      expect.objectContaining({ rule: 'clip-removed' }),
+    );
   });
 
   it('supports undo, redo and revert', () => {

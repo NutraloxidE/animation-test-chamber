@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "demo-character",
   "displayName": "Demo Character",
-  "revisionId": "rev-0002",
+  "revisionId": "rev-0004",
   "defaultTerrainPresetId": "flat",
   "character": {
     "schemaVersion": 1,
@@ -498,8 +498,13 @@
         "right": []
       },
       "provenance": {
-        "source": "human-adjustment",
-        "humanFinal": 0.11
+        "source": "human-adjustment"
+      },
+      "timeCurve": {
+        "x1": 0.15683372667100695,
+        "y1": 0.43474999999999997,
+        "x2": 0.75,
+        "y2": 0.75
       }
     },
     {
@@ -625,7 +630,15 @@
       },
       "provenance": {
         "source": "human-adjustment",
-        "humanFinal": 0.62
+        "replayId": "run-to-attack-forward",
+        "terrainPresetId": "flat",
+        "intent": "Adjust motion timing"
+      },
+      "timeCurve": {
+        "x1": 0.2406111111111111,
+        "y1": 0.3670833333333333,
+        "x2": 0.4887222222222222,
+        "y2": 0.6860833333333334
       }
     },
     {
@@ -2129,6 +2142,47 @@
       "provenance": {
         "source": "human-adjustment",
         "at": "2026-07-30T11:02:37.474Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0003",
+      "parentId": "rev-0002",
+      "createdAt": "2026-07-30T11:40:32.097Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 5 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/attack-01-recovery/provenance/humanFinal",
+        "/clips/attack-01-recovery/timeCurve/x1",
+        "/clips/attack-01-recovery/timeCurve/x2",
+        "/clips/attack-01-recovery/timeCurve/y1",
+        "/clips/attack-01-recovery/timeCurve/y2"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T11:40:32.097Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0004",
+      "parentId": "rev-0003",
+      "createdAt": "2026-07-30T11:42:17.292Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 8 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/dodge/provenance/humanFinal",
+        "/clips/dodge/provenance/intent",
+        "/clips/dodge/provenance/replayId",
+        "/clips/dodge/provenance/terrainPresetId",
+        "/clips/dodge/timeCurve/x1",
+        "/clips/dodge/timeCurve/x2",
+        "/clips/dodge/timeCurve/y1",
+        "/clips/dodge/timeCurve/y2"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T11:42:17.292Z"
       }
     }
   ],

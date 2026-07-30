@@ -2,6 +2,7 @@ import type { ProjectDefinition, ValidationResult, ValueProvenance } from '@atc/
 import { validateProject, validateProjectReferences } from '@atc/schema';
 import {
   analyzeDiff,
+  ancestorPaths,
   evaluateEdit,
   getAtPath,
   setAtPath,
@@ -255,7 +256,16 @@ export class EditSession {
     this.staged.clear();
     this.stagedValues.clear();
     this.stagedProvenance.clear();
-    for (const change of this.diff().changes) this.stage(change.path);
+    const paths = new Set<CanonicalPath>();
+    for (const change of this.diff().changes) {
+      let stagePath = change.path;
+      for (const ancestor of ancestorPaths(change.path)) {
+        if (getAtPath(this.repository, ancestor) !== undefined) break;
+        stagePath = ancestor;
+      }
+      paths.add(stagePath);
+    }
+    for (const path of paths) this.stage(path);
   }
 
   /** Raw and classified differences between repository and preview. */

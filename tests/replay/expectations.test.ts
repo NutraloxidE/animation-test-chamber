@@ -105,6 +105,37 @@ describe('attack-01-to-attack-02', () => {
     expect(attackTicks.at(-1)!.position.z).toBeCloseTo(0, 5);
   });
 
+  it('holds attack facing until the next-input window opens', () => {
+    const replay = findReplayFixture('attack-01-to-attack-02');
+    const turnDuringAttack = {
+      ...replay,
+      tickCount: 60,
+      frames: replay.frames.slice(0, 2).map((frame) => ({
+        ...frame,
+        moveX: 1,
+      })),
+    };
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset(replay.terrainPresetId),
+      seed: replay.seed,
+      initialPosition: replay.initialPosition,
+      initialYawRad: replay.initialYawRad,
+      cameraYawRad: replay.cameraYawRad,
+    });
+    const attackTicks = Array.from({ length: turnDuringAttack.tickCount }, (_, tick) =>
+      simulation.step(frameAt(turnDuringAttack, tick)),
+    ).filter((tick) => tick.actionState === 'attack-01');
+    const inputStart = project.clips.find((clip) => clip.id === 'attack-01')!.inputAcceptanceStartNormalized!;
+
+    expect(
+      attackTicks
+        .filter((tick) => tick.actionNormalizedTime < inputStart)
+        .every((tick) => tick.yawRad === replay.initialYawRad),
+    ).toBe(true);
+    expect(attackTicks.find((tick) => tick.actionNormalizedTime >= inputStart)?.yawRad).not.toBe(replay.initialYawRad);
+  });
+
   it('uses only authored movement for the sword attack', () => {
     const withoutInput = runSingleAttack(true);
     const { attackTicks } = runSingleAttack(true, 1);

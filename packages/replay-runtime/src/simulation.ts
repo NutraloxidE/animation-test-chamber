@@ -404,7 +404,10 @@ export class Simulation {
 
     // Facing follows the intended direction, not the current velocity, so the
     // character turns crisply even while sliding.
-    if (magnitude > 0.01) {
+    const acceptsFacingInput =
+      !actionIsAttack ||
+      action.normalizedTime >= (actionClip?.inputAcceptanceStartNormalized ?? 0);
+    if (magnitude > 0.01 && acceptsFacingInput) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
       const authority = actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
       this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
