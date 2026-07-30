@@ -63,6 +63,23 @@ export const WEAPON_MODES: WeaponMode[] = [
       'attack-02-recovery': 'Sword_Regular_B_Rec',
     },
   },
+  {
+    id: 'magic',
+    // The Spell_Simple clips cast from the left hand and leave the right hand
+    // open, so this mode holds nothing.
+    label: 'Magic, unarmed (CC0)',
+    rigId: 'quaternius-universal',
+    animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
+    animationPositionScale: 100,
+    clipMap: {
+      idle: 'Rig|Spell_Simple_Idle_Loop',
+      guard: 'Rig|Spell_Simple_Idle_Loop',
+      'attack-01': 'Rig|Spell_Simple_Shoot',
+      'attack-01-recovery': 'Rig|Spell_Simple_Exit',
+      'attack-02': 'Rig|Spell_Simple_Enter',
+      'attack-02-recovery': 'Rig|Spell_Simple_Exit',
+    },
+  },
 ];
 
 export const characterPreset = (id: string): CharacterPreset =>
