@@ -2,6 +2,7 @@ import type { AnimationClipDefinition, ButtonAction, ProjectDefinition, Semantic
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
   AnimationGraphRuntime,
+  resolveWeaponMode,
   DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
   dodgeRecoveryBlendWeight,
   isFootPlanted,
@@ -90,6 +91,9 @@ export class Simulation {
   private readonly footIkState = createFootIkState();
   private readonly random: () => number;
 
+  /** Canonical document as authored, weapon overrides still folded in. */
+  private baseProject: ProjectDefinition;
+  /** `baseProject` resolved for the active weapon mode. Everything reads this. */
   private project: ProjectDefinition;
   private terrain: TerrainPreset;
 
@@ -116,18 +120,19 @@ export class Simulation {
   private queuedJumpGraceTicks = 0;
 
   constructor(init: SimulationInit) {
-    this.project = init.project;
+    this.baseProject = init.project;
+    this.weaponModeId = init.weaponModeId ?? 'unarmed';
+    this.project = resolveWeaponMode(this.baseProject, this.weaponModeId);
     this.terrain = init.terrain;
     this.position = { ...init.initialPosition };
     this.yawRad = init.initialYawRad;
     this.cameraYawRad = init.cameraYawRad;
     this.upperBodyActionRootMotionEnabled = init.upperBodyActionRootMotionEnabled ?? false;
     this.actionRootMotionTracks = init.actionRootMotionTracks ?? {};
-    this.weaponModeId = init.weaponModeId ?? 'unarmed';
     this.random = createRandom(init.seed);
 
-    this.graph = new AnimationGraphRuntime(init.project.graph, init.project.clips);
-    this.input = new InputState(init.project.inputMap);
+    this.graph = new AnimationGraphRuntime(this.project.graph, this.project.clips);
+    this.input = new InputState(this.project.inputMap);
     this.lastTerrain = resolveTerrain(this.terrain, this.project.terrain, {
       position: this.position,
       yawRad: this.yawRad,
@@ -143,9 +148,15 @@ export class Simulation {
    * drag shows up in the running preview without resetting the character.
    */
   updateProject(project: ProjectDefinition): void {
-    this.project = project;
-    this.graph.updateGraph(project.graph, project.clips);
-    this.input.setInputMap(project.inputMap);
+    this.baseProject = project;
+    this.applyWeaponMode();
+  }
+
+  /** Re-resolves the document for the active weapon and hot-swaps it in. */
+  private applyWeaponMode(): void {
+    this.project = resolveWeaponMode(this.baseProject, this.weaponModeId);
+    this.graph.updateGraph(this.project.graph, this.project.clips);
+    this.input.setInputMap(this.project.inputMap);
   }
 
   setTerrain(terrain: TerrainPreset): void {
@@ -166,6 +177,7 @@ export class Simulation {
 
   setWeaponModeId(id: string): void {
     this.weaponModeId = id;
+    this.applyWeaponMode();
   }
 
   get state(): SimulationState {

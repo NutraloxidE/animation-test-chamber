@@ -229,12 +229,12 @@ describe('candidate lifecycle', () => {
     const protectedProject = {
       ...withCandidate,
       clips: withCandidate.clips.map((clip) =>
-        clip.id === 'attack-01'
+        clip.id === 'unarmed-attack-01'
           ? { ...clip, protection: { level: 'locked' as const, reason: 'signed off' } }
           : clip,
       ),
       candidates: [
-        { ...candidate, state: 'HumanAccepted' as const, issues: [], replacesClipId: 'attack-01' },
+        { ...candidate, state: 'HumanAccepted' as const, issues: [], replacesClipId: 'unarmed-attack-01' },
       ],
     };
     const result = promoteCandidate(protectedProject, candidate.id, 'Registered', 'human');

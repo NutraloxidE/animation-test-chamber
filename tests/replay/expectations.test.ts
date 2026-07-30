@@ -126,7 +126,7 @@ describe('attack-01-to-attack-02', () => {
     const attackTicks = Array.from({ length: turnDuringAttack.tickCount }, (_, tick) =>
       simulation.step(frameAt(turnDuringAttack, tick)),
     ).filter((tick) => tick.actionState === 'attack-01');
-    const inputStart = project.clips.find((clip) => clip.id === 'attack-01')!.inputAcceptanceStartNormalized!;
+    const inputStart = project.clips.find((clip) => clip.id === 'unarmed-attack-01')!.inputAcceptanceStartNormalized!;
 
     expect(
       attackTicks
@@ -155,7 +155,7 @@ describe('attack-01-to-attack-02', () => {
     const baseline = runSingleAttack(true);
     const adjustedProject = setAtPath(
       project,
-      '/clips/attack-01/rootDisplacement/z',
+      '/clips/unarmed-attack-01/rootDisplacement/z',
       0.2,
     );
     const adjusted = runSingleAttack(true, 0, adjustedProject);
@@ -429,7 +429,7 @@ describe('regression detection', () => {
     const replay = findReplayFixture('attack-01-to-attack-02');
     const edited = setAtPath(
       project,
-      '/clips/attack-01/inputAcceptanceStartNormalized',
+      '/clips/unarmed-attack-01/inputAcceptanceStartNormalized',
       0.75,
     );
     const trace = runReplay(edited, replay);

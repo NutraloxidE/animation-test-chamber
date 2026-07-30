@@ -159,6 +159,18 @@ export const TransitionCondition = Type.Object(
 );
 export type TransitionCondition = Static<typeof TransitionCondition>;
 
+/** Per-weapon-mode overrides for the timing of a single transition. */
+export const TransitionWeaponOverride = Type.Object(
+  {
+    blendDurationSec: Type.Optional(Type.Number({ minimum: 0, maximum: 2 })),
+    exitTimeNormalized: Type.Optional(NormalizedTime),
+    inputBufferMs: Type.Optional(Type.Number({ minimum: 0, maximum: 1000 })),
+    cancelWindow: Type.Optional(NormalizedWindow),
+  },
+  { $id: 'TransitionWeaponOverride', additionalProperties: false },
+);
+export type TransitionWeaponOverride = Static<typeof TransitionWeaponOverride>;
+
 export const TransitionDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -188,6 +200,8 @@ export const TransitionDefinition = Type.Object(
      */
     cancelWindow: Type.Optional(NormalizedWindow),
     priority: Type.Integer({ minimum: 0, maximum: 1000 }),
+    /** Keyed by weapon mode id; applied over the base fields when that mode is active. */
+    weaponOverrides: Type.Optional(Type.Record(Type.String(), TransitionWeaponOverride)),
     rootMotionMode: Type.Optional(RootMotionMode),
     protection: Type.Optional(ProtectionMetadata),
     provenance: Type.Optional(ValueProvenance),
@@ -201,6 +215,13 @@ export const StateDefinition = Type.Object(
     schemaVersion: SchemaVersion,
     id: Id,
     clipId: Id,
+    /**
+     * Clip to play instead of `clipId`, keyed by weapon mode id. A swing belongs
+     * to the weapon, the state machine does not: one `attack-01` state keeps the
+     * combo structure shared while each weapon owns its own timing, displacement
+     * and events. `clipId` is the fallback for a mode with no entry here.
+     */
+    weaponClips: Type.Optional(Type.Record(Type.String(), Id)),
     layer: Type.Union([Type.Literal('locomotion'), Type.Literal('action')]),
     loop: Type.Boolean(),
     speed: Type.Number({ minimum: 0.05, maximum: 4 }),

@@ -168,6 +168,54 @@
       "maximum": 1000,
       "type": "integer"
     },
+    "weaponOverrides": {
+      "type": "object",
+      "patternProperties": {
+        "^(.*)$": {
+          "$id": "TransitionWeaponOverride",
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "blendDurationSec": {
+              "minimum": 0,
+              "maximum": 2,
+              "type": "number"
+            },
+            "exitTimeNormalized": {
+              "minimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            "inputBufferMs": {
+              "minimum": 0,
+              "maximum": 1000,
+              "type": "number"
+            },
+            "cancelWindow": {
+              "$id": "NormalizedWindow",
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "start",
+                "end"
+              ],
+              "properties": {
+                "start": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                },
+                "end": {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "rootMotionMode": {
       "$id": "RootMotionMode",
       "anyOf": [

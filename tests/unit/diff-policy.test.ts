@@ -79,7 +79,7 @@ describe('diff policy', () => {
 
   it('does not report a clip removal when only an optional clip field is removed', () => {
     const edited = structuredClone(project);
-    const recovery = edited.clips.find((clip) => clip.id === 'attack-01-recovery')!;
+    const recovery = edited.clips.find((clip) => clip.id === 'unarmed-attack-01-recovery')!;
     delete recovery.provenance?.humanFinal;
 
     const report = analyzeDiff(project, edited);
@@ -90,7 +90,7 @@ describe('diff policy', () => {
   it('still blocks deleting an entire clip', () => {
     const edited = {
       ...project,
-      clips: project.clips.filter((clip) => clip.id !== 'attack-01-recovery'),
+      clips: project.clips.filter((clip) => clip.id !== 'unarmed-attack-01-recovery'),
     };
     const report = analyzeDiff(project, edited);
     expect(report.findings.some((finding) => finding.rule === 'clip-removed')).toBe(true);

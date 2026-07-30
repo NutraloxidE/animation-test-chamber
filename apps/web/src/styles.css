@@ -143,6 +143,7 @@ body {
 button,
 select,
 input[type="text"],
+input[type="search"],
 input[type="file"],
 textarea {
   font: inherit;
@@ -1156,6 +1157,17 @@ textarea {
 
 .blend-list .field {
   padding: 4px 0;
+}
+
+.blend-filter {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.blend-filter input {
+  flex: 1;
+  min-width: 0;
 }
 
 /* The row a layer is currently living in is bright; when the graph moves on it

@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { create, type StateCreator } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CapabilityProfile, ProjectDefinition, ReplayDefinition } from '@atc/schema';
+import { resolveWeaponMode } from '@atc/animation-runtime';
 import { EditSession } from '@atc/editor-core';
 import type { DiffReport } from '@atc/runtime-core';
 import { setAtPath } from '@atc/runtime-core';
@@ -724,3 +726,15 @@ export const useChamber = create<ChamberState & ChamberActions>()(
     },
   }),
 );
+
+/**
+ * The document as the active weapon sees it: its own attack clips, its own
+ * transition timing, and none of the other weapons' clips. Panels edit through
+ * canonical paths, and those paths already name the weapon-specific clip, so
+ * editing this view writes exactly the weapon you are looking at.
+ */
+export function useWeaponProject(): ProjectDefinition {
+  const project = useChamber((state) => state.project);
+  const weaponModeId = useChamber((state) => state.weaponModeId);
+  return useMemo(() => resolveWeaponMode(project, weaponModeId), [project, weaponModeId]);
+}

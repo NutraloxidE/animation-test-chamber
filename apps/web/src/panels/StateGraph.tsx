@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { dodgeRecoveryBlendWeight } from '@atc/animation-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber, useWeaponProject } from '../store.ts';
 
 interface GraphWarning {
   kind: 'unreachable' | 'conflict' | 'self-loop';
@@ -13,7 +13,7 @@ interface GraphWarning {
  * conflicting transitions and self-loops.
  */
 export function StateGraph() {
-  const project = useChamber((state) => state.project);
+  const project = useWeaponProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const selectTransition = useChamber((state) => state.selectTransition);

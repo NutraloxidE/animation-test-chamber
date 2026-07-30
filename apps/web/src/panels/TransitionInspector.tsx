@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useChamber } from '../store.ts';
+import type { TransitionDefinition } from '@atc/schema';
+import { useChamber, useWeaponProject } from '../store.ts';
 import { Field, ToggleField } from './Field.tsx';
 
 type TimeUnit = 'seconds' | 'frames30' | 'frames60';
@@ -36,15 +37,51 @@ function ActionPlayback({
 }
 
 /**
+ * Attack clips are named per weapon (`sword-attack-01`), so the swing is matched
+ * on the attack part rather than on the start of the id.
+ */
+const isAttackClip = (clipId: string): boolean => /attack-\d/.test(clipId);
+
+type BlendSort = 'graph' | 'duration' | 'name';
+
+const transitionLabel = (transition: TransitionDefinition): string =>
+  `${transition.from} → ${transition.to}`;
+
+/**
+ * Filters and orders the blend list. Authored order is the default because it
+ * is how the graph reads; sorting by duration is what finds the one transition
+ * that is slower than everything around it.
+ */
+export function blendRows(
+  transitions: TransitionDefinition[],
+  query: string,
+  sort: BlendSort,
+): TransitionDefinition[] {
+  const needle = query.trim().toLowerCase();
+  const rows = transitions.filter((entry) =>
+    `${entry.id} ${entry.from} ${entry.to}`.toLowerCase().includes(needle),
+  );
+  if (sort === 'duration') {
+    return [...rows].sort((a, b) => b.blendDurationSec - a.blendDurationSec);
+  }
+  if (sort === 'name') {
+    return [...rows].sort((a, b) => transitionLabel(a).localeCompare(transitionLabel(b)));
+  }
+  return rows;
+}
+
+/**
  * Transition Inspector (PLAN 8.2). Every value here is written straight into the
  * preview document, so a drag is visible in the running character immediately.
  */
 export function TransitionInspector() {
-  const project = useChamber((state) => state.project);
+  const project = useWeaponProject();
   const selectedId = useChamber((state) => state.selectedTransitionId);
   const selectTransition = useChamber((state) => state.selectTransition);
   const engine = useChamber((state) => state.engine);
   const [unit, setUnit] = useState<TimeUnit>('seconds');
+  const [blendQuery, setBlendQuery] = useState('');
+  const [blendSort, setBlendSort] = useState<BlendSort>('graph');
   const [selectedClipId, setSelectedClipId] = useState(
     project.clips.some((clip) => clip.id === 'dodge') ? 'dodge' : project.clips[0]?.id ?? '',
   );
@@ -99,6 +136,8 @@ export function TransitionInspector() {
     [engine],
   );
 
+  const matchingBlends = blendRows(project.graph.transitions, blendQuery, blendSort);
+
   const layerOf = (stateId: string): string =>
     project.graph.states.find((state) => state.id === stateId)?.layer ?? 'locomotion';
 
@@ -142,11 +181,37 @@ export function TransitionInspector() {
         sliders are the same Field, so protection, reset and staging still apply.
       */}
       <details className="blend-list" data-testid="blend-list">
-        <summary>All blend durations ({project.graph.transitions.length})</summary>
+        <summary>
+          All blend durations ({matchingBlends.length}
+          {matchingBlends.length === project.graph.transitions.length
+            ? ''
+            : ` of ${project.graph.transitions.length}`}
+          )
+        </summary>
+        <div className="blend-filter">
+          <input
+            type="search"
+            value={blendQuery}
+            onChange={(event) => setBlendQuery(event.target.value)}
+            placeholder="Filter by state or id"
+            aria-label="Filter blend durations"
+            data-testid="blend-filter"
+          />
+          <select
+            value={blendSort}
+            onChange={(event) => setBlendSort(event.target.value as BlendSort)}
+            aria-label="Sort blend durations"
+            data-testid="blend-sort"
+          >
+            <option value="graph">graph order</option>
+            <option value="duration">longest first</option>
+            <option value="name">name</option>
+          </select>
+        </div>
         {(['action', 'locomotion'] as const).map((layer) => (
           <section key={layer}>
             <h3>{layer}</h3>
-            {project.graph.transitions
+            {matchingBlends
               .filter((entry) => layerOf(entry.to) === layer)
               .map((entry) => (
                 <div
@@ -218,15 +283,15 @@ export function TransitionInspector() {
           <Field
             path={`/clips/${selectedClip.id}/rootDisplacement/z`}
             label={
-              selectedClip.id.startsWith('attack-')
+              isAttackClip(selectedClip.id)
                 ? 'Forward displacement adjustment'
                 : 'Forward displacement'
             }
             min={-2}
-            max={selectedClip.id.startsWith('attack-') ? 2 : 10}
-            step={selectedClip.id.startsWith('attack-') ? 0.05 : 0.1}
+            max={isAttackClip(selectedClip.id) ? 2 : 10}
+            step={isAttackClip(selectedClip.id) ? 0.05 : 0.1}
             format={(value) =>
-              selectedClip.id.startsWith('attack-')
+              isAttackClip(selectedClip.id)
                 ? `${value >= 0 ? '+' : ''}${value.toFixed(2)} m`
                 : `${value.toFixed(1)} m`
             }

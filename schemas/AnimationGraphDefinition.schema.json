@@ -119,6 +119,17 @@
             "maxLength": 96,
             "type": "string"
           },
+          "weaponClips": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
           "layer": {
             "anyOf": [
               {
@@ -411,6 +422,54 @@
             "minimum": 0,
             "maximum": 1000,
             "type": "integer"
+          },
+          "weaponOverrides": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "$id": "TransitionWeaponOverride",
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "blendDurationSec": {
+                    "minimum": 0,
+                    "maximum": 2,
+                    "type": "number"
+                  },
+                  "exitTimeNormalized": {
+                    "minimum": 0,
+                    "maximum": 1,
+                    "type": "number"
+                  },
+                  "inputBufferMs": {
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "type": "number"
+                  },
+                  "cancelWindow": {
+                    "$id": "NormalizedWindow",
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "properties": {
+                      "start": {
+                        "minimum": 0,
+                        "maximum": 1,
+                        "type": "number"
+                      },
+                      "end": {
+                        "minimum": 0,
+                        "maximum": 1,
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "rootMotionMode": {
             "$id": "RootMotionMode",

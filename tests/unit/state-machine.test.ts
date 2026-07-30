@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import {
   AnimationGraphRuntime,
   dodgeRecoveryBlendWeight,
+  resolveWeaponMode,
   type ParameterSource,
 } from '@atc/animation-runtime';
 import { FIXED_DT } from '@atc/runtime-core';
@@ -304,5 +305,57 @@ describe('live graph updates', () => {
 
     graph.updateGraph(edited.graph, edited.clips);
     expect(graph.getLayer('locomotion').stateId).toBe(stateBefore);
+  });
+});
+
+describe('weapon modes', () => {
+  it('binds each attack state to its own weapon clip and hides the others', () => {
+    const magic = resolveWeaponMode(project, 'magic');
+    const sword = resolveWeaponMode(project, 'sword');
+
+    expect(magic.graph.states.find((state) => state.id === 'attack-01')!.clipId).toBe(
+      'magic-attack-01',
+    );
+    expect(sword.graph.states.find((state) => state.id === 'attack-01')!.clipId).toBe(
+      'sword-attack-01',
+    );
+    // Only the active weapon's clips are visible, so a panel listing clips lists
+    // exactly what this mode can play.
+    expect(magic.clips.map((clip) => clip.id)).toContain('magic-attack-01');
+    expect(magic.clips.map((clip) => clip.id)).not.toContain('sword-attack-01');
+    // Shared, non-weapon clips survive for every mode.
+    expect(magic.clips.map((clip) => clip.id)).toContain('dodge');
+  });
+
+  it('leaves the combo structure shared and per-weapon timing separate', () => {
+    const magicClip = resolveWeaponMode(project, 'magic').clips.find(
+      (clip) => clip.id === 'magic-attack-01',
+    )!;
+    const swordClip = resolveWeaponMode(project, 'sword').clips.find(
+      (clip) => clip.id === 'sword-attack-01',
+    )!;
+    // A cast does not lunge; a sword swing does.
+    expect(magicClip.rootDisplacement.z).toBe(0);
+    expect(swordClip.rootDisplacement.z).toBeGreaterThan(0);
+
+    const comboOf = (weapon: string) =>
+      resolveWeaponMode(project, weapon).graph.transitions.find(
+        (t) => t.id === 'attack-01-to-attack-02',
+      )!;
+    expect(comboOf('magic').to).toBe(comboOf('sword').to);
+  });
+
+  it('applies a transition timing override for one weapon only', () => {
+    const edited = structuredClone(project);
+    const combo = edited.graph.transitions.find((t) => t.id === 'attack-01-to-attack-02')!;
+    const shared = combo.cancelWindow;
+    combo.weaponOverrides = { magic: { cancelWindow: { start: 0.5, end: 0.9 } } };
+
+    const windowOf = (weapon: string) =>
+      resolveWeaponMode(edited, weapon).graph.transitions.find(
+        (t) => t.id === 'attack-01-to-attack-02',
+      )!.cancelWindow;
+    expect(windowOf('magic')).toEqual({ start: 0.5, end: 0.9 });
+    expect(windowOf('sword')).toEqual(shared);
   });
 });

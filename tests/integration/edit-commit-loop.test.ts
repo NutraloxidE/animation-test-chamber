@@ -156,14 +156,14 @@ describe('the full human tuning loop', () => {
 
   it('stage all keeps a recovery clip when adding its timing curve', () => {
     session.setPreviewValue({
-      path: '/clips/attack-01-recovery/timeCurve',
+      path: '/clips/unarmed-attack-01-recovery/timeCurve',
       value: { x1: 0.42, y1: 0, x2: 0.58, y2: 1 },
       actor: 'human',
     });
     session.stageAll();
 
     const staged = session.buildStagedDocument();
-    expect(staged.clips.some((clip) => clip.id === 'attack-01-recovery')).toBe(true);
+    expect(staged.clips.some((clip) => clip.id === 'unarmed-attack-01-recovery')).toBe(true);
     expect(analyzeDiff(session.repositoryProject, staged).findings).not.toContainEqual(
       expect.objectContaining({ rule: 'clip-removed' }),
     );

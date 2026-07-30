@@ -123,7 +123,7 @@
       {
         "schemaVersion": 1,
         "id": "attack-01",
-        "clipId": "attack-01",
+        "clipId": "unarmed-attack-01",
         "layer": "action",
         "loop": false,
         "speed": 1,
@@ -131,12 +131,17 @@
         "allowReEntry": false,
         "interruptible": false,
         "bodyMask": "upper",
-        "fallbackState": "action-none"
+        "fallbackState": "action-none",
+        "weaponClips": {
+          "unarmed": "unarmed-attack-01",
+          "sword": "sword-attack-01",
+          "magic": "magic-attack-01"
+        }
       },
       {
         "schemaVersion": 1,
         "id": "attack-01-recovery",
-        "clipId": "attack-01-recovery",
+        "clipId": "unarmed-attack-01-recovery",
         "layer": "action",
         "loop": false,
         "speed": 1,
@@ -144,12 +149,17 @@
         "allowReEntry": false,
         "interruptible": false,
         "bodyMask": "upper",
-        "fallbackState": "action-none"
+        "fallbackState": "action-none",
+        "weaponClips": {
+          "unarmed": "unarmed-attack-01-recovery",
+          "sword": "sword-attack-01-recovery",
+          "magic": "magic-attack-01-recovery"
+        }
       },
       {
         "schemaVersion": 1,
         "id": "attack-02",
-        "clipId": "attack-02",
+        "clipId": "unarmed-attack-02",
         "layer": "action",
         "loop": false,
         "speed": 1,
@@ -157,12 +167,17 @@
         "allowReEntry": false,
         "interruptible": false,
         "bodyMask": "upper",
-        "fallbackState": "action-none"
+        "fallbackState": "action-none",
+        "weaponClips": {
+          "unarmed": "unarmed-attack-02",
+          "sword": "sword-attack-02",
+          "magic": "magic-attack-02"
+        }
       },
       {
         "schemaVersion": 1,
         "id": "attack-02-recovery",
-        "clipId": "attack-02-recovery",
+        "clipId": "unarmed-attack-02-recovery",
         "layer": "action",
         "loop": false,
         "speed": 1,
@@ -170,7 +185,12 @@
         "allowReEntry": false,
         "interruptible": false,
         "bodyMask": "upper",
-        "fallbackState": "action-none"
+        "fallbackState": "action-none",
+        "weaponClips": {
+          "unarmed": "unarmed-attack-02-recovery",
+          "sword": "sword-attack-02-recovery",
+          "magic": "magic-attack-02-recovery"
+        }
       },
       {
         "schemaVersion": 1,

@@ -107,7 +107,13 @@ export function validateProjectReferences(project: unknown): ValidationResult {
   const p = project as {
     clips?: { id: string }[];
     graph?: {
-      states?: { id: string; clipId: string; layer: string; fallbackState?: string }[];
+      states?: {
+        id: string;
+        clipId: string;
+        weaponClips?: Record<string, string>;
+        layer: string;
+        fallbackState?: string;
+      }[];
       transitions?: { id: string; from: string; to: string }[];
       layers?: { id: string; defaultState: string }[];
     };
@@ -135,6 +141,15 @@ export function validateProjectReferences(project: unknown): ValidationResult {
         message: `references unknown clip "${state.clipId}"`,
         keyword: 'reference',
       });
+    }
+    for (const [weaponModeId, clipId] of Object.entries(state.weaponClips ?? {})) {
+      if (!clipIds.has(clipId)) {
+        issues.push({
+          path: `/graph/states/${state.id}/weaponClips/${weaponModeId}`,
+          message: `references unknown clip "${clipId}"`,
+          keyword: 'reference',
+        });
+      }
     }
     if (state.fallbackState && !stateIds.has(state.fallbackState)) {
       issues.push({

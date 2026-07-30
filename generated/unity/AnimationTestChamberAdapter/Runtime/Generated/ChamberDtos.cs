@@ -248,6 +248,8 @@ namespace AnimationTestChamber.Generated
         public int schemaVersion;
         public string id;
         public string clipId;
+        // optional
+        public string weaponClips;
         public string /* locomotion | action */ layer;
         public bool loop;
         public float speed;
@@ -282,6 +284,8 @@ namespace AnimationTestChamber.Generated
         // optional
         public NormalizedWindow cancelWindow;
         public int priority;
+        // optional
+        public string weaponOverrides;
         // optional
         public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
         // optional

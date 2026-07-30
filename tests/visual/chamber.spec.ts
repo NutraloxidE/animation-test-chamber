@@ -123,6 +123,26 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   await expect(page.getByTestId('blend-attack-01-recovery-to-none')).toBeVisible();
   await expect(page.getByTestId('blend-attack-02-to-recovery')).toBeVisible();
   await expect(page.getByTestId('blend-attack-02-recovery-to-none')).toBeVisible();
+
+  // Filtering and sorting the blend list: comparing blends against each other is
+  // the point of the list, and it is too long to do that by eye unsorted.
+  await page.getByTestId('blend-filter').fill('dodge');
+  await expect(page.getByTestId('blend-attack-01-to-dodge')).toBeVisible();
+  await expect(page.getByTestId('blend-attack-01-to-recovery')).toHaveCount(0);
+  await expect(page.getByTestId('blend-list').locator('summary')).toContainText('of');
+
+  await page.getByTestId('blend-filter').fill('');
+  await page.getByTestId('blend-sort').selectOption('duration');
+  // Sorting is per layer section, so compare inside one of them.
+  const durations = await page
+    .getByTestId('blend-list')
+    .locator('section')
+    .first()
+    .locator('.blend-row output')
+    .allInnerTexts();
+  const values = durations.map((text) => Number.parseFloat(text));
+  expect(values.length).toBeGreaterThan(1);
+  expect([...values].sort((a, b) => b - a)).toEqual(values);
 });
 
 test('editing a transition updates the preview and the diff', async ({ page }) => {
@@ -145,23 +165,23 @@ test('editing a transition updates the preview and the diff', async ({ page }) =
 
 test('repeated clip tuning is exposed through the Inspector edit loop', async ({ page }) => {
   await openPanel(page, 'inspector');
-  await page.getByTestId('clip-select').selectOption('attack-01');
-  await expect(page.getByTestId('field-/clips/attack-01/rootDisplacement/z')).toContainText(
+  await page.getByTestId('clip-select').selectOption('unarmed-attack-01');
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText(
     'Forward displacement adjustment',
   );
-  await expect(page.getByTestId('field-/clips/attack-01/rootDisplacement/z')).toContainText('+0.00 m');
-  await expect(page.getByTestId('field-/clips/attack-01/inputAcceptanceStartNormalized')).toContainText('20%');
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText('+0.00 m');
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/inputAcceptanceStartNormalized')).toContainText('20%');
   await page.getByTestId('action-input-list').click();
-  await expect(page.getByTestId('action-input-attack-01')).toBeVisible();
-  await expect(page.getByTestId('action-input-attack-01-recovery')).toContainText('85%');
+  await expect(page.getByTestId('action-input-unarmed-attack-01')).toBeVisible();
+  await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('85%');
 
   await openPanel(page, 'replay');
   await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
   await openPanel(page, 'inspector');
-  await page.getByTestId('clip-select').selectOption('attack-01');
+  await page.getByTestId('clip-select').selectOption('unarmed-attack-01');
   await page.getByTestId('action-input-list').click();
-  const liveAttack = page.getByTestId('action-input-attack-01').locator('..');
+  const liveAttack = page.getByTestId('action-input-unarmed-attack-01').locator('..');
   await expect(liveAttack).toHaveClass(/blend-row--live/);
   await expect(liveAttack).toContainText('PLAYING');
   await expect(page.getByTestId('selected-action-playback')).toContainText('PLAYING');

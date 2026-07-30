@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HapticPlayer } from '@atc/haptics-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber, useWeaponProject } from '../store.ts';
 
 const TRACKS = [
   'Animation',
@@ -36,7 +36,7 @@ const EVENT_COLORS: Record<string, string> = {
  * time, which is what keeps a hit, its sound cue and its rumble in sync.
  */
 export function Timeline() {
-  const project = useChamber((state) => state.project);
+  const project = useWeaponProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectedTransitionId = useChamber((state) => state.selectedTransitionId);
   const engine = useChamber((state) => state.engine);

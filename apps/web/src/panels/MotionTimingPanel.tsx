@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
 import { applyClipTimeCurve } from '@atc/animation-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber, useWeaponProject } from '../store.ts';
 
 const LINEAR: ClipTimeCurve = { x1: 0.25, y1: 0.25, x2: 0.75, y2: 0.75 };
 const PRESETS: { label: string; curve: ClipTimeCurve }[] = [
@@ -149,7 +149,7 @@ function CurveEditor({
 }
 
 export function MotionTimingPanel() {
-  const project = useChamber((state) => state.project);
+  const project = useWeaponProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const setPreviewValue = useChamber((state) => state.setPreviewValue);

@@ -390,7 +390,11 @@ export class AnimationGraphRuntime {
 
     // State timeout and clip completion both fall through to the fallback state.
     const timedOut = state.timeoutSec > 0 && layer.timeSec >= state.timeoutSec;
-    const finished = clip.id.startsWith('attack-')
+    // An attack falls through one tick late, so its final frame is rendered
+    // rather than swallowed by the fallback. Keyed on the state, like every
+    // other naming rule here: the clip belongs to whichever weapon is equipped
+    // and its id says so, the state is the stable structure.
+    const finished = layer.stateId.startsWith('attack-')
       ? finishedBeforeAdvance
       : isClipFinished(clip, layer.timeSec);
     const fallbackState = state.fallbackState;

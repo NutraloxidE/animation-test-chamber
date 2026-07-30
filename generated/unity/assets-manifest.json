@@ -82,7 +82,7 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "attack-01",
+      "id": "unarmed-attack-01",
       "assetPath": null,
       "proceduralGenerator": "attack-01",
       "durationSec": 0.75,
@@ -91,7 +91,25 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "attack-01-recovery",
+      "id": "sword-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "unarmed-attack-01-recovery",
       "assetPath": null,
       "proceduralGenerator": "attack-01-recovery",
       "durationSec": 0.9666666,
@@ -100,7 +118,25 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "attack-02",
+      "id": "sword-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "unarmed-attack-02",
       "assetPath": null,
       "proceduralGenerator": "attack-02",
       "durationSec": 0.85,
@@ -109,7 +145,43 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "attack-02-recovery",
+      "id": "sword-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "unarmed-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "sword-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-02-recovery",
       "assetPath": null,
       "proceduralGenerator": "attack-02-recovery",
       "durationSec": 1.0333333,
