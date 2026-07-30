@@ -4,10 +4,12 @@ import { EditSession } from '@atc/editor-core';
 import type { DiffReport } from '@atc/runtime-core';
 import { setAtPath } from '@atc/runtime-core';
 import type { AdjustmentProposal } from '@atc/ai-adapter';
+import { RuleBasedProvider } from '@atc/ai-adapter';
 import type { ReplayTrace } from '@atc/replay-runtime';
 import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
+import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
 import { CHARACTER_PRESETS, MOTION_SETS } from './three/catalog.ts';
 import seedProject from '@chamber/project';
 
@@ -59,6 +61,11 @@ interface ChamberState {
 
   commitLog: string[];
   statusMessage: string;
+  /**
+   * Whether the API server answered. Null while the probe is in flight; false
+   * on a static host (Vercel), where git and disk-backed actions are inert.
+   */
+  backendOnline: boolean | null;
   /** Bumped whenever the preview document changes, to re-render panels. */
   revision: number;
 }
@@ -94,6 +101,7 @@ interface ChamberActions {
   createPullRequest(): Promise<void>;
   exportUnity(): Promise<void>;
   setStatus(message: string): void;
+  detectBackend(): Promise<void>;
   diff(): DiffReport;
 }
 
@@ -101,6 +109,12 @@ const initialProject = seedProject as ProjectDefinition;
 const stagedDraftKey = `atc:staged-draft:${initialProject.id}`;
 
 const sessionId = `s${Date.now().toString(36)}`;
+
+/**
+ * Browser-side AI provider, used when there is no API server to ask. It is the
+ * same class the server defaults to, so the proposals are identical.
+ */
+const localAi = new RuleBasedProvider();
 
 function restoreStagedDraft(session: EditSession): number {
   try {
@@ -197,6 +211,7 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
       restoredChanges > 0
         ? `Restored ${restoredChanges} staged change(s).`
         : 'Ready. Editing the demo character with the fake Git adapter.',
+    backendOnline: null,
     revision: 0,
 
     setPreviewValue(path, value, options) {
@@ -299,6 +314,34 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     async requestProposals(request) {
       set({ aiBusy: true, aiMessage: '' });
       const targetPath = `/graph/transitions/${get().selectedTransitionId}`;
+
+      // The rule-based provider is pure computation over the document, so on a
+      // static host it runs in the browser rather than disappearing. Only the
+      // Anthropic-backed provider needs the server, because only it holds a key.
+      if (!(await backendAvailable())) {
+        try {
+          const proposals = await localAi.proposeAdjustments({
+            project: session.previewProject,
+            request,
+            targetPath,
+            replayId: get().selectedReplayId,
+            terrainPresetId: get().terrainPresetId,
+          });
+          set({
+            proposals,
+            aiBusy: false,
+            aiMessage: `${proposals.length} proposal(s) from the ${localAi.id} provider, running in the browser.`,
+          });
+          get().buildCompareSlots();
+        } catch (error) {
+          set({
+            aiBusy: false,
+            aiMessage: `Proposal failed: ${error instanceof Error ? error.message : String(error)}`,
+          });
+        }
+        return;
+      }
+
       try {
         const response = await fetch('/api/ai/propose', {
           method: 'POST',
@@ -463,6 +506,11 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
         return;
       }
 
+      if (!(await backendAvailable())) {
+        set({ statusMessage: `Commit: ${NO_BACKEND_MESSAGE} Staged changes stay in this browser.` });
+        return;
+      }
+
       try {
         const headResponse = await fetch('/api/git/head?branch=main');
         const head = (await headResponse.json()) as { sha?: string };
@@ -515,6 +563,10 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     },
 
     async createPullRequest() {
+      if (!(await backendAvailable())) {
+        set({ statusMessage: `Pull request: ${NO_BACKEND_MESSAGE}` });
+        return;
+      }
       try {
         const response = await fetch('/api/pull-request', {
           method: 'POST',
@@ -541,6 +593,12 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
     },
 
     async exportUnity() {
+      // The export writes a bundle into generated/unity on the machine running
+      // the API. There is no filesystem to write to on a static host.
+      if (!(await backendAvailable())) {
+        set({ statusMessage: `Unity export: ${NO_BACKEND_MESSAGE}` });
+        return;
+      }
       try {
         const response = await fetch('/api/unity/export', {
           method: 'POST',
@@ -564,6 +622,17 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
 
     setStatus(message) {
       set({ statusMessage: message });
+    },
+
+    async detectBackend() {
+      const online = await backendAvailable();
+      set({ backendOnline: online });
+      if (!online) {
+        set({
+          statusMessage:
+            'Static deployment: no API server. Tuning, replay, terrain and AI proposals run in the browser; commit, pull request, Unity export and asset import are disabled.',
+        });
+      }
     },
 
     diff() {
