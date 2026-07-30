@@ -5,6 +5,7 @@ import {
   DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
   dodgeRecoveryBlendWeight,
   isFootPlanted,
+  normalizedTimeOf,
   sampleRootMotion,
   type LayerId,
   type LayerRuntimeState,
@@ -403,7 +404,10 @@ export class Simulation {
 
     // Facing follows the intended direction, not the current velocity, so the
     // character turns crisply even while sliding.
-    if (magnitude > 0.01) {
+    const acceptsFacingInput =
+      !actionIsAttack ||
+      action.normalizedTime >= (actionClip?.inputAcceptanceStartNormalized ?? 0);
+    if (magnitude > 0.01 && acceptsFacingInput) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
       const authority = actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
       this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
@@ -547,8 +551,13 @@ export class Simulation {
     const sampleLayer = (layer: LayerRuntimeState): Vec3 => {
       const clip = this.graph.getClipFor(layer.stateId);
       if (!clip) return vec3();
-      const previous =
-        layer.normalizedTime - (FIXED_DT * layer.playbackSpeed) / clip.durationSec;
+      // Re-sample the prior wall-clock instant through the same timing curve.
+      // Subtracting a linear normalized delta would desync root movement from
+      // a nonlinearly sampled pose.
+      const previous = normalizedTimeOf(
+        clip,
+        layer.timeSec - FIXED_DT * layer.playbackSpeed,
+      );
       const track = this.actionRootMotionTracks[layer.stateId];
       if (track) {
         return addVec3(

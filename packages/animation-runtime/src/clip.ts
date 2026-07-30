@@ -3,6 +3,31 @@ import { scaleVec3 } from '@atc/runtime-core';
 
 const FAST_IN_END = 0.1;
 
+function cubicBezier(t: number, p1: number, p2: number): number {
+  const inverse = 1 - t;
+  return 3 * inverse * inverse * t * p1 + 3 * inverse * t * t * p2 + t * t * t;
+}
+
+/** Maps wall-clock progress to clip progress using CSS cubic-bezier semantics. */
+export function applyClipTimeCurve(
+  clip: AnimationClipDefinition,
+  elapsedNormalized: number,
+): number {
+  const curve = clip.timeCurve;
+  const x = Math.max(0, Math.min(elapsedNormalized, 1));
+  if (!curve || x === 0 || x === 1) return x;
+
+  // x(t) is monotonic because both control-point x values are constrained to [0,1].
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 14; i += 1) {
+    const t = (low + high) / 2;
+    if (cubicBezier(t, curve.x1, curve.x2) < x) low = t;
+    else high = t;
+  }
+  return cubicBezier((low + high) / 2, curve.y1, curve.y2);
+}
+
 function rootMotionProgress(clip: AnimationClipDefinition, normalized: number): number {
   if (clip.rootMotionCurve !== 'FastInSlowOut') return normalized;
   const time = Math.max(0, Math.min(normalized, 1));
@@ -15,8 +40,8 @@ function rootMotionProgress(clip: AnimationClipDefinition, normalized: number): 
 export function normalizedTimeOf(clip: AnimationClipDefinition, timeSec: number): number {
   if (clip.durationSec <= 0) return 0;
   const raw = timeSec / clip.durationSec;
-  if (!clip.loop) return Math.min(raw, 1);
-  return raw - Math.floor(raw);
+  const elapsed = !clip.loop ? Math.min(raw, 1) : raw - Math.floor(raw);
+  return applyClipTimeCurve(clip, elapsed);
 }
 
 /** True once a non-looping clip has played through. */
@@ -60,7 +85,7 @@ export function eventsInRange(
   fromNormalized: number,
   toNormalized: number,
 ): SemanticEventDefinition[] {
-  const wrapped = toNormalized < fromNormalized;
+  const wrapped = clip.loop && toNormalized < fromNormalized;
   return clip.events.filter((event) => {
     if (wrapped) {
       return event.at > fromNormalized || event.at <= toNormalized;

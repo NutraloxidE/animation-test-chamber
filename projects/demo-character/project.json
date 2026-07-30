@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "demo-character",
   "displayName": "Demo Character",
-  "revisionId": "rev-0001",
+  "revisionId": "rev-0004",
   "defaultTerrainPresetId": "flat",
   "character": {
     "schemaVersion": 1,
@@ -426,11 +426,11 @@
       "proceduralGenerator": "attack-01",
       "durationSec": 0.75,
       "loop": false,
-      "inputAcceptanceStartNormalized": 0.2,
+      "inputAcceptanceStartNormalized": 0.62,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0
+        "z": 0.5
       },
       "rootMotionMode": "RootMotion",
       "events": [
@@ -467,6 +467,15 @@
             "end": 1
           }
         ]
+      },
+      "timeCurve": {
+        "x1": 0.42,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
       }
     },
     {
@@ -476,7 +485,7 @@
       "proceduralGenerator": "attack-01-recovery",
       "durationSec": 0.9666666,
       "loop": false,
-      "inputAcceptanceStartNormalized": 0.85,
+      "inputAcceptanceStartNormalized": 0.11,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -487,6 +496,15 @@
       "footContacts": {
         "left": [],
         "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      },
+      "timeCurve": {
+        "x1": 0.15683372667100695,
+        "y1": 0.43474999999999997,
+        "x2": 0.75,
+        "y2": 0.75
       }
     },
     {
@@ -533,6 +551,15 @@
             "end": 1
           }
         ]
+      },
+      "timeCurve": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
       }
     },
     {
@@ -542,7 +569,7 @@
       "proceduralGenerator": "attack-02-recovery",
       "durationSec": 1.0333333,
       "loop": false,
-      "inputAcceptanceStartNormalized": 0.85,
+      "inputAcceptanceStartNormalized": 0.05,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -553,6 +580,10 @@
       "footContacts": {
         "left": [],
         "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0.05
       }
     },
     {
@@ -566,11 +597,11 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 5.5
+        "z": 10
       },
       "rootMotionMode": "RootMotion",
       "rootMotionCurve": "FastInSlowOut",
-      "recoveryTransitionStartNormalized": 0.72,
+      "recoveryTransitionStartNormalized": 0.62,
       "events": [
         {
           "id": "dodge-start",
@@ -596,6 +627,18 @@
             "end": 1
           }
         ]
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "replayId": "run-to-attack-forward",
+        "terrainPresetId": "flat",
+        "intent": "Adjust motion timing"
+      },
+      "timeCurve": {
+        "x1": 0.2406111111111111,
+        "y1": 0.3670833333333333,
+        "x2": 0.4887222222222222,
+        "y2": 0.6860833333333334
       }
     },
     {
@@ -1001,14 +1044,18 @@
             "value": false
           }
         ],
-        "blendDurationSec": 0.06,
+        "blendDurationSec": 0.4,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
         "rotationAuthority": 1,
         "interruptible": false,
         "inputBufferMs": 140,
-        "priority": 200
+        "priority": 200,
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.4
+        }
       },
       {
         "schemaVersion": 1,
@@ -1044,14 +1091,18 @@
             "value": true
           }
         ],
-        "blendDurationSec": 0.14,
+        "blendDurationSec": 0.27,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
         "rotationAuthority": 1,
         "interruptible": true,
         "inputBufferMs": 150,
-        "priority": 120
+        "priority": 120,
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.27
+        }
       },
       {
         "schemaVersion": 1,
@@ -1306,7 +1357,7 @@
             "value": true
           }
         ],
-        "blendDurationSec": 0.06,
+        "blendDurationSec": 0.17,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1317,6 +1368,10 @@
         "cancelWindow": {
           "start": 0.3,
           "end": 1
+        },
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.17
         }
       },
       {
@@ -1765,69 +1820,105 @@
     "keyboard": [
       {
         "action": "Jump",
-        "codes": ["Space"]
+        "codes": [
+          "Space"
+        ]
       },
       {
         "action": "Dodge",
-        "codes": ["ShiftLeft", "ShiftRight"]
+        "codes": [
+          "ShiftLeft",
+          "ShiftRight"
+        ]
       },
       {
         "action": "PrimaryAction",
-        "codes": ["KeyJ", "KeyF"]
+        "codes": [
+          "KeyJ",
+          "KeyF"
+        ]
       },
       {
         "action": "SecondaryAction",
-        "codes": ["KeyK"]
+        "codes": [
+          "KeyK"
+        ]
       },
       {
         "action": "Guard",
-        "codes": ["KeyL"]
+        "codes": [
+          "KeyL"
+        ]
       },
       {
         "action": "LockOn",
-        "codes": ["KeyQ"]
+        "codes": [
+          "KeyQ"
+        ]
       },
       {
         "action": "Interact",
-        "codes": ["KeyE"]
+        "codes": [
+          "KeyE"
+        ]
       },
       {
         "action": "Pause",
-        "codes": ["Escape"]
+        "codes": [
+          "Escape"
+        ]
       }
     ],
     "gamepad": [
       {
         "action": "Jump",
-        "buttons": [0]
+        "buttons": [
+          0
+        ]
       },
       {
         "action": "PrimaryAction",
-        "buttons": [2]
+        "buttons": [
+          2
+        ]
       },
       {
         "action": "SecondaryAction",
-        "buttons": [3]
+        "buttons": [
+          3
+        ]
       },
       {
         "action": "Dodge",
-        "buttons": [1, 5]
+        "buttons": [
+          1,
+          5
+        ]
       },
       {
         "action": "Guard",
-        "buttons": [6, 4]
+        "buttons": [
+          6,
+          4
+        ]
       },
       {
         "action": "LockOn",
-        "buttons": [10]
+        "buttons": [
+          10
+        ]
       },
       {
         "action": "Interact",
-        "buttons": [7]
+        "buttons": [
+          7
+        ]
       },
       {
         "action": "Pause",
-        "buttons": [9]
+        "buttons": [
+          9
+        ]
       }
     ],
     "stickDeadzone": 0.12,
@@ -2007,6 +2098,92 @@
       "author": "seed",
       "message": "seed demo character",
       "changedPaths": []
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0002",
+      "parentId": "rev-0001",
+      "createdAt": "2026-07-30T11:02:37.474Z",
+      "author": "chamber-user",
+      "message": "tune(clips,graph): 31 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/attack-01-recovery/inputAcceptanceStartNormalized",
+        "/clips/attack-01-recovery/provenance/humanFinal",
+        "/clips/attack-01-recovery/provenance/source",
+        "/clips/attack-01/inputAcceptanceStartNormalized",
+        "/clips/attack-01/provenance/source",
+        "/clips/attack-01/rootDisplacement/z",
+        "/clips/attack-01/timeCurve/x1",
+        "/clips/attack-01/timeCurve/x2",
+        "/clips/attack-01/timeCurve/y1",
+        "/clips/attack-01/timeCurve/y2",
+        "/clips/attack-02-recovery/inputAcceptanceStartNormalized",
+        "/clips/attack-02-recovery/provenance/humanFinal",
+        "/clips/attack-02-recovery/provenance/source",
+        "/clips/attack-02/provenance/source",
+        "/clips/attack-02/timeCurve/x1",
+        "/clips/attack-02/timeCurve/x2",
+        "/clips/attack-02/timeCurve/y1",
+        "/clips/attack-02/timeCurve/y2",
+        "/clips/dodge/provenance/humanFinal",
+        "/clips/dodge/provenance/source",
+        "/clips/dodge/recoveryTransitionStartNormalized",
+        "/clips/dodge/rootDisplacement/z",
+        "/graph/transitions/any-to-fall/blendDurationSec",
+        "/graph/transitions/any-to-fall/provenance/humanFinal",
+        "/graph/transitions/any-to-fall/provenance/source",
+        "/graph/transitions/any-to-jump/blendDurationSec",
+        "/graph/transitions/any-to-jump/provenance/humanFinal",
+        "/graph/transitions/any-to-jump/provenance/source",
+        "/graph/transitions/dodge-to-none-on-jump/blendDurationSec",
+        "/graph/transitions/dodge-to-none-on-jump/provenance/humanFinal",
+        "/graph/transitions/dodge-to-none-on-jump/provenance/source"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T11:02:37.474Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0003",
+      "parentId": "rev-0002",
+      "createdAt": "2026-07-30T11:40:32.097Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 5 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/attack-01-recovery/provenance/humanFinal",
+        "/clips/attack-01-recovery/timeCurve/x1",
+        "/clips/attack-01-recovery/timeCurve/x2",
+        "/clips/attack-01-recovery/timeCurve/y1",
+        "/clips/attack-01-recovery/timeCurve/y2"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T11:40:32.097Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0004",
+      "parentId": "rev-0003",
+      "createdAt": "2026-07-30T11:42:17.292Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 8 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/dodge/provenance/humanFinal",
+        "/clips/dodge/provenance/intent",
+        "/clips/dodge/provenance/replayId",
+        "/clips/dodge/provenance/terrainPresetId",
+        "/clips/dodge/timeCurve/x1",
+        "/clips/dodge/timeCurve/x2",
+        "/clips/dodge/timeCurve/y1",
+        "/clips/dodge/timeCurve/y2"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T11:42:17.292Z"
+      }
     }
   ],
   "invariants": [

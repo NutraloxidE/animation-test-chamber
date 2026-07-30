@@ -5,6 +5,7 @@ import { Viewport } from './three/Viewport.tsx';
 import { TransitionInspector } from './panels/TransitionInspector.tsx';
 import { StateGraph } from './panels/StateGraph.tsx';
 import { Timeline } from './panels/Timeline.tsx';
+import { MotionTimingPanel } from './panels/MotionTimingPanel.tsx';
 import { ReplayPanel } from './panels/ReplayPanel.tsx';
 import { DiffPanel } from './panels/DiffPanel.tsx';
 import { AiPanel } from './panels/AiPanel.tsx';
@@ -25,6 +26,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
   { id: 'graph', label: 'Graph' },
   { id: 'timeline', label: 'Timeline' },
+  { id: 'timing', label: 'Timing' },
   { id: 'replay', label: 'Replay' },
   { id: 'terrain', label: 'Terrain' },
   { id: 'ai', label: 'AI' },
@@ -41,6 +43,8 @@ function PanelBody({ id }: { id: PanelId }) {
       return <StateGraph />;
     case 'timeline':
       return <Timeline />;
+    case 'timing':
+      return <MotionTimingPanel />;
     case 'replay':
       return <ReplayPanel />;
     case 'terrain':

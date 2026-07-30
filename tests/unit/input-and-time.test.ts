@@ -10,6 +10,7 @@ import {
 import { InputState, decodeButtons, emptyButtons, encodeButtons } from '@atc/input-runtime';
 import { ChamberEngine } from '../../apps/web/src/engine.ts';
 import { loadDemoProject } from '../fixtures/project.ts';
+import { normalizedTimeOf, sampleRootMotion } from '@atc/animation-runtime';
 
 const project = loadDemoProject();
 
@@ -24,6 +25,19 @@ function sampleWith(buttons: Partial<Record<string, boolean>>, move = 0) {
 }
 
 describe('fixed timestep', () => {
+  it('uses the same nonlinear progress for pose time and root displacement', () => {
+    const clip = structuredClone(project.clips.find((entry) => entry.id === 'dodge')!);
+    clip.timeCurve = { x1: 0.42, y1: 0, x2: 1, y2: 1 };
+    clip.rootMotionCurve = undefined;
+
+    const midpoint = normalizedTimeOf(clip, clip.durationSec / 2);
+    const root = sampleRootMotion(clip, 0, midpoint);
+
+    expect(midpoint).toBeLessThan(0.5);
+    expect(root.z).toBeCloseTo(clip.rootDisplacement.z * midpoint, 5);
+    expect(normalizedTimeOf(clip, clip.durationSec)).toBe(1);
+  });
+
   it('produces the same number of logic ticks regardless of frame rate', () => {
     const at60 = new FixedStepAccumulator();
     const at30 = new FixedStepAccumulator();

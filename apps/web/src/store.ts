@@ -11,24 +11,11 @@ import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
-import {
-  CHARACTER_PRESETS,
-  MOTION_SETS,
-  WEAPON_MODES,
-  type WeaponGrip,
-} from './three/catalog.ts';
+import { CHARACTER_PRESETS, MOTION_SETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
 import seedProject from '@chamber/project';
 
 export type PanelId =
-  | 'inspector'
-  | 'graph'
-  | 'timeline'
-  | 'replay'
-  | 'diff'
-  | 'ai'
-  | 'capability'
-  | 'terrain'
-  | 'acquisition';
+  'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
 
 export interface CompareSlot {
   label: string;
@@ -160,18 +147,17 @@ function restoreStagedDraft(session: EditSession): number {
 
 function persistStagedDraft(session: EditSession): void {
   try {
-    const staged = new Set(session.stagedPaths);
-    const changes = session
-      .diff()
-      .changes.filter((change) => staged.has(change.path))
-      .map((change) => ({ path: change.path, value: change.after }));
+    const changes = session.stagedChanges;
     if (changes.length === 0) {
       window.localStorage.removeItem(stagedDraftKey);
       return;
     }
     window.localStorage.setItem(
       stagedDraftKey,
-      JSON.stringify({ revisionId: session.repositoryProject.revisionId, changes }),
+      JSON.stringify({
+        revisionId: session.repositoryProject.revisionId,
+        changes,
+      }),
     );
   } catch {
     // Storage may be unavailable in privacy modes; the in-memory session still works.
@@ -244,6 +230,11 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         return;
       }
       syncPreview();
+      if (session.fieldView(path).needsSave) {
+        set({
+          statusMessage: 'Changed since staged. Save again to update the staged draft.',
+        });
+      }
     },
 
     unlockPath(path) {
@@ -297,7 +288,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     revertSession() {
       session.revertSession();
       syncPreview();
-      set({ statusMessage: 'Session reverted to the repository values.', proposals: [] });
+      set({
+        statusMessage: 'Session reverted to the repository values.',
+        proposals: [],
+      });
     },
 
     selectTransition(id) {
@@ -319,12 +313,19 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     setCharacterPreset(id) {
       if (!CHARACTER_PRESETS.some((preset) => preset.id === id)) return;
-      set({ characterPresetId: id, gripEditorMode: null, statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}` });
+      set({
+        characterPresetId: id,
+        gripEditorMode: null,
+        statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}`,
+      });
     },
 
     setMotionSet(id) {
       if (!MOTION_SETS.some((set) => set.id === id)) return;
-      set({ motionSetId: id, statusMessage: `Motion set: ${MOTION_SETS.find((set) => set.id === id)!.label}` });
+      set({
+        motionSetId: id,
+        statusMessage: `Motion set: ${MOTION_SETS.find((set) => set.id === id)!.label}`,
+      });
     },
 
     setWeaponMode(id) {
@@ -332,15 +333,17 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       if (!weapon) return;
       engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
       engine.setWeaponModeId(weapon.id);
-      set({ weaponModeId: id, gripEditorMode: null, statusMessage: `Weapon: ${weapon.label}` });
+      set({
+        weaponModeId: id,
+        gripEditorMode: null,
+        statusMessage: `Weapon: ${weapon.label}`,
+      });
     },
 
     setGripEditorMode(mode) {
       set({
         gripEditorMode: mode,
-        statusMessage: mode
-          ? `Grip editor: ${mode}. Drag the gizmo; changes auto-save.`
-          : 'Grip editor closed.',
+        statusMessage: mode ? `Grip editor: ${mode}. Drag the gizmo; changes auto-save.` : 'Grip editor closed.',
       });
     },
 
@@ -357,7 +360,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     resetWeaponGrip(characterId, weaponId) {
       const weaponGripOverrides = { ...get().weaponGripOverrides };
       delete weaponGripOverrides[`${characterId}:${weaponId}`];
-      set({ weaponGripOverrides, statusMessage: 'Grip reset to the catalog default.' });
+      set({
+        weaponGripOverrides,
+        statusMessage: 'Grip reset to the catalog default.',
+      });
     },
 
     async requestProposals(request) {
@@ -498,7 +504,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       if (!slot) return;
       // Instant A/B/C switch: swap the document driving the live preview.
       engine.setProject(slot.document);
-      set({ activeCompareSlot: index, statusMessage: `Previewing: ${slot.label}` });
+      set({
+        activeCompareSlot: index,
+        statusMessage: `Previewing: ${slot.label}`,
+      });
     },
 
     setGhostEnabled(enabled) {
@@ -556,7 +565,9 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       }
 
       if (!(await backendAvailable())) {
-        set({ statusMessage: `Commit: ${NO_BACKEND_MESSAGE} Staged changes stay in this browser.` });
+        set({
+          statusMessage: `Commit: ${NO_BACKEND_MESSAGE} Staged changes stay in this browser.`,
+        });
         return;
       }
 
@@ -589,7 +600,9 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
             payload.findings?.map((f) => `${f.path}: ${f.message}`).join('; ') ??
             payload.conflicts?.map((c) => c.path).join(', ') ??
             '';
-          set({ statusMessage: `Commit refused: ${payload.error ?? 'unknown error'} ${detail}` });
+          set({
+            statusMessage: `Commit refused: ${payload.error ?? 'unknown error'} ${detail}`,
+          });
           return;
         }
 

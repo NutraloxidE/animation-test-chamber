@@ -26,7 +26,12 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    13px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   overscroll-behavior: none;
 }
 
@@ -137,8 +142,8 @@ body {
 
 button,
 select,
-input[type='text'],
-input[type='file'],
+input[type="text"],
+input[type="file"],
 textarea {
   font: inherit;
   color: var(--text);
@@ -177,6 +182,18 @@ button.is-staged {
   color: var(--ok);
 }
 
+button.needs-save {
+  border-color: var(--warn);
+  color: var(--warn);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.2);
+}
+
+.save-warning {
+  color: var(--warn);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 select.wide,
 textarea {
   width: 100%;
@@ -197,7 +214,7 @@ textarea {
   font-size: 12px;
 }
 
-.inline-field input[type='range'] {
+.inline-field input[type="range"] {
   flex: 1;
 }
 
@@ -232,7 +249,7 @@ textarea {
   color: var(--accent);
 }
 
-.field input[type='range'] {
+.field input[type="range"] {
   width: 100%;
   margin: 4px 0;
 }
@@ -496,6 +513,112 @@ textarea {
 
 /* ---- Timeline ---- */
 
+.motion-timing {
+  max-width: 720px;
+}
+
+.motion-timing .panel__header select {
+  min-width: 10rem;
+}
+
+.timing-curve {
+  display: block;
+  width: min(100%, 360px);
+  margin: 1rem auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+}
+
+.timing-curve__grid,
+.timing-curve__handles,
+.timing-curve__line {
+  fill: none;
+}
+
+.timing-curve__grid {
+  stroke: #334155;
+  stroke-width: 0.5;
+}
+
+.timing-curve__handles {
+  stroke: #64748b;
+  stroke-dasharray: 2 2;
+}
+
+.timing-curve__line {
+  stroke: #38bdf8;
+  stroke-width: 2;
+}
+
+.timing-curve circle {
+  fill: #cbd5e1;
+}
+
+.timing-curve__control {
+  cursor: grab;
+}
+
+.timing-curve__control.is-active {
+  cursor: grabbing;
+}
+
+.timing-curve__control.is-active circle:not(.timing-curve__hit),
+.timing-curve__control:hover circle:not(.timing-curve__hit) {
+  fill: #fff;
+  stroke: #38bdf8;
+  stroke-width: 2;
+}
+
+.timing-curve circle.timing-curve__hit {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.timing-curve circle.timing-curve__playhead {
+  fill: #f97316;
+  pointer-events: none;
+}
+
+.timing-presets,
+.timing-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.timing-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.timing-controls label {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.25rem 0.5rem;
+}
+
+.timing-controls output {
+  text-align: right;
+}
+
+.timing-controls input {
+  grid-column: 1 / -1;
+}
+
+.timing-actions .muted {
+  margin-right: auto;
+}
+
+.timing-saved {
+  color: var(--ok);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 .timeline__tracks {
   position: relative;
   border: 1px solid var(--line);
@@ -528,7 +651,11 @@ textarea {
 .lane-bar {
   position: absolute;
   inset: 6px 0;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.35), rgba(56, 189, 248, 0.1));
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.35),
+    rgba(56, 189, 248, 0.1)
+  );
 }
 
 .lane-note {
@@ -612,6 +739,10 @@ textarea {
 
 .diff-list li.is-staged {
   border-color: var(--ok);
+}
+
+.diff-list li.needs-save {
+  border-color: var(--warn);
 }
 
 .finding {

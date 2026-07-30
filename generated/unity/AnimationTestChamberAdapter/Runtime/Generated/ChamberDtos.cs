@@ -146,6 +146,8 @@ namespace AnimationTestChamber.Generated
         public string proceduralGenerator;
         public float durationSec;
         public bool loop;
+        // optional
+        public ClipTimeCurve timeCurve;
         public Vec3 rootDisplacement;
         public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
         // optional
@@ -160,6 +162,15 @@ namespace AnimationTestChamber.Generated
         public ProtectionMetadata protection;
         // optional
         public ValueProvenance provenance;
+    }
+
+    [Serializable]
+    public class ClipTimeCurve
+    {
+        public float x1;
+        public float y1;
+        public float x2;
+        public float y2;
     }
 
     [Serializable]

@@ -1,7 +1,7 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "revision:rev-0001",
+  "_generatedAt": "2026-07-30T10:46:05.968Z",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "project": {
     "schemaVersion": 1,
@@ -431,11 +431,11 @@
         "proceduralGenerator": "attack-01",
         "durationSec": 0.75,
         "loop": false,
-        "inputAcceptanceStartNormalized": 0.2,
+        "inputAcceptanceStartNormalized": 0.63,
         "rootDisplacement": {
           "x": 0,
           "y": 0,
-          "z": 0
+          "z": 0.5
         },
         "rootMotionMode": "RootMotion",
         "events": [
@@ -481,7 +481,7 @@
         "proceduralGenerator": "attack-01-recovery",
         "durationSec": 0.9666666,
         "loop": false,
-        "inputAcceptanceStartNormalized": 0.85,
+        "inputAcceptanceStartNormalized": 0.11,
         "rootDisplacement": {
           "x": 0,
           "y": 0,
@@ -547,7 +547,7 @@
         "proceduralGenerator": "attack-02-recovery",
         "durationSec": 1.0333333,
         "loop": false,
-        "inputAcceptanceStartNormalized": 0.85,
+        "inputAcceptanceStartNormalized": 0.16,
         "rootDisplacement": {
           "x": 0,
           "y": 0,
@@ -571,11 +571,11 @@
         "rootDisplacement": {
           "x": 0,
           "y": 0,
-          "z": 5.5
+          "z": 10
         },
         "rootMotionMode": "RootMotion",
         "rootMotionCurve": "FastInSlowOut",
-        "recoveryTransitionStartNormalized": 0.72,
+        "recoveryTransitionStartNormalized": 0.62,
         "events": [
           {
             "id": "dodge-start",
@@ -1006,7 +1006,7 @@
               "value": false
             }
           ],
-          "blendDurationSec": 0.06,
+          "blendDurationSec": 0.4,
           "startOffsetNormalized": 0,
           "playbackSpeed": 1,
           "momentumRetention": 1,
@@ -1049,7 +1049,7 @@
               "value": true
             }
           ],
-          "blendDurationSec": 0.14,
+          "blendDurationSec": 0.27,
           "startOffsetNormalized": 0,
           "playbackSpeed": 1,
           "momentumRetention": 1,
@@ -1311,7 +1311,7 @@
               "value": true
             }
           ],
-          "blendDurationSec": 0.06,
+          "blendDurationSec": 0.17,
           "startOffsetNormalized": 0,
           "playbackSpeed": 1,
           "momentumRetention": 1,

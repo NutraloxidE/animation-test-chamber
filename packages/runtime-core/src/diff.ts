@@ -1,4 +1,4 @@
-import { flattenValues, type CanonicalPath } from './paths.ts';
+import { flattenValues, getAtPath, type CanonicalPath } from './paths.ts';
 import { resolveProtection } from './protection.ts';
 import type { ProtectionLevel } from '@atc/schema';
 
@@ -145,8 +145,11 @@ export function analyzeDiff(before: unknown, after: unknown): DiffReport {
       for (const rule of REMOVAL_RULES) {
         const match = rule.test.exec(change.path);
         if (!match) continue;
-        matchedRule = true;
         const entityPath = match[1]!;
+        // Removing an optional leaf (for example provenance.humanFinal) is not
+        // the same as deleting its owning clip, state, transition or binding.
+        if (getAtPath(after, entityPath) !== undefined) continue;
+        matchedRule = true;
         const key = `${rule.rule}:${entityPath}`;
         if (!reportedRemovals.has(key)) {
           reportedRemovals.add(key);
