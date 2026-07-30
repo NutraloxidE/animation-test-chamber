@@ -1356,6 +1356,11 @@
             "parameter": "jumpRequested",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "rootLocked",
+            "operator": "equals",
+            "value": false
           }
         ],
         "blendDurationSec": 0.17,
@@ -1923,6 +1928,7 @@
       }
     ],
     "stickDeadzone": 0.12,
+    "stickSmoothingSec": 0.08,
     "lookSensitivity": 1,
     "invertLookY": false,
     "mobilePad": {

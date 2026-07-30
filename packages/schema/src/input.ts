@@ -104,6 +104,8 @@ export const InputMapDefinition = Type.Object(
     gamepad: Type.Array(GamepadBinding),
     /** Gamepad stick deadzone, applied radially. */
     stickDeadzone: Type.Number({ minimum: 0, maximum: 0.9 }),
+    /** Seconds for the smoothed stick vector to close ~63% of the gap to the raw one. */
+    stickSmoothingSec: Type.Optional(Type.Number({ minimum: 0, maximum: 0.5 })),
     lookSensitivity: Type.Number({ minimum: 0.05, maximum: 10 }),
     invertLookY: Type.Boolean(),
     mobilePad: MobilePadLayout,

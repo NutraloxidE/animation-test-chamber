@@ -5,7 +5,10 @@ import {
   type InputMapDefinition,
   type ReplayFrame,
 } from '@atc/schema';
-import { applyDeadzone, msToTicks } from '@atc/runtime-core';
+import { FIXED_DT, applyDeadzone, msToTicks } from '@atc/runtime-core';
+
+/** Stick smoothing used when the input map does not author its own. */
+const DEFAULT_STICK_SMOOTHING_SEC = 0.08;
 
 /** Device-independent input for a single simulation tick. */
 export interface ActionSample {
@@ -120,9 +123,16 @@ export class InputState {
   ): void {
     this.tick = tick;
     const move = applyDeadzone(sample.moveX, sample.moveY, this.inputMap.stickDeadzone);
+    // Exponential approach to the raw stick, so a keyboard tap or a stick flick
+    // reaches full deflection over a few ticks instead of one.
+    const smoothing = this.inputMap.stickSmoothingSec ?? DEFAULT_STICK_SMOOTHING_SEC;
+    const alpha = smoothing > 0 ? Math.min(1, FIXED_DT / smoothing) : 1;
+    // An exponential decay never reaches zero; snap the tail so releasing the
+    // stick still reads as "no input" instead of a permanent crawl.
+    const snap = move.x === 0 && move.y === 0 && Math.hypot(this.current.moveX, this.current.moveY) < 0.02;
     this.current = {
-      moveX: move.x,
-      moveY: move.y,
+      moveX: snap ? 0 : this.current.moveX + (move.x - this.current.moveX) * alpha,
+      moveY: snap ? 0 : this.current.moveY + (move.y - this.current.moveY) * alpha,
       lookX: sample.lookX,
       lookY: sample.lookY,
       buttons: sample.buttons,

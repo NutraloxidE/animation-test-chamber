@@ -15,11 +15,14 @@ import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type F
 
 /** How long a lock-queued jump survives after the root unlocks. */
 const QUEUED_JUMP_GRACE_MS = 140;
+// Jump belongs here too: the queued-jump path only decides *when* an accepted
+// press replays, so leaving Jump out let it skip the acceptance window entirely.
 const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
   'PrimaryAction',
   'SecondaryAction',
   'Dodge',
   'Guard',
+  'Jump',
 ]);
 
 export interface SimulationInit {

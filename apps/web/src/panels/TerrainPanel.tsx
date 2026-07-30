@@ -176,6 +176,14 @@ export function TerrainPanel() {
       <Field path="/movement/jumpHeight" label="Jump height" min={0.1} max={4} step={0.01} />
       <Field path="/movement/gravity" label="Gravity" min={1} max={50} step={0.1} />
       <Field path="/movement/actionMovementAuthority" label="Action movement authority" min={0} max={1} step={0.01} />
+      <Field
+        path="/inputMap/stickSmoothingSec"
+        label="Stick smoothing"
+        min={0}
+        max={0.3}
+        step={0.005}
+        format={(value) => (value === 0 ? 'off' : `${Math.round(value * 1000)} ms`)}
+      />
 
       <h3>Root motion</h3>
       <Field path="/rootMotion/horizontalAuthority" label="Horizontal authority" min={0} max={1} step={0.01} />

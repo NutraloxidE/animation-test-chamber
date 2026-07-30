@@ -156,6 +156,8 @@ namespace AnimationTestChamber.Generated
         public float recoveryTransitionStartNormalized;
         // optional
         public float inputAcceptanceStartNormalized;
+        // optional
+        public float rotationScaleWhilePlaying;
         public List<SemanticEventDefinition> events;
         public AnimationClipDefinitionFootContacts footContacts;
         // optional
@@ -304,6 +306,8 @@ namespace AnimationTestChamber.Generated
         public List<InputMapDefinitionKeyboardItem> keyboard;
         public List<InputMapDefinitionGamepadItem> gamepad;
         public float stickDeadzone;
+        // optional
+        public float stickSmoothingSec;
         public float lookSensitivity;
         public bool invertLookY;
         public MobilePadLayout mobilePad;

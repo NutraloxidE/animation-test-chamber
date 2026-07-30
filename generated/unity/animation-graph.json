@@ -1,7 +1,7 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "2026-07-30T10:46:05.968Z",
+  "_generatedAt": "revision:rev-0006",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "graph": {
     "schemaVersion": 1,
@@ -346,7 +346,11 @@
         "rotationAuthority": 1,
         "interruptible": false,
         "inputBufferMs": 140,
-        "priority": 200
+        "priority": 200,
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.4
+        }
       },
       {
         "schemaVersion": 1,
@@ -389,7 +393,11 @@
         "rotationAuthority": 1,
         "interruptible": true,
         "inputBufferMs": 150,
-        "priority": 120
+        "priority": 120,
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.27
+        }
       },
       {
         "schemaVersion": 1,
@@ -642,6 +650,11 @@
             "parameter": "jumpRequested",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "rootLocked",
+            "operator": "equals",
+            "value": false
           }
         ],
         "blendDurationSec": 0.17,
@@ -655,6 +668,10 @@
         "cancelWindow": {
           "start": 0.3,
           "end": 1
+        },
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.17
         }
       },
       {

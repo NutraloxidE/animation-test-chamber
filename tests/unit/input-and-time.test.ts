@@ -125,6 +125,27 @@ describe('button encoding', () => {
   });
 });
 
+describe('stick smoothing', () => {
+  it('ramps to full deflection and snaps back to rest', () => {
+    const input = new InputState(project.inputMap);
+
+    input.beginTick(0, sampleWith({}, 1));
+    const first = input.moveY;
+    expect(first).toBeGreaterThan(0);
+    expect(first).toBeLessThan(1);
+
+    for (let tick = 1; tick < 60; tick += 1) input.beginTick(tick, sampleWith({}, 1));
+    expect(input.moveY).toBeCloseTo(1, 2);
+
+    // Release: decays, then reads as exactly no input rather than a crawl.
+    input.beginTick(60, sampleWith({}, 0));
+    expect(input.moveY).toBeLessThan(1);
+    expect(input.moveY).toBeGreaterThan(0);
+    for (let tick = 61; tick < 120; tick += 1) input.beginTick(tick, sampleWith({}, 0));
+    expect(input.moveMagnitude).toBe(0);
+  });
+});
+
 describe('input buffering', () => {
   it('reports a press as buffered inside the window', () => {
     const input = new InputState(project.inputMap);

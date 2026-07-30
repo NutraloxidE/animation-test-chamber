@@ -477,6 +477,28 @@ describe('dodge-jump-queued', () => {
     expect(locked.some((t) => t.locomotionState === 'jump')).toBe(false);
   });
 
+  it('drops a jump pressed before the dodge opens its input window', () => {
+    // Same script, but the press lands at ~6% into the dodge instead of at its
+    // end — well before the clip's 30% input acceptance point.
+    const replay = structuredClone(findReplayFixture('dodge-jump-queued'));
+    for (const frame of replay.frames) {
+      if (frame.tick === 40) frame.tick = 25;
+      if (frame.tick === 44) frame.tick = 29;
+    }
+    const early = runReplay(project, replay);
+    expect(early.ticks.some((t) => t.locomotionState === 'jump')).toBe(false);
+  });
+
+  it('keeps the dodge pose until the jump it releases can actually fire', () => {
+    // The dodge must not be cancelled on a jump press that the root lock refuses,
+    // which showed up as the dodge clip aborting with no jump to show for it.
+    const cancelled = trace.ticks.find(
+      (t, index) => index > 0 && trace.ticks[index - 1]!.actionState === 'dodge' && t.actionState !== 'dodge',
+    );
+    expect(cancelled).toBeDefined();
+    expect(cancelled!.locomotionState).toBe('jump');
+  });
+
   it('replays the queued press once the recovery window opens', () => {
     expect(jumpTick).toBeDefined();
     expect(jumpTick!.tick).toBeGreaterThan(dodgeTicks[0]!.tick);

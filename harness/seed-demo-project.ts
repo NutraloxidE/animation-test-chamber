@@ -508,6 +508,7 @@ const project: ProjectDefinition = {
       { action: 'Pause', buttons: [9] },
     ],
     stickDeadzone: 0.12,
+    stickSmoothingSec: 0.08,
     lookSensitivity: 1,
     invertLookY: false,
     mobilePad: {
