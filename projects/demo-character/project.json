@@ -1101,7 +1101,7 @@
             "value": 160
           }
         ],
-        "blendDurationSec": 0.09,
+        "blendDurationSec": 0.05,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1164,7 +1164,7 @@
             "value": 200
           }
         ],
-        "blendDurationSec": 0.08,
+        "blendDurationSec": 0.05,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1189,7 +1189,7 @@
             "value": 180
           }
         ],
-        "blendDurationSec": 0.07,
+        "blendDurationSec": 0.05,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1214,7 +1214,7 @@
             "value": 180
           }
         ],
-        "blendDurationSec": 0.07,
+        "blendDurationSec": 0.05,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1243,7 +1243,10 @@
         "interruptible": true,
         "inputBufferMs": 140,
         "priority": 190,
-        "exitTimeNormalized": 0.72
+        "cancelWindow": {
+          "start": 0.3,
+          "end": 1
+        }
       },
       {
         "schemaVersion": 1,
@@ -1257,7 +1260,7 @@
             "value": true
           }
         ],
-        "blendDurationSec": 0.12,
+        "blendDurationSec": 0.07,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1278,7 +1281,7 @@
             "value": false
           }
         ],
-        "blendDurationSec": 0.14,
+        "blendDurationSec": 0.08,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1293,7 +1296,7 @@
         "from": "hit",
         "to": "action-none",
         "conditions": [],
-        "blendDurationSec": 0.12,
+        "blendDurationSec": 0.07,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -1323,6 +1326,173 @@
         "interruptible": true,
         "inputBufferMs": 150,
         "priority": 250
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-attack-01",
+        "from": "attack-02",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 200
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 200,
+        "priority": 120,
+        "cancelWindow": {
+          "start": 0.4,
+          "end": 0.85
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-dodge",
+        "from": "attack-02",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 180,
+        "cancelWindow": {
+          "start": 0.45,
+          "end": 0.95
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-guard",
+        "from": "attack-01",
+        "to": "guard",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-guard",
+        "from": "attack-02",
+        "to": "guard",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-attack-01",
+        "from": "guard",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 160
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 160,
+        "priority": 115
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-dodge",
+        "from": "guard",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 175
+      },
+      {
+        "schemaVersion": 1,
+        "id": "dodge-to-attack-01",
+        "from": "dodge",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 200
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 200,
+        "priority": 130,
+        "cancelWindow": {
+          "start": 0.72,
+          "end": 0.98
+        }
       }
     ],
     "forcedTransitionOrder": [

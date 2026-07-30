@@ -217,6 +217,9 @@ test('the state graph reports no unreachable states or priority conflicts', asyn
   await expect(page.getByTestId('graph-live-locomotion')).toContainText('idle');
   await expect(page.getByTestId('layer-mix')).toContainText('LOCOMOTION 100%');
   await expect(page.getByTestId('layer-mix')).toContainText('ACTION 0%');
+  await expect(
+    page.getByTestId('layer-mix').locator('.layer-mix__action--action-none'),
+  ).toHaveAttribute('data-weight', '0.000');
 
   await page.keyboard.down('KeyW');
   await expect(page.getByTestId('graph-live-locomotion')).toContainText(/walk|run/);
@@ -230,6 +233,34 @@ test('the state graph reports no unreachable states or priority conflicts', asyn
     )
     .toBeGreaterThan(0);
   await page.keyboard.up('KeyW');
+});
+
+test('the layer bar colours action-to-action blends', async ({ page }) => {
+  await openPanel(page, 'inspector');
+  await page.getByTestId('transition-select').selectOption('attack-01-to-attack-02');
+  await page
+    .getByTestId('field-/graph/transitions/attack-01-to-attack-02/blendDurationSec')
+    .locator('input[type=range]')
+    .fill('0.5');
+
+  await openPanel(page, 'graph');
+  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  await page.keyboard.press('KeyJ');
+  await page.waitForTimeout(350);
+  await page.keyboard.press('KeyJ');
+
+  const gauge = page.getByTestId('layer-mix');
+  await expect(page.getByTestId('graph-live-action')).toContainText('attack-02');
+  await expect(gauge.locator('[data-state="attack-01"]')).toBeVisible();
+  await expect(gauge.locator('[data-state="attack-02"]')).toBeVisible();
+  await expect(gauge.locator('[data-state="attack-01"]')).toHaveCSS(
+    'background-color',
+    'rgb(251, 191, 36)',
+  );
+  await expect(gauge.locator('[data-state="attack-02"]')).toHaveCSS(
+    'background-color',
+    'rgb(192, 132, 252)',
+  );
 });
 
 test('the timeline shows the semantic event and cancel window tracks', async ({ page }) => {

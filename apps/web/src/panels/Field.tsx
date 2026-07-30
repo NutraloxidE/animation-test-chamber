@@ -8,6 +8,12 @@ interface FieldProps {
   step: number;
   /** Optional unit conversion for display, e.g. seconds -> frames. */
   format?: (value: number) => string;
+  /**
+   * Overrides the default test id. A path can legitimately appear twice on
+   * screen — once in the detail view, once in a list — and two elements sharing
+   * a test id make every locator for it ambiguous.
+   */
+  testId?: string;
 }
 
 const ORIGIN_LABEL: Record<string, string> = {
@@ -21,7 +27,7 @@ const ORIGIN_LABEL: Record<string, string> = {
  * One tunable value. Shows where the current number came from, whether
  * protection allows editing it, and offers the reset paths from PLAN 9.2.
  */
-export function Field({ path, label, min, max, step, format }: FieldProps) {
+export function Field({ path, label, min, max, step, format, testId }: FieldProps) {
   const session = useChamber((state) => state.session);
   // Subscribing to `revision` is what makes the control re-read the session
   // after any edit, undo or commit.
@@ -39,7 +45,10 @@ export function Field({ path, label, min, max, step, format }: FieldProps) {
   const locked = !view.editableByHuman;
 
   return (
-    <div className={`field${locked ? ' field--locked' : ''}`} data-testid={`field-${path}`}>
+    <div
+      className={`field${locked ? ' field--locked' : ''}`}
+      data-testid={testId ?? `field-${path}`}
+    >
       <div className="field__head">
         <label className="field__label" htmlFor={path}>
           {label}

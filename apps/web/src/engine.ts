@@ -339,6 +339,14 @@ export class ChamberEngine {
     return this.haptics;
   }
 
+  /**
+   * Live per-layer blend state, so the renderer can fade for exactly as long as
+   * the transition that actually fired asks for.
+   */
+  get graphLayers(): Record<LayerId, LayerRuntimeState> {
+    return this.simulation.graphRuntime.snapshot();
+  }
+
   snapshot(): EngineSnapshot {
     const state = this.simulation.state;
     const record = this.lastRecord;

@@ -1226,6 +1226,20 @@ pnpm harness:one-shot
 - Adapter scaffoldを更新
 - Unity固有生成物を正本化しない
 
+### 18.9 `transition-feel-tuner.md`
+
+役割。
+
+- 手触りの依頼（もっさり、素早く、途中で割り込みたい）を正規データの最小変更へ落とす
+- 診断順序を固定する。直結Transitionの有無 → cancelWindow → blendDurationSec
+- 調整した値をInspectorから触れる状態で終える
+
+禁止。
+
+- playbackSpeedを速さの答えにする
+- interruptible falseのStateへ窓のないTransitionを足す
+- Rendererへブレンド時間をハードコードする
+
 ---
 
 ## 19. Main agent system prompt

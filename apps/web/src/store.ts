@@ -1,4 +1,5 @@
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { CapabilityProfile, ProjectDefinition, ReplayDefinition } from '@atc/schema';
 import { EditSession } from '@atc/editor-core';
 import type { DiffReport } from '@atc/runtime-core';
@@ -165,7 +166,7 @@ function persistStagedDraft(session: EditSession): void {
   }
 }
 
-export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
+const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) => {
   const session = new EditSession(initialProject);
   const restoredChanges = restoreStagedDraft(session);
   const engine = new ChamberEngine(session.previewProject);
@@ -639,4 +640,35 @@ export const useChamber = create<ChamberState & ChamberActions>((set, get) => {
       return session.diff();
     },
   };
-});
+};
+
+/**
+ * View state survives a reload (including the full reload Vite does when the
+ * project data changes during development): the panel and selection you had
+ * open come back. Only view state is stored — the document itself still comes
+ * from the repository plus the staged draft above.
+ */
+export const useChamber = create<ChamberState & ChamberActions>()(
+  persist(createChamber, {
+    name: `atc:ui:${initialProject.id}`,
+    partialize: (state) => ({
+      selectedTransitionId: state.selectedTransitionId,
+      selectedStateId: state.selectedStateId,
+      activePanel: state.activePanel,
+      terrainPresetId: state.terrainPresetId,
+      characterPresetId: state.characterPresetId,
+      motionSetId: state.motionSetId,
+      selectedReplayId: state.selectedReplayId,
+    }),
+    onRehydrateStorage: () => (state) => {
+      if (!state) return;
+      // Terrain lives in the engine as well as the store, and a stored preset id
+      // may no longer exist after a data change.
+      try {
+        state.setTerrainPreset(state.terrainPresetId);
+      } catch {
+        state.setTerrainPreset(initialProject.defaultTerrainPresetId);
+      }
+    },
+  }),
+);

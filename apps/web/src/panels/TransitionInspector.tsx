@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useChamber } from '../store.ts';
 import { Field, ToggleField } from './Field.tsx';
 
@@ -12,15 +12,44 @@ export function TransitionInspector() {
   const project = useChamber((state) => state.project);
   const selectedId = useChamber((state) => state.selectedTransitionId);
   const selectTransition = useChamber((state) => state.selectTransition);
+  const engine = useChamber((state) => state.engine);
   const [unit, setUnit] = useState<TimeUnit>('seconds');
   const [selectedClipId, setSelectedClipId] = useState(
     project.clips.some((clip) => clip.id === 'dodge') ? 'dodge' : project.clips[0]?.id ?? '',
   );
 
-  const transition = project.graph.transitions.find((entry) => entry.id === selectedId);
+  // A selection can go stale when the graph changes under it (or is restored
+  // from a previous session), so fall back to the first transition.
+  const transition =
+    project.graph.transitions.find((entry) => entry.id === selectedId) ??
+    project.graph.transitions[0];
   const selectedClip =
     project.clips.find((clip) => clip.id === selectedClipId) ?? project.clips[0];
-  const base = `/graph/transitions/${selectedId}`;
+  const base = `/graph/transitions/${transition?.id}`;
+
+  /**
+   * The transition each layer is currently living in. Only stored when it
+   * actually changes: the engine notifies every frame, and re-rendering a list
+   * of sliders at 60fps to say nothing happened is not worth the frame budget.
+   * The fade back down afterwards is a CSS transition, so it costs no renders.
+   */
+  const [liveIds, setLiveIds] = useState<(string | null)[]>([]);
+  useEffect(
+    () =>
+      engine.subscribe(() => {
+        const layers = engine.graphLayers;
+        setLiveIds((previous) =>
+          previous[0] === layers.action.lastTransitionId &&
+          previous[1] === layers.locomotion.lastTransitionId
+            ? previous
+            : [layers.action.lastTransitionId, layers.locomotion.lastTransitionId],
+        );
+      }),
+    [engine],
+  );
+
+  const layerOf = (stateId: string): string =>
+    project.graph.states.find((state) => state.id === stateId)?.layer ?? 'locomotion';
 
   const formatTime = (seconds: number): string => {
     if (unit === 'frames30') return `${(seconds * 30).toFixed(1)} f@30`;
@@ -29,7 +58,7 @@ export function TransitionInspector() {
   };
 
   if (!transition) {
-    return <div className="panel">No transition selected.</div>;
+    return <div className="panel">This graph has no transitions.</div>;
   }
 
   return (
@@ -45,7 +74,7 @@ export function TransitionInspector() {
 
       <select
         className="wide"
-        value={selectedId}
+        value={transition.id}
         onChange={(event) => selectTransition(event.target.value)}
         data-testid="transition-select"
       >
@@ -55,6 +84,38 @@ export function TransitionInspector() {
           </option>
         ))}
       </select>
+
+      {/*
+        Tuning "how fast does everything switch" means comparing blends against
+        each other, which the one-transition-at-a-time view above cannot do. The
+        sliders are the same Field, so protection, reset and staging still apply.
+      */}
+      <details className="blend-list" data-testid="blend-list">
+        <summary>All blend durations ({project.graph.transitions.length})</summary>
+        {(['action', 'locomotion'] as const).map((layer) => (
+          <section key={layer}>
+            <h3>{layer}</h3>
+            {project.graph.transitions
+              .filter((entry) => layerOf(entry.to) === layer)
+              .map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`blend-row${liveIds.includes(entry.id) ? ' blend-row--live' : ''}`}
+                >
+                  <Field
+                    path={`/graph/transitions/${entry.id}/blendDurationSec`}
+                    testId={`blend-${entry.id}`}
+                    label={`${entry.from} → ${entry.to}`}
+                    min={0}
+                    max={0.6}
+                    step={0.005}
+                    format={formatTime}
+                  />
+                </div>
+              ))}
+          </section>
+        ))}
+      </details>
 
       {selectedClip && (
         <section>

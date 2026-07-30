@@ -66,6 +66,8 @@ describe('transition conditions', () => {
   it('fires when a numeric condition is satisfied', () => {
     graph.tick(makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } }));
     expect(graph.getLayer('locomotion').stateId).toBe('walk');
+    // The inspector highlights whichever transition each layer arrived through.
+    expect(graph.getLayer('locomotion').lastTransitionId).toBe('idle-to-walk');
   });
 
   it('does not fire when the condition is not satisfied', () => {
@@ -144,6 +146,57 @@ describe('cancel windows', () => {
     enterAttack(graph);
     advance(graph, 0.45);
     graph.tick(makeParams({ buffered: { Dodge: true } }));
+    expect(graph.getLayer('action').stateId).toBe('dodge');
+  });
+
+  /**
+   * Every action reaches every other action directly. Without these links the
+   * only route between two actions is "wait for the clip to end, fall back to
+   * action-none, start the next one" — which is the delay that reads as
+   * sluggish input.
+   */
+  it('goes from one action straight into another', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    enterAttack(graph);
+    advance(graph, 0.4);
+    graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
+    expect(graph.getLayer('action').stateId).toBe('attack-02');
+
+    // attack-02 is 0.85s; its dodge window opens at 0.45 normalized.
+    advance(graph, 0.45);
+    graph.tick(makeParams({ buffered: { Dodge: true } }));
+    expect(graph.getLayer('action').stateId).toBe('dodge');
+
+    // dodge is 1.4667s; attacking out of it is allowed from 0.72 normalized.
+    advance(graph, 1.08);
+    graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
+    expect(graph.getLayer('action').stateId).toBe('attack-01');
+  });
+
+  it('lets a jump break out of a dodge mid-roll', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    graph.tick(makeParams({ buffered: { Dodge: true } }));
+    expect(graph.getLayer('action').stateId).toBe('dodge');
+
+    // dodge is 1.4667s; the jump window opens at 0.3 normalized (~0.44s), well
+    // before the roll's own recovery at 0.72.
+    advance(graph, 0.5);
+    graph.tick(makeParams({ booleans: { jumpRequested: true } }));
+    expect(graph.getLayer('action').stateId).toBe('action-none');
+
+    // Root authority returns with the action layer, so the jump itself fires.
+    graph.tick(
+      makeParams({ booleans: { grounded: true }, buffered: { Jump: true } }),
+    );
+    expect(graph.getLayer('locomotion').stateId).toBe('jump');
+  });
+
+  it('leaves guard for another action without releasing guard first', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    graph.tick(makeParams({ booleans: { guardHeld: true } }));
+    expect(graph.getLayer('action').stateId).toBe('guard');
+
+    graph.tick(makeParams({ booleans: { guardHeld: true }, buffered: { Dodge: true } }));
     expect(graph.getLayer('action').stateId).toBe('dodge');
   });
 });

@@ -361,6 +361,10 @@ textarea {
   background: var(--warn);
 }
 
+.layer-mix__action--attack-02 {
+  background: #c084fc;
+}
+
 .layer-mix__locomotion {
   background: var(--accent);
 }
@@ -991,4 +995,37 @@ textarea {
   .hud__item em {
     display: none;
   }
+}
+
+.blend-list > summary {
+  cursor: pointer;
+  padding: 8px 0;
+  color: var(--muted);
+}
+
+.blend-list .field {
+  padding: 4px 0;
+}
+
+/* The row a layer is currently living in is bright; when the graph moves on it
+   dims quickly at first and keeps darkening for a few seconds, so the recent
+   history of what fired stays readable without any per-frame re-render. */
+.blend-row {
+  opacity: 0.45;
+  border-left: 2px solid transparent;
+  padding-left: 6px;
+  transition:
+    opacity 6s ease-out,
+    border-color 6s ease-out;
+}
+
+.blend-row--live {
+  opacity: 1;
+  border-left-color: var(--accent);
+  transition: none;
+}
+
+.blend-row:hover {
+  opacity: 1;
+  transition: opacity 0.1s linear;
 }

@@ -43,7 +43,8 @@
 6. 完了前に`pnpm harness:one-shot`を実行する。
 7. 失敗をテスト弱体化で隠さず、実装を修正する。
 8. 完成時に、実装済み、Fallback、未実装、既知制限を正直に報告する。
-9. 同じ数値パラメータへの調整要求が2回目に達したら、ハードコード値として再調整せず正規データへ昇格し、Inspectorの通常のpreview/stage/save経路から編集可能にする。その編集経路をHarnessへ追加してから完了とする。
+9. 切り替えの速さ、割り込み、もっさり感に関する調整依頼は、`agents/skills/transition-feel-tuner.md`の診断順序と禁止事項に従う。憶測でblendDurationSecから触らない。
+10. 同じ数値パラメータへの調整要求が2回目に達したら、ハードコード値として再調整せず正規データへ昇格し、Inspectorの通常のpreview/stage/save経路から編集可能にする。その編集経路をHarnessへ追加してから完了とする。
 
 ## Subagents and token discipline
 

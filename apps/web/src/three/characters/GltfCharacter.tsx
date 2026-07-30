@@ -78,6 +78,9 @@ export function GltfCharacter({
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const currentClip = useRef('');
   const currentAction = useRef<THREE.AnimationAction | null>(null);
+  /** Whether the clip on screen came from the action layer, so fading *out* of an
+   * action uses that action transition's duration, not a stale locomotion one. */
+  const currentClipIsAction = useRef(false);
 
   useEffect(() => {
     model.traverse((object) => {
@@ -94,6 +97,7 @@ export function GltfCharacter({
       mixer.stopAllAction();
       currentAction.current = null;
       currentClip.current = '';
+      currentClipIsAction.current = false;
     };
   }, [mixer, model]);
 
@@ -144,13 +148,17 @@ export function GltfCharacter({
           .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
           .play();
         nextAction.clampWhenFinished = !loop;
+        const layer = actionActive || currentClipIsAction.current ? 'action' : 'locomotion';
         currentAction.current?.crossFadeTo(
           nextAction,
-          dodgeRecovery ? DODGE_RECOVERY_BLEND_SEC : 0.12,
+          dodgeRecovery
+            ? DODGE_RECOVERY_BLEND_SEC
+            : engine.graphLayers[layer].blendDurationSec,
           false,
         );
         currentAction.current = nextAction;
         currentClip.current = clipName;
+        currentClipIsAction.current = actionActive;
       }
     }
     mixer.update(delta);

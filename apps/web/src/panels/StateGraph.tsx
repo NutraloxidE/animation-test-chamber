@@ -41,9 +41,19 @@ export function StateGraph() {
         ? actionRuntime.previousStateId
           ? 1 - actionRuntime.blendWeight
           : 0
-        : actionRuntime.previousStateId === actionDefault
+          : actionRuntime.previousStateId === actionDefault
           ? actionRuntime.blendWeight
           : 1;
+  const previousActionId =
+    actionRuntime.previousStateId && actionRuntime.previousStateId !== actionDefault
+      ? actionRuntime.previousStateId
+      : null;
+  const previousActionWeight = previousActionId
+    ? actionRuntime.stateId === actionDefault
+      ? actionWeight
+      : Math.min(actionWeight, 1 - actionRuntime.blendWeight)
+    : 0;
+  const currentActionWeight = Math.max(0, actionWeight - previousActionWeight);
   const locomotionWeight = 1 - actionWeight;
 
   const warnings = useMemo<GraphWarning[]>(() => {
@@ -109,10 +119,21 @@ export function StateGraph() {
       <section className="layer-mix" data-testid="layer-mix">
         <div className="layer-mix__sticky">
           <div className="layer-mix__gauge" aria-label="Locomotion and action layer mix">
+            {previousActionId && (
+              <span
+                className={`layer-mix__action layer-mix__action--${previousActionId}`}
+                style={{ height: `${previousActionWeight * 100}%` }}
+                title={`${previousActionId} ${Math.round(previousActionWeight * 100)}%`}
+                data-state={previousActionId}
+                data-weight={previousActionWeight.toFixed(3)}
+              />
+            )}
             <span
-              className="layer-mix__action"
-              style={{ height: `${actionWeight * 100}%` }}
-              data-weight={actionWeight.toFixed(3)}
+              className={`layer-mix__action layer-mix__action--${actionRuntime.stateId}`}
+              style={{ height: `${currentActionWeight * 100}%` }}
+              title={`${actionRuntime.stateId} ${Math.round(currentActionWeight * 100)}%`}
+              data-state={actionRuntime.stateId}
+              data-weight={currentActionWeight.toFixed(3)}
             />
             <span
               className="layer-mix__locomotion"

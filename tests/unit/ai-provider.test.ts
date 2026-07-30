@@ -144,7 +144,9 @@ describe('proposals', () => {
 
 describe('harmonization', () => {
   it('nudges sibling transitions toward the tuned value without flattening them', async () => {
-    const tuned = setAtPath(project, `${TARGET}/blendDurationSec`, 0.05);
+    // Below every sibling's blend, so the nudge is visible whatever the demo
+    // project's action transitions are currently tuned to.
+    const tuned = setAtPath(project, `${TARGET}/blendDurationSec`, 0.02);
     const patch = await provider.harmonizeRelatedTransitions({
       project: tuned,
       request: '',
@@ -155,7 +157,7 @@ describe('harmonization', () => {
     expect(sibling).toBeDefined();
     const before = getAtPath(tuned, sibling!.path) as number;
     expect(sibling!.after as number).toBeLessThan(before);
-    expect(sibling!.after as number).toBeGreaterThan(0.05);
+    expect(sibling!.after as number).toBeGreaterThan(0.02);
   });
 });
 
