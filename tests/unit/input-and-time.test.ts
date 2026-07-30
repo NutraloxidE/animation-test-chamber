@@ -8,6 +8,7 @@ import {
   msToTicks,
 } from '@atc/runtime-core';
 import { InputState, decodeButtons, emptyButtons, encodeButtons } from '@atc/input-runtime';
+import { ChamberEngine } from '../../apps/web/src/engine.ts';
 import { loadDemoProject } from '../fixtures/project.ts';
 
 const project = loadDemoProject();
@@ -55,6 +56,21 @@ describe('fixed timestep', () => {
     for (let i = 0; i < 60; i += 1) ticks += accumulator.advance(FIXED_DT);
     expect(accumulator.dropped).toBe(3);
     expect(ticks).toBe(57);
+  });
+
+  it('keeps camera look active while simulation is paused', () => {
+    const engine = new ChamberEngine(project);
+    const sampler = (engine as unknown as {
+      sampler: { sample: () => ReturnType<typeof sampleWith> };
+    }).sampler;
+    sampler.sample = () => ({ ...sampleWith({}), lookX: 0.2 });
+
+    const tick = engine.snapshot().tick;
+    engine.setPaused(true);
+    engine.advance(FIXED_DT);
+
+    expect(engine.snapshot().tick).toBe(tick);
+    expect(engine.camera.yaw).toBeCloseTo(-0.2);
   });
 });
 
@@ -128,6 +144,17 @@ describe('input buffering', () => {
     input.beginTick(1, sampleWith({}));
     input.beginTick(2, sampleWith({ Jump: true }));
     expect(input.isBuffered('Jump', 140)).toBe(true);
+  });
+
+  it('discards a fresh press while its action window is closed', () => {
+    const input = new InputState(project.inputMap);
+    input.beginTick(0, sampleWith({ PrimaryAction: true }), () => false);
+    expect(input.isBuffered('PrimaryAction', 200)).toBe(false);
+    expect(input.isAcceptedDown('PrimaryAction')).toBe(false);
+
+    input.beginTick(1, sampleWith({}));
+    input.beginTick(2, sampleWith({ PrimaryAction: true }), () => true);
+    expect(input.isBuffered('PrimaryAction', 200)).toBe(true);
   });
 
   it('distinguishes press, hold and release edges', () => {

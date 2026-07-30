@@ -63,6 +63,7 @@ export function sampleToFrame(tick: number, sample: ActionSample): ReplayFrame {
 
 interface ButtonRecord {
   down: boolean;
+  acceptedDown: boolean;
   pressedTick: number;
   releasedTick: number;
   /** Tick at which a buffered press was consumed; -1 when still eligible. */
@@ -84,7 +85,13 @@ export class InputState {
 
   constructor(private inputMap: InputMapDefinition) {
     for (const action of BUTTON_ACTIONS) {
-      this.records.set(action, { down: false, pressedTick: -1, releasedTick: -1, consumedTick: -1 });
+      this.records.set(action, {
+        down: false,
+        acceptedDown: false,
+        pressedTick: -1,
+        releasedTick: -1,
+        consumedTick: -1,
+      });
     }
   }
 
@@ -98,6 +105,7 @@ export class InputState {
     this.lastGroundedTick = -1;
     for (const record of this.records.values()) {
       record.down = false;
+      record.acceptedDown = false;
       record.pressedTick = -1;
       record.releasedTick = -1;
       record.consumedTick = -1;
@@ -105,7 +113,11 @@ export class InputState {
   }
 
   /** Feeds one tick of input. Must be called exactly once per simulation tick. */
-  beginTick(tick: number, sample: ActionSample): void {
+  beginTick(
+    tick: number,
+    sample: ActionSample,
+    acceptPress: (action: ButtonAction) => boolean = () => true,
+  ): void {
     this.tick = tick;
     const move = applyDeadzone(sample.moveX, sample.moveY, this.inputMap.stickDeadzone);
     this.current = {
@@ -120,11 +132,18 @@ export class InputState {
       const record = this.records.get(action)!;
       const isDown = sample.buttons[action] === true;
       if (isDown && !record.down) {
-        record.pressedTick = tick;
-        // A fresh press re-arms the buffer even if a previous one was consumed.
-        record.consumedTick = -1;
+        record.acceptedDown = acceptPress(action);
+        if (record.acceptedDown) {
+          record.pressedTick = tick;
+          // A fresh press re-arms the buffer even if a previous one was consumed.
+          record.consumedTick = -1;
+        } else {
+          record.pressedTick = -1;
+          record.consumedTick = -1;
+        }
       } else if (!isDown && record.down) {
         record.releasedTick = tick;
+        record.acceptedDown = false;
       }
       record.down = isDown;
     }
@@ -156,6 +175,10 @@ export class InputState {
 
   isDown(action: ButtonAction): boolean {
     return this.records.get(action)?.down ?? false;
+  }
+
+  isAcceptedDown(action: ButtonAction): boolean {
+    return this.records.get(action)?.acceptedDown ?? false;
   }
 
   justPressed(action: ButtonAction): boolean {

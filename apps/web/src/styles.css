@@ -814,12 +814,30 @@ textarea {
   position: absolute;
   top: 8px;
   right: 8px;
-  display: flex;
-  gap: 6px;
+  width: min(220px, calc(100% - 16px));
+  padding: 7px;
+  background: rgba(11, 17, 32, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  backdrop-filter: blur(8px);
 }
 
-.viewport-controls button,
+.viewport-controls summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.viewport-controls__body {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.viewport-controls__body button,
 .restore-ui {
+  width: 100%;
   font-size: 11px;
   background: rgba(11, 17, 32, 0.85);
 }
@@ -832,16 +850,18 @@ textarea {
 .viewport-select {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
   padding: 3px 6px;
   font-size: 10px;
   color: var(--muted);
-  background: rgba(11, 17, 32, 0.85);
+  background: rgba(11, 17, 32, 0.55);
   border: 1px solid var(--line);
   border-radius: 5px;
 }
 
 .viewport-select select {
+  width: 140px;
   padding: 2px 4px;
   font-size: 11px;
 }
@@ -1028,4 +1048,58 @@ textarea {
 .blend-row:hover {
   opacity: 1;
   transition: opacity 0.1s linear;
+}
+
+.action-input-playback {
+  padding: 6px 0 0;
+}
+
+.action-input-playback__status {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.blend-row--live .action-input-playback__status {
+  color: var(--text);
+}
+
+.action-input-detail {
+  opacity: 0.55;
+}
+
+.action-input-detail.blend-row--live {
+  opacity: 1;
+}
+
+.action-input-playback__status strong {
+  color: var(--accent);
+}
+
+.action-input-playback__track {
+  position: relative;
+  height: 5px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.action-input-playback__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.action-input-playback__marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 5px #fff;
 }

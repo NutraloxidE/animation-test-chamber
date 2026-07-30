@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal, useFrame } from '@react-three/fiber';
+import { TransformControls, useGLTF } from '@react-three/drei';
 import {
   DODGE_RECOVERY_BLEND_SEC,
   isDodgeRecoveryTransition,
 } from '@atc/animation-runtime';
+import type { RootMotionTrack } from '@atc/replay-runtime';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type { CharacterPreset, MotionSet } from '../catalog.ts';
+import type {
+  CharacterPreset,
+  MotionSet,
+  WeaponGrip,
+  WeaponMode,
+} from '../catalog.ts';
+import { HeldSword } from './HeldSword.tsx';
 
 const CLIP_FOR_STATE: Record<string, string> = {
   idle: 'HumanArmature|Idle',
@@ -24,26 +31,52 @@ export function GltfCharacter({
   engine,
   character,
   motion,
+  weapon,
+  grip,
+  gripEditorMode,
+  onGripChange,
 }: {
   engine: ChamberEngine;
   character: CharacterPreset;
   motion: MotionSet;
+  weapon: WeaponMode;
+  grip?: WeaponGrip;
+  gripEditorMode?: 'translate' | 'rotate' | null;
+  onGripChange?(grip: WeaponGrip): void;
 }) {
   const root = useRef<THREE.Group>(null);
+  const [heldWeapon, setHeldWeapon] = useState<THREE.Group | null>(null);
   const { scene: model } = useGLTF(character.modelUrl!);
-  const animationUrl =
+  const baseAnimationUrl =
     (character.animationUrl ? motion.animationUrl : undefined) ??
     character.animationUrl ??
     character.modelUrl!;
-  const { animations: sourceAnimations } = useGLTF(animationUrl);
+  const weaponCompatible = Boolean(
+    weapon.animationUrl && weapon.rigId === character.rigId,
+  );
+  const weaponAnimationUrl = weaponCompatible
+    ? weapon.animationUrl!
+    : baseAnimationUrl;
+  const { animations: baseAnimations } = useGLTF(baseAnimationUrl);
+  const { animations: weaponAnimations } = useGLTF(weaponAnimationUrl);
+  const baseClipMap =
+    (character.animationUrl ? motion.clipMap : undefined) ??
+    character.clipMap ??
+    CLIP_FOR_STATE;
+  const clipMap = {
+    ...baseClipMap,
+    ...(weaponCompatible ? weapon.clipMap : undefined),
+  };
   const animations = useMemo(() => {
-    if (animationUrl === character.modelUrl) return sourceAnimations;
+    const sourceAnimations =
+      baseAnimationUrl === weaponAnimationUrl
+        ? baseAnimations
+        : [...baseAnimations, ...weaponAnimations];
+    if (baseAnimationUrl === character.modelUrl && !weaponCompatible) {
+      return sourceAnimations;
+    }
 
-    const wanted = new Set(
-      Object.values(
-        (character.animationUrl ? motion.clipMap : undefined) ?? character.clipMap ?? {},
-      ),
-    );
+    const wanted = new Set(Object.values(clipMap));
     return sourceAnimations
       .filter((clip) => wanted.has(clip.name))
       .map((sourceClip) => {
@@ -60,7 +93,11 @@ export function GltfCharacter({
           ) {
             continue;
           }
-          const scale = character.animationPositionScale ?? 1;
+          const scale =
+            weaponAnimationUrl !== baseAnimationUrl &&
+            weaponAnimations.includes(sourceClip)
+              ? (weapon.animationPositionScale ?? 1)
+              : (character.animationPositionScale ?? 1);
           for (let index = 0; index < track.values.length; index += 1) {
             track.values[index] = track.values[index]! * scale;
           }
@@ -68,13 +105,53 @@ export function GltfCharacter({
         return retargeted;
       });
   }, [
-    animationUrl,
+    baseAnimationUrl,
+    baseAnimations,
     character.animationPositionScale,
-    character.clipMap,
     character.modelUrl,
-    motion.clipMap,
-    sourceAnimations,
+    clipMap,
+    weaponAnimationUrl,
+    weapon.animationPositionScale,
+    weaponAnimations,
+    weaponCompatible,
   ]);
+  const actionRootMotionTracks = useMemo(() => {
+    if (!weaponCompatible || !weapon.usesAttackRootMotion) return {};
+    const tracks: Record<string, RootMotionTrack> = {};
+    for (const [stateId, clipName] of Object.entries(weapon.clipMap ?? {})) {
+      const clip = weaponAnimations.find((animation) => animation.name === clipName);
+      const rootTrack = clip?.tracks.find(
+        (track): track is THREE.VectorKeyframeTrack =>
+          track instanceof THREE.VectorKeyframeTrack && track.name === 'root.position',
+      );
+      if (!clip || !rootTrack || rootTrack.times.length === 0) continue;
+      const scale = weapon.animationPositionScale ?? 1;
+      const origin = {
+        x: rootTrack.values[0]!,
+        y: rootTrack.values[1]!,
+        z: rootTrack.values[2]!,
+      };
+      tracks[stateId] = {
+        times: Array.from(rootTrack.times, (time) => time / clip.duration),
+        positions: Array.from(rootTrack.times, (_, index) => ({
+          x: (rootTrack.values[index * 3]! - origin.x) * scale,
+          y: (rootTrack.values[index * 3 + 1]! - origin.y) * scale,
+          z: (rootTrack.values[index * 3 + 2]! - origin.z) * scale,
+        })),
+      };
+    }
+    return tracks;
+  }, [
+    weapon.animationPositionScale,
+    weapon.clipMap,
+    weapon.usesAttackRootMotion,
+    weaponAnimations,
+    weaponCompatible,
+  ]);
+  useEffect(() => {
+    engine.setActionRootMotionTracks(actionRootMotionTracks);
+    return () => engine.setActionRootMotionTracks({});
+  }, [actionRootMotionTracks, engine]);
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const currentClip = useRef('');
   const currentAction = useRef<THREE.AnimationAction | null>(null);
@@ -131,10 +208,6 @@ export function GltfCharacter({
     const normalizedTime = actionActive
       ? record.actionNormalizedTime
       : (record?.locomotionNormalizedTime ?? 0);
-    const clipMap =
-      (character.animationUrl ? motion.clipMap : undefined) ??
-      character.clipMap ??
-      CLIP_FOR_STATE;
     const clipName = clipMap[stateId] ?? clipMap.idle ?? CLIP_FOR_STATE.idle!;
     if (clipName !== currentClip.current) {
       const clip = animations.find((animation) => animation.name === clipName);
@@ -170,11 +243,51 @@ export function GltfCharacter({
   });
 
   const scale = character.modelScale ?? 1;
+  const hand = character.rightHandBone
+    ? model.getObjectByName(character.rightHandBone)
+    : undefined;
   return (
-    <group ref={root}>
-      <group scale={[scale, scale, scale]}>
-        <primitive object={model} />
+    <>
+      <group ref={root}>
+        <group scale={[scale, scale, scale]}>
+          <primitive object={model} />
+        </group>
+        {weapon.heldItem === 'sword' &&
+          hand &&
+          grip &&
+          createPortal(
+            <group
+              ref={setHeldWeapon}
+              position={grip.position}
+              rotation={grip.rotation}
+            >
+              <HeldSword />
+            </group>,
+            hand,
+          )}
       </group>
-    </group>
+      {gripEditorMode && heldWeapon && (
+        <TransformControls
+          object={heldWeapon}
+          mode={gripEditorMode}
+          space="local"
+          size={0.45}
+          translationSnap={0.005}
+          rotationSnap={THREE.MathUtils.degToRad(1)}
+          onMouseDown={() => engine.detachInput()}
+          onMouseUp={() => {
+            engine.attachInput();
+            onGripChange?.({
+              position: heldWeapon.position.toArray(),
+              rotation: [
+                heldWeapon.rotation.x,
+                heldWeapon.rotation.y,
+                heldWeapon.rotation.z,
+              ],
+            });
+          }}
+        />
+      )}
+    </>
   );
 }

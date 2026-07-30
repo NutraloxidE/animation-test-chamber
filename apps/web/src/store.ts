@@ -11,7 +11,12 @@ import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
-import { CHARACTER_PRESETS, MOTION_SETS } from './three/catalog.ts';
+import {
+  CHARACTER_PRESETS,
+  MOTION_SETS,
+  WEAPON_MODES,
+  type WeaponGrip,
+} from './three/catalog.ts';
 import seedProject from '@chamber/project';
 
 export type PanelId =
@@ -43,6 +48,9 @@ interface ChamberState {
   terrainPresetId: string;
   characterPresetId: string;
   motionSetId: string;
+  weaponModeId: string;
+  weaponGripOverrides: Record<string, WeaponGrip>;
+  gripEditorMode: 'translate' | 'rotate' | null;
 
   proposals: AdjustmentProposal[];
   aiBusy: boolean;
@@ -87,6 +95,10 @@ interface ChamberActions {
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
   setMotionSet(id: string): void;
+  setWeaponMode(id: string): void;
+  setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
+  saveWeaponGrip(characterId: string, weaponId: string, grip: WeaponGrip): void;
+  resetWeaponGrip(characterId: string, weaponId: string): void;
   requestProposals(request: string): Promise<void>;
   applyProposal(proposal: AdjustmentProposal, approve: boolean): void;
   buildCompareSlots(): void;
@@ -190,6 +202,9 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     terrainPresetId: initialProject.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
     motionSetId: MOTION_SETS[0]!.id,
+    weaponModeId: WEAPON_MODES[0]!.id,
+    weaponGripOverrides: {},
+    gripEditorMode: null,
 
     proposals: [],
     aiBusy: false,
@@ -304,12 +319,45 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     setCharacterPreset(id) {
       if (!CHARACTER_PRESETS.some((preset) => preset.id === id)) return;
-      set({ characterPresetId: id, statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}` });
+      set({ characterPresetId: id, gripEditorMode: null, statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}` });
     },
 
     setMotionSet(id) {
       if (!MOTION_SETS.some((set) => set.id === id)) return;
       set({ motionSetId: id, statusMessage: `Motion set: ${MOTION_SETS.find((set) => set.id === id)!.label}` });
+    },
+
+    setWeaponMode(id) {
+      const weapon = WEAPON_MODES.find((mode) => mode.id === id);
+      if (!weapon) return;
+      engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
+      engine.setWeaponModeId(weapon.id);
+      set({ weaponModeId: id, gripEditorMode: null, statusMessage: `Weapon: ${weapon.label}` });
+    },
+
+    setGripEditorMode(mode) {
+      set({
+        gripEditorMode: mode,
+        statusMessage: mode
+          ? `Grip editor: ${mode}. Drag the gizmo; changes auto-save.`
+          : 'Grip editor closed.',
+      });
+    },
+
+    saveWeaponGrip(characterId, weaponId, grip) {
+      set({
+        weaponGripOverrides: {
+          ...get().weaponGripOverrides,
+          [`${characterId}:${weaponId}`]: grip,
+        },
+        statusMessage: 'Grip saved locally.',
+      });
+    },
+
+    resetWeaponGrip(characterId, weaponId) {
+      const weaponGripOverrides = { ...get().weaponGripOverrides };
+      delete weaponGripOverrides[`${characterId}:${weaponId}`];
+      set({ weaponGripOverrides, statusMessage: 'Grip reset to the catalog default.' });
     },
 
     async requestProposals(request) {
@@ -658,6 +706,8 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
       motionSetId: state.motionSetId,
+      weaponModeId: state.weaponModeId,
+      weaponGripOverrides: state.weaponGripOverrides,
       selectedReplayId: state.selectedReplayId,
     }),
     onRehydrateStorage: () => (state) => {
@@ -669,6 +719,7 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       } catch {
         state.setTerrainPreset(initialProject.defaultTerrainPresetId);
       }
+      state.setWeaponMode(state.weaponModeId);
     },
   }),
 );

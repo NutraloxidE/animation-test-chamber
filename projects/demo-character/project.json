@@ -426,12 +426,13 @@
       "proceduralGenerator": "attack-01",
       "durationSec": 0.75,
       "loop": false,
+      "inputAcceptanceStartNormalized": 0.2,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
         "z": 0
       },
-      "rootMotionMode": "InPlace",
+      "rootMotionMode": "RootMotion",
       "events": [
         {
           "id": "a1-windup",
@@ -470,17 +471,38 @@
     },
     {
       "schemaVersion": 1,
-      "id": "attack-02",
+      "id": "attack-01-recovery",
       "assetPath": null,
-      "proceduralGenerator": "attack-02",
-      "durationSec": 0.85,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
       "loop": false,
+      "inputAcceptanceStartNormalized": 0.85,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
         "z": 0
       },
-      "rootMotionMode": "InPlace",
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.2,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rootMotionMode": "RootMotion",
       "events": [
         {
           "id": "a2-windup",
@@ -515,11 +537,32 @@
     },
     {
       "schemaVersion": 1,
+      "id": "attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.85,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      }
+    },
+    {
+      "schemaVersion": 1,
       "id": "dodge",
       "assetPath": null,
       "proceduralGenerator": "dodge",
       "durationSec": 1.4666667,
       "loop": false,
+      "inputAcceptanceStartNormalized": 0.3,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -562,6 +605,7 @@
       "proceduralGenerator": "guard",
       "durationSec": 0.6,
       "loop": true,
+      "inputAcceptanceStartNormalized": 0,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -591,6 +635,7 @@
       "proceduralGenerator": "hit",
       "durationSec": 0.45,
       "loop": false,
+      "inputAcceptanceStartNormalized": 0.9,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -752,8 +797,34 @@
       },
       {
         "schemaVersion": 1,
+        "id": "attack-01-recovery",
+        "clipId": "attack-01-recovery",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "upper",
+        "fallbackState": "action-none"
+      },
+      {
+        "schemaVersion": 1,
         "id": "attack-02",
         "clipId": "attack-02",
+        "layer": "action",
+        "loop": false,
+        "speed": 1,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": false,
+        "bodyMask": "upper",
+        "fallbackState": "action-none"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-recovery",
+        "clipId": "attack-02-recovery",
         "layer": "action",
         "loop": false,
         "speed": 1,
@@ -1493,6 +1564,182 @@
           "start": 0.72,
           "end": 0.98
         }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-recovery",
+        "from": "attack-01",
+        "to": "attack-01-recovery",
+        "conditions": [
+          {
+            "parameter": "weaponMode",
+            "operator": "equals",
+            "value": "sword"
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 0,
+        "priority": 40,
+        "exitTimeNormalized": 1
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-recovery-to-dodge",
+        "from": "attack-01-recovery",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 180,
+        "cancelWindow": {
+          "start": 0,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-recovery-to-attack-02",
+        "from": "attack-01-recovery",
+        "to": "attack-02",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 200
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 200,
+        "priority": 120,
+        "cancelWindow": {
+          "start": 0,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-recovery-to-none",
+        "from": "attack-01-recovery",
+        "to": "action-none",
+        "conditions": [],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 0,
+        "priority": 40,
+        "exitTimeNormalized": 1
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-recovery",
+        "from": "attack-02",
+        "to": "attack-02-recovery",
+        "conditions": [
+          {
+            "parameter": "weaponMode",
+            "operator": "equals",
+            "value": "sword"
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 0,
+        "priority": 40,
+        "exitTimeNormalized": 1
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-recovery-to-dodge",
+        "from": "attack-02-recovery",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 180,
+        "cancelWindow": {
+          "start": 0,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-recovery-to-attack-01",
+        "from": "attack-02-recovery",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 200
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 200,
+        "priority": 120,
+        "cancelWindow": {
+          "start": 0,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-recovery-to-none",
+        "from": "attack-02-recovery",
+        "to": "action-none",
+        "conditions": [],
+        "blendDurationSec": 0.12,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 0,
+        "priority": 40,
+        "exitTimeNormalized": 1
       }
     ],
     "forcedTransitionOrder": [

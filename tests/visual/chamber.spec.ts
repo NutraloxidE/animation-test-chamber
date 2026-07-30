@@ -62,11 +62,28 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('character and motion presets can be selected', async ({ page }) => {
+test('character, motion and weapon presets can be selected', async ({ page }) => {
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   await page.getByTestId('motion-set-select').selectOption('power');
   await expect(page.getByTestId('status-bar')).toContainText('Power stride');
+  const swordAsset = page.waitForResponse((response) =>
+    response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
+  );
+  await page.getByTestId('weapon-mode-select').selectOption('sword');
+  expect((await swordAsset).ok()).toBe(true);
+  await expect(page.getByTestId('status-bar')).toContainText('Sword');
+  await page.getByTestId('grip-editor-select').selectOption('rotate');
+  await expect(page.getByTestId('reset-grip')).toBeVisible();
+  await expect(page.getByTestId('mobile-pad')).toBeHidden();
+  await expect(page.getByTestId('status-bar')).toContainText('auto-save');
+  await expect(page.getByTestId('frame-step')).toBeDisabled();
+  await page.getByTestId('toggle-pause').click();
+  await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
+  await expect(page.getByTestId('frame-step')).toBeEnabled();
+  await page.getByTestId('frame-step').click();
+  await page.getByTestId('viewport-controls').getByText('Controls').click();
+  await expect(page.getByTestId('character-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
@@ -82,6 +99,36 @@ test('jump and attack drive the two layers independently', async ({ page }) => {
   await page.keyboard.press('KeyJ');
   await page.waitForTimeout(200);
   await expect(hud).toContainText('attack-01');
+});
+
+test('sword attacks play their matching recovery clips', async ({ page }) => {
+  const hud = page.getByTestId('hud');
+  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+  await page.getByTestId('weapon-mode-select').selectOption('sword');
+
+  await openPanel(page, 'replay');
+  const replaySelect = page.getByTestId('replay-panel').locator('select').first();
+  await replaySelect.selectOption('run-to-attack-forward');
+  await page.getByTestId('play-replay').click();
+  await expect(hud).toContainText('attack-01-recovery', { timeout: 2500 });
+  await expect(hud).toContainText('action-none', { timeout: 2500 });
+
+  await page
+    .getByTestId('replay-panel')
+    .locator('select')
+    .first()
+    .selectOption('attack-01-to-attack-02');
+  await page.getByTestId('play-replay').click();
+  await expect(hud).toContainText('attack-02', { timeout: 1500 });
+  await expect(hud).toContainText('attack-02-recovery', { timeout: 2500 });
+  await expect(hud).toContainText('action-none', { timeout: 2500 });
+
+  await openPanel(page, 'inspector');
+  await page.getByTestId('blend-list').click();
+  await expect(page.getByTestId('blend-attack-01-to-recovery')).toBeVisible();
+  await expect(page.getByTestId('blend-attack-01-recovery-to-none')).toBeVisible();
+  await expect(page.getByTestId('blend-attack-02-to-recovery')).toBeVisible();
+  await expect(page.getByTestId('blend-attack-02-recovery-to-none')).toBeVisible();
 });
 
 test('editing a transition updates the preview and the diff', async ({ page }) => {
@@ -104,6 +151,33 @@ test('editing a transition updates the preview and the diff', async ({ page }) =
 
 test('repeated clip tuning is exposed through the Inspector edit loop', async ({ page }) => {
   await openPanel(page, 'inspector');
+  await page.getByTestId('clip-select').selectOption('attack-01');
+  await expect(
+    page.getByTestId('field-/clips/attack-01/rootDisplacement/z'),
+  ).toContainText('Forward displacement adjustment');
+  await expect(
+    page.getByTestId('field-/clips/attack-01/rootDisplacement/z'),
+  ).toContainText('+0.00 m');
+  await expect(
+    page.getByTestId('field-/clips/attack-01/inputAcceptanceStartNormalized'),
+  ).toContainText('20%');
+  await page.getByTestId('action-input-list').click();
+  await expect(page.getByTestId('action-input-attack-01')).toBeVisible();
+  await expect(page.getByTestId('action-input-attack-01-recovery')).toContainText('85%');
+
+  await openPanel(page, 'replay');
+  await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
+  await page.getByTestId('play-replay').click();
+  await openPanel(page, 'inspector');
+  await page.getByTestId('clip-select').selectOption('attack-01');
+  await page.getByTestId('action-input-list').click();
+  const liveAttack = page.getByTestId('action-input-attack-01').locator('..');
+  await expect(liveAttack).toHaveClass(/blend-row--live/);
+  await expect(liveAttack).toContainText('PLAYING');
+  await expect(page.getByTestId('selected-action-playback')).toContainText('PLAYING');
+  await expect
+    .poll(async () => Number(await liveAttack.getAttribute('data-progress')))
+    .toBeGreaterThan(0);
   await page.getByTestId('clip-select').selectOption('dodge');
 
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');

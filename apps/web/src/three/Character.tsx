@@ -1,5 +1,5 @@
 import type { ChamberEngine } from '../engine.ts';
-import type { CharacterPreset, MotionSet } from './catalog.ts';
+import type { CharacterPreset, MotionSet, WeaponGrip, WeaponMode } from './catalog.ts';
 import { GltfCharacter } from './characters/GltfCharacter.tsx';
 import { ProceduralCharacter } from './characters/ProceduralCharacter.tsx';
 
@@ -9,6 +9,10 @@ interface CharacterProps {
   color?: string;
   character?: CharacterPreset;
   motion: MotionSet;
+  weapon: WeaponMode;
+  grip?: WeaponGrip;
+  gripEditorMode?: 'translate' | 'rotate' | null;
+  onGripChange?(grip: WeaponGrip): void;
 }
 
 export function Character(props: CharacterProps) {
@@ -18,6 +22,10 @@ export function Character(props: CharacterProps) {
         engine={props.engine}
         character={props.character}
         motion={props.motion}
+        weapon={props.weapon}
+        grip={props.grip}
+        gripEditorMode={props.gripEditorMode}
+        onGripChange={props.onGripChange}
       />
     );
   }

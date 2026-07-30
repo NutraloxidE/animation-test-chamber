@@ -152,6 +152,8 @@ namespace AnimationTestChamber.Generated
         public string /* Linear | FastInSlowOut */ rootMotionCurve;
         // optional
         public float recoveryTransitionStartNormalized;
+        // optional
+        public float inputAcceptanceStartNormalized;
         public List<SemanticEventDefinition> events;
         public AnimationClipDefinitionFootContacts footContacts;
         // optional

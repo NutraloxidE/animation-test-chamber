@@ -101,6 +101,8 @@ export const AnimationClipDefinition = Type.Object(
     recoveryTransitionStartNormalized: Type.Optional(
       Type.Number({ minimum: 0, maximum: 1 }),
     ),
+    /** Earliest normalized time at which a new action-button press is buffered. */
+    inputAcceptanceStartNormalized: Type.Optional(NormalizedTime),
     events: Type.Array(SemanticEventDefinition),
     /** Normalized times at which each foot is planted. Drives foot-IK and metrics. */
     footContacts: Type.Object(

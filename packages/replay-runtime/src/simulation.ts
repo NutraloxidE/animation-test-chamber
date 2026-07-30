@@ -1,4 +1,4 @@
-import type { AnimationClipDefinition, ProjectDefinition, SemanticEventKind, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
+import type { AnimationClipDefinition, ButtonAction, ProjectDefinition, SemanticEventKind, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
   AnimationGraphRuntime,
@@ -15,6 +15,12 @@ import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type F
 
 /** How long a lock-queued jump survives after the root unlocks. */
 const QUEUED_JUMP_GRACE_MS = 140;
+const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
+  'PrimaryAction',
+  'SecondaryAction',
+  'Dodge',
+  'Guard',
+]);
 
 export interface SimulationInit {
   project: ProjectDefinition;
@@ -23,6 +29,14 @@ export interface SimulationInit {
   initialPosition: Vec3;
   initialYawRad: number;
   cameraYawRad: number;
+  upperBodyActionRootMotionEnabled?: boolean;
+  actionRootMotionTracks?: Record<string, RootMotionTrack>;
+  weaponModeId?: string;
+}
+
+export interface RootMotionTrack {
+  times: number[];
+  positions: Vec3[];
 }
 
 export interface TickRecord {
@@ -87,6 +101,9 @@ export class Simulation {
   private lastFootIk: FootIkResult | null = null;
   private authoredRootDisplacement = 0;
   private actualDisplacement = 0;
+  private upperBodyActionRootMotionEnabled: boolean;
+  private actionRootMotionTracks: Record<string, RootMotionTrack>;
+  private weaponModeId: string;
 
   /** Set for one tick when the graph enters a jump state, so the impulse fires once. */
   private pendingJumpImpulse = false;
@@ -101,6 +118,9 @@ export class Simulation {
     this.position = { ...init.initialPosition };
     this.yawRad = init.initialYawRad;
     this.cameraYawRad = init.cameraYawRad;
+    this.upperBodyActionRootMotionEnabled = init.upperBodyActionRootMotionEnabled ?? false;
+    this.actionRootMotionTracks = init.actionRootMotionTracks ?? {};
+    this.weaponModeId = init.weaponModeId ?? 'unarmed';
     this.random = createRandom(init.seed);
 
     this.graph = new AnimationGraphRuntime(init.project.graph, init.project.clips);
@@ -131,6 +151,18 @@ export class Simulation {
 
   setCameraYaw(yawRad: number): void {
     this.cameraYawRad = yawRad;
+  }
+
+  setUpperBodyActionRootMotionEnabled(enabled: boolean): void {
+    this.upperBodyActionRootMotionEnabled = enabled;
+  }
+
+  setActionRootMotionTracks(tracks: Record<string, RootMotionTrack>): void {
+    this.actionRootMotionTracks = tracks;
+  }
+
+  setWeaponModeId(id: string): void {
+    this.weaponModeId = id;
   }
 
   get state(): SimulationState {
@@ -191,7 +223,7 @@ export class Simulation {
           case 'rootLocked':
             return this.rootLocked();
           case 'guardHeld':
-            return input.isDown('Guard');
+            return input.isAcceptedDown('Guard');
           case 'jumpHeld':
             return input.isDown('Jump');
           case 'jumpRequested':
@@ -216,6 +248,8 @@ export class Simulation {
             return terrain.state;
           case 'surface':
             return terrain.surface.id;
+          case 'weaponMode':
+            return this.weaponModeId;
           default:
             return '';
         }
@@ -234,7 +268,7 @@ export class Simulation {
 
   /** Advances exactly one fixed timestep and returns the trace record. */
   step(sample: ActionSample): TickRecord {
-    this.input.beginTick(this.tickIndex, sample);
+    this.input.beginTick(this.tickIndex, sample, (action) => this.acceptsActionPress(action));
     this.input.markGrounded(this.lastTerrain.grounded);
 
     this.updateQueuedJump();
@@ -290,6 +324,13 @@ export class Simulation {
     return record;
   }
 
+  private acceptsActionPress(action: ButtonAction): boolean {
+    if (!NEXT_ACTION_INPUTS.has(action) || !this.graph.isActionActive()) return true;
+    const layer = this.graph.getLayer('action');
+    const clip = this.graph.getClipFor(layer.stateId);
+    return layer.normalizedTime >= (clip?.inputAcceptanceStartNormalized ?? 0);
+  }
+
   private stateTakesOff(stateId: string): boolean {
     const clip = this.graph.getClipFor(stateId);
     return clip?.events.some((event) => event.kind === 'JumpTakeoff') ?? false;
@@ -327,10 +368,11 @@ export class Simulation {
       actionClip?.recoveryTransitionStartNormalized,
     );
     const actionIsStationary = this.actionIsStationary();
+    const actionIsAttack = this.actionIsAttack();
 
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.
-    const actionScale = actionIsStationary
+    const actionScale = actionIsStationary || actionIsAttack
       ? 0
       : this.graph.isActionActive()
         ? movement.actionMovementAuthority +
@@ -347,7 +389,11 @@ export class Simulation {
     const accelerating = magnitude > 0;
     const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT;
 
-    if (actionIsStationary || (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)) {
+    if (
+      actionIsStationary ||
+      actionIsAttack ||
+      (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)
+    ) {
       this.velocity.x = 0;
       this.velocity.z = 0;
     } else {
@@ -437,6 +483,11 @@ export class Simulation {
     return this.graph.getClipFor(this.graph.getLayer('action').stateId)?.rootMotionMode === 'InPlace';
   }
 
+  private actionIsAttack(): boolean {
+    if (!this.graph.isActionActive()) return false;
+    return this.graph.getLayer('action').stateId.startsWith('attack-');
+  }
+
   private currentRotationAuthority(): number {
     const layer = this.graph.getLayer('action');
     const transitionId = layer.lastTransitionId;
@@ -477,10 +528,16 @@ export class Simulation {
     return layer.normalizedTime < recoveryStart;
   }
 
-  /** Full-body action states drive the root; upper-body ones leave it to locomotion. */
+  /** Moving actions drive the root even when their pose mask is upper-body. */
   private actionOwnsRoot(): boolean {
     const stateId = this.graph.getLayer('action').stateId;
-    return this.graph.isActionActive() && this.graph.getStateDefinition(stateId)?.bodyMask === 'full';
+    if (!this.graph.isActionActive()) return false;
+    const clip = this.graph.getClipFor(stateId);
+    return (
+      this.graph.getStateDefinition(stateId)?.bodyMask === 'full' ||
+      (this.upperBodyActionRootMotionEnabled &&
+        (clip?.rootMotionMode === 'RootMotion' || clip?.rootMotionMode === 'Hybrid'))
+    );
   }
 
   private sampleRootMotionDelta(recoveryWeight: number): Vec3 {
@@ -492,6 +549,13 @@ export class Simulation {
       if (!clip) return vec3();
       const previous =
         layer.normalizedTime - (FIXED_DT * layer.playbackSpeed) / clip.durationSec;
+      const track = this.actionRootMotionTracks[layer.stateId];
+      if (track) {
+        return addVec3(
+          sampleRootTrack(track, clip.rootDisplacement, layer.normalizedTime),
+          scaleVec3(sampleRootTrack(track, clip.rootDisplacement, previous), -1),
+        );
+      }
       return sampleRootMotion(clip, previous, layer.normalizedTime);
     };
 
@@ -584,6 +648,45 @@ export class Simulation {
   clipFor(layer: LayerId): AnimationClipDefinition | undefined {
     return this.graph.getClipFor(this.graph.getLayer(layer).stateId);
   }
+}
+
+function sampleRootTrack(
+  track: RootMotionTrack,
+  displacementAdjustment: Vec3,
+  normalizedTime: number,
+): Vec3 {
+  const time = Math.max(0, Math.min(normalizedTime, 1));
+  const last = track.times.length - 1;
+  if (last < 0 || track.positions.length !== track.times.length) return vec3();
+  let position: Vec3;
+  if (time <= track.times[0]!) {
+    position = track.positions[0]!;
+  } else if (time >= track.times[last]!) {
+    position = track.positions[last]!;
+  } else {
+    const next = track.times.findIndex((at) => at >= time);
+    const previous = next - 1;
+    const span = track.times[next]! - track.times[previous]!;
+    const alpha = span > 0 ? (time - track.times[previous]!) / span : 1;
+    const from = track.positions[previous]!;
+    const to = track.positions[next]!;
+    position = {
+      x: from.x + (to.x - from.x) * alpha,
+      y: from.y + (to.y - from.y) * alpha,
+      z: from.z + (to.z - from.z) * alpha,
+    };
+  }
+
+  const total = track.positions[last]!;
+  const adjusted = (value: number, sourceTotal: number, adjustment: number): number =>
+    Math.abs(sourceTotal) > 1e-6
+      ? value * ((sourceTotal + adjustment) / sourceTotal)
+      : value + adjustment * time;
+  return {
+    x: adjusted(position.x, total.x, displacementAdjustment.x),
+    y: adjusted(position.y, total.y, displacementAdjustment.y),
+    z: adjusted(position.z, total.z, displacementAdjustment.z),
+  };
 }
 
 function quantizeVec(v: Vec3): Vec3 {
