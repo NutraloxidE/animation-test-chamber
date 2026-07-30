@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "demo-character",
   "displayName": "Demo Character",
-  "revisionId": "rev-0004",
+  "revisionId": "rev-0005",
   "defaultTerrainPresetId": "flat",
   "character": {
     "schemaVersion": 1,
@@ -489,7 +489,7 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0
+        "z": 0.6
       },
       "rootMotionMode": "RootMotion",
       "events": [],
@@ -573,7 +573,7 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0
+        "z": 0.55
       },
       "rootMotionMode": "RootMotion",
       "events": [],
@@ -2183,6 +2183,22 @@
       "provenance": {
         "source": "human-adjustment",
         "at": "2026-07-30T11:42:17.292Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0005",
+      "parentId": "rev-0004",
+      "createdAt": "2026-07-30T13:06:46.621Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 2 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/attack-01-recovery/rootDisplacement/z",
+        "/clips/attack-02-recovery/rootDisplacement/z"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T13:06:46.621Z"
       }
     }
   ],

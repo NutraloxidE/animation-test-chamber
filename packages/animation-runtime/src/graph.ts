@@ -14,15 +14,24 @@ export type LayerId = 'locomotion' | 'action';
 export const DEFAULT_DODGE_RECOVERY_START_NORMALIZED = 0.78;
 export const DODGE_RECOVERY_BLEND_SEC = 0.28;
 
+/**
+ * A dedicated `*-recovery` clip is recovery from its first frame; anything else
+ * (dodge) hands authority back at its authored recovery point.
+ */
+function recoveryStartFor(actionState: string, authored: number | undefined): number {
+  if (authored !== undefined) return authored;
+  return actionState.endsWith('-recovery') ? 0 : DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
+}
+
 export function isDodgeRecoveryTransition(
   actionState: string,
   actionNormalizedTime: number,
   locomotionState: string,
-  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
+  recoveryStartNormalized?: number,
 ): boolean {
   return (
-    actionState === 'dodge' &&
-    actionNormalizedTime >= recoveryStartNormalized &&
+    (actionState === 'dodge' || actionState.endsWith('-recovery')) &&
+    actionNormalizedTime >= recoveryStartFor(actionState, recoveryStartNormalized) &&
     (locomotionState === 'walk' || locomotionState === 'run')
   );
 }
@@ -32,7 +41,7 @@ export function dodgeRecoveryBlendWeight(
   actionNormalizedTime: number,
   actionDurationSec: number,
   locomotionState: string,
-  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
+  recoveryStartNormalized?: number,
 ): number {
   if (
     actionDurationSec <= 0 ||
@@ -45,9 +54,9 @@ export function dodgeRecoveryBlendWeight(
   ) {
     return 0;
   }
+  const start = recoveryStartFor(actionState, recoveryStartNormalized);
   return clamp01(
-    ((actionNormalizedTime - recoveryStartNormalized) * actionDurationSec) /
-      DODGE_RECOVERY_BLEND_SEC,
+    ((actionNormalizedTime - start) * actionDurationSec) / DODGE_RECOVERY_BLEND_SEC,
   );
 }
 

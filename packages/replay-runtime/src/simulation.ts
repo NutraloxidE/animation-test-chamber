@@ -370,15 +370,21 @@ export class Simulation {
     );
     const actionIsStationary = this.actionIsStationary();
     const actionIsAttack = this.actionIsAttack();
+    // Attack recovery hands movement back on the same ramp the pose blends on, so
+    // the character never slides under a frozen clip.
+    const attackRecoveryScale = actionIsAttack ? recoveryWeight : 0;
+    const attackLocksMovement = actionIsAttack && attackRecoveryScale === 0;
 
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.
-    const actionScale = actionIsStationary || actionIsAttack
+    const actionScale = actionIsStationary || attackLocksMovement
       ? 0
-      : this.graph.isActionActive()
-        ? movement.actionMovementAuthority +
-          (1 - movement.actionMovementAuthority) * recoveryWeight
-        : 1;
+      : actionIsAttack
+        ? attackRecoveryScale
+        : this.graph.isActionActive()
+          ? movement.actionMovementAuthority +
+            (1 - movement.actionMovementAuthority) * recoveryWeight
+          : 1;
     const airScale = terrain.grounded ? 1 : movement.airControl;
     const surfaceScale = terrain.grounded ? terrain.accelerationScale : 1;
 
@@ -392,7 +398,7 @@ export class Simulation {
 
     if (
       actionIsStationary ||
-      actionIsAttack ||
+      attackLocksMovement ||
       (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)
     ) {
       this.velocity.x = 0;
@@ -409,7 +415,14 @@ export class Simulation {
       action.normalizedTime >= (actionClip?.inputAcceptanceStartNormalized ?? 0);
     if (magnitude > 0.01 && acceptsFacingInput) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
-      const authority = actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
+      // Turning stays heavy for the rest of the attack clip, not just until the
+      // input acceptance point, and lightens again on the recovery blend.
+      const heavy = actionClip?.rotationScaleWhilePlaying ?? 0.12;
+      const playbackScale = actionIsAttack
+        ? heavy + (1 - heavy) * attackRecoveryScale
+        : 1;
+      const authority =
+        actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() * playbackScale : 1;
       this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
     }
 
@@ -428,7 +441,8 @@ export class Simulation {
     // Locomotion root motion is the other half of the same movement the code
     // path damps during an action; leaving it at full authority is what made
     // upper-body attacks keep gliding forward.
-    const locomotionRootScale = this.actionOwnsRoot() ? 1 : actionScale;
+    const locomotionRootScale =
+      this.actionOwnsRoot() || attackRecoveryScale > 0 ? 1 : actionScale;
     const horizontalAuthority =
       actionIsStationary || rootMotion.mode === 'InPlace'
         ? 0

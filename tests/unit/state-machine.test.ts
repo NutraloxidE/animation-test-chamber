@@ -49,6 +49,20 @@ describe('graph initialisation', () => {
     expect(dodgeRecoveryBlendWeight('dodge', endpoint, duration, 'idle', start)).toBe(0);
   });
 
+  it('treats an attack recovery clip as recovery from its first frame', () => {
+    const duration = 0.9666666;
+    const midpoint = 0.14 / duration;
+
+    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 0, duration, 'walk')).toBe(0);
+    expect(dodgeRecoveryBlendWeight('attack-01-recovery', midpoint, duration, 'walk')).toBeCloseTo(
+      0.5,
+    );
+    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 1, duration, 'walk')).toBe(1);
+    // No stick input means no blend, so the recovery pose plays out in place.
+    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 1, duration, 'idle')).toBe(0);
+    expect(dodgeRecoveryBlendWeight('attack-01', 0.9, 0.75, 'walk')).toBe(0);
+  });
+
   it('starts each layer in its declared default state', () => {
     const graph = new AnimationGraphRuntime(project.graph, project.clips);
     expect(graph.getLayer('locomotion').stateId).toBe('idle');
