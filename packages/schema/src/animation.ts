@@ -237,6 +237,12 @@ export const StateDefinition = Type.Object(
       Type.Union([Type.Literal('full'), Type.Literal('upper'), Type.Literal('lower')]),
     ),
     protection: Type.Optional(ProtectionMetadata),
+    /**
+     * Staging a value attaches provenance to the object that owns it, so every
+     * type with an editable field needs somewhere to put it. `speed` is the
+     * state's, which makes this as necessary here as it is on clips.
+     */
+    provenance: Type.Optional(ValueProvenance),
   },
   { $id: 'StateDefinition', additionalProperties: false },
 );

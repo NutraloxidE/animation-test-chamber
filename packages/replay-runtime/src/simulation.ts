@@ -26,6 +26,13 @@ const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
   'Jump',
 ]);
 
+/** Opening equipment state: every declared slot at its authored default. */
+export function defaultEquipped(project: ProjectDefinition): Record<string, boolean> {
+  return Object.fromEntries(
+    project.equipment.map((slot) => [slot.id, slot.defaultEquipped]),
+  );
+}
+
 export interface SimulationInit {
   project: ProjectDefinition;
   terrain: TerrainPreset;
@@ -36,6 +43,8 @@ export interface SimulationInit {
   upperBodyActionRootMotionEnabled?: boolean;
   actionRootMotionTracks?: Record<string, RootMotionTrack>;
   weaponModeId?: string;
+  /** Equipment slot id → equipped. Slots left out use their declared default. */
+  equipped?: Record<string, boolean>;
 }
 
 export interface RootMotionTrack {
@@ -111,6 +120,7 @@ export class Simulation {
   private upperBodyActionRootMotionEnabled: boolean;
   private actionRootMotionTracks: Record<string, RootMotionTrack>;
   private weaponModeId: string;
+  private equipped: Record<string, boolean>;
 
   /** Set for one tick when the graph enters a jump state, so the impulse fires once. */
   private pendingJumpImpulse = false;
@@ -123,6 +133,7 @@ export class Simulation {
     this.baseProject = init.project;
     this.weaponModeId = init.weaponModeId ?? 'unarmed';
     this.project = resolveWeaponMode(this.baseProject, this.weaponModeId);
+    this.equipped = { ...defaultEquipped(this.baseProject), ...init.equipped };
     this.terrain = init.terrain;
     this.position = { ...init.initialPosition };
     this.yawRad = init.initialYawRad;
@@ -178,6 +189,15 @@ export class Simulation {
   setWeaponModeId(id: string): void {
     this.weaponModeId = id;
     this.applyWeaponMode();
+  }
+
+  /** Equips or unequips one slot. Conditions see it on the next tick. */
+  setEquipped(slotId: string, equipped: boolean): void {
+    this.equipped[slotId] = equipped;
+  }
+
+  get equippedSlots(): Record<string, boolean> {
+    return { ...this.equipped };
   }
 
   get state(): SimulationState {
@@ -253,8 +273,13 @@ export class Simulation {
             return terrain.nearLedge;
           case 'sliding':
             return terrain.state === 'Sliding';
-          default:
-            return false;
+          default: {
+            // Equipment parameters are declared in the document, not listed
+            // here: a new slot becomes a usable condition the moment it is
+            // added to `equipment`, with no case to remember to write.
+            const slot = this.project.equipment.find((entry) => entry.parameter === name);
+            return slot ? (this.equipped[slot.id] ?? slot.defaultEquipped) : false;
+          }
         }
       },
       getString: (name) => {

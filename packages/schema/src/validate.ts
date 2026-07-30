@@ -106,6 +106,7 @@ export function validateProjectReferences(project: unknown): ValidationResult {
   const issues: ValidationIssue[] = [];
   const p = project as {
     clips?: { id: string }[];
+    equipment?: { id: string; parameter: string }[];
     graph?: {
       states?: {
         id: string;
@@ -114,7 +115,12 @@ export function validateProjectReferences(project: unknown): ValidationResult {
         layer: string;
         fallbackState?: string;
       }[];
-      transitions?: { id: string; from: string; to: string }[];
+      transitions?: {
+        id: string;
+        from: string;
+        to: string;
+        conditions?: { parameter: string }[];
+      }[];
       layers?: { id: string; defaultState: string }[];
     };
     defaultTerrainPresetId?: string;
@@ -221,6 +227,65 @@ export function validateProjectReferences(project: unknown): ValidationResult {
           keyword: 'reachability',
         });
       }
+    }
+  }
+
+  /*
+   * Equipment. An undeclared parameter is not a schema error — it just reads
+   * false forever, so the branch never fires and the animation is silently
+   * dead. That is the failure worth catching by name, and the `equipped*`
+   * convention is what makes it catchable without the schema package having to
+   * know the runtime's built-in parameters.
+   */
+  const equipment = p.equipment ?? [];
+  const seenSlots = new Set<string>();
+  const seenParameters = new Set<string>();
+  for (const slot of equipment) {
+    for (const [value, seen, field] of [
+      [slot.id, seenSlots, 'id'],
+      [slot.parameter, seenParameters, 'parameter'],
+    ] as const) {
+      if (seen.has(value)) {
+        issues.push({
+          path: `/equipment/${slot.id}/${field}`,
+          message: `duplicate equipment ${field} "${value}"`,
+          keyword: 'unique',
+        });
+      }
+      seen.add(value);
+    }
+    if (!slot.parameter.startsWith('equipped')) {
+      issues.push({
+        path: `/equipment/${slot.id}/parameter`,
+        message: `equipment parameter "${slot.parameter}" must start with "equipped"`,
+        keyword: 'convention',
+      });
+    }
+  }
+
+  const readParameters = new Set<string>();
+  for (const transition of transitions) {
+    for (const condition of transition.conditions ?? []) {
+      readParameters.add(condition.parameter);
+      if (
+        condition.parameter.startsWith('equipped') &&
+        !seenParameters.has(condition.parameter)
+      ) {
+        issues.push({
+          path: `/graph/transitions/${transition.id}/conditions`,
+          message: `condition reads "${condition.parameter}", which no equipment slot declares`,
+          keyword: 'reference',
+        });
+      }
+    }
+  }
+  for (const slot of equipment) {
+    if (!readParameters.has(slot.parameter)) {
+      issues.push({
+        path: `/equipment/${slot.id}`,
+        message: `equipment "${slot.id}" is declared but no transition branches on "${slot.parameter}"`,
+        keyword: 'reference',
+      });
     }
   }
 

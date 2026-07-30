@@ -41,6 +41,8 @@ maps idle, walk, run, jump, fall, dodge, guard, and two attack states to a focus
 The unarmed magic mode reuses this library's `Spell_Simple_*` clips (idle loop, shoot,
 enter, exit). They cast from the left hand with the right hand open, so the mode holds
 no weapon; they carry no root motion either, so attack root motion stays off.
+The unarmed pistol mode reuses this library's `Pistol_*` clips (idle loop, aim neutral,
+shoot, reload), also with no held-item mesh and no attack root motion.
 
 ## Universal Animation Library 2 — Standard
 
@@ -57,3 +59,6 @@ The chamber uses the matching Universal rig's `Sword_Regular_A` and
 `Sword_Regular_B` clips for sword mode. At load time, it samples each clip's
 `root.position` track for simulation movement and removes that track from the
 rendered pose, so the chamber remains the sole owner of world translation.
+The unarmed shield mode reuses `Idle_Shield_Loop`, `Shield_OneShot`, and
+`Shield_Dash`; the unarmed throw mode reuses `Idle_No_Loop` and `OverhandThrow`.
+Neither holds an item mesh, and their attacks stay off attack-root-motion.

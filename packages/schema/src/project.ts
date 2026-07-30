@@ -78,6 +78,29 @@ export const RevisionDefinition = Type.Object(
 );
 export type RevisionDefinition = Static<typeof RevisionDefinition>;
 
+/**
+ * One toggleable piece of equipment.
+ *
+ * The slot exists so equipment is *data*: declaring it here is the whole job.
+ * The parameter becomes a boolean transitions can test, the chamber grows a
+ * toggle for it, and a state branches to the equipped pose by naming that
+ * parameter in a condition — no code anywhere learns the word "shield".
+ * Adding the next slot is this object plus the transitions that read it.
+ */
+export const EquipmentSlotDefinition = Type.Object(
+  {
+    id: Id,
+    /** Boolean parameter name transition conditions test, e.g. `equippedShield`. */
+    parameter: Type.String({ minLength: 1 }),
+    label: Type.String(),
+    /** Whether the chamber opens with this equipped. */
+    defaultEquipped: Type.Boolean(),
+    protection: Type.Optional(ProtectionMetadata),
+  },
+  { $id: 'EquipmentSlotDefinition', additionalProperties: false },
+);
+export type EquipmentSlotDefinition = Static<typeof EquipmentSlotDefinition>;
+
 export const ProjectDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -89,6 +112,8 @@ export const ProjectDefinition = Type.Object(
     clips: Type.Array(AnimationClipDefinition, { minItems: 1 }),
     graph: AnimationGraphDefinition,
     inputMap: InputMapDefinition,
+    /** Toggleable equipment. Each slot publishes one boolean parameter. */
+    equipment: Type.Array(EquipmentSlotDefinition),
     movement: MovementProfile,
     rootMotion: RootMotionProfile,
     terrain: TerrainInteractionProfile,

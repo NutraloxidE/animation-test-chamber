@@ -248,6 +248,58 @@
                 }
               }
             }
+          },
+          "provenance": {
+            "$id": "ValueProvenance",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "const": "repository",
+                    "type": "string"
+                  },
+                  {
+                    "const": "human-adjustment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ai-proposal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "import",
+                    "type": "string"
+                  },
+                  {
+                    "const": "default",
+                    "type": "string"
+                  }
+                ]
+              },
+              "basedOnAiProposal": {
+                "type": "number"
+              },
+              "humanFinal": {
+                "type": "number"
+              },
+              "replayId": {
+                "type": "string"
+              },
+              "terrainPresetId": {
+                "type": "string"
+              },
+              "intent": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            }
           }
         }
       }

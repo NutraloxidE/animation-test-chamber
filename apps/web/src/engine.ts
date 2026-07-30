@@ -11,6 +11,7 @@ import { findTerrainPreset } from '@atc/terrain-runtime';
 import {
   ReplayRecorder,
   Simulation,
+  defaultEquipped,
   frameAt,
   runReplay,
   type RootMotionTrack,
@@ -71,6 +72,7 @@ export class ChamberEngine {
   private upperBodyActionRootMotionEnabled = false;
   private actionRootMotionTracks: Record<string, RootMotionTrack> = {};
   private weaponModeId = 'unarmed';
+  private equipped: Record<string, boolean>;
 
   /** Latest tick record, read by the renderer every frame. */
   lastRecord: TickRecord | null = null;
@@ -83,6 +85,7 @@ export class ChamberEngine {
 
   constructor(project: ProjectDefinition) {
     this.project = project;
+    this.equipped = defaultEquipped(project);
     this.terrain = findTerrainPreset(project.defaultTerrainPresetId);
     this.simulation = this.createSimulation();
     this.sampler = new BrowserInputSampler(project.inputMap);
@@ -102,6 +105,7 @@ export class ChamberEngine {
       upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
       actionRootMotionTracks: this.actionRootMotionTracks,
       weaponModeId: this.weaponModeId,
+      equipped: this.equipped,
     });
   }
 
@@ -195,6 +199,16 @@ export class ChamberEngine {
     this.simulation.setWeaponModeId(id);
   }
 
+  setEquipped(slotId: string, equipped: boolean): void {
+    this.equipped = { ...this.equipped, [slotId]: equipped };
+    this.simulation.setEquipped(slotId, equipped);
+    this.notify();
+  }
+
+  get equippedSlots(): Record<string, boolean> {
+    return this.equipped;
+  }
+
   get isPaused(): boolean {
     return this.paused;
   }
@@ -262,6 +276,7 @@ export class ChamberEngine {
       upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
       actionRootMotionTracks: this.actionRootMotionTracks,
       weaponModeId: this.weaponModeId,
+      equipped: this.equipped,
     });
     this.accumulator.reset();
     this.notify();

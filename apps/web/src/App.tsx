@@ -134,6 +134,8 @@ export function App() {
   const weaponModeId = useChamber((state) => state.weaponModeId);
   const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
   const setWeaponMode = useChamber((state) => state.setWeaponMode);
+  const equipped = useChamber((state) => state.equipped);
+  const setEquipped = useChamber((state) => state.setEquipped);
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
   const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
@@ -203,6 +205,19 @@ export function App() {
                   {WEAPON_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
                 </select>
               </label>
+              {/* One toggle per declared slot: adding equipment to the document
+                  grows this row without touching App. */}
+              {project.equipment.map((slot) => (
+                <label className="viewport-toggle" key={slot.id}>
+                  <input
+                    type="checkbox"
+                    checked={equipped[slot.id] ?? slot.defaultEquipped}
+                    onChange={(event) => setEquipped(slot.id, event.target.checked)}
+                    data-testid={`equip-${slot.id}`}
+                  />
+                  {slot.label}
+                </label>
+              ))}
               <label className="viewport-select">
                 Grip
                 <select

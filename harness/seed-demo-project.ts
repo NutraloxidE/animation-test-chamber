@@ -484,6 +484,9 @@ const project: ProjectDefinition = {
     // Death is reserved even though the MVP has no death state (PLAN 7.1).
     forcedTransitionOrder: ['death', 'hit', 'dodge', 'guard', 'attack-02', 'attack-01', 'jump', 'slide', 'fall', 'land', 'run', 'walk', 'idle', 'action-none'],
   },
+  // A blank project declares no equipment: a slot only earns its place once a
+  // transition branches on it, which the reference check enforces.
+  equipment: [],
   inputMap: {
     schemaVersion: 1,
     id: 'default-input',
