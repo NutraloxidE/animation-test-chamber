@@ -1,5 +1,16 @@
 import type { CharacterPreset } from '../catalog.ts';
-import { QUATERNIUS_UNIVERSAL_CLIPS } from '../motions/quaterniusUniversal.ts';
+
+const QUATERNIUS_UNIVERSAL_CLIPS: Record<string, string> = {
+  idle: 'Rig|Idle_Loop',
+  walk: 'Rig|Walk_Loop',
+  run: 'Rig|Sprint_Loop',
+  jump: 'Rig|Jump_Start',
+  fall: 'Rig|Jump_Loop',
+  dodge: 'Rig|Roll',
+  guard: 'Rig|Sword_Idle',
+  'attack-01': 'Rig|Punch_Jab',
+  'attack-02': 'Rig|Punch_Cross',
+};
 
 export const QUATERNIUS_UNIVERSAL_BASE: CharacterPreset = {
   id: 'quaternius-universal-base',

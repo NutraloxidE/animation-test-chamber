@@ -8,12 +8,7 @@ import {
 import type { RootMotionTrack } from '@atc/replay-runtime';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type {
-  CharacterPreset,
-  MotionSet,
-  WeaponGrip,
-  WeaponMode,
-} from '../catalog.ts';
+import type { CharacterPreset, WeaponGrip, WeaponMode } from '../catalog.ts';
 import { HeldSword } from './HeldSword.tsx';
 
 const CLIP_FOR_STATE: Record<string, string> = {
@@ -30,7 +25,6 @@ const CLIP_FOR_STATE: Record<string, string> = {
 export function GltfCharacter({
   engine,
   character,
-  motion,
   weapon,
   grip,
   gripEditorMode,
@@ -38,7 +32,6 @@ export function GltfCharacter({
 }: {
   engine: ChamberEngine;
   character: CharacterPreset;
-  motion: MotionSet;
   weapon: WeaponMode;
   grip?: WeaponGrip;
   gripEditorMode?: 'translate' | 'rotate' | null;
@@ -47,10 +40,7 @@ export function GltfCharacter({
   const root = useRef<THREE.Group>(null);
   const [heldWeapon, setHeldWeapon] = useState<THREE.Group | null>(null);
   const { scene: model } = useGLTF(character.modelUrl!);
-  const baseAnimationUrl =
-    (character.animationUrl ? motion.animationUrl : undefined) ??
-    character.animationUrl ??
-    character.modelUrl!;
+  const baseAnimationUrl = character.animationUrl ?? character.modelUrl!;
   const weaponCompatible = Boolean(
     weapon.animationUrl && weapon.rigId === character.rigId,
   );
@@ -59,10 +49,7 @@ export function GltfCharacter({
     : baseAnimationUrl;
   const { animations: baseAnimations } = useGLTF(baseAnimationUrl);
   const { animations: weaponAnimations } = useGLTF(weaponAnimationUrl);
-  const baseClipMap =
-    (character.animationUrl ? motion.clipMap : undefined) ??
-    character.clipMap ??
-    CLIP_FOR_STATE;
+  const baseClipMap = character.clipMap ?? CLIP_FOR_STATE;
   const clipMap = {
     ...baseClipMap,
     ...(weaponCompatible ? weapon.clipMap : undefined),

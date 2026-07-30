@@ -1,6 +1,5 @@
 import { QUATERNIUS_KNIGHT } from './characters/quaterniusKnight.ts';
 import { QUATERNIUS_UNIVERSAL_BASE } from './characters/quaterniusUniversalBase.ts';
-import { QUATERNIUS_UNIVERSAL_MOTION } from './motions/quaterniusUniversal.ts';
 
 export interface WeaponGrip {
   position: [number, number, number];
@@ -25,16 +24,6 @@ export interface CharacterPreset {
   weaponGrips?: Record<string, WeaponGrip>;
 }
 
-export interface MotionSet {
-  id: string;
-  label: string;
-  stride: number;
-  armSwing: number;
-  torsoLean: number;
-  animationUrl?: string;
-  clipMap?: Record<string, string>;
-}
-
 export interface WeaponMode {
   id: string;
   label: string;
@@ -53,13 +42,6 @@ export const CHARACTER_PRESETS: CharacterPreset[] = [
   { id: 'sentinel', label: 'Sentinel', color: '#fbbf24', legColor: '#f97316', scale: 1.08 },
   QUATERNIUS_KNIGHT,
   QUATERNIUS_UNIVERSAL_BASE,
-];
-
-export const MOTION_SETS: MotionSet[] = [
-  { id: 'balanced', label: 'Balanced', stride: 1, armSwing: 1, torsoLean: 1 },
-  { id: 'light', label: 'Light step', stride: 0.75, armSwing: 1.25, torsoLean: 0.6 },
-  { id: 'power', label: 'Power stride', stride: 1.2, armSwing: 0.8, torsoLean: 1.25 },
-  QUATERNIUS_UNIVERSAL_MOTION,
 ];
 
 export const WEAPON_MODES: WeaponMode[] = [
@@ -85,9 +67,6 @@ export const WEAPON_MODES: WeaponMode[] = [
 
 export const characterPreset = (id: string): CharacterPreset =>
   CHARACTER_PRESETS.find((preset) => preset.id === id) ?? CHARACTER_PRESETS[0]!;
-
-export const motionSet = (id: string): MotionSet =>
-  MOTION_SETS.find((set) => set.id === id) ?? MOTION_SETS[0]!;
 
 export const weaponMode = (id: string): WeaponMode =>
   WEAPON_MODES.find((mode) => mode.id === id) ?? WEAPON_MODES[0]!;

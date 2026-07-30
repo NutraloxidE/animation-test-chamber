@@ -16,7 +16,6 @@ import { MobilePad } from './panels/MobilePad.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
 import {
   CHARACTER_PRESETS,
-  MOTION_SETS,
   WEAPON_MODES,
   characterPreset,
   weaponMode,
@@ -132,10 +131,8 @@ export function App() {
   const exportUnity = useChamber((state) => state.exportUnity);
   const project = useChamber((state) => state.project);
   const characterPresetId = useChamber((state) => state.characterPresetId);
-  const motionSetId = useChamber((state) => state.motionSetId);
   const weaponModeId = useChamber((state) => state.weaponModeId);
   const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
-  const setMotionSet = useChamber((state) => state.setMotionSet);
   const setWeaponMode = useChamber((state) => state.setWeaponMode);
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
@@ -198,12 +195,6 @@ export function App() {
                 Character
                 <select value={characterPresetId} onChange={(event) => setCharacterPreset(event.target.value)} data-testid="character-select">
                   {CHARACTER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-                </select>
-              </label>
-              <label className="viewport-select">
-                Motion
-                <select value={motionSetId} onChange={(event) => setMotionSet(event.target.value)} data-testid="motion-set-select">
-                  {MOTION_SETS.map((set) => <option key={set.id} value={set.id}>{set.label}</option>)}
                 </select>
               </label>
               <label className="viewport-select">
