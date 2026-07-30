@@ -298,6 +298,39 @@
           "loop": {
             "type": "boolean"
           },
+          "timeCurve": {
+            "$id": "ClipTimeCurve",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "x1",
+              "y1",
+              "x2",
+              "y2"
+            ],
+            "properties": {
+              "x1": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "y1": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "x2": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "y2": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              }
+            }
+          },
           "rootDisplacement": {
             "$id": "Vec3",
             "additionalProperties": false,

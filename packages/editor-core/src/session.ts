@@ -20,6 +20,8 @@ export interface FieldView {
   previewValue: unknown;
   origin: ValueOrigin;
   staged: boolean;
+  /** True when this field was staged, then edited again. */
+  needsSave: boolean;
   /** False when protection forbids editing; the UI disables the control. */
   editableByHuman: boolean;
   editableByAi: boolean;
@@ -49,6 +51,10 @@ interface HistoryEntry {
   after: unknown;
 }
 
+function valuesEqual(left: unknown, right: unknown): boolean {
+  return Object.is(left, right) || JSON.stringify(left) === JSON.stringify(right);
+}
+
 /**
  * The browser-side edit session. It owns the progression from
  *   Repository Value -> Preview Value -> Staged Change -> Validated Change
@@ -62,6 +68,8 @@ export class EditSession {
   private repository: ProjectDefinition;
   private preview: ProjectDefinition;
   private readonly staged = new Set<CanonicalPath>();
+  private readonly stagedValues = new Map<CanonicalPath, unknown>();
+  private readonly stagedProvenance = new Map<CanonicalPath, ValueProvenance>();
   private readonly aiProposals = new Map<CanonicalPath, unknown>();
   private readonly provenance = new Map<CanonicalPath, ValueProvenance>();
   private readonly undoStack: HistoryEntry[] = [];
@@ -85,6 +93,19 @@ export class EditSession {
 
   get stagedPaths(): CanonicalPath[] {
     return [...this.staged].sort();
+  }
+
+  get stagedChanges(): { path: CanonicalPath; value: unknown }[] {
+    return this.stagedPaths.map((path) => ({
+      path,
+      value: this.stagedValues.get(path),
+    }));
+  }
+
+  get needsSavePaths(): CanonicalPath[] {
+    return this.stagedPaths.filter(
+      (path) => !valuesEqual(getAtPath(this.preview, path), this.stagedValues.get(path)),
+    );
   }
 
   get hasUncommittedChanges(): boolean {
@@ -187,30 +208,54 @@ export class EditSession {
 
   resetToAiProposal(path: CanonicalPath): EditOutcome {
     if (!this.aiProposals.has(path)) {
-      return { applied: false, requiresApproval: false, reason: 'no AI proposal recorded' };
+      return {
+        applied: false,
+        requiresApproval: false,
+        reason: 'no AI proposal recorded',
+      };
     }
-    return this.setPreviewValue({ path, value: this.aiProposals.get(path), actor: 'human' });
+    return this.setPreviewValue({
+      path,
+      value: this.aiProposals.get(path),
+      actor: 'human',
+    });
   }
 
   /** Throws away every uncommitted change in this session. */
   revertSession(): void {
     this.preview = this.repository;
     this.staged.clear();
+    this.stagedValues.clear();
+    this.stagedProvenance.clear();
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     this.provenance.clear();
   }
 
   stage(path: CanonicalPath): void {
+    const value = getAtPath(this.preview, path);
+    if (valuesEqual(value, getAtPath(this.repository, path))) {
+      this.unstage(path);
+      return;
+    }
     this.staged.add(path);
+    this.stagedValues.set(path, value);
+    const provenance = this.provenance.get(path);
+    if (provenance) this.stagedProvenance.set(path, provenance);
+    else this.stagedProvenance.delete(path);
   }
 
   unstage(path: CanonicalPath): void {
     this.staged.delete(path);
+    this.stagedValues.delete(path);
+    this.stagedProvenance.delete(path);
   }
 
   stageAll(): void {
-    for (const change of this.diff().changes) this.staged.add(change.path);
+    this.staged.clear();
+    this.stagedValues.clear();
+    this.stagedProvenance.clear();
+    for (const change of this.diff().changes) this.stage(change.path);
   }
 
   /** Raw and classified differences between repository and preview. */
@@ -225,7 +270,7 @@ export class EditSession {
   buildStagedDocument(): ProjectDefinition {
     let document = this.repository;
     for (const path of this.stagedPaths) {
-      const value = getAtPath(this.preview, path);
+      const value = this.stagedValues.get(path);
       if (value === undefined) continue;
       document = setAtPath(document, path, value);
     }
@@ -235,7 +280,7 @@ export class EditSession {
   private attachProvenance(document: ProjectDefinition): ProjectDefinition {
     let next = document;
     for (const path of this.stagedPaths) {
-      const record = this.provenance.get(path);
+      const record = this.stagedProvenance.get(path);
       if (!record) continue;
       // Provenance attaches to the owning object, not the leaf, so a transition
       // records why its blend duration was changed.
@@ -268,6 +313,8 @@ export class EditSession {
     this.repository = document;
     this.preview = document;
     this.staged.clear();
+    this.stagedValues.clear();
+    this.stagedProvenance.clear();
     this.undoStack.length = 0;
     this.redoStack.length = 0;
     this.provenance.clear();
@@ -278,6 +325,8 @@ export class EditSession {
     const repositoryValue = getAtPath(this.repository, path);
     const previewValue = getAtPath(this.preview, path);
     const aiProposalValue = this.aiProposals.get(path);
+    const wasStaged = this.staged.has(path);
+    const staged = wasStaged && valuesEqual(previewValue, this.stagedValues.get(path));
 
     const humanDecision = evaluateEdit(this.preview, {
       path,
@@ -288,7 +337,7 @@ export class EditSession {
 
     let origin: ValueOrigin = 'repository';
     if (!Object.is(previewValue, repositoryValue)) {
-      origin = this.staged.has(path) ? 'human-final' : 'human-preview';
+      origin = staged ? 'human-final' : 'human-preview';
       if (Object.is(previewValue, aiProposalValue)) origin = 'ai-proposal';
     }
 
@@ -298,7 +347,8 @@ export class EditSession {
       aiProposalValue,
       previewValue,
       origin,
-      staged: this.staged.has(path),
+      staged,
+      needsSave: wasStaged && !staged,
       editableByHuman: humanDecision.allowed,
       editableByAi: aiDecision.allowed,
       protectionReason: humanDecision.reason || aiDecision.reason,

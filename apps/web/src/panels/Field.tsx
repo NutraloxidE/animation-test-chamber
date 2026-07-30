@@ -45,10 +45,7 @@ export function Field({ path, label, min, max, step, format, testId }: FieldProp
   const locked = !view.editableByHuman;
 
   return (
-    <div
-      className={`field${locked ? ' field--locked' : ''}`}
-      data-testid={testId ?? `field-${path}`}
-    >
+    <div className={`field${locked ? ' field--locked' : ''}`} data-testid={testId ?? `field-${path}`}>
       <div className="field__head">
         <label className="field__label" htmlFor={path}>
           {label}
@@ -79,7 +76,7 @@ export function Field({ path, label, min, max, step, format, testId }: FieldProp
 
       <div className="field__foot">
         <span className={`origin origin--${view.origin}`}>{ORIGIN_LABEL[view.origin]}</span>
-        {changed && (
+        {(changed || view.needsSave) && (
           <>
             <button type="button" onClick={() => resetToRepository(path)}>
               reset
@@ -91,11 +88,16 @@ export function Field({ path, label, min, max, step, format, testId }: FieldProp
             )}
             <button
               type="button"
-              className={view.staged ? 'is-staged' : ''}
+              className={view.staged ? 'is-staged' : view.needsSave ? 'needs-save' : ''}
               onClick={() => stage(path)}
             >
-              {view.staged ? 'staged' : 'stage'}
+              {view.staged ? '✓ staged' : view.needsSave ? 'save changes' : 'stage'}
             </button>
+            {view.needsSave && (
+              <span className="save-warning" role="status">
+                changed since staged
+              </span>
+            )}
           </>
         )}
         {locked && (

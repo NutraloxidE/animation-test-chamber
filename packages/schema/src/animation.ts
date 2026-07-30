@@ -82,6 +82,18 @@ export const RootMotionCurve = Type.Union(
 );
 export type RootMotionCurve = Static<typeof RootMotionCurve>;
 
+/** CSS-style cubic Bézier timing curve. Endpoints are fixed at (0,0) and (1,1). */
+export const ClipTimeCurve = Type.Object(
+  {
+    x1: NormalizedTime,
+    y1: NormalizedTime,
+    x2: NormalizedTime,
+    y2: NormalizedTime,
+  },
+  { $id: 'ClipTimeCurve', additionalProperties: false },
+);
+export type ClipTimeCurve = Static<typeof ClipTimeCurve>;
+
 export const AnimationClipDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -92,6 +104,8 @@ export const AnimationClipDefinition = Type.Object(
     proceduralGenerator: Type.Optional(Type.String()),
     durationSec: Type.Number({ minimum: 0.01, maximum: 120 }),
     loop: Type.Boolean(),
+    /** Optional nonlinear mapping from elapsed time to sampled animation time. */
+    timeCurve: Type.Optional(ClipTimeCurve),
     /** Authored root displacement over the whole clip, in meters. */
     rootDisplacement: Vec3,
     rootMotionMode: RootMotionMode,

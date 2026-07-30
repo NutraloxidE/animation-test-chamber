@@ -83,7 +83,12 @@ describe('the full human tuning loop', () => {
       baseSha: head.sha,
       message: draft.message,
       body: draft.body,
-      files: [{ path: PROJECT_PATH, content: `${JSON.stringify(draft.document, null, 2)}\n` }],
+      files: [
+        {
+          path: PROJECT_PATH,
+          content: `${JSON.stringify(draft.document, null, 2)}\n`,
+        },
+      ],
     });
 
     expect(result.createdBranch).toBe(true);
@@ -99,22 +104,54 @@ describe('the full human tuning loop', () => {
     expect(getAtPath(session.repositoryProject, BLEND_PATH)).toBe(0.085);
 
     // 8. Provenance is attached to the transition itself.
-    const provenance = getAtPath(
-      session.repositoryProject,
-      '/graph/transitions/run-to-attack-01/provenance',
-    ) as { source: string; humanFinal: number; basedOnAiProposal?: number };
+    const provenance = getAtPath(session.repositoryProject, '/graph/transitions/run-to-attack-01/provenance') as {
+      source: string;
+      humanFinal: number;
+      basedOnAiProposal?: number;
+    };
     expect(provenance.source).toBe('human-adjustment');
     expect(provenance.humanFinal).toBe(0.085);
   });
 
   it('only commits staged paths, leaving other previews behind', () => {
     session.setPreviewValue({ path: BLEND_PATH, value: 0.09, actor: 'human' });
-    session.setPreviewValue({ path: '/camera/distance', value: 9, actor: 'human' });
+    session.setPreviewValue({
+      path: '/camera/distance',
+      value: 9,
+      actor: 'human',
+    });
     session.stage(BLEND_PATH);
 
     const staged = session.buildStagedDocument();
     expect(getAtPath(staged, BLEND_PATH)).toBe(0.09);
     expect(getAtPath(staged, '/camera/distance')).toBe(5.5);
+  });
+
+  it('requires saving again after a staged value is edited', () => {
+    session.setPreviewValue({ path: BLEND_PATH, value: 0.09, actor: 'human' });
+    session.stage(BLEND_PATH);
+    session.setPreviewValue({ path: BLEND_PATH, value: 0.07, actor: 'human' });
+
+    expect(session.fieldView(BLEND_PATH)).toMatchObject({
+      staged: false,
+      needsSave: true,
+    });
+    expect(getAtPath(session.buildStagedDocument(), BLEND_PATH)).toBe(0.09);
+
+    session.stage(BLEND_PATH);
+    expect(session.fieldView(BLEND_PATH)).toMatchObject({
+      staged: true,
+      needsSave: false,
+    });
+    expect(getAtPath(session.buildStagedDocument(), BLEND_PATH)).toBe(0.07);
+
+    session.resetToRepository(BLEND_PATH);
+    expect(session.fieldView(BLEND_PATH)).toMatchObject({
+      staged: false,
+      needsSave: true,
+    });
+    session.stage(BLEND_PATH);
+    expect(session.stagedPaths).not.toContain(BLEND_PATH);
   });
 
   it('supports undo, redo and revert', () => {
@@ -136,20 +173,32 @@ describe('protection through the whole stack', () => {
   it('refuses a locked value, then allows it after an explicit unlock', () => {
     const { session } = newSession();
 
-    const refused = session.setPreviewValue({ path: LOCKED_PATH, value: 3, actor: 'human' });
+    const refused = session.setPreviewValue({
+      path: LOCKED_PATH,
+      value: 3,
+      actor: 'human',
+    });
     expect(refused.applied).toBe(false);
     expect(refused.reason).toContain('locked');
     expect(getAtPath(session.previewProject, LOCKED_PATH)).toBe(1.15);
 
     session.unlock(LOCKED_PATH);
-    const allowed = session.setPreviewValue({ path: LOCKED_PATH, value: 3, actor: 'human' });
+    const allowed = session.setPreviewValue({
+      path: LOCKED_PATH,
+      value: 3,
+      actor: 'human',
+    });
     expect(allowed.applied).toBe(true);
   });
 
   it('refuses an AI patch to an approval-required value, and accepts an approved one', () => {
     const { session } = newSession();
 
-    const refused = session.setPreviewValue({ path: BLEND_PATH, value: 0.06, actor: 'ai' });
+    const refused = session.setPreviewValue({
+      path: BLEND_PATH,
+      value: 0.06,
+      actor: 'ai',
+    });
     expect(refused.applied).toBe(false);
     expect(refused.requiresApproval).toBe(true);
 
@@ -188,7 +237,12 @@ describe('AI proposals feeding the edit session', () => {
     const chosen = proposals[0]!;
     for (const change of chosen.changes) {
       session.recordAiProposal(change.path, change.after);
-      session.setPreviewValue({ path: change.path, value: change.after, actor: 'ai', approved: true });
+      session.setPreviewValue({
+        path: change.path,
+        value: change.after,
+        actor: 'ai',
+        approved: true,
+      });
     }
 
     const blendChange = chosen.changes.find((change) => change.path === BLEND_PATH)!;
@@ -238,13 +292,20 @@ describe('git safety', () => {
       baseSha: head.sha,
       message: 'first',
       body: '',
-      files: [{ path: PROJECT_PATH, content: `${JSON.stringify(project, null, 2)}\n` }],
+      files: [
+        {
+          path: PROJECT_PATH,
+          content: `${JSON.stringify(project, null, 2)}\n`,
+        },
+      ],
     });
 
     // Someone else pushes to the same branch.
     const theirs = structuredClone(project);
     theirs.camera.distance = 12;
-    git.forcePush(branch, { [PROJECT_PATH]: `${JSON.stringify(theirs, null, 2)}\n` });
+    git.forcePush(branch, {
+      [PROJECT_PATH]: `${JSON.stringify(theirs, null, 2)}\n`,
+    });
 
     const ours = structuredClone(project);
     ours.camera.distance = 7;
@@ -289,9 +350,7 @@ describe('git safety', () => {
   });
 
   it('names session branches under chamber/<project>/<session>', () => {
-    expect(sessionBranchName('demo-character', 'Session 1!')).toBe(
-      'chamber/demo-character/session-1',
-    );
+    expect(sessionBranchName('demo-character', 'Session 1!')).toBe('chamber/demo-character/session-1');
   });
 });
 
@@ -372,9 +431,7 @@ describe('unity export', () => {
 
   it('carries licence terms into the asset manifest', () => {
     const { project } = newSession();
-    const manifest = buildUnityBundle(project, []).find((file) =>
-      file.path.endsWith('assets-manifest.json'),
-    )!;
+    const manifest = buildUnityBundle(project, []).find((file) => file.path.endsWith('assets-manifest.json'))!;
     expect(JSON.parse(manifest.content)).toHaveProperty('candidates');
   });
 });

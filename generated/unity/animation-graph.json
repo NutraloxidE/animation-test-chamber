@@ -1,7 +1,7 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "revision:rev-0001",
+  "_generatedAt": "2026-07-30T10:46:05.968Z",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "graph": {
     "schemaVersion": 1,
@@ -339,7 +339,7 @@
             "value": false
           }
         ],
-        "blendDurationSec": 0.06,
+        "blendDurationSec": 0.4,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -382,7 +382,7 @@
             "value": true
           }
         ],
-        "blendDurationSec": 0.14,
+        "blendDurationSec": 0.27,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -644,7 +644,7 @@
             "value": true
           }
         ],
-        "blendDurationSec": 0.06,
+        "blendDurationSec": 0.17,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,

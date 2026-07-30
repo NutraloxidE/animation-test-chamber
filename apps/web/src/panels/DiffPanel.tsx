@@ -26,10 +26,9 @@ export function DiffPanel() {
   const diff = session.diff();
   const validation = session.validate();
   const staged = session.stagedPaths;
+  const needsSave = session.needsSavePaths;
 
-  const findings = [...diff.findings].sort(
-    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
-  );
+  const findings = [...diff.findings].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 
   return (
     <div className="panel" data-testid="diff-panel">
@@ -37,6 +36,7 @@ export function DiffPanel() {
         <h2>Diff &amp; Staging</h2>
         <span className="muted">
           {diff.changes.length} change(s), {staged.length} staged
+          {needsSave.length > 0 ? `, ${needsSave.length} need saving again` : ''}
         </span>
       </header>
 
@@ -67,26 +67,33 @@ export function DiffPanel() {
         <p className="muted">No changes yet. Adjust a value in the inspector.</p>
       ) : (
         <ul className="diff-list">
-          {diff.changes.map((change) => (
-            <li key={change.path} className={session.stagedPaths.includes(change.path) ? 'is-staged' : ''}>
-              <code>{change.path}</code>
-              <br />
-              <span className="muted">
-                {JSON.stringify(change.before)} → {JSON.stringify(change.after)}
-              </span>
-              {change.protection !== 'editable' && (
-                <span className={`badge badge--${change.protection}`}>{change.protection}</span>
-              )}
-              <div className="button-row">
-                <button type="button" onClick={() => stage(change.path)}>
-                  stage
-                </button>
-                <button type="button" onClick={() => resetToRepository(change.path)}>
-                  revert field
-                </button>
-              </div>
-            </li>
-          ))}
+          {diff.changes.map((change) => {
+            const view = session.fieldView(change.path);
+            return (
+              <li key={change.path} className={view.staged ? 'is-staged' : view.needsSave ? 'needs-save' : ''}>
+                <code>{change.path}</code>
+                <br />
+                <span className="muted">
+                  {JSON.stringify(change.before)} → {JSON.stringify(change.after)}
+                </span>
+                {change.protection !== 'editable' && (
+                  <span className={`badge badge--${change.protection}`}>{change.protection}</span>
+                )}
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={view.staged ? 'is-staged' : view.needsSave ? 'needs-save' : ''}
+                    onClick={() => stage(change.path)}
+                  >
+                    {view.staged ? '✓ staged' : view.needsSave ? 'save changes' : 'stage'}
+                  </button>
+                  <button type="button" onClick={() => resetToRepository(change.path)}>
+                    revert field
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -122,8 +129,8 @@ export function DiffPanel() {
         </div>
         {offline && (
           <p className="muted small">
-            No API server in this deployment, so nothing can be written to the repository. Staged
-            changes are kept in this browser and survive a reload.
+            No API server in this deployment, so nothing can be written to the repository. Staged changes are kept in
+            this browser and survive a reload.
           </p>
         )}
         {!diff.commitAllowed && (

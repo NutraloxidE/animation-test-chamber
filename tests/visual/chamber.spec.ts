@@ -113,11 +113,7 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   await expect(hud).toContainText('attack-01-recovery', { timeout: 2500 });
   await expect(hud).toContainText('action-none', { timeout: 2500 });
 
-  await page
-    .getByTestId('replay-panel')
-    .locator('select')
-    .first()
-    .selectOption('attack-01-to-attack-02');
+  await page.getByTestId('replay-panel').locator('select').first().selectOption('attack-01-to-attack-02');
   await page.getByTestId('play-replay').click();
   await expect(hud).toContainText('attack-02', { timeout: 1500 });
   await expect(hud).toContainText('attack-02-recovery', { timeout: 2500 });
@@ -152,15 +148,11 @@ test('editing a transition updates the preview and the diff', async ({ page }) =
 test('repeated clip tuning is exposed through the Inspector edit loop', async ({ page }) => {
   await openPanel(page, 'inspector');
   await page.getByTestId('clip-select').selectOption('attack-01');
-  await expect(
-    page.getByTestId('field-/clips/attack-01/rootDisplacement/z'),
-  ).toContainText('Forward displacement adjustment');
-  await expect(
-    page.getByTestId('field-/clips/attack-01/rootDisplacement/z'),
-  ).toContainText('+0.00 m');
-  await expect(
-    page.getByTestId('field-/clips/attack-01/inputAcceptanceStartNormalized'),
-  ).toContainText('20%');
+  await expect(page.getByTestId('field-/clips/attack-01/rootDisplacement/z')).toContainText(
+    'Forward displacement adjustment',
+  );
+  await expect(page.getByTestId('field-/clips/attack-01/rootDisplacement/z')).toContainText('+0.00 m');
+  await expect(page.getByTestId('field-/clips/attack-01/inputAcceptanceStartNormalized')).toContainText('20%');
   await page.getByTestId('action-input-list').click();
   await expect(page.getByTestId('action-input-attack-01')).toBeVisible();
   await expect(page.getByTestId('action-input-attack-01-recovery')).toContainText('85%');
@@ -175,17 +167,13 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(liveAttack).toHaveClass(/blend-row--live/);
   await expect(liveAttack).toContainText('PLAYING');
   await expect(page.getByTestId('selected-action-playback')).toContainText('PLAYING');
-  await expect
-    .poll(async () => Number(await liveAttack.getAttribute('data-progress')))
-    .toBeGreaterThan(0);
+  await expect.poll(async () => Number(await liveAttack.getAttribute('data-progress'))).toBeGreaterThan(0);
   await page.getByTestId('clip-select').selectOption('dodge');
 
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');
   await expect(distance).toBeVisible();
   await expect(distance).toContainText('5.5 m');
-  await expect(
-    page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized'),
-  ).toContainText('0.720');
+  await expect(page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized')).toContainText('0.720');
   await distance.locator('input[type=range]').fill('6.2');
   await expect(distance).toContainText('human preview');
   await distance.getByRole('button', { name: 'stage', exact: true }).click();
@@ -194,9 +182,7 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await page.reload();
   await openPanel(page, 'inspector');
   await page.getByTestId('clip-select').selectOption('dodge');
-  await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText(
-    '6.2 m',
-  );
+  await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText('6.2 m');
 
   await openPanel(page, 'diff');
   await expect(page.getByTestId('diff-panel')).toContainText('rootDisplacement');
@@ -242,16 +228,11 @@ test.describe('committing', () => {
     writeFileSync(PROJECT_PATH, original, 'utf8');
   });
 
-  test('the full stage, validate and commit loop works with the fake Git adapter', async ({
-    page,
-  }) => {
+  test('the full stage, validate and commit loop works with the fake Git adapter', async ({ page }) => {
     await openPanel(page, 'inspector');
 
     await page.getByTestId('clip-select').selectOption('dodge');
-    await page
-      .getByTestId('field-/clips/dodge/rootDisplacement/z')
-      .locator('input[type=range]')
-      .fill('6.2');
+    await page.getByTestId('field-/clips/dodge/rootDisplacement/z').locator('input[type=range]').fill('6.2');
 
     await openPanel(page, 'diff');
     await page.getByTestId('stage-all').click();
@@ -260,10 +241,9 @@ test.describe('committing', () => {
     await expect(commit).toBeEnabled();
     await commit.click();
 
-    await expect(page.getByTestId('status-bar')).toContainText(
-      /Committed [0-9a-f]{8} to chamber\//,
-      { timeout: 15_000 },
-    );
+    await expect(page.getByTestId('status-bar')).toContainText(/Committed [0-9a-f]{8} to chamber\//, {
+      timeout: 15_000,
+    });
 
     const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
       clips: { id: string; rootDisplacement: { z: number } }[];
@@ -277,7 +257,9 @@ test('a replay plays back and reports a before/after comparison', async ({ page 
   await expect(page.getByTestId('replay-panel')).toBeVisible();
 
   await page.getByTestId('play-replay').click();
-  await expect(page.getByTestId('hud')).toContainText('replay', { timeout: 10_000 });
+  await expect(page.getByTestId('hud')).toContainText('replay', {
+    timeout: 10_000,
+  });
 
   await expect(page.getByTestId('replay-panel')).toContainText('Foot sliding');
 });
@@ -285,26 +267,21 @@ test('a replay plays back and reports a before/after comparison', async ({ page 
 test('the state graph reports no unreachable states or priority conflicts', async ({ page }) => {
   await openPanel(page, 'graph');
   const graph = page.getByTestId('state-graph');
-  await expect(graph).toContainText(
-    'No unreachable states, priority conflicts or illegal self-loops',
-  );
+  await expect(graph).toContainText('No unreachable states, priority conflicts or illegal self-loops');
   await expect(page.getByTestId('graph-live-locomotion')).toContainText('idle');
   await expect(page.getByTestId('layer-mix')).toContainText('LOCOMOTION 100%');
   await expect(page.getByTestId('layer-mix')).toContainText('ACTION 0%');
-  await expect(
-    page.getByTestId('layer-mix').locator('.layer-mix__action--action-none'),
-  ).toHaveAttribute('data-weight', '0.000');
+  await expect(page.getByTestId('layer-mix').locator('.layer-mix__action--action-none')).toHaveAttribute(
+    'data-weight',
+    '0.000',
+  );
 
   await page.keyboard.down('KeyW');
   await expect(page.getByTestId('graph-live-locomotion')).toContainText(/walk|run/);
-  await expect(
-    graph.locator('.graph-layer').first().locator('.graph-node.is-active'),
-  ).toContainText(/walk|run/);
+  await expect(graph.locator('.graph-layer').first().locator('.graph-node.is-active')).toContainText(/walk|run/);
   await page.keyboard.press('ShiftLeft');
   await expect
-    .poll(async () =>
-      Number(await graph.locator('.layer-mix__action').getAttribute('data-weight')),
-    )
+    .poll(async () => Number(await graph.locator('.layer-mix__action').getAttribute('data-weight')))
     .toBeGreaterThan(0);
   await page.keyboard.up('KeyW');
 });
@@ -327,14 +304,8 @@ test('the layer bar colours action-to-action blends', async ({ page }) => {
   await expect(page.getByTestId('graph-live-action')).toContainText('attack-02');
   await expect(gauge.locator('[data-state="attack-01"]')).toBeVisible();
   await expect(gauge.locator('[data-state="attack-02"]')).toBeVisible();
-  await expect(gauge.locator('[data-state="attack-01"]')).toHaveCSS(
-    'background-color',
-    'rgb(251, 191, 36)',
-  );
-  await expect(gauge.locator('[data-state="attack-02"]')).toHaveCSS(
-    'background-color',
-    'rgb(192, 132, 252)',
-  );
+  await expect(gauge.locator('[data-state="attack-01"]')).toHaveCSS('background-color', 'rgb(251, 191, 36)');
+  await expect(gauge.locator('[data-state="attack-02"]')).toHaveCSS('background-color', 'rgb(192, 132, 252)');
 });
 
 test('the timeline shows the semantic event and cancel window tracks', async ({ page }) => {
@@ -349,6 +320,35 @@ test('the timeline shows the semantic event and cancel window tracks', async ({ 
   await expect(timeline.locator('.marker').first()).toBeVisible();
 });
 
+test('timing curve control points can be dragged directly', async ({ page }) => {
+  await openPanel(page, 'timing');
+  const graph = page.getByTestId('timing-curve');
+  const control = page.getByTestId('timing-control-1');
+  await control.scrollIntoViewIfNeeded();
+  const graphBox = await graph.boundingBox();
+  const controlBox = await control.boundingBox();
+  expect(graphBox).not.toBeNull();
+  expect(controlBox).not.toBeNull();
+
+  await page.mouse.move(controlBox!.x + controlBox!.width / 2, controlBox!.y + controlBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    Math.min(graphBox!.x + graphBox!.width - 12, controlBox!.x + graphBox!.width * 0.2),
+    Math.max(graphBox!.y + 12, controlBox!.y - graphBox!.height * 0.15),
+    { steps: 4 },
+  );
+  await page.mouse.up();
+
+  expect(await page.getByTestId('timing-value-x1').textContent()).not.toBe('0.25');
+  await page.getByTestId('timing-stage').click();
+  await expect(page.getByTestId('timing-stage')).toHaveText('✓ Staged');
+  await expect(page.getByTestId('timing-stage-status')).toHaveText('Saved to staged draft');
+
+  await page.getByRole('button', { name: 'Ease out' }).click();
+  await expect(page.getByTestId('timing-stage')).toHaveText('Save changes');
+  await expect(page.getByTestId('timing-save-warning')).toContainText('save again');
+});
+
 test('the capability panel reports only what was detected', async ({ page }) => {
   await openPanel(page, 'capability');
   const panel = page.getByTestId('capability-panel');
@@ -356,7 +356,9 @@ test('the capability panel reports only what was detected', async ({ page }) => 
   // No controller is attached in a headless browser, so nothing may be claimed.
   await expect(panel).toContainText('no controller');
   await expect(panel).toContainText('Effective tier');
-  await expect(panel).toContainText('no haptic output on this device', { ignoreCase: true });
+  await expect(panel).toContainText('no haptic output on this device', {
+    ignoreCase: true,
+  });
 });
 
 test('the terrain panel switches presets and shows grounding debug', async ({ page }) => {

@@ -1,0 +1,237 @@
+import { useEffect, useRef, useState } from 'react';
+import type { ClipTimeCurve } from '@atc/schema';
+import { applyClipTimeCurve } from '@atc/animation-runtime';
+import { useChamber } from '../store.ts';
+
+const LINEAR: ClipTimeCurve = { x1: 0.25, y1: 0.25, x2: 0.75, y2: 0.75 };
+const PRESETS: { label: string; curve: ClipTimeCurve }[] = [
+  { label: 'Linear', curve: LINEAR },
+  { label: 'Ease in', curve: { x1: 0.42, y1: 0, x2: 1, y2: 1 } },
+  { label: 'Ease out', curve: { x1: 0, y1: 0, x2: 0.58, y2: 1 } },
+  { label: 'Ease in-out', curve: { x1: 0.42, y1: 0, x2: 0.58, y2: 1 } },
+];
+
+type CurveKey = keyof ClipTimeCurve;
+
+function elapsedAtSample(curve: ClipTimeCurve, sampled: number): number {
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 14; i += 1) {
+    const elapsed = (low + high) / 2;
+    const value = applyClipTimeCurve({ timeCurve: curve } as Parameters<typeof applyClipTimeCurve>[0], elapsed);
+    if (value < sampled) low = elapsed;
+    else high = elapsed;
+  }
+  return (low + high) / 2;
+}
+
+function CurveEditor({
+  curve,
+  playhead,
+  onChange,
+}: {
+  curve: ClipTimeCurve;
+  playhead: number;
+  onChange: (curve: ClipTimeCurve) => void;
+}) {
+  const draggedPoint = useRef<1 | 2 | null>(null);
+  const [activePoint, setActivePoint] = useState<1 | 2 | null>(null);
+  const points = Array.from({ length: 41 }, (_, index) => {
+    const elapsed = index / 40;
+    const sampled = applyClipTimeCurve(
+      {
+        timeCurve: curve,
+      } as Parameters<typeof applyClipTimeCurve>[0],
+      elapsed,
+    );
+    return `${elapsed * 100},${100 - sampled * 100}`;
+  }).join(' ');
+
+  const setValue = (key: CurveKey, value: number) => onChange({ ...curve, [key]: value });
+  const setPointFromPointer = (point: 1 | 2, svg: SVGSVGElement, clientX: number, clientY: number): void => {
+    const rect = svg.getBoundingClientRect();
+    const viewX = -8 + ((clientX - rect.left) / rect.width) * 116;
+    const viewY = -8 + ((clientY - rect.top) / rect.height) * 116;
+    const x = Math.max(0, Math.min(1, viewX / 100));
+    const y = Math.max(0, Math.min(1, 1 - viewY / 100));
+    onChange(point === 1 ? { ...curve, x1: x, y1: y } : { ...curve, x2: x, y2: y });
+  };
+
+  const startDrag = (point: 1 | 2, event: React.PointerEvent<SVGGElement>): void => {
+    const svg = event.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    event.preventDefault();
+    draggedPoint.current = point;
+    setActivePoint(point);
+    svg.setPointerCapture(event.pointerId);
+    setPointFromPointer(point, svg, event.clientX, event.clientY);
+  };
+
+  const moveDrag = (event: React.PointerEvent<SVGSVGElement>): void => {
+    if (draggedPoint.current === null) return;
+    setPointFromPointer(draggedPoint.current, event.currentTarget, event.clientX, event.clientY);
+  };
+
+  const endDrag = (): void => {
+    draggedPoint.current = null;
+    setActivePoint(null);
+  };
+
+  return (
+    <>
+      <svg
+        className="timing-curve"
+        viewBox="-8 -8 116 116"
+        role="img"
+        aria-label="Elapsed time to sampled animation time curve"
+        data-testid="timing-curve"
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
+      >
+        <path className="timing-curve__grid" d="M0 0V100H100M0 50H100M50 0V100" />
+        <path
+          className="timing-curve__handles"
+          d={`M0 100L${curve.x1 * 100} ${100 - curve.y1 * 100}M100 0L${curve.x2 * 100} ${100 - curve.y2 * 100}`}
+        />
+        <polyline className="timing-curve__line" points={points} />
+        <g
+          className={`timing-curve__control${activePoint === 1 ? ' is-active' : ''}`}
+          data-testid="timing-control-1"
+          onPointerDown={(event) => startDrag(1, event)}
+        >
+          <circle className="timing-curve__hit" cx={curve.x1 * 100} cy={100 - curve.y1 * 100} r="8" />
+          <circle cx={curve.x1 * 100} cy={100 - curve.y1 * 100} r="3.5" />
+        </g>
+        <g
+          className={`timing-curve__control${activePoint === 2 ? ' is-active' : ''}`}
+          data-testid="timing-control-2"
+          onPointerDown={(event) => startDrag(2, event)}
+        >
+          <circle className="timing-curve__hit" cx={curve.x2 * 100} cy={100 - curve.y2 * 100} r="8" />
+          <circle cx={curve.x2 * 100} cy={100 - curve.y2 * 100} r="3.5" />
+        </g>
+        <circle
+          className="timing-curve__playhead"
+          cx={elapsedAtSample(curve, playhead) * 100}
+          cy={100 - playhead * 100}
+          r="3"
+        />
+      </svg>
+
+      <div className="timing-presets">
+        {PRESETS.map((preset) => (
+          <button type="button" key={preset.label} onClick={() => onChange(preset.curve)}>
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="timing-controls">
+        {(['x1', 'y1', 'x2', 'y2'] as const).map((key) => (
+          <label key={key}>
+            <span>{key.toUpperCase()}</span>
+            <output data-testid={`timing-value-${key}`}>{curve[key].toFixed(2)}</output>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={curve[key]}
+              onChange={(event) => setValue(key, Number(event.target.value))}
+            />
+          </label>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function MotionTimingPanel() {
+  const project = useChamber((state) => state.project);
+  const selectedStateId = useChamber((state) => state.selectedStateId);
+  const selectState = useChamber((state) => state.selectState);
+  const setPreviewValue = useChamber((state) => state.setPreviewValue);
+  const stage = useChamber((state) => state.stage);
+  const resetToRepository = useChamber((state) => state.resetToRepository);
+  const session = useChamber((state) => state.session);
+  const engine = useChamber((state) => state.engine);
+  useChamber((state) => state.revision);
+  const [playhead, setPlayhead] = useState(0);
+
+  const state = project.graph.states.find((entry) => entry.id === selectedStateId) ?? project.graph.states[0]!;
+  const clip = project.clips.find((entry) => entry.id === state.clipId)!;
+  const path = `/clips/${clip.id}/timeCurve`;
+  const curve = clip.timeCurve ?? LINEAR;
+  const field = session.fieldView(path);
+  const changed = JSON.stringify(field.previewValue) !== JSON.stringify(field.repositoryValue);
+
+  useEffect(
+    () =>
+      engine.subscribe(() => {
+        const record = engine.lastRecord;
+        if (!record) return;
+        const active = state.layer === 'action' ? record.actionState === state.id : record.locomotionState === state.id;
+        if (active) {
+          setPlayhead(state.layer === 'action' ? record.actionNormalizedTime : record.locomotionNormalizedTime);
+        }
+      }),
+    [engine, state.id, state.layer],
+  );
+
+  return (
+    <div className="panel motion-timing" data-testid="motion-timing">
+      <header className="panel__header">
+        <div>
+          <h2>Motion timing</h2>
+          <p className="muted">Elapsed time → sampled pose and root displacement</p>
+        </div>
+        <select value={state.id} onChange={(event) => selectState(event.target.value)}>
+          {project.graph.states.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.id}
+            </option>
+          ))}
+        </select>
+      </header>
+
+      <CurveEditor
+        curve={curve}
+        playhead={playhead}
+        onChange={(next) => setPreviewValue(path, next, { intent: 'Adjust motion timing' })}
+      />
+
+      <div className="timing-actions">
+        <span className="muted">
+          {clip.id} · {clip.durationSec.toFixed(2)}s
+        </span>
+        {(changed || field.needsSave) && (
+          <>
+            <button type="button" onClick={() => resetToRepository(path)}>
+              Reset
+            </button>
+            <button
+              type="button"
+              className={field.staged ? 'is-staged' : field.needsSave ? 'needs-save' : ''}
+              data-testid="timing-stage"
+              onClick={() => stage(path)}
+            >
+              {field.staged ? '✓ Staged' : field.needsSave ? 'Save changes' : 'Stage'}
+            </button>
+            {field.staged && (
+              <span className="timing-saved" role="status" data-testid="timing-stage-status">
+                Saved to staged draft
+              </span>
+            )}
+            {field.needsSave && (
+              <span className="save-warning" role="status" data-testid="timing-save-warning">
+                Changed since staged — save again
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
