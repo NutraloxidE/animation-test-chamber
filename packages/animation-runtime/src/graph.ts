@@ -14,15 +14,24 @@ export type LayerId = 'locomotion' | 'action';
 export const DEFAULT_DODGE_RECOVERY_START_NORMALIZED = 0.78;
 export const DODGE_RECOVERY_BLEND_SEC = 0.28;
 
+/**
+ * A dedicated `*-recovery` clip is recovery from its first frame; anything else
+ * (dodge) hands authority back at its authored recovery point.
+ */
+function recoveryStartFor(actionState: string, authored: number | undefined): number {
+  if (authored !== undefined) return authored;
+  return actionState.endsWith('-recovery') ? 0 : DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
+}
+
 export function isDodgeRecoveryTransition(
   actionState: string,
   actionNormalizedTime: number,
   locomotionState: string,
-  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
+  recoveryStartNormalized?: number,
 ): boolean {
   return (
-    actionState === 'dodge' &&
-    actionNormalizedTime >= recoveryStartNormalized &&
+    (actionState === 'dodge' || actionState.endsWith('-recovery')) &&
+    actionNormalizedTime >= recoveryStartFor(actionState, recoveryStartNormalized) &&
     (locomotionState === 'walk' || locomotionState === 'run')
   );
 }
@@ -32,7 +41,7 @@ export function dodgeRecoveryBlendWeight(
   actionNormalizedTime: number,
   actionDurationSec: number,
   locomotionState: string,
-  recoveryStartNormalized = DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
+  recoveryStartNormalized?: number,
 ): number {
   if (
     actionDurationSec <= 0 ||
@@ -45,9 +54,9 @@ export function dodgeRecoveryBlendWeight(
   ) {
     return 0;
   }
+  const start = recoveryStartFor(actionState, recoveryStartNormalized);
   return clamp01(
-    ((actionNormalizedTime - recoveryStartNormalized) * actionDurationSec) /
-      DODGE_RECOVERY_BLEND_SEC,
+    ((actionNormalizedTime - start) * actionDurationSec) / DODGE_RECOVERY_BLEND_SEC,
   );
 }
 
@@ -116,6 +125,7 @@ export class AnimationGraphRuntime {
   private readonly layers = new Map<LayerId, LayerRuntimeState>();
   private states = new Map<string, StateDefinition>();
   private transitionsByLayer = new Map<LayerId, TransitionDefinition[]>();
+  private speedScales = new Map<LayerId, number>();
 
   constructor(
     private graph: AnimationGraphDefinition,
@@ -176,6 +186,16 @@ export class AnimationGraphRuntime {
     for (const layer of this.graph.layers) {
       this.enterState(layer.id, layer.defaultState, null, 0, 0, 1);
     }
+  }
+
+  /** Per-tick playback multiplier on top of the transition's authored speed. */
+  setLayerSpeedScale(layerId: LayerId, scale: number): void {
+    this.speedScales.set(layerId, scale);
+  }
+
+  /** Clip seconds this layer advances per fixed tick. */
+  layerStepSec(layerId: LayerId): number {
+    return FIXED_DT * this.getLayer(layerId).playbackSpeed * (this.speedScales.get(layerId) ?? 1);
   }
 
   getLayer(layerId: LayerId): LayerRuntimeState {
@@ -344,7 +364,7 @@ export class AnimationGraphRuntime {
 
     const previousNormalized = layer.normalizedTime;
     const finishedBeforeAdvance = isClipFinished(clip, layer.timeSec);
-    layer.timeSec += FIXED_DT * layer.playbackSpeed;
+    layer.timeSec += this.layerStepSec(layerId);
     layer.normalizedTime = normalizedTimeOf(clip, layer.timeSec);
 
     for (const event of eventsInRange(clip, previousNormalized, layer.normalizedTime)) {

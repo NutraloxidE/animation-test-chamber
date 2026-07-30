@@ -392,6 +392,11 @@
             "maximum": 1,
             "type": "number"
           },
+          "rotationScaleWhilePlaying": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
           "events": {
             "type": "array",
             "items": {
@@ -1506,6 +1511,11 @@
         "stickDeadzone": {
           "minimum": 0,
           "maximum": 0.9,
+          "type": "number"
+        },
+        "stickSmoothingSec": {
+          "minimum": 0,
+          "maximum": 0.5,
           "type": "number"
         },
         "lookSensitivity": {

@@ -8,7 +8,6 @@ import {
   normalizedTimeOf,
   sampleRootMotion,
   type LayerId,
-  type LayerRuntimeState,
   type ParameterSource,
 } from '@atc/animation-runtime';
 import { InputState, type ActionSample } from '@atc/input-runtime';
@@ -16,11 +15,14 @@ import { applyGroundSnap, createFootIkState, resolveTerrain, solveFootIk, type F
 
 /** How long a lock-queued jump survives after the root unlocks. */
 const QUEUED_JUMP_GRACE_MS = 140;
+// Jump belongs here too: the queued-jump path only decides *when* an accepted
+// press replays, so leaving Jump out let it skip the acceptance window entirely.
 const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
   'PrimaryAction',
   'SecondaryAction',
   'Dodge',
   'Guard',
+  'Jump',
 ]);
 
 export interface SimulationInit {
@@ -275,6 +277,7 @@ export class Simulation {
     this.updateQueuedJump();
 
     const previousLocomotion = this.graph.getLayer('locomotion').stateId;
+    this.graph.setLayerSpeedScale('locomotion', this.locomotionSpeedScale());
     const graphResult = this.graph.tick(this.parameterSource());
 
     // A jump impulse is applied on the tick the locomotion layer enters a state
@@ -370,15 +373,21 @@ export class Simulation {
     );
     const actionIsStationary = this.actionIsStationary();
     const actionIsAttack = this.actionIsAttack();
+    // Attack recovery hands movement back on the same ramp the pose blends on, so
+    // the character never slides under a frozen clip.
+    const attackRecoveryScale = actionIsAttack ? recoveryWeight : 0;
+    const attackLocksMovement = actionIsAttack && attackRecoveryScale === 0;
 
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.
-    const actionScale = actionIsStationary || actionIsAttack
+    const actionScale = actionIsStationary || attackLocksMovement
       ? 0
-      : this.graph.isActionActive()
-        ? movement.actionMovementAuthority +
-          (1 - movement.actionMovementAuthority) * recoveryWeight
-        : 1;
+      : actionIsAttack
+        ? attackRecoveryScale
+        : this.graph.isActionActive()
+          ? movement.actionMovementAuthority +
+            (1 - movement.actionMovementAuthority) * recoveryWeight
+          : 1;
     const airScale = terrain.grounded ? 1 : movement.airControl;
     const surfaceScale = terrain.grounded ? terrain.accelerationScale : 1;
 
@@ -392,7 +401,7 @@ export class Simulation {
 
     if (
       actionIsStationary ||
-      actionIsAttack ||
+      attackLocksMovement ||
       (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)
     ) {
       this.velocity.x = 0;
@@ -409,7 +418,14 @@ export class Simulation {
       action.normalizedTime >= (actionClip?.inputAcceptanceStartNormalized ?? 0);
     if (magnitude > 0.01 && acceptsFacingInput) {
       const targetYaw = Math.atan2(desiredX, desiredZ);
-      const authority = actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() : 1;
+      // Turning stays heavy for the rest of the attack clip, not just until the
+      // input acceptance point, and lightens again on the recovery blend.
+      const heavy = actionClip?.rotationScaleWhilePlaying ?? 0.12;
+      const playbackScale = actionIsAttack
+        ? heavy + (1 - heavy) * attackRecoveryScale
+        : 1;
+      const authority =
+        actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() * playbackScale : 1;
       this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
     }
 
@@ -428,7 +444,8 @@ export class Simulation {
     // Locomotion root motion is the other half of the same movement the code
     // path damps during an action; leaving it at full authority is what made
     // upper-body attacks keep gliding forward.
-    const locomotionRootScale = this.actionOwnsRoot() ? 1 : actionScale;
+    const locomotionRootScale =
+      this.actionOwnsRoot() || attackRecoveryScale > 0 ? 1 : actionScale;
     const horizontalAuthority =
       actionIsStationary || rootMotion.mode === 'InPlace'
         ? 0
@@ -544,11 +561,26 @@ export class Simulation {
     );
   }
 
+  /**
+   * Walk and run clips are authored at walkSpeed / runSpeed. Playing them back at
+   * the ratio of the speed actually reached keeps the feet from skating when the
+   * stick is held halfway, on a slope, or still accelerating.
+   */
+  private locomotionSpeedScale(): number {
+    const stateId = this.graph.getLayer('locomotion').stateId;
+    if (stateId !== 'walk' && stateId !== 'run') return 1;
+    const movement = this.project.movement;
+    const nominal = stateId === 'run' ? movement.runSpeed : movement.walkSpeed;
+    if (nominal <= 0) return 1;
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+    // ponytail: fixed clamp, promote to a movement-profile field if it needs tuning per project.
+    return Math.min(1.5, Math.max(0.35, speed / nominal));
+  }
+
   private sampleRootMotionDelta(recoveryWeight: number): Vec3 {
-    const action = this.graph.getLayer('action');
     const actionOwnsRoot = this.actionOwnsRoot();
-    const locomotion = this.graph.getLayer('locomotion');
-    const sampleLayer = (layer: LayerRuntimeState): Vec3 => {
+    const sampleLayer = (layerId: LayerId): Vec3 => {
+      const layer = this.graph.getLayer(layerId);
       const clip = this.graph.getClipFor(layer.stateId);
       if (!clip) return vec3();
       // Re-sample the prior wall-clock instant through the same timing curve.
@@ -556,7 +588,7 @@ export class Simulation {
       // a nonlinearly sampled pose.
       const previous = normalizedTimeOf(
         clip,
-        layer.timeSec - FIXED_DT * layer.playbackSpeed,
+        layer.timeSec - this.graph.layerStepSec(layerId),
       );
       const track = this.actionRootMotionTracks[layer.stateId];
       if (track) {
@@ -568,11 +600,11 @@ export class Simulation {
       return sampleRootMotion(clip, previous, layer.normalizedTime);
     };
 
-    if (!actionOwnsRoot) return sampleLayer(locomotion);
-    if (recoveryWeight <= 0) return sampleLayer(action);
+    if (!actionOwnsRoot) return sampleLayer('locomotion');
+    if (recoveryWeight <= 0) return sampleLayer('action');
     return addVec3(
-      scaleVec3(sampleLayer(action), 1 - recoveryWeight),
-      scaleVec3(sampleLayer(locomotion), recoveryWeight),
+      scaleVec3(sampleLayer('action'), 1 - recoveryWeight),
+      scaleVec3(sampleLayer('locomotion'), recoveryWeight),
     );
   }
 
