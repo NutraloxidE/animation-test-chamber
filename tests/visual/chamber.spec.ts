@@ -62,11 +62,9 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('character, motion and weapon presets can be selected', async ({ page }) => {
+test('character and weapon presets can be selected', async ({ page }) => {
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
-  await page.getByTestId('motion-set-select').selectOption('power');
-  await expect(page.getByTestId('status-bar')).toContainText('Power stride');
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );

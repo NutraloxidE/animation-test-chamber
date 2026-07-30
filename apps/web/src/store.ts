@@ -11,7 +11,7 @@ import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
-import { CHARACTER_PRESETS, MOTION_SETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
+import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
 import seedProject from '@chamber/project';
 
 export type PanelId =
@@ -34,7 +34,6 @@ interface ChamberState {
   activePanel: PanelId;
   terrainPresetId: string;
   characterPresetId: string;
-  motionSetId: string;
   weaponModeId: string;
   weaponGripOverrides: Record<string, WeaponGrip>;
   gripEditorMode: 'translate' | 'rotate' | null;
@@ -81,7 +80,6 @@ interface ChamberActions {
   setPanel(panel: PanelId): void;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
-  setMotionSet(id: string): void;
   setWeaponMode(id: string): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
   saveWeaponGrip(characterId: string, weaponId: string, grip: WeaponGrip): void;
@@ -187,7 +185,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     activePanel: 'inspector',
     terrainPresetId: initialProject.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
-    motionSetId: MOTION_SETS[0]!.id,
     weaponModeId: WEAPON_MODES[0]!.id,
     weaponGripOverrides: {},
     gripEditorMode: null,
@@ -317,14 +314,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         characterPresetId: id,
         gripEditorMode: null,
         statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}`,
-      });
-    },
-
-    setMotionSet(id) {
-      if (!MOTION_SETS.some((set) => set.id === id)) return;
-      set({
-        motionSetId: id,
-        statusMessage: `Motion set: ${MOTION_SETS.find((set) => set.id === id)!.label}`,
       });
     },
 
@@ -718,7 +707,6 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       activePanel: state.activePanel,
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
-      motionSetId: state.motionSetId,
       weaponModeId: state.weaponModeId,
       weaponGripOverrides: state.weaponGripOverrides,
       selectedReplayId: state.selectedReplayId,

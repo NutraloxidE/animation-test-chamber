@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type { CharacterPreset, MotionSet, WeaponMode } from '../catalog.ts';
+import type { CharacterPreset, WeaponMode } from '../catalog.ts';
 import { HeldSword } from './HeldSword.tsx';
 
 interface ProceduralCharacterProps {
@@ -11,7 +11,6 @@ interface ProceduralCharacterProps {
   ghost?: boolean;
   color?: string;
   character?: CharacterPreset;
-  motion: MotionSet;
   weapon: WeaponMode;
 }
 
@@ -28,7 +27,6 @@ export function ProceduralCharacter({
   ghost = false,
   color,
   character,
-  motion,
   weapon,
 }: ProceduralCharacterProps) {
   const root = useRef<THREE.Group>(null);
@@ -81,7 +79,7 @@ export function ProceduralCharacter({
     const phase = normalized * Math.PI * 2;
     const moving = stateId === 'walk' || stateId === 'run';
     const airborne = stateId === 'jump' || stateId === 'fall';
-    const swing = (stateId === 'run' ? 0.9 : stateId === 'walk' ? 0.45 : 0) * motion.stride;
+    const swing = stateId === 'run' ? 0.9 : stateId === 'walk' ? 0.45 : 0;
 
     if (hips.current) {
       // Vertical bob on the double-frequency of the stride, plus the IK pelvis drop.
@@ -108,13 +106,13 @@ export function ProceduralCharacter({
         armR.current.rotation.x = -0.9;
         armL.current.rotation.x = -0.9;
       } else {
-        armL.current.rotation.x = airborne ? -0.8 : Math.sin(phase + Math.PI) * swing * 0.7 * motion.armSwing;
-        armR.current.rotation.x = airborne ? -0.8 : Math.sin(phase) * swing * 0.7 * motion.armSwing;
+        armL.current.rotation.x = airborne ? -0.8 : Math.sin(phase + Math.PI) * swing * 0.7;
+        armR.current.rotation.x = airborne ? -0.8 : Math.sin(phase) * swing * 0.7;
       }
     }
 
     if (torso.current) {
-      torso.current.rotation.x = (stateId === 'run' ? 0.14 : stateId === 'slide' ? 0.35 : 0.04) * motion.torsoLean;
+      torso.current.rotation.x = stateId === 'run' ? 0.14 : stateId === 'slide' ? 0.35 : 0.04;
     }
   });
 
