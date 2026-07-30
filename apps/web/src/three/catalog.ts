@@ -70,13 +70,15 @@ export const WEAPON_MODES: WeaponMode[] = [
     heldItem: 'sword',
     usesAttackRootMotion: true,
     rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard.glb',
+    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
     animationPositionScale: 1,
     clipMap: {
       idle: 'Rig|Sword_Idle',
       guard: 'Rig|Sword_Idle',
       'attack-01': 'Sword_Regular_A',
+      'attack-01-recovery': 'Sword_Regular_A_Rec',
       'attack-02': 'Sword_Regular_B',
+      'attack-02-recovery': 'Sword_Regular_B_Rec',
     },
   },
 ];

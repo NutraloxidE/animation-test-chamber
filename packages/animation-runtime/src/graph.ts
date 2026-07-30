@@ -343,6 +343,7 @@ export class AnimationGraphRuntime {
     if (!state || !clip) return;
 
     const previousNormalized = layer.normalizedTime;
+    const finishedBeforeAdvance = isClipFinished(clip, layer.timeSec);
     layer.timeSec += FIXED_DT * layer.playbackSpeed;
     layer.normalizedTime = normalizedTimeOf(clip, layer.timeSec);
 
@@ -369,16 +370,23 @@ export class AnimationGraphRuntime {
 
     // State timeout and clip completion both fall through to the fallback state.
     const timedOut = state.timeoutSec > 0 && layer.timeSec >= state.timeoutSec;
-    const finished = isClipFinished(clip, layer.timeSec);
-    if ((timedOut || finished) && state.fallbackState && state.fallbackState !== layer.stateId) {
-      const fallback = this.states.get(state.fallbackState);
+    const finished = clip.id.startsWith('attack-')
+      ? finishedBeforeAdvance
+      : isClipFinished(clip, layer.timeSec);
+    const fallbackState = state.fallbackState;
+    if (
+      (timedOut || finished) &&
+      fallbackState &&
+      fallbackState !== layer.stateId
+    ) {
+      const fallback = this.states.get(fallbackState);
       if (fallback) {
-        this.enterState(layerId, state.fallbackState, null, 0, 0.05, fallback.speed);
+        this.enterState(layerId, fallbackState, null, 0, 0.05, fallback.speed);
         result.transitions.push({
           layer: layerId,
           transitionId: `${state.id}:fallback`,
           from: state.id,
-          to: state.fallbackState,
+          to: fallbackState,
         });
       }
     }

@@ -4,6 +4,37 @@ import { Field, ToggleField } from './Field.tsx';
 
 type TimeUnit = 'seconds' | 'frames30' | 'frames60';
 
+function ActionPlayback({
+  isLive,
+  progress,
+  inputStart,
+  testId,
+}: {
+  isLive: boolean;
+  progress: number;
+  inputStart: number;
+  testId?: string;
+}) {
+  return (
+    <div className="action-input-playback" data-testid={testId}>
+      <div className="action-input-playback__status">
+        <span>{isLive ? `PLAYING ${progress}%` : 'NOT PLAYING'}</span>
+        {isLive && <strong>{progress / 100 >= inputStart ? 'INPUT OPEN' : 'INPUT LOCKED'}</strong>}
+      </div>
+      <div className="action-input-playback__track" aria-hidden="true">
+        <span
+          className="action-input-playback__fill"
+          style={{ width: `${isLive ? progress : 0}%` }}
+        />
+        <span
+          className="action-input-playback__marker"
+          style={{ left: `${inputStart * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 /**
  * Transition Inspector (PLAN 8.2). Every value here is written straight into the
  * preview document, so a drag is visible in the running character immediately.
@@ -25,6 +56,13 @@ export function TransitionInspector() {
     project.graph.transitions[0];
   const selectedClip =
     project.clips.find((clip) => clip.id === selectedClipId) ?? project.clips[0];
+  const actionClips = project.graph.states
+    .filter((state) => state.layer === 'action' && state.id !== 'action-none')
+    .flatMap((state) => {
+      const clip = project.clips.find((entry) => entry.id === state.clipId);
+      return clip ? [clip] : [];
+    })
+    .filter((clip, index, clips) => clips.indexOf(clip) === index);
   const base = `/graph/transitions/${transition?.id}`;
 
   /**
@@ -34,6 +72,10 @@ export function TransitionInspector() {
    * The fade back down afterwards is a CSS transition, so it costs no renders.
    */
   const [liveIds, setLiveIds] = useState<(string | null)[]>([]);
+  const [liveAction, setLiveAction] = useState(() => {
+    const action = engine.graphLayers.action;
+    return { stateId: action.stateId, progress: Math.round(action.normalizedTime * 100) };
+  });
   useEffect(
     () =>
       engine.subscribe(() => {
@@ -43,6 +85,15 @@ export function TransitionInspector() {
           previous[1] === layers.locomotion.lastTransitionId
             ? previous
             : [layers.action.lastTransitionId, layers.locomotion.lastTransitionId],
+        );
+        const nextAction = {
+          stateId: layers.action.stateId,
+          progress: Math.round(layers.action.normalizedTime * 100),
+        };
+        setLiveAction((previous) =>
+          previous.stateId === nextAction.stateId && previous.progress === nextAction.progress
+            ? previous
+            : nextAction,
         );
       }),
     [engine],
@@ -117,6 +168,38 @@ export function TransitionInspector() {
         ))}
       </details>
 
+      <details className="blend-list" data-testid="action-input-list">
+        <summary>All action input starts ({actionClips.length})</summary>
+        {actionClips.map((clip) => {
+          const isLive = project.graph.states.some(
+            (state) => state.id === liveAction.stateId && state.clipId === clip.id,
+          );
+          const inputStart = clip.inputAcceptanceStartNormalized ?? 0;
+          return (
+            <div
+              key={clip.id}
+              className={`blend-row action-input-row${isLive ? ' blend-row--live' : ''}`}
+              data-progress={isLive ? liveAction.progress : 0}
+            >
+              <ActionPlayback
+                isLive={isLive}
+                progress={liveAction.progress}
+                inputStart={inputStart}
+              />
+              <Field
+                path={`/clips/${clip.id}/inputAcceptanceStartNormalized`}
+                testId={`action-input-${clip.id}`}
+                label={clip.id}
+                min={0}
+                max={1}
+                step={0.01}
+                format={(value) => `${Math.round(value * 100)}%`}
+              />
+            </div>
+          );
+        })}
+      </details>
+
       {selectedClip && (
         <section>
           <h3>Clip tuning</h3>
@@ -134,12 +217,50 @@ export function TransitionInspector() {
           </select>
           <Field
             path={`/clips/${selectedClip.id}/rootDisplacement/z`}
-            label="Forward displacement"
+            label={
+              selectedClip.id.startsWith('attack-')
+                ? 'Forward displacement adjustment'
+                : 'Forward displacement'
+            }
             min={-2}
-            max={10}
-            step={0.1}
-            format={(value) => `${value.toFixed(1)} m`}
+            max={selectedClip.id.startsWith('attack-') ? 2 : 10}
+            step={selectedClip.id.startsWith('attack-') ? 0.05 : 0.1}
+            format={(value) =>
+              selectedClip.id.startsWith('attack-')
+                ? `${value >= 0 ? '+' : ''}${value.toFixed(2)} m`
+                : `${value.toFixed(1)} m`
+            }
           />
+          {selectedClip.inputAcceptanceStartNormalized !== undefined && (
+            <div
+              className={
+                project.graph.states.some(
+                  (state) =>
+                    state.id === liveAction.stateId && state.clipId === selectedClip.id,
+                )
+                  ? 'action-input-detail blend-row--live'
+                  : 'action-input-detail'
+              }
+            >
+              <ActionPlayback
+                isLive={project.graph.states.some(
+                  (state) =>
+                    state.id === liveAction.stateId && state.clipId === selectedClip.id,
+                )}
+                progress={liveAction.progress}
+                inputStart={selectedClip.inputAcceptanceStartNormalized}
+                testId="selected-action-playback"
+              />
+              <Field
+                path={`/clips/${selectedClip.id}/inputAcceptanceStartNormalized`}
+                label="Next input acceptance start"
+                min={0}
+                max={1}
+                step={0.01}
+                format={(value) => `${Math.round(value * 100)}%`}
+              />
+            </div>
+          )}
           {selectedClip.recoveryTransitionStartNormalized !== undefined && (
             <Field
               path={`/clips/${selectedClip.id}/recoveryTransitionStartNormalized`}

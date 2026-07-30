@@ -331,6 +331,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       const weapon = WEAPON_MODES.find((mode) => mode.id === id);
       if (!weapon) return;
       engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
+      engine.setWeaponModeId(weapon.id);
       set({ weaponModeId: id, gripEditorMode: null, statusMessage: `Weapon: ${weapon.label}` });
     },
 

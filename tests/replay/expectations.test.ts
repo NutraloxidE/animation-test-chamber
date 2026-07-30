@@ -13,6 +13,16 @@ import { loadDemoProject } from '../fixtures/project.ts';
 const project = loadDemoProject();
 
 const traceOf = (id: string) => runReplay(project, findReplayFixture(id));
+const swordARootTrack = {
+  times: [
+    0, 0.076923, 0.153846, 0.230769, 0.307692, 0.384615, 0.461538,
+    0.538462, 0.615385, 0.692308, 0.769231, 0.846154, 0.923077, 1,
+  ],
+  positions: [
+    0, 0, 0.111641, 0.233733, 0.359309, 0.481401, 0.593042,
+    0.670878, 0.735514, 0.785937, 0.82112, 0.837373, 0.829922, 0.824524,
+  ].map((z) => ({ x: 0, y: 0, z })),
+};
 
 describe('run-to-attack-forward', () => {
   const trace = traceOf('run-to-attack-forward');
@@ -49,27 +59,45 @@ describe('attack-01-to-attack-02', () => {
     expect(hits[1]!.tick).toBeGreaterThan(hits[0]!.tick);
   });
 
-  const runSingleAttack = (usesAttackRootMotion: boolean, moveY = 0) => {
+  it('renders the final frame of the second attack before returning to neutral', () => {
+    const secondAttack = trace.ticks.filter((tick) => tick.actionState === 'attack-02');
+    expect(secondAttack.at(-1)!.actionNormalizedTime).toBe(1);
+  });
+
+  const runSingleAttack = (
+    usesAttackRootMotion: boolean,
+    moveY = 0,
+    simulationProject = project,
+    usesRecovery = false,
+  ) => {
     const replay = findReplayFixture('attack-01-to-attack-02');
     const singleAttack = {
       ...replay,
       id: 'single-attack-root-motion',
       frames: replay.frames.slice(0, 2).map((frame) => ({ ...frame, moveY })),
-      tickCount: 80,
+      tickCount: usesRecovery ? 120 : 80,
     };
     const simulation = new Simulation({
-      project,
+      project: simulationProject,
       terrain: findTerrainPreset(replay.terrainPresetId),
       seed: replay.seed,
       initialPosition: replay.initialPosition,
       initialYawRad: replay.initialYawRad,
       cameraYawRad: replay.cameraYawRad,
       upperBodyActionRootMotionEnabled: usesAttackRootMotion,
+      actionRootMotionTracks: usesAttackRootMotion
+        ? { 'attack-01': swordARootTrack }
+        : {},
+      weaponModeId: usesRecovery ? 'sword' : 'unarmed',
     });
     const ticks = Array.from({ length: singleAttack.tickCount }, (_, tick) =>
       simulation.step(frameAt(singleAttack, tick)),
     );
-    return { simulation, attackTicks: ticks.filter((tick) => tick.actionState === 'attack-01') };
+    return {
+      simulation,
+      ticks,
+      attackTicks: ticks.filter((tick) => tick.actionState === 'attack-01'),
+    };
   };
 
   it('keeps the unarmed attack in place even with forward input', () => {
@@ -81,11 +109,127 @@ describe('attack-01-to-attack-02', () => {
     const withoutInput = runSingleAttack(true);
     const { attackTicks } = runSingleAttack(true, 1);
     const attackEndZ = attackTicks.at(-1)!.position.z;
-    expect(attackTicks.at(-1)!.actionNormalizedTime).toBeGreaterThan(0.97);
+    const windupZ = attackTicks.find((tick) => tick.actionNormalizedTime >= 0.075)!.position.z;
+    const midpointZ = attackTicks.find((tick) => tick.actionNormalizedTime >= 0.5)!.position.z;
+    expect(attackTicks.at(-1)!.actionNormalizedTime).toBe(1);
+    expect(windupZ).toBeLessThan(0.01);
+    expect(midpointZ).toBeGreaterThan(0.2);
     expect(attackEndZ).toBeGreaterThan(0.28);
     expect(attackEndZ).toBeLessThan(0.3);
     expect(attackEndZ).toBeCloseTo(withoutInput.attackTicks.at(-1)!.position.z, 5);
     expect(attackTicks.every((tick) => tick.grounded)).toBe(true);
+  });
+
+  it('scales the measured trajectory with the forward displacement adjustment', () => {
+    const baseline = runSingleAttack(true);
+    const adjustedProject = setAtPath(
+      project,
+      '/clips/attack-01/rootDisplacement/z',
+      0.2,
+    );
+    const adjusted = runSingleAttack(true, 0, adjustedProject);
+    const baselineEnd = baseline.attackTicks.at(-1)!.position.z;
+    const adjustedEnd = adjusted.attackTicks.at(-1)!.position.z;
+    const baselineMid = baseline.attackTicks.find(
+      (tick) => tick.actionNormalizedTime >= 0.5,
+    )!.position.z;
+    const adjustedMid = adjusted.attackTicks.find(
+      (tick) => tick.actionNormalizedTime >= 0.5,
+    )!.position.z;
+
+    expect(adjustedEnd - baselineEnd).toBeCloseTo(0.2 * project.rootMotion.horizontalAuthority, 3);
+    expect(adjustedMid / adjustedEnd).toBeCloseTo(baselineMid / baselineEnd, 4);
+  });
+
+  it('plays the first sword recovery through after a single attack', () => {
+    const { ticks } = runSingleAttack(true, 0, project, true);
+    const recovery = ticks.filter((tick) => tick.actionState === 'attack-01-recovery');
+    expect(recovery.at(-1)!.actionNormalizedTime).toBe(1);
+    expect(ticks.at(-1)!.actionState).toBe('action-none');
+  });
+
+  it('chains from the first recovery once its next-input window is open', () => {
+    const source = findReplayFixture('attack-01-to-attack-02');
+    const replay = {
+      ...source,
+      id: 'attack-01-recovery-to-attack-02',
+      tickCount: 180,
+      frames: [
+        ...source.frames.slice(0, 2),
+        { ...source.frames[0]!, tick: 100 },
+        { ...source.frames[1]!, tick: 104 },
+      ],
+    };
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset(replay.terrainPresetId),
+      seed: replay.seed,
+      initialPosition: replay.initialPosition,
+      initialYawRad: replay.initialYawRad,
+      cameraYawRad: replay.cameraYawRad,
+      upperBodyActionRootMotionEnabled: true,
+      weaponModeId: 'sword',
+    });
+    const ticks = Array.from({ length: replay.tickCount }, (_, tick) =>
+      simulation.step(frameAt(replay, tick)),
+    );
+
+    expect(ticks.some((tick) => tick.actionState === 'attack-01-recovery')).toBe(true);
+    expect(ticks.some((tick) => tick.actionState === 'attack-02')).toBe(true);
+  });
+
+  it('dodges from the first recovery once its next-input window is open', () => {
+    const source = findReplayFixture('late-dodge-cancel');
+    const replay = {
+      ...source,
+      id: 'attack-01-recovery-to-dodge',
+      tickCount: 180,
+      frames: [
+        ...source.frames.slice(0, 2),
+        { ...source.frames[2]!, tick: 100 },
+        { ...source.frames[3]!, tick: 104 },
+      ],
+    };
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset(replay.terrainPresetId),
+      seed: replay.seed,
+      initialPosition: replay.initialPosition,
+      initialYawRad: replay.initialYawRad,
+      cameraYawRad: replay.cameraYawRad,
+      upperBodyActionRootMotionEnabled: true,
+      weaponModeId: 'sword',
+    });
+    const ticks = Array.from({ length: replay.tickCount }, (_, tick) =>
+      simulation.step(frameAt(replay, tick)),
+    );
+
+    expect(ticks.some((tick) => tick.actionState === 'attack-01-recovery')).toBe(true);
+    expect(ticks.some((tick) => tick.actionState === 'dodge')).toBe(true);
+  });
+
+  it('plays the second sword recovery after the combo finishes', () => {
+    const replay = {
+      ...findReplayFixture('attack-01-to-attack-02'),
+      tickCount: 220,
+    };
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset(replay.terrainPresetId),
+      seed: replay.seed,
+      initialPosition: replay.initialPosition,
+      initialYawRad: replay.initialYawRad,
+      cameraYawRad: replay.cameraYawRad,
+      upperBodyActionRootMotionEnabled: true,
+      weaponModeId: 'sword',
+    });
+    const ticks = Array.from({ length: replay.tickCount }, (_, tick) =>
+      simulation.step(frameAt(replay, tick)),
+    );
+    const recovery = ticks.filter((tick) => tick.actionState === 'attack-02-recovery');
+    expect(recovery.at(-1)!.actionNormalizedTime).toBe(1);
+    expect(ticks.some((tick) => tick.actionState === 'attack-01-recovery')).toBe(false);
+    expect(ticks.at(-1)!.actionState).toBe('action-none');
   });
 });
 
@@ -250,6 +394,17 @@ describe('ice-surface-stop', () => {
 });
 
 describe('regression detection', () => {
+  it('rejects a combo press made before the action input window opens', () => {
+    const replay = findReplayFixture('attack-01-to-attack-02');
+    const edited = setAtPath(
+      project,
+      '/clips/attack-01/inputAcceptanceStartNormalized',
+      0.75,
+    );
+    const trace = runReplay(edited, replay);
+    expect(trace.metrics.actionSequence).toEqual(['attack-01', 'action-none']);
+  });
+
   it('detects a state-sequence change caused by an edit', () => {
     const replay = findReplayFixture('attack-01-to-attack-02');
     const before = runReplay(project, replay);

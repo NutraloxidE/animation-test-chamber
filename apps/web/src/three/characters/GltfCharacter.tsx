@@ -5,6 +5,7 @@ import {
   DODGE_RECOVERY_BLEND_SEC,
   isDodgeRecoveryTransition,
 } from '@atc/animation-runtime';
+import type { RootMotionTrack } from '@atc/replay-runtime';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
 import type {
@@ -114,6 +115,43 @@ export function GltfCharacter({
     weaponAnimations,
     weaponCompatible,
   ]);
+  const actionRootMotionTracks = useMemo(() => {
+    if (!weaponCompatible || !weapon.usesAttackRootMotion) return {};
+    const tracks: Record<string, RootMotionTrack> = {};
+    for (const [stateId, clipName] of Object.entries(weapon.clipMap ?? {})) {
+      const clip = weaponAnimations.find((animation) => animation.name === clipName);
+      const rootTrack = clip?.tracks.find(
+        (track): track is THREE.VectorKeyframeTrack =>
+          track instanceof THREE.VectorKeyframeTrack && track.name === 'root.position',
+      );
+      if (!clip || !rootTrack || rootTrack.times.length === 0) continue;
+      const scale = weapon.animationPositionScale ?? 1;
+      const origin = {
+        x: rootTrack.values[0]!,
+        y: rootTrack.values[1]!,
+        z: rootTrack.values[2]!,
+      };
+      tracks[stateId] = {
+        times: Array.from(rootTrack.times, (time) => time / clip.duration),
+        positions: Array.from(rootTrack.times, (_, index) => ({
+          x: (rootTrack.values[index * 3]! - origin.x) * scale,
+          y: (rootTrack.values[index * 3 + 1]! - origin.y) * scale,
+          z: (rootTrack.values[index * 3 + 2]! - origin.z) * scale,
+        })),
+      };
+    }
+    return tracks;
+  }, [
+    weapon.animationPositionScale,
+    weapon.clipMap,
+    weapon.usesAttackRootMotion,
+    weaponAnimations,
+    weaponCompatible,
+  ]);
+  useEffect(() => {
+    engine.setActionRootMotionTracks(actionRootMotionTracks);
+    return () => engine.setActionRootMotionTracks({});
+  }, [actionRootMotionTracks, engine]);
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const currentClip = useRef('');
   const currentAction = useRef<THREE.AnimationAction | null>(null);

@@ -146,6 +146,17 @@ describe('input buffering', () => {
     expect(input.isBuffered('Jump', 140)).toBe(true);
   });
 
+  it('discards a fresh press while its action window is closed', () => {
+    const input = new InputState(project.inputMap);
+    input.beginTick(0, sampleWith({ PrimaryAction: true }), () => false);
+    expect(input.isBuffered('PrimaryAction', 200)).toBe(false);
+    expect(input.isAcceptedDown('PrimaryAction')).toBe(false);
+
+    input.beginTick(1, sampleWith({}));
+    input.beginTick(2, sampleWith({ PrimaryAction: true }), () => true);
+    expect(input.isBuffered('PrimaryAction', 200)).toBe(true);
+  });
+
   it('distinguishes press, hold and release edges', () => {
     const input = new InputState(project.inputMap);
     input.beginTick(0, sampleWith({ Guard: true }));

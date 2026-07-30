@@ -13,6 +13,7 @@ import {
   Simulation,
   frameAt,
   runReplay,
+  type RootMotionTrack,
   type ReplayTrace,
   type TickRecord,
 } from '@atc/replay-runtime';
@@ -68,6 +69,8 @@ export class ChamberEngine {
   private paused = false;
   private stepOnce = false;
   private upperBodyActionRootMotionEnabled = false;
+  private actionRootMotionTracks: Record<string, RootMotionTrack> = {};
+  private weaponModeId = 'unarmed';
 
   /** Latest tick record, read by the renderer every frame. */
   lastRecord: TickRecord | null = null;
@@ -97,6 +100,8 @@ export class ChamberEngine {
       initialYawRad: 0,
       cameraYawRad: this.cameraYaw,
       upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
+      actionRootMotionTracks: this.actionRootMotionTracks,
+      weaponModeId: this.weaponModeId,
     });
   }
 
@@ -180,6 +185,16 @@ export class ChamberEngine {
     this.simulation.setUpperBodyActionRootMotionEnabled(enabled);
   }
 
+  setActionRootMotionTracks(tracks: Record<string, RootMotionTrack>): void {
+    this.actionRootMotionTracks = tracks;
+    this.simulation.setActionRootMotionTracks(tracks);
+  }
+
+  setWeaponModeId(id: string): void {
+    this.weaponModeId = id;
+    this.simulation.setWeaponModeId(id);
+  }
+
   get isPaused(): boolean {
     return this.paused;
   }
@@ -245,6 +260,8 @@ export class ChamberEngine {
       initialYawRad: replay.initialYawRad,
       cameraYawRad: replay.cameraYawRad,
       upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
+      actionRootMotionTracks: this.actionRootMotionTracks,
+      weaponModeId: this.weaponModeId,
     });
     this.accumulator.reset();
     this.notify();
