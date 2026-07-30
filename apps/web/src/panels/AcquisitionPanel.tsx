@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CandidateAsset, LicenseFlag } from '@atc/schema';
 import { useChamber } from '../store.ts';
+import { backendAvailable, NO_BACKEND_MESSAGE } from '../backend.ts';
 
 const FLAGS: LicenseFlag[] = ['unknown', 'allowed', 'forbidden'];
 
@@ -20,6 +21,7 @@ interface ImportResponse {
  */
 export function AcquisitionPanel() {
   const setStatus = useChamber((state) => state.setStatus);
+  const offline = useChamber((state) => state.backendOnline) === false;
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [license, setLicense] = useState({
@@ -33,6 +35,12 @@ export function AcquisitionPanel() {
   });
 
   const onFile = async (file: File): Promise<void> => {
+    // Import registers a candidate and may queue a conversion job; both live on
+    // the server, so there is nothing to hand the file to on a static host.
+    if (!(await backendAvailable())) {
+      setStatus(`Import: ${NO_BACKEND_MESSAGE}`);
+      return;
+    }
     setBusy(true);
     try {
       const buffer = await file.arrayBuffer();
@@ -137,13 +145,18 @@ export function AcquisitionPanel() {
         <input
           type="file"
           accept=".glb,.gltf,.fbx,.bvh"
-          disabled={busy}
+          disabled={busy || offline}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void onFile(file);
           }}
         />
       </label>
+      {offline && (
+        <p className="muted small">
+          Importing needs the API server, which registers the candidate and queues conversion.
+        </p>
+      )}
 
       {result?.candidate && (
         <section className="candidate">

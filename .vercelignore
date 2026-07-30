@@ -1,0 +1,11 @@
+# Nothing here is read by `pnpm build`; leaving it out keeps the upload small.
+tests/
+reports/
+generated/
+docs/
+DECISIONS/
+agents/
+PLAN.md
+ARCHITECTURE.md
+playwright.config.ts
+vitest.config.ts

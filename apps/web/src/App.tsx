@@ -125,6 +125,8 @@ export function App() {
   const motionSetId = useChamber((state) => state.motionSetId);
   const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
   const setMotionSet = useChamber((state) => state.setMotionSet);
+  const detectBackend = useChamber((state) => state.detectBackend);
+  const backendOnline = useChamber((state) => state.backendOnline);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [padAuto] = useState(() => detectTouchDevice());
@@ -135,6 +137,10 @@ export function App() {
     setMouseLookMode(next);
     engine.setMouseLookMode(next);
   };
+
+  useEffect(() => {
+    void detectBackend();
+  }, [detectBackend]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -191,7 +197,16 @@ export function App() {
             <button type="button" onClick={() => setHideUi(true)}>
               Clean capture
             </button>
-            <button type="button" onClick={exportUnity}>
+            <button
+              type="button"
+              onClick={exportUnity}
+              disabled={backendOnline === false}
+              title={
+                backendOnline === false
+                  ? 'Needs the local API server — it writes the bundle to generated/unity.'
+                  : 'Write a Unity bundle to generated/unity'
+              }
+            >
               Unity export
             </button>
           </div>

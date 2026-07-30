@@ -18,6 +18,8 @@ export function DiffPanel() {
   const commit = useChamber((state) => state.commit);
   const createPullRequest = useChamber((state) => state.createPullRequest);
   const commitLog = useChamber((state) => state.commitLog);
+  const backendOnline = useChamber((state) => state.backendOnline);
+  const offline = backendOnline === false;
 
   const [intent, setIntent] = useState('');
 
@@ -108,16 +110,22 @@ export function DiffPanel() {
         <div className="button-row">
           <button
             type="button"
-            disabled={staged.length === 0 || !validation.valid || !diff.commitAllowed}
+            disabled={offline || staged.length === 0 || !validation.valid || !diff.commitAllowed}
             onClick={() => commit(intent)}
             data-testid="commit-button"
           >
             Apply staged to repository
           </button>
-          <button type="button" onClick={createPullRequest}>
+          <button type="button" onClick={createPullRequest} disabled={offline}>
             Create pull request
           </button>
         </div>
+        {offline && (
+          <p className="muted small">
+            No API server in this deployment, so nothing can be written to the repository. Staged
+            changes are kept in this browser and survive a reload.
+          </p>
+        )}
         {!diff.commitAllowed && (
           <p className="finding finding--blocking">
             Commit is blocked while a protected value is changed. Unlock it explicitly, or revert it.

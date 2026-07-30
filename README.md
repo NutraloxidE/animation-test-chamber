@@ -44,6 +44,8 @@ validate or commit.
 | Command | What it does |
 | --- | --- |
 | `pnpm dev` | Runs the web app (5173) and the API (8787) |
+| `pnpm build` | Static production build of the web app into `apps/web/dist` |
+| `pnpm preview` | Serves that build locally, with no API behind it |
 | `pnpm harness:one-shot` | Runs every check and writes `reports/one-shot-report.md` |
 | `pnpm harness:unit` | Unit tests |
 | `pnpm harness:integration` | Edit → stage → validate → commit → export |
@@ -53,6 +55,35 @@ validate or commit.
 | `pnpm schema:generate` | Regenerates `schemas/` and `presets/terrain/` |
 | `pnpm unity:export` | Writes the Unity bundle to `generated/unity/` |
 | `pnpm seed:demo -- --force` | Re-seeds the demo project (overwrites canonical data) |
+
+## Deploying to Vercel
+
+The web app builds to a static bundle, so it deploys as-is:
+
+```bash
+pnpm build          # -> apps/web/dist
+```
+
+`vercel.json` already sets the install command, the build command and
+`apps/web/dist` as the output directory. Import the repository on Vercel, leave
+the framework preset as **Other**, and deploy — no environment variables are
+needed.
+
+Vercel serves static files only; there is no Hono server behind the deployment.
+The app probes `/api/health` once on load and adapts:
+
+| Feature | Static deployment |
+| --- | --- |
+| Playback, input, terrain, haptics, timeline, state graph | Works — all client-side |
+| Inspector tuning, diff, staging (persisted in `localStorage`) | Works |
+| Replay playback and before/after comparison | Works |
+| AI proposals | Works — the rule-based provider runs in the browser |
+| Anthropic-backed AI | Unavailable (needs a server to hold the key) |
+| Commit / pull request | Unavailable — buttons disabled |
+| Unity export, animation import | Unavailable — both write to disk |
+
+The disabled features say why, rather than failing with a network error. Run
+`pnpm dev` locally to get all of them back.
 
 ## Controls
 

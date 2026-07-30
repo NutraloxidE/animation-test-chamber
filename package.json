@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --filter @atc/web build",
+    "preview": "pnpm --filter @atc/web preview",
     "dev:web": "pnpm --filter @atc/web dev",
     "dev:api": "pnpm --filter @atc/api dev",
     "schema:generate": "tsx harness/generate-schemas.ts",
