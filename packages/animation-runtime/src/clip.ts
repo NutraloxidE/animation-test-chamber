@@ -85,7 +85,7 @@ export function eventsInRange(
   fromNormalized: number,
   toNormalized: number,
 ): SemanticEventDefinition[] {
-  const wrapped = toNormalized < fromNormalized;
+  const wrapped = clip.loop && toNormalized < fromNormalized;
   return clip.events.filter((event) => {
     if (wrapped) {
       return event.at > fromNormalized || event.at <= toNormalized;
