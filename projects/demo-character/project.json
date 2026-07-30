@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "demo-character",
   "displayName": "Demo Character",
-  "revisionId": "rev-0005",
+  "revisionId": "rev-0006",
   "defaultTerrainPresetId": "flat",
   "character": {
     "schemaVersion": 1,
@@ -485,7 +485,7 @@
       "proceduralGenerator": "attack-01-recovery",
       "durationSec": 0.9666666,
       "loop": false,
-      "inputAcceptanceStartNormalized": 0.11,
+      "inputAcceptanceStartNormalized": 0,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -498,7 +498,8 @@
         "right": []
       },
       "provenance": {
-        "source": "human-adjustment"
+        "source": "human-adjustment",
+        "humanFinal": 0
       },
       "timeCurve": {
         "x1": 0.15683372667100695,
@@ -569,7 +570,7 @@
       "proceduralGenerator": "attack-02-recovery",
       "durationSec": 1.0333333,
       "loop": false,
-      "inputAcceptanceStartNormalized": 0.05,
+      "inputAcceptanceStartNormalized": 0,
       "rootDisplacement": {
         "x": 0,
         "y": 0,
@@ -583,7 +584,7 @@
       },
       "provenance": {
         "source": "human-adjustment",
-        "humanFinal": 0.05
+        "humanFinal": 0
       }
     },
     {
@@ -2199,6 +2200,24 @@
       "provenance": {
         "source": "human-adjustment",
         "at": "2026-07-30T13:06:46.621Z"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0006",
+      "parentId": "rev-0005",
+      "createdAt": "2026-07-30T13:15:34.420Z",
+      "author": "chamber-user",
+      "message": "tune(clips): 4 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/attack-01-recovery/inputAcceptanceStartNormalized",
+        "/clips/attack-01-recovery/provenance/humanFinal",
+        "/clips/attack-02-recovery/inputAcceptanceStartNormalized",
+        "/clips/attack-02-recovery/provenance/humanFinal"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T13:15:34.420Z"
       }
     }
   ],

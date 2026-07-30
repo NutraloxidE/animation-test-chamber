@@ -63,6 +63,22 @@ describe('graph initialisation', () => {
     expect(dodgeRecoveryBlendWeight('attack-01', 0.9, 0.75, 'walk')).toBe(0);
   });
 
+  it('scales locomotion clip time by the layer speed scale', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const params = makeParams({ numbers: { moveMagnitude: 0 } });
+
+    graph.setLayerSpeedScale('locomotion', 0.5);
+    expect(graph.layerStepSec('locomotion')).toBeCloseTo(FIXED_DT * 0.5);
+    graph.tick(params);
+    expect(graph.getLayer('locomotion').timeSec).toBeCloseTo(FIXED_DT * 0.5);
+
+    graph.setLayerSpeedScale('locomotion', 1);
+    graph.tick(params);
+    expect(graph.getLayer('locomotion').timeSec).toBeCloseTo(FIXED_DT * 1.5);
+    // Untouched layers keep their authored speed.
+    expect(graph.layerStepSec('action')).toBeCloseTo(FIXED_DT);
+  });
+
   it('starts each layer in its declared default state', () => {
     const graph = new AnimationGraphRuntime(project.graph, project.clips);
     expect(graph.getLayer('locomotion').stateId).toBe('idle');

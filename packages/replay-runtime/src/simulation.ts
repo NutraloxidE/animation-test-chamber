@@ -8,7 +8,6 @@ import {
   normalizedTimeOf,
   sampleRootMotion,
   type LayerId,
-  type LayerRuntimeState,
   type ParameterSource,
 } from '@atc/animation-runtime';
 import { InputState, type ActionSample } from '@atc/input-runtime';
@@ -275,6 +274,7 @@ export class Simulation {
     this.updateQueuedJump();
 
     const previousLocomotion = this.graph.getLayer('locomotion').stateId;
+    this.graph.setLayerSpeedScale('locomotion', this.locomotionSpeedScale());
     const graphResult = this.graph.tick(this.parameterSource());
 
     // A jump impulse is applied on the tick the locomotion layer enters a state
@@ -558,11 +558,26 @@ export class Simulation {
     );
   }
 
+  /**
+   * Walk and run clips are authored at walkSpeed / runSpeed. Playing them back at
+   * the ratio of the speed actually reached keeps the feet from skating when the
+   * stick is held halfway, on a slope, or still accelerating.
+   */
+  private locomotionSpeedScale(): number {
+    const stateId = this.graph.getLayer('locomotion').stateId;
+    if (stateId !== 'walk' && stateId !== 'run') return 1;
+    const movement = this.project.movement;
+    const nominal = stateId === 'run' ? movement.runSpeed : movement.walkSpeed;
+    if (nominal <= 0) return 1;
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+    // ponytail: fixed clamp, promote to a movement-profile field if it needs tuning per project.
+    return Math.min(1.5, Math.max(0.35, speed / nominal));
+  }
+
   private sampleRootMotionDelta(recoveryWeight: number): Vec3 {
-    const action = this.graph.getLayer('action');
     const actionOwnsRoot = this.actionOwnsRoot();
-    const locomotion = this.graph.getLayer('locomotion');
-    const sampleLayer = (layer: LayerRuntimeState): Vec3 => {
+    const sampleLayer = (layerId: LayerId): Vec3 => {
+      const layer = this.graph.getLayer(layerId);
       const clip = this.graph.getClipFor(layer.stateId);
       if (!clip) return vec3();
       // Re-sample the prior wall-clock instant through the same timing curve.
@@ -570,7 +585,7 @@ export class Simulation {
       // a nonlinearly sampled pose.
       const previous = normalizedTimeOf(
         clip,
-        layer.timeSec - FIXED_DT * layer.playbackSpeed,
+        layer.timeSec - this.graph.layerStepSec(layerId),
       );
       const track = this.actionRootMotionTracks[layer.stateId];
       if (track) {
@@ -582,11 +597,11 @@ export class Simulation {
       return sampleRootMotion(clip, previous, layer.normalizedTime);
     };
 
-    if (!actionOwnsRoot) return sampleLayer(locomotion);
-    if (recoveryWeight <= 0) return sampleLayer(action);
+    if (!actionOwnsRoot) return sampleLayer('locomotion');
+    if (recoveryWeight <= 0) return sampleLayer('action');
     return addVec3(
-      scaleVec3(sampleLayer(action), 1 - recoveryWeight),
-      scaleVec3(sampleLayer(locomotion), recoveryWeight),
+      scaleVec3(sampleLayer('action'), 1 - recoveryWeight),
+      scaleVec3(sampleLayer('locomotion'), recoveryWeight),
     );
   }
 
