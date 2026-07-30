@@ -135,7 +135,7 @@ export function TransitionInspector() {
           <Field
             path={`/clips/${selectedClip.id}/rootDisplacement/z`}
             label="Forward displacement"
-            min={0}
+            min={-2}
             max={10}
             step={0.1}
             format={(value) => `${value.toFixed(1)} m`}

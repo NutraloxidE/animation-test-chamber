@@ -12,4 +12,12 @@ export const QUATERNIUS_UNIVERSAL_BASE: CharacterPreset = {
   animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
   animationPositionScale: 100,
   clipMap: QUATERNIUS_UNIVERSAL_CLIPS,
+  rigId: 'quaternius-universal',
+  rightHandBone: 'hand_r',
+  weaponGrips: {
+    sword: {
+      position: [0, -0.035, 0],
+      rotation: [0, Math.PI / 2, -0.18],
+    },
+  },
 };

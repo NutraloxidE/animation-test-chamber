@@ -7,7 +7,7 @@ import type { ChamberEngine } from '../engine.ts';
 import { Character } from './Character.tsx';
 import { TerrainMesh } from './TerrainMesh.tsx';
 import { DebugOverlays } from './DebugOverlays.tsx';
-import { characterPreset, motionSet } from './catalog.ts';
+import { characterPreset, motionSet, weaponMode } from './catalog.ts';
 
 /** Advances the simulation from render deltas and keeps the camera behind the character. */
 function ChamberLoop({ engine }: { engine: ChamberEngine }) {
@@ -45,8 +45,16 @@ export function Viewport() {
   const refreshCapability = useChamber((state) => state.refreshCapability);
   const characterPresetId = useChamber((state) => state.characterPresetId);
   const motionSetId = useChamber((state) => state.motionSetId);
+  const weaponModeId = useChamber((state) => state.weaponModeId);
+  const weaponGripOverrides = useChamber((state) => state.weaponGripOverrides);
+  const gripEditorMode = useChamber((state) => state.gripEditorMode);
+  const saveWeaponGrip = useChamber((state) => state.saveWeaponGrip);
   const character = characterPreset(characterPresetId);
   const motion = motionSet(motionSetId);
+  const weapon = weaponMode(weaponModeId);
+  const grip =
+    weaponGripOverrides[`${character.id}:${weapon.id}`] ??
+    character.weaponGrips?.[weapon.id];
 
   useEffect(() => {
     engine.attachInput();
@@ -96,8 +104,16 @@ export function Viewport() {
 
       <ChamberLoop engine={engine} />
       <TerrainMesh key={terrainPresetId} preset={engine.terrainPreset} engine={engine} />
-      <Character engine={engine} character={character} motion={motion} />
-      {ghostEnabled && <Character engine={engine} ghost color="#f472b6" motion={motion} />}
+      <Character
+        engine={engine}
+        character={character}
+        motion={motion}
+        weapon={weapon}
+        grip={grip}
+        gripEditorMode={gripEditorMode}
+        onGripChange={(nextGrip) => saveWeaponGrip(character.id, weapon.id, nextGrip)}
+      />
+      {ghostEnabled && <Character engine={engine} ghost color="#f472b6" motion={motion} weapon={weapon} />}
       <DebugOverlays engine={engine} />
     </Canvas>
   );

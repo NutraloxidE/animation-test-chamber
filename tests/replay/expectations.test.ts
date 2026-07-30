@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { setAtPath } from '@atc/runtime-core';
-import { compareTraces, findReplayFixture, runReplay } from '@atc/replay-runtime';
+import { findTerrainPreset } from '@atc/terrain-runtime';
+import {
+  compareTraces,
+  findReplayFixture,
+  frameAt,
+  runReplay,
+  Simulation,
+} from '@atc/replay-runtime';
 import { loadDemoProject } from '../fixtures/project.ts';
 
 const project = loadDemoProject();
@@ -40,6 +47,45 @@ describe('attack-01-to-attack-02', () => {
     const hits = trace.metrics.eventTimeline.filter((entry) => entry.event === 'AttackHit');
     expect(hits).toHaveLength(2);
     expect(hits[1]!.tick).toBeGreaterThan(hits[0]!.tick);
+  });
+
+  const runSingleAttack = (usesAttackRootMotion: boolean, moveY = 0) => {
+    const replay = findReplayFixture('attack-01-to-attack-02');
+    const singleAttack = {
+      ...replay,
+      id: 'single-attack-root-motion',
+      frames: replay.frames.slice(0, 2).map((frame) => ({ ...frame, moveY })),
+      tickCount: 80,
+    };
+    const simulation = new Simulation({
+      project,
+      terrain: findTerrainPreset(replay.terrainPresetId),
+      seed: replay.seed,
+      initialPosition: replay.initialPosition,
+      initialYawRad: replay.initialYawRad,
+      cameraYawRad: replay.cameraYawRad,
+      upperBodyActionRootMotionEnabled: usesAttackRootMotion,
+    });
+    const ticks = Array.from({ length: singleAttack.tickCount }, (_, tick) =>
+      simulation.step(frameAt(singleAttack, tick)),
+    );
+    return { simulation, attackTicks: ticks.filter((tick) => tick.actionState === 'attack-01') };
+  };
+
+  it('keeps the unarmed attack in place even with forward input', () => {
+    const { attackTicks } = runSingleAttack(false, 1);
+    expect(attackTicks.at(-1)!.position.z).toBeCloseTo(0, 5);
+  });
+
+  it('uses only authored movement for the sword attack', () => {
+    const withoutInput = runSingleAttack(true);
+    const { attackTicks } = runSingleAttack(true, 1);
+    const attackEndZ = attackTicks.at(-1)!.position.z;
+    expect(attackTicks.at(-1)!.actionNormalizedTime).toBeGreaterThan(0.97);
+    expect(attackEndZ).toBeGreaterThan(0.28);
+    expect(attackEndZ).toBeLessThan(0.3);
+    expect(attackEndZ).toBeCloseTo(withoutInput.attackTicks.at(-1)!.position.z, 5);
+    expect(attackTicks.every((tick) => tick.grounded)).toBe(true);
   });
 });
 

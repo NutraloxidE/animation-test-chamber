@@ -2,7 +2,8 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type { CharacterPreset, MotionSet } from '../catalog.ts';
+import type { CharacterPreset, MotionSet, WeaponMode } from '../catalog.ts';
+import { HeldSword } from './HeldSword.tsx';
 
 interface ProceduralCharacterProps {
   engine: ChamberEngine;
@@ -11,6 +12,7 @@ interface ProceduralCharacterProps {
   color?: string;
   character?: CharacterPreset;
   motion: MotionSet;
+  weapon: WeaponMode;
 }
 
 /**
@@ -27,6 +29,7 @@ export function ProceduralCharacter({
   color,
   character,
   motion,
+  weapon,
 }: ProceduralCharacterProps) {
   const root = useRef<THREE.Group>(null);
   const hips = useRef<THREE.Group>(null);
@@ -146,6 +149,11 @@ export function ProceduralCharacter({
         <mesh ref={armR} position={[0.24, 0.4, 0]} castShadow={!ghost}>
           <capsuleGeometry args={[0.055, 0.34, 4, 8]} />
           <meshStandardMaterial color={bodyColor} transparent={ghost} opacity={opacity} />
+          {weapon.heldItem === 'sword' && (
+            <group position={[0, -0.28, 0]} rotation={[0, 0, Math.PI]}>
+              <HeldSword />
+            </group>
+          )}
         </mesh>
 
         <mesh ref={legL} position={[-0.1, -0.42, 0]} castShadow={!ghost}>

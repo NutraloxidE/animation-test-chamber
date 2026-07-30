@@ -814,12 +814,30 @@ textarea {
   position: absolute;
   top: 8px;
   right: 8px;
-  display: flex;
-  gap: 6px;
+  width: min(220px, calc(100% - 16px));
+  padding: 7px;
+  background: rgba(11, 17, 32, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  backdrop-filter: blur(8px);
 }
 
-.viewport-controls button,
+.viewport-controls summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.viewport-controls__body {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.viewport-controls__body button,
 .restore-ui {
+  width: 100%;
   font-size: 11px;
   background: rgba(11, 17, 32, 0.85);
 }
@@ -832,16 +850,18 @@ textarea {
 .viewport-select {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
   padding: 3px 6px;
   font-size: 10px;
   color: var(--muted);
-  background: rgba(11, 17, 32, 0.85);
+  background: rgba(11, 17, 32, 0.55);
   border: 1px solid var(--line);
   border-radius: 5px;
 }
 
 .viewport-select select {
+  width: 140px;
   padding: 2px 4px;
   font-size: 11px;
 }

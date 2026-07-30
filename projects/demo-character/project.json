@@ -429,9 +429,9 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0
+        "z": 0.8245245
       },
-      "rootMotionMode": "InPlace",
+      "rootMotionMode": "RootMotion",
       "events": [
         {
           "id": "a1-windup",
@@ -478,9 +478,9 @@
       "rootDisplacement": {
         "x": 0,
         "y": 0,
-        "z": 0
+        "z": -0.0525849
       },
-      "rootMotionMode": "InPlace",
+      "rootMotionMode": "RootMotion",
       "events": [
         {
           "id": "a2-windup",

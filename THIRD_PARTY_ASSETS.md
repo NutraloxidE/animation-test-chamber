@@ -38,3 +38,20 @@ The original Standard archive is not redistributed.
 The bundled Standard library contains 45 humanoid clips. Its Unreal FBX was converted
 to GLB because that export shares the Universal Base bone names exactly. The chamber
 maps idle, walk, run, jump, fall, dodge, guard, and two attack states to a focused subset.
+
+## Universal Animation Library 2 — Standard
+
+- Creator: Quaternius, with sword animations by Quaternius and Gonzalo Furnier
+- Asset: `apps/web/public/assets/animations/quaternius-universal-2/UAL2_Standard.glb`
+- Source: https://quaternius.com/packs/universalanimationlibrary2.html
+- Download: https://quaternius.itch.io/universal-animation-library-2
+- Original archive: `Universal Animation Library 2[Standard].zip` (v2.1, updated 2026-07-05)
+- Bundled upstream file: `Unreal-Godot/UAL2_Standard.glb` (root motion disabled)
+- License: CC0 1.0 Universal (public-domain dedication)
+- License text: https://creativecommons.org/publicdomain/zero/1.0/
+
+The chamber uses the matching Universal rig's `Sword_Regular_A` and
+`Sword_Regular_B` clips for sword mode. The archive's root-motion-disabled GLB is
+used for rendering because chamber simulation owns world translation. The matching
+`UAL2_Standard_RM.glb` was inspected (but is not bundled) to author the canonical
+attack displacements: +0.8245245m for A and -0.0525849m for B.

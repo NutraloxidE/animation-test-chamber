@@ -62,11 +62,28 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('character and motion presets can be selected', async ({ page }) => {
+test('character, motion and weapon presets can be selected', async ({ page }) => {
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   await page.getByTestId('motion-set-select').selectOption('power');
   await expect(page.getByTestId('status-bar')).toContainText('Power stride');
+  const swordAsset = page.waitForResponse((response) =>
+    response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard.glb'),
+  );
+  await page.getByTestId('weapon-mode-select').selectOption('sword');
+  expect((await swordAsset).ok()).toBe(true);
+  await expect(page.getByTestId('status-bar')).toContainText('Sword');
+  await page.getByTestId('grip-editor-select').selectOption('rotate');
+  await expect(page.getByTestId('reset-grip')).toBeVisible();
+  await expect(page.getByTestId('mobile-pad')).toBeHidden();
+  await expect(page.getByTestId('status-bar')).toContainText('auto-save');
+  await expect(page.getByTestId('frame-step')).toBeDisabled();
+  await page.getByTestId('toggle-pause').click();
+  await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
+  await expect(page.getByTestId('frame-step')).toBeEnabled();
+  await page.getByTestId('frame-step').click();
+  await page.getByTestId('viewport-controls').getByText('Controls').click();
+  await expect(page.getByTestId('character-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {

@@ -3,6 +3,7 @@ import { FixedStepAccumulator } from '@atc/runtime-core';
 import {
   BrowserInputSampler,
   emptyVirtualPad,
+  type ActionSample,
   type MouseLookMode,
   type VirtualPadState,
 } from '@atc/input-runtime';
@@ -66,6 +67,7 @@ export class ChamberEngine {
   private timeScale = 1;
   private paused = false;
   private stepOnce = false;
+  private upperBodyActionRootMotionEnabled = false;
 
   /** Latest tick record, read by the renderer every frame. */
   lastRecord: TickRecord | null = null;
@@ -94,6 +96,7 @@ export class ChamberEngine {
       initialPosition: { x: 0, y: 2, z: 0 },
       initialYawRad: 0,
       cameraYawRad: this.cameraYaw,
+      upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
     });
   }
 
@@ -172,6 +175,11 @@ export class ChamberEngine {
     this.paused = paused;
   }
 
+  setUpperBodyActionRootMotionEnabled(enabled: boolean): void {
+    this.upperBodyActionRootMotionEnabled = enabled;
+    this.simulation.setUpperBodyActionRootMotionEnabled(enabled);
+  }
+
   get isPaused(): boolean {
     return this.paused;
   }
@@ -236,6 +244,7 @@ export class ChamberEngine {
       initialPosition: replay.initialPosition,
       initialYawRad: replay.initialYawRad,
       cameraYawRad: replay.cameraYawRad,
+      upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
     });
     this.accumulator.reset();
     this.notify();
@@ -273,7 +282,12 @@ export class ChamberEngine {
    */
   advance(deltaSec: number): void {
     if (this.paused && !this.stepOnce) {
-      this.accumulator.reset();
+      const ticks = this.accumulator.advance(deltaSec);
+      if (this.mode === 'live') {
+        for (let i = 0; i < ticks; i += 1) {
+          this.applyCameraLook(this.sampler.sample());
+        }
+      }
       return;
     }
 
@@ -298,16 +312,7 @@ export class ChamberEngine {
         ? frameAt(this.activeReplay, this.replayTick)
         : this.sampler.sample();
 
-    if (this.mode === 'live') {
-      // Camera look is applied before the tick so camera-relative movement uses
-      // the same yaw the player is looking at this frame.
-      this.cameraYaw -= sample.lookX;
-      this.cameraPitch = Math.min(
-        this.project.camera.maxPitchRad,
-        Math.max(this.project.camera.minPitchRad, this.cameraPitch + sample.lookY),
-      );
-      this.simulation.setCameraYaw(this.cameraYaw);
-    }
+    if (this.mode === 'live') this.applyCameraLook(sample);
 
     this.recorder?.record(sample);
 
@@ -329,6 +334,15 @@ export class ChamberEngine {
     if (this.ghostTrace) {
       this.ghostTick = (this.ghostTick + 1) % Math.max(1, this.ghostTrace.ticks.length);
     }
+  }
+
+  private applyCameraLook(sample: ActionSample): void {
+    this.cameraYaw -= sample.lookX;
+    this.cameraPitch = Math.min(
+      this.project.camera.maxPitchRad,
+      Math.max(this.project.camera.minPitchRad, this.cameraPitch + sample.lookY),
+    );
+    this.simulation.setCameraYaw(this.cameraYaw);
   }
 
   refreshHapticCapability(): void {

@@ -23,6 +23,7 @@ export interface SimulationInit {
   initialPosition: Vec3;
   initialYawRad: number;
   cameraYawRad: number;
+  upperBodyActionRootMotionEnabled?: boolean;
 }
 
 export interface TickRecord {
@@ -87,6 +88,7 @@ export class Simulation {
   private lastFootIk: FootIkResult | null = null;
   private authoredRootDisplacement = 0;
   private actualDisplacement = 0;
+  private upperBodyActionRootMotionEnabled: boolean;
 
   /** Set for one tick when the graph enters a jump state, so the impulse fires once. */
   private pendingJumpImpulse = false;
@@ -101,6 +103,7 @@ export class Simulation {
     this.position = { ...init.initialPosition };
     this.yawRad = init.initialYawRad;
     this.cameraYawRad = init.cameraYawRad;
+    this.upperBodyActionRootMotionEnabled = init.upperBodyActionRootMotionEnabled ?? false;
     this.random = createRandom(init.seed);
 
     this.graph = new AnimationGraphRuntime(init.project.graph, init.project.clips);
@@ -131,6 +134,10 @@ export class Simulation {
 
   setCameraYaw(yawRad: number): void {
     this.cameraYawRad = yawRad;
+  }
+
+  setUpperBodyActionRootMotionEnabled(enabled: boolean): void {
+    this.upperBodyActionRootMotionEnabled = enabled;
   }
 
   get state(): SimulationState {
@@ -327,10 +334,11 @@ export class Simulation {
       actionClip?.recoveryTransitionStartNormalized,
     );
     const actionIsStationary = this.actionIsStationary();
+    const actionIsAttack = this.actionIsAttack();
 
     // Match the visual crossfade: code-driven locomotion regains authority as
     // the dodge pose fades out instead of snapping on at clip completion.
-    const actionScale = actionIsStationary
+    const actionScale = actionIsStationary || actionIsAttack
       ? 0
       : this.graph.isActionActive()
         ? movement.actionMovementAuthority +
@@ -347,7 +355,11 @@ export class Simulation {
     const accelerating = magnitude > 0;
     const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT;
 
-    if (actionIsStationary || (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)) {
+    if (
+      actionIsStationary ||
+      actionIsAttack ||
+      (movement.stopBehavior === 'instant' && !accelerating && terrain.grounded)
+    ) {
       this.velocity.x = 0;
       this.velocity.z = 0;
     } else {
@@ -437,6 +449,15 @@ export class Simulation {
     return this.graph.getClipFor(this.graph.getLayer('action').stateId)?.rootMotionMode === 'InPlace';
   }
 
+  private actionIsAttack(): boolean {
+    if (!this.graph.isActionActive()) return false;
+    return (
+      this.graph
+        .getClipFor(this.graph.getLayer('action').stateId)
+        ?.events.some((event) => event.kind === 'AttackHit') ?? false
+    );
+  }
+
   private currentRotationAuthority(): number {
     const layer = this.graph.getLayer('action');
     const transitionId = layer.lastTransitionId;
@@ -477,10 +498,16 @@ export class Simulation {
     return layer.normalizedTime < recoveryStart;
   }
 
-  /** Full-body action states drive the root; upper-body ones leave it to locomotion. */
+  /** Moving actions drive the root even when their pose mask is upper-body. */
   private actionOwnsRoot(): boolean {
     const stateId = this.graph.getLayer('action').stateId;
-    return this.graph.isActionActive() && this.graph.getStateDefinition(stateId)?.bodyMask === 'full';
+    if (!this.graph.isActionActive()) return false;
+    const clip = this.graph.getClipFor(stateId);
+    return (
+      this.graph.getStateDefinition(stateId)?.bodyMask === 'full' ||
+      (this.upperBodyActionRootMotionEnabled &&
+        (clip?.rootMotionMode === 'RootMotion' || clip?.rootMotionMode === 'Hybrid'))
+    );
   }
 
   private sampleRootMotionDelta(recoveryWeight: number): Vec3 {

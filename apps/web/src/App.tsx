@@ -13,7 +13,13 @@ import { TerrainPanel } from './panels/TerrainPanel.tsx';
 import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
-import { CHARACTER_PRESETS, MOTION_SETS } from './three/catalog.ts';
+import {
+  CHARACTER_PRESETS,
+  MOTION_SETS,
+  WEAPON_MODES,
+  characterPreset,
+  weaponMode,
+} from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
@@ -123,14 +129,24 @@ export function App() {
   const project = useChamber((state) => state.project);
   const characterPresetId = useChamber((state) => state.characterPresetId);
   const motionSetId = useChamber((state) => state.motionSetId);
+  const weaponModeId = useChamber((state) => state.weaponModeId);
   const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
   const setMotionSet = useChamber((state) => state.setMotionSet);
+  const setWeaponMode = useChamber((state) => state.setWeaponMode);
+  const gripEditorMode = useChamber((state) => state.gripEditorMode);
+  const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
+  const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
   const detectBackend = useChamber((state) => state.detectBackend);
   const backendOnline = useChamber((state) => state.backendOnline);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [padAuto] = useState(() => detectTouchDevice());
   const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
+  const [paused, setPaused] = useState(() => engine.isPaused);
+  const gripSupported = Boolean(
+    characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
+    weaponMode(weaponModeId).heldItem,
+  );
 
   const toggleMouseLookMode = (): void => {
     const next = mouseLookMode === 'free' ? 'drag' : 'free';
@@ -158,9 +174,10 @@ export function App() {
   }, [undo, redo]);
 
   const padVisible =
-    project.inputMap.mobilePad.visibility === 'always-on' ||
-    (project.inputMap.mobilePad.visibility === 'auto' && padAuto) ||
-    showMobilePad;
+    gripEditorMode === null &&
+    (project.inputMap.mobilePad.visibility === 'always-on' ||
+      (project.inputMap.mobilePad.visibility === 'auto' && padAuto) ||
+      showMobilePad);
 
   return (
     <div className={`app${hideUi ? ' app--clean' : ''}`}>
@@ -170,46 +187,107 @@ export function App() {
         {padVisible && <MobilePad />}
 
         {!hideUi && (
-          <div className="viewport-controls">
-            <label className="viewport-select">
-              Character
-              <select value={characterPresetId} onChange={(event) => setCharacterPreset(event.target.value)} data-testid="character-select">
-                {CHARACTER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-              </select>
-            </label>
-            <label className="viewport-select">
-              Motion
-              <select value={motionSetId} onChange={(event) => setMotionSet(event.target.value)} data-testid="motion-set-select">
-                {MOTION_SETS.map((set) => <option key={set.id} value={set.id}>{set.label}</option>)}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={toggleMouseLookMode}
-              data-testid="toggle-camera-control"
-              title="Switch camera control mode"
-            >
-              Camera: {mouseLookMode === 'free' ? 'Mouse move' : 'Click-drag'}
-            </button>
-            <button type="button" onClick={toggleMobilePad} data-testid="toggle-pad">
-              {padVisible ? 'Hide pad' : 'Show pad'}
-            </button>
-            <button type="button" onClick={() => setHideUi(true)}>
-              Clean capture
-            </button>
-            <button
-              type="button"
-              onClick={exportUnity}
-              disabled={backendOnline === false}
-              title={
-                backendOnline === false
-                  ? 'Needs the local API server — it writes the bundle to generated/unity.'
-                  : 'Write a Unity bundle to generated/unity'
-              }
-            >
-              Unity export
-            </button>
-          </div>
+          <details className="viewport-controls" data-testid="viewport-controls" open>
+            <summary>Controls</summary>
+            <div className="viewport-controls__body">
+              <label className="viewport-select">
+                Character
+                <select value={characterPresetId} onChange={(event) => setCharacterPreset(event.target.value)} data-testid="character-select">
+                  {CHARACTER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+                </select>
+              </label>
+              <label className="viewport-select">
+                Motion
+                <select value={motionSetId} onChange={(event) => setMotionSet(event.target.value)} data-testid="motion-set-select">
+                  {MOTION_SETS.map((set) => <option key={set.id} value={set.id}>{set.label}</option>)}
+                </select>
+              </label>
+              <label className="viewport-select">
+                Weapon
+                <select value={weaponModeId} onChange={(event) => setWeaponMode(event.target.value)} data-testid="weapon-mode-select">
+                  {WEAPON_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                </select>
+              </label>
+              <label className="viewport-select">
+                Grip
+                <select
+                  value={gripEditorMode ?? 'off'}
+                  disabled={!gripSupported}
+                  onChange={(event) =>
+                    setGripEditorMode(
+                      event.target.value === 'off'
+                        ? null
+                        : (event.target.value as 'translate' | 'rotate'),
+                    )
+                  }
+                  data-testid="grip-editor-select"
+                >
+                  <option value="off">Off</option>
+                  <option value="translate">Move · autosave</option>
+                  <option value="rotate">Rotate · autosave</option>
+                </select>
+              </label>
+              {gripEditorMode && (
+                <button
+                  type="button"
+                  onClick={() => resetWeaponGrip(characterPresetId, weaponModeId)}
+                  data-testid="reset-grip"
+                >
+                  Reset grip
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleMouseLookMode}
+                data-testid="toggle-camera-control"
+                title="Switch camera control mode"
+              >
+                Camera: {mouseLookMode === 'free' ? 'Mouse move' : 'Click-drag'}
+              </button>
+              <button
+                type="button"
+                onClick={toggleMobilePad}
+                disabled={gripEditorMode !== null}
+                data-testid="toggle-pad"
+              >
+                {gripEditorMode ? 'Pad paused' : padVisible ? 'Hide pad' : 'Show pad'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !engine.isPaused;
+                  engine.setPaused(next);
+                  setPaused(next);
+                }}
+                data-testid="toggle-pause"
+              >
+                {paused ? 'Resume motion' : 'Pause motion'}
+              </button>
+              <button
+                type="button"
+                onClick={() => engine.frameStep()}
+                disabled={!paused}
+                data-testid="frame-step"
+              >
+                Frame step
+              </button>
+              <button type="button" onClick={() => setHideUi(true)}>
+                Clean capture
+              </button>
+              <button
+                type="button"
+                onClick={exportUnity}
+                disabled={backendOnline === false}
+                title={
+                  backendOnline === false
+                    ? 'Needs the local API server — it writes the bundle to generated/unity.'
+                    : 'Write a Unity bundle to generated/unity'
+                }
+              >
+                Unity export
+              </button>
+            </div>
+          </details>
         )}
 
         {hideUi && (
