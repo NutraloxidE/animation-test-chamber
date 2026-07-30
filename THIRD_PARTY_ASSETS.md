@@ -38,6 +38,9 @@ The original Standard archive is not redistributed.
 The bundled Standard library contains 45 humanoid clips. Its Unreal FBX was converted
 to GLB because that export shares the Universal Base bone names exactly. The chamber
 maps idle, walk, run, jump, fall, dodge, guard, and two attack states to a focused subset.
+The unarmed magic mode reuses this library's `Spell_Simple_*` clips (idle loop, shoot,
+enter, exit). They cast from the left hand with the right hand open, so the mode holds
+no weapon; they carry no root motion either, so attack root motion stays off.
 
 ## Universal Animation Library 2 — Standard
 
