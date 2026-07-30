@@ -146,9 +146,22 @@ export class AnimationGraphRuntime {
     // Keep playing whatever is active; fall back to the default if a state vanished.
     for (const layer of this.graph.layers) {
       const runtime = this.layers.get(layer.id);
-      if (runtime && !this.states.has(runtime.stateId)) {
+      if (!runtime) continue;
+      if (!this.states.has(runtime.stateId)) {
         this.enterState(layer.id, layer.defaultState, null, 0, 0, 1);
+        continue;
       }
+      // Playback speed is the product of the arriving transition's speed and
+      // the state's, and it was baked in on entry. Re-derive it so editing
+      // either one is visible in the state you are already standing in —
+      // otherwise a speed slider does nothing until the state is re-entered.
+      const state = this.states.get(runtime.stateId)!;
+      const arrivedBy = runtime.lastTransitionId
+        ? this.graph.transitions.find(
+            (transition) => transition.id === runtime.lastTransitionId,
+          )
+        : undefined;
+      runtime.playbackSpeed = (arrivedBy?.playbackSpeed ?? 1) * state.speed;
     }
   }
 

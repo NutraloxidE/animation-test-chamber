@@ -620,6 +620,38 @@ textarea {
   font-weight: 600;
 }
 
+.weapon-curves {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.weapon-curves__chip {
+  font-size: 11px;
+  padding: 0.2rem 0.5rem;
+  color: var(--muted);
+}
+
+.weapon-curves__chip.is-current {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.weapon-curves__chip.is-edited {
+  color: var(--warn);
+}
+
+.weapon-curves__chip.is-current.is-edited {
+  border-color: var(--warn);
+}
+
+.weapon-curves__shared {
+  font-size: 11px;
+  margin: 0.5rem 0 0.75rem;
+}
+
 .timeline__tracks {
   position: relative;
   border: 1px solid var(--line);
@@ -996,6 +1028,24 @@ textarea {
   width: 140px;
   padding: 2px 4px;
   font-size: 11px;
+}
+
+.viewport-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(11, 17, 32, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.viewport-toggle:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .restore-ui {

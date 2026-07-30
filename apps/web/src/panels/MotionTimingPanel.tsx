@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
 import { applyClipTimeCurve } from '@atc/animation-runtime';
 import { useChamber, useWeaponProject } from '../store.ts';
+import { WEAPON_MODES } from '../three/catalog.ts';
+import { Field } from './Field.tsx';
 
 const LINEAR: ClipTimeCurve = { x1: 0.25, y1: 0.25, x2: 0.75, y2: 0.75 };
 const PRESETS: { label: string; curve: ClipTimeCurve }[] = [
@@ -148,6 +150,57 @@ function CurveEditor({
   );
 }
 
+/**
+ * A curve belongs to a clip, and each weapon mode has its own attack clips, so
+ * two modes only share a curve when the state has no per-weapon clip at all.
+ * Which of those is true is invisible from the curve itself, so say it here:
+ * one row naming every mode's clip, marking the one being edited and the ones
+ * already diverged from the repository.
+ */
+function WeaponCurveRow({ stateId }: { stateId: string }) {
+  const rawProject = useChamber((state) => state.project);
+  const weaponModeId = useChamber((state) => state.weaponModeId);
+  const setWeaponMode = useChamber((state) => state.setWeaponMode);
+  const session = useChamber((state) => state.session);
+  useChamber((state) => state.revision);
+
+  const state = rawProject.graph.states.find((entry) => entry.id === stateId);
+  if (!state?.weaponClips) {
+    return (
+      <p className="muted weapon-curves__shared" data-testid="weapon-curves-shared">
+        Shared by every weapon mode — this state has no per-weapon clip.
+      </p>
+    );
+  }
+
+  return (
+    <div className="weapon-curves" data-testid="weapon-curves">
+      {WEAPON_MODES.map((mode) => {
+        const clipId = state.weaponClips![mode.id] ?? state.clipId;
+        const field = session.fieldView(`/clips/${clipId}/timeCurve`);
+        const edited =
+          JSON.stringify(field.previewValue) !== JSON.stringify(field.repositoryValue);
+        return (
+          <button
+            type="button"
+            key={mode.id}
+            className={`weapon-curves__chip${mode.id === weaponModeId ? ' is-current' : ''}${
+              edited ? ' is-edited' : ''
+            }`}
+            data-testid={`weapon-curve-${mode.id}`}
+            data-edited={edited ? 'true' : 'false'}
+            title={clipId}
+            onClick={() => setWeaponMode(mode.id)}
+          >
+            {mode.id}
+            {edited && <span aria-label="edited"> •</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function MotionTimingPanel() {
   const project = useWeaponProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
@@ -200,6 +253,21 @@ export function MotionTimingPanel() {
         curve={curve}
         playhead={playhead}
         onChange={(next) => setPreviewValue(path, next, { intent: 'Adjust motion timing' })}
+      />
+
+      <WeaponCurveRow stateId={state.id} />
+
+      {/* Speed lives on the state, not the clip, so unlike the curve above it is
+          one value for every weapon mode. Per-weapon pacing is the clip's own
+          `durationSec`, edited in the inspector. */}
+      <Field
+        path={`/graph/states/${state.id}/speed`}
+        label="Playback speed"
+        min={0.05}
+        max={4}
+        step={0.01}
+        format={(value) => `${value.toFixed(2)}× · ${(clip.durationSec / value).toFixed(2)}s`}
+        testId={`timing-speed-${state.id}`}
       />
 
       <div className="timing-actions">

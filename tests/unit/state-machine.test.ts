@@ -6,7 +6,11 @@ import {
   type ParameterSource,
 } from '@atc/animation-runtime';
 import { FIXED_DT } from '@atc/runtime-core';
+import { Simulation, defaultEquipped } from '@atc/replay-runtime';
+import { findTerrainPreset } from '@atc/terrain-runtime';
+import { emptyButtons } from '@atc/input-runtime';
 import { loadDemoProject } from '../fixtures/project.ts';
+import { WEAPON_MODES } from '../../apps/web/src/three/catalog.ts';
 
 const project = loadDemoProject();
 
@@ -308,6 +312,137 @@ describe('live graph updates', () => {
   });
 });
 
+describe('playback speed', () => {
+  it('multiplies the state speed into the arriving transition speed', () => {
+    const edited = structuredClone(project);
+    edited.graph.states.find((s) => s.id === 'walk')!.speed = 2;
+
+    const graph = new AnimationGraphRuntime(edited.graph, edited.clips);
+    const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
+    graph.tick(params);
+
+    const walk = edited.graph.transitions.find((t) => t.id === 'idle-to-walk')!;
+    expect(graph.getLayer('locomotion').stateId).toBe('walk');
+    expect(graph.getLayer('locomotion').playbackSpeed).toBeCloseTo(walk.playbackSpeed * 2);
+  });
+
+  /**
+   * The panel's speed slider edits the document and hot-swaps it in. Baking the
+   * speed in at state entry made that a no-op until the state was re-entered,
+   * which reads as a dead slider whenever you are standing in the state you are
+   * tuning — the common case.
+   */
+  it('applies a speed edit to the state already playing', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
+    graph.tick(params);
+    expect(graph.getLayer('locomotion').stateId).toBe('walk');
+
+    const before = graph.getLayer('locomotion').playbackSpeed;
+    const stepBefore = graph.layerStepSec('locomotion');
+
+    const edited = structuredClone(project);
+    edited.graph.states.find((s) => s.id === 'walk')!.speed *= 2;
+    graph.updateGraph(edited.graph, edited.clips);
+
+    expect(graph.getLayer('locomotion').stateId).toBe('walk');
+    expect(graph.getLayer('locomotion').playbackSpeed).toBeCloseTo(before * 2);
+    expect(graph.layerStepSec('locomotion')).toBeCloseTo(stepBefore * 2);
+  });
+
+  it('leaves playback speed alone on an unrelated edit', () => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
+    graph.tick(params);
+    const before = graph.getLayer('locomotion').playbackSpeed;
+
+    const edited = structuredClone(project);
+    edited.clips.find((c) => c.id === 'dodge')!.durationSec = 2;
+    graph.updateGraph(edited.graph, edited.clips);
+
+    expect(graph.getLayer('locomotion').playbackSpeed).toBeCloseTo(before);
+  });
+});
+
+describe('equipment', () => {
+  const guardWith = (equippedShield: boolean): string => {
+    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const params = makeParams({
+      numbers: { moveMagnitude: 0 },
+      booleans: { guardHeld: true, grounded: true, equippedShield },
+    });
+    graph.tick(params);
+    return graph.getLayer('action').stateId;
+  };
+
+  it('branches guard to the shield pose only while the shield is equipped', () => {
+    expect(guardWith(false)).toBe('guard');
+    expect(guardWith(true)).toBe('guard-shield');
+  });
+
+  /**
+   * The two guard entries are separated by the condition alone, not by
+   * priority. If one side ever loses its `equippedShield` condition both become
+   * eligible on the same tick and which one wins is down to sort order.
+   */
+  it('keeps the two guard entries mutually exclusive', () => {
+    for (const transition of project.graph.transitions) {
+      if (transition.to !== 'guard' && transition.to !== 'guard-shield') continue;
+      const condition = transition.conditions.find((c) => c.parameter === 'equippedShield');
+      expect(condition, `${transition.id} must test equippedShield`).toBeDefined();
+      expect(condition!.value).toBe(transition.to === 'guard-shield');
+    }
+  });
+
+  it('leaves the shield guard through every route plain guard has', () => {
+    const routesFrom = (stateId: string) =>
+      project.graph.transitions
+        .filter((t) => t.from === stateId)
+        .map((t) => t.to)
+        .sort();
+    expect(routesFrom('guard-shield')).toEqual(routesFrom('guard'));
+  });
+
+  /**
+   * End to end through the real simulation, which is where the parameter is
+   * actually resolved: `equippedShield` is never named in the runtime, so this
+   * only passes if the document's slot declaration is what answers the
+   * condition.
+   */
+  it('resolves the declared parameter from equipment state, not from code', () => {
+    const guardAfterEquipping = (equipShield: boolean): string => {
+      const simulation = new Simulation({
+        project,
+        terrain: findTerrainPreset(project.defaultTerrainPresetId),
+        seed: 1,
+        initialPosition: { x: 0, y: 0, z: 0 },
+        initialYawRad: 0,
+        cameraYawRad: 0,
+      });
+      simulation.setEquipped('shield', equipShield);
+      const guarding = {
+        moveX: 0,
+        moveY: 0,
+        lookX: 0,
+        lookY: 0,
+        buttons: { ...emptyButtons(), Guard: true },
+      };
+      let record = simulation.step(guarding);
+      for (let tick = 1; tick < 20 && record.actionState === 'action-none'; tick += 1) {
+        record = simulation.step(guarding);
+      }
+      return record.actionState;
+    };
+
+    expect(guardAfterEquipping(false)).toBe('guard');
+    expect(guardAfterEquipping(true)).toBe('guard-shield');
+  });
+
+  it('opens with every slot at its declared default', () => {
+    expect(defaultEquipped(project)).toEqual({ shield: false });
+  });
+});
+
 describe('weapon modes', () => {
   it('binds each attack state to its own weapon clip and hides the others', () => {
     const magic = resolveWeaponMode(project, 'magic');
@@ -357,5 +492,24 @@ describe('weapon modes', () => {
       )!.cancelWindow;
     expect(windowOf('magic')).toEqual({ start: 0.5, end: 0.9 });
     expect(windowOf('sword')).toEqual(shared);
+  });
+
+  /**
+   * A mode missing from `weaponClips` silently falls back to the shared
+   * `clipId`, so tuning its curve or displacement would edit another weapon's
+   * clip with nothing on screen saying so. Every catalog mode needs its own.
+   */
+  it('gives every catalog weapon mode its own attack clips', () => {
+    const attackStates = project.graph.states.filter((state) => state.weaponClips);
+    expect(attackStates.length).toBeGreaterThan(0);
+
+    for (const state of attackStates) {
+      const clipIds = WEAPON_MODES.map((mode) => state.weaponClips![mode.id]);
+      expect(clipIds.filter(Boolean)).toHaveLength(WEAPON_MODES.length);
+      expect(new Set(clipIds).size).toBe(WEAPON_MODES.length);
+      for (const clipId of clipIds) {
+        expect(project.clips.map((clip) => clip.id)).toContain(clipId);
+      }
+    }
   });
 });

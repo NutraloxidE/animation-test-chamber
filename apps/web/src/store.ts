@@ -9,7 +9,7 @@ import { setAtPath } from '@atc/runtime-core';
 import type { AdjustmentProposal } from '@atc/ai-adapter';
 import { RuleBasedProvider } from '@atc/ai-adapter';
 import type { ReplayTrace } from '@atc/replay-runtime';
-import { REPLAY_FIXTURES } from '@atc/replay-runtime';
+import { REPLAY_FIXTURES, defaultEquipped } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
@@ -37,6 +37,8 @@ interface ChamberState {
   terrainPresetId: string;
   characterPresetId: string;
   weaponModeId: string;
+  /** Equipment slot id → equipped, seeded from each slot's declared default. */
+  equipped: Record<string, boolean>;
   weaponGripOverrides: Record<string, WeaponGrip>;
   gripEditorMode: 'translate' | 'rotate' | null;
 
@@ -83,6 +85,7 @@ interface ChamberActions {
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
   setWeaponMode(id: string): void;
+  setEquipped(slotId: string, equipped: boolean): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
   saveWeaponGrip(characterId: string, weaponId: string, grip: WeaponGrip): void;
   resetWeaponGrip(characterId: string, weaponId: string): void;
@@ -188,6 +191,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     terrainPresetId: initialProject.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
     weaponModeId: WEAPON_MODES[0]!.id,
+    equipped: defaultEquipped(initialProject),
     weaponGripOverrides: {},
     gripEditorMode: null,
 
@@ -328,6 +332,16 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         weaponModeId: id,
         gripEditorMode: null,
         statusMessage: `Weapon: ${weapon.label}`,
+      });
+    },
+
+    setEquipped(slotId, equipped) {
+      const slot = initialProject.equipment.find((entry) => entry.id === slotId);
+      if (!slot) return;
+      engine.setEquipped(slotId, equipped);
+      set({
+        equipped: { ...get().equipped, [slotId]: equipped },
+        statusMessage: `${slot.label}: ${equipped ? 'equipped' : 'unequipped'}`,
       });
     },
 
@@ -710,6 +724,7 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
       weaponModeId: state.weaponModeId,
+      equipped: state.equipped,
       weaponGripOverrides: state.weaponGripOverrides,
       selectedReplayId: state.selectedReplayId,
     }),
@@ -723,6 +738,10 @@ export const useChamber = create<ChamberState & ChamberActions>()(
         state.setTerrainPreset(initialProject.defaultTerrainPresetId);
       }
       state.setWeaponMode(state.weaponModeId);
+      // A slot may have been added or removed since this was stored.
+      for (const slot of initialProject.equipment) {
+        state.setEquipped(slot.id, state.equipped[slot.id] ?? slot.defaultEquipped);
+      }
     },
   }),
 );

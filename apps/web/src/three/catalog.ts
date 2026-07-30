@@ -57,6 +57,9 @@ export const WEAPON_MODES: WeaponMode[] = [
     clipMap: {
       idle: 'Rig|Sword_Idle',
       guard: 'Rig|Sword_Idle',
+      // Reached only while the shield slot is equipped; the graph routes guard
+      // to `guard-shield` on that condition alone.
+      'guard-shield': 'Idle_Shield_Loop',
       'attack-01': 'Sword_Regular_A',
       'attack-01-recovery': 'Sword_Regular_A_Rec',
       'attack-02': 'Sword_Regular_B',
@@ -78,6 +81,52 @@ export const WEAPON_MODES: WeaponMode[] = [
       'attack-01-recovery': 'Rig|Spell_Simple_Exit',
       'attack-02': 'Rig|Spell_Simple_Enter',
       'attack-02-recovery': 'Rig|Spell_Simple_Exit',
+    },
+  },
+  {
+    id: 'pistol',
+    label: 'Pistol, unarmed (CC0)',
+    rigId: 'quaternius-universal',
+    animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
+    animationPositionScale: 100,
+    clipMap: {
+      idle: 'Rig|Pistol_Idle_Loop',
+      guard: 'Rig|Pistol_Aim_Neutral',
+      'attack-01': 'Rig|Pistol_Shoot',
+      'attack-01-recovery': 'Rig|Pistol_Idle_Loop',
+      'attack-02': 'Rig|Pistol_Reload',
+      'attack-02-recovery': 'Rig|Pistol_Idle_Loop',
+    },
+  },
+  {
+    id: 'shield',
+    label: 'Shield, unarmed (CC0)',
+    rigId: 'quaternius-universal',
+    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
+    animationPositionScale: 1,
+    clipMap: {
+      idle: 'Idle_Shield_Loop',
+      guard: 'Idle_Shield_Loop',
+      'guard-shield': 'Idle_Shield_Loop',
+      'attack-01': 'Shield_OneShot',
+      'attack-01-recovery': 'Idle_Shield_Loop',
+      'attack-02': 'Shield_Dash',
+      'attack-02-recovery': 'Idle_Shield_Loop',
+    },
+  },
+  {
+    id: 'throw',
+    label: 'Throw, unarmed (CC0)',
+    rigId: 'quaternius-universal',
+    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
+    animationPositionScale: 1,
+    clipMap: {
+      idle: 'Idle_No_Loop',
+      guard: 'Idle_No_Loop',
+      'attack-01': 'OverhandThrow',
+      'attack-01-recovery': 'Idle_No_Loop',
+      'attack-02': 'OverhandThrow',
+      'attack-02-recovery': 'Idle_No_Loop',
     },
   },
 ];

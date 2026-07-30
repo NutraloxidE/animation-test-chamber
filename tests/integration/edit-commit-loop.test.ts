@@ -458,4 +458,30 @@ describe('canonical data integrity', () => {
     session.stageAll();
     expect(validateProject(session.buildStagedDocument()).issues).toEqual([]);
   });
+
+  /**
+   * Staging attaches provenance to the object owning the edited value, so any
+   * type with an editable field must be able to hold it. States were the last
+   * one that could not: nothing edited a state until the timing panel grew a
+   * speed slider, and the mismatch only surfaced at "Apply to repository",
+   * long after the edit. One staged field per editable owner catches that at
+   * the point the owner becomes editable.
+   */
+  it.each([
+    ['state', '/graph/states/guard/speed', 1.5],
+    ['clip', '/clips/dodge/durationSec', 1.2],
+    ['transition', '/graph/transitions/idle-to-walk/blendDurationSec', 0.09],
+  ])('stays valid after staging a %s field', (_label, path, value) => {
+    const { session } = newSession();
+    session.setPreviewValue({ path, value, actor: 'human', intent: 'tune' });
+    session.stage(path);
+
+    const document = session.buildStagedDocument();
+    expect(validateProject(document).issues).toEqual([]);
+    // Provenance must survive, not be quietly dropped to keep the schema happy.
+    const owner = path.slice(0, path.lastIndexOf('/'));
+    expect(getAtPath(document, `${owner}/provenance`)).toMatchObject({
+      source: 'human-adjustment',
+    });
+  });
 });

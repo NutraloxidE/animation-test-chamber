@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "demo-character",
   "displayName": "Demo Character",
-  "revisionId": "rev-0007",
+  "revisionId": "rev-0008",
   "defaultTerrainPresetId": "flat",
   "character": {
     "schemaVersion": 1,
@@ -598,6 +598,183 @@
     },
     {
       "schemaVersion": 1,
+      "id": "pistol-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.62,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.5
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a1-windup",
+          "kind": "AttackWindup",
+          "at": 0.15
+        },
+        {
+          "id": "a1-hit",
+          "kind": "AttackHit",
+          "at": 0.42,
+          "protection": {
+            "level": "approval-required",
+            "reason": "hit timing confirmed by hand"
+          }
+        },
+        {
+          "id": "a1-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.7
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.6
+          }
+        ],
+        "right": [
+          {
+            "start": 0.2,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0.42,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "shield-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.62,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.5
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a1-windup",
+          "kind": "AttackWindup",
+          "at": 0.15
+        },
+        {
+          "id": "a1-hit",
+          "kind": "AttackHit",
+          "at": 0.42,
+          "protection": {
+            "level": "approval-required",
+            "reason": "hit timing confirmed by hand"
+          }
+        },
+        {
+          "id": "a1-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.7
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.6
+          }
+        ],
+        "right": [
+          {
+            "start": 0.2,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0.25,
+        "y1": 0.25,
+        "x2": 0.75,
+        "y2": 0.75
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "throw-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.62,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.5
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a1-windup",
+          "kind": "AttackWindup",
+          "at": 0.15
+        },
+        {
+          "id": "a1-hit",
+          "kind": "AttackHit",
+          "at": 0.42,
+          "protection": {
+            "level": "approval-required",
+            "reason": "hit timing confirmed by hand"
+          }
+        },
+        {
+          "id": "a1-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.7
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.6
+          }
+        ],
+        "right": [
+          {
+            "start": 0.2,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0.25,
+        "y1": 0.25,
+        "x2": 0.75,
+        "y2": 0.75
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
       "id": "unarmed-attack-01-recovery",
       "assetPath": null,
       "proceduralGenerator": "attack-01-recovery",
@@ -668,6 +845,96 @@
         "x": 0,
         "y": 0,
         "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      },
+      "timeCurve": {
+        "x1": 0.15683372667100695,
+        "y1": 0.43474999999999997,
+        "x2": 0.75,
+        "y2": 0.75
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "pistol-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.6
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      },
+      "timeCurve": {
+        "x1": 0.15683372667100695,
+        "y1": 0.43474999999999997,
+        "x2": 0.75,
+        "y2": 0.75
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "shield-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.6
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      },
+      "timeCurve": {
+        "x1": 0.15683372667100695,
+        "y1": 0.43474999999999997,
+        "x2": 0.75,
+        "y2": 0.75
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "throw-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.6
       },
       "rootMotionMode": "RootMotion",
       "events": [],
@@ -856,6 +1123,171 @@
     },
     {
       "schemaVersion": 1,
+      "id": "pistol-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.2,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a2-windup",
+          "kind": "AttackWindup",
+          "at": 0.2
+        },
+        {
+          "id": "a2-hit",
+          "kind": "AttackHit",
+          "at": 0.5
+        },
+        {
+          "id": "a2-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.78
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.5
+          }
+        ],
+        "right": [
+          {
+            "start": 0.3,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "shield-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.2,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a2-windup",
+          "kind": "AttackWindup",
+          "at": 0.2
+        },
+        {
+          "id": "a2-hit",
+          "kind": "AttackHit",
+          "at": 0.5
+        },
+        {
+          "id": "a2-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.78
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.5
+          }
+        ],
+        "right": [
+          {
+            "start": 0.3,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "throw-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0.2,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [
+        {
+          "id": "a2-windup",
+          "kind": "AttackWindup",
+          "at": 0.2
+        },
+        {
+          "id": "a2-hit",
+          "kind": "AttackHit",
+          "at": 0.5
+        },
+        {
+          "id": "a2-recoil",
+          "kind": "AttackRecoil",
+          "at": 0.78
+        }
+      ],
+      "footContacts": {
+        "left": [
+          {
+            "start": 0,
+            "end": 0.5
+          }
+        ],
+        "right": [
+          {
+            "start": 0.3,
+            "end": 1
+          }
+        ]
+      },
+      "timeCurve": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 0.58,
+        "y2": 1
+      },
+      "provenance": {
+        "source": "human-adjustment"
+      }
+    },
+    {
+      "schemaVersion": 1,
       "id": "unarmed-attack-02-recovery",
       "assetPath": null,
       "proceduralGenerator": "attack-02-recovery",
@@ -914,6 +1346,78 @@
         "x": 0,
         "y": 0,
         "z": 0
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "pistol-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.55
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "shield-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.55
+      },
+      "rootMotionMode": "RootMotion",
+      "events": [],
+      "footContacts": {
+        "left": [],
+        "right": []
+      },
+      "provenance": {
+        "source": "human-adjustment",
+        "humanFinal": 0
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "throw-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "loop": false,
+      "inputAcceptanceStartNormalized": 0,
+      "rootDisplacement": {
+        "x": 0,
+        "y": 0,
+        "z": 0.55
       },
       "rootMotionMode": "RootMotion",
       "events": [],
@@ -1180,7 +1684,10 @@
         "weaponClips": {
           "unarmed": "unarmed-attack-01",
           "sword": "sword-attack-01",
-          "magic": "magic-attack-01"
+          "magic": "magic-attack-01",
+          "pistol": "pistol-attack-01",
+          "shield": "shield-attack-01",
+          "throw": "throw-attack-01"
         }
       },
       {
@@ -1198,7 +1705,10 @@
         "weaponClips": {
           "unarmed": "unarmed-attack-01-recovery",
           "sword": "sword-attack-01-recovery",
-          "magic": "magic-attack-01-recovery"
+          "magic": "magic-attack-01-recovery",
+          "pistol": "pistol-attack-01-recovery",
+          "shield": "shield-attack-01-recovery",
+          "throw": "throw-attack-01-recovery"
         }
       },
       {
@@ -1216,7 +1726,10 @@
         "weaponClips": {
           "unarmed": "unarmed-attack-02",
           "sword": "sword-attack-02",
-          "magic": "magic-attack-02"
+          "magic": "magic-attack-02",
+          "pistol": "pistol-attack-02",
+          "shield": "shield-attack-02",
+          "throw": "throw-attack-02"
         }
       },
       {
@@ -1234,7 +1747,10 @@
         "weaponClips": {
           "unarmed": "unarmed-attack-02-recovery",
           "sword": "sword-attack-02-recovery",
-          "magic": "magic-attack-02-recovery"
+          "magic": "magic-attack-02-recovery",
+          "pistol": "pistol-attack-02-recovery",
+          "shield": "shield-attack-02-recovery",
+          "throw": "throw-attack-02-recovery"
         }
       },
       {
@@ -1261,6 +1777,22 @@
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "upper"
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-shield",
+        "clipId": "guard",
+        "layer": "action",
+        "loop": true,
+        "speed": 0.44,
+        "timeoutSec": 0,
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "upper",
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.44
+        }
       },
       {
         "schemaVersion": 1,
@@ -1749,6 +2281,37 @@
             "parameter": "guardHeld",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 90
+      },
+      {
+        "schemaVersion": 1,
+        "id": "idle-to-guard-shield",
+        "from": "action-none",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": true
           }
         ],
         "blendDurationSec": 0.07,
@@ -1764,6 +2327,27 @@
         "schemaVersion": 1,
         "id": "guard-to-none",
         "from": "guard",
+        "to": "action-none",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-none-shield",
+        "from": "guard-shield",
         "to": "action-none",
         "conditions": [
           {
@@ -1884,6 +2468,41 @@
             "parameter": "guardHeld",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-guard-shield",
+        "from": "attack-01",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": true
           }
         ],
         "blendDurationSec": 0.07,
@@ -1907,6 +2526,41 @@
         "conditions": [
           {
             "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-guard-shield",
+        "from": "attack-02",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
             "operator": "equals",
             "value": true
           }
@@ -1947,8 +2601,50 @@
       },
       {
         "schemaVersion": 1,
+        "id": "guard-to-attack-01-shield",
+        "from": "guard-shield",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 160
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 160,
+        "priority": 115
+      },
+      {
+        "schemaVersion": 1,
         "id": "guard-to-dodge",
         "from": "guard",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 175
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-dodge-shield",
+        "from": "guard-shield",
         "to": "dodge",
         "conditions": [
           {
@@ -2173,6 +2869,7 @@
       "hit",
       "dodge",
       "guard",
+      "guard-shield",
       "attack-02",
       "attack-01",
       "jump",
@@ -2613,6 +3310,31 @@
         "source": "human-adjustment",
         "at": "2026-07-30T18:21:18.780Z"
       }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "rev-0008",
+      "parentId": "rev-0007",
+      "createdAt": "2026-07-30T20:01:34.670Z",
+      "author": "chamber-user",
+      "message": "tune(clips,graph): 11 values adjusted in the chamber",
+      "changedPaths": [
+        "/clips/shield-attack-01/timeCurve/x1",
+        "/clips/shield-attack-01/timeCurve/x2",
+        "/clips/shield-attack-01/timeCurve/y1",
+        "/clips/shield-attack-01/timeCurve/y2",
+        "/clips/throw-attack-01/timeCurve/x1",
+        "/clips/throw-attack-01/timeCurve/x2",
+        "/clips/throw-attack-01/timeCurve/y1",
+        "/clips/throw-attack-01/timeCurve/y2",
+        "/graph/states/guard-shield/provenance/humanFinal",
+        "/graph/states/guard-shield/provenance/source",
+        "/graph/states/guard-shield/speed"
+      ],
+      "provenance": {
+        "source": "human-adjustment",
+        "at": "2026-07-30T20:01:34.670Z"
+      }
     }
   ],
   "invariants": [
@@ -2627,6 +3349,14 @@
     {
       "path": "/inputMap/keyboard/Jump",
       "reason": "jump must always be reachable from the keyboard"
+    }
+  ],
+  "equipment": [
+    {
+      "id": "shield",
+      "parameter": "equippedShield",
+      "label": "Shield",
+      "defaultEquipped": false
     }
   ]
 }
