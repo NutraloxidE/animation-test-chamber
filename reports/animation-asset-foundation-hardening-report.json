@@ -1,0 +1,109 @@
+{
+  "baseBranch": "claude/new-session-9h6hb7",
+  "baseSha": "895815ec5f71e4e62c756312ddb797a8991bf340",
+  "finalBranch": "claude/new-session-9h6hb7",
+  "finalSha": "e0a64a9ccb1bfde2e2e572021bed7e270660c806",
+  "scopeDecision": "User instructed: work through phases sequentially, develop directly on claude/new-session-9h6hb7 instead of creating fix/animation-asset-foundation-hardening.",
+  "changedFiles": 67,
+  "insertions": 7979,
+  "deletions": 1771,
+  "commits": [
+    "9c166b1 test: freeze animation asset hardening baseline",
+    "465288c feat: add crash-safe repository file-set transactions",
+    "2df4144 fix: enforce immutable published asset references",
+    "56b16ff refactor: make behavior variants parent-plus-patch only",
+    "71666ce fix: persist every staged animation change explicitly",
+    "a9796ac fix: preserve static character drafts and isolate domain logic",
+    "4560aea test: resolve the 3 baseline replay failures and a narrow-viewport overlay bug",
+    "7943a86 fix: deterministic tick-driven visual tests and reload/duplicate-mount bugs",
+    "b7842cb fix: make chamber tests and narrow-viewport overlays work on mobile-landscape",
+    "4a6aa16 fix: full visual determinism across desktop, mobile-landscape and 320px",
+    "e0a64a9 build: regenerate schemas and Unity export; add transaction-recovery stage"
+  ],
+  "results": {
+    "genericRepositoryTransaction": "PASS",
+    "crashRecovery": "PASS",
+    "concurrentWriteProtection": "PASS",
+    "noLostFineTuningData": "PASS",
+    "strictAssetReferences": "PASS",
+    "trueVariantInheritance": "PASS",
+    "staticCharacterDraft": "PASS",
+    "domainLogicIsolation": "PASS",
+    "replayCompatibility": "PASS",
+    "visualDeterminism": "PASS",
+    "publishedAssetProtection": "PASS",
+    "oneShotHarnessRun1": "PASS",
+    "oneShotHarnessRun2": "PASS"
+  },
+  "commandResults": [
+    { "command": "pnpm typecheck", "exitCode": 0 },
+    { "command": "pnpm lint", "exitCode": 0 },
+    { "command": "pnpm harness:check", "exitCode": 0 },
+    { "command": "pnpm harness:animation-assets", "exitCode": 0, "passed": 7, "total": 7 },
+    { "command": "harness/check-transaction-recovery.ts", "exitCode": 0 },
+    { "command": "pnpm harness:unit", "exitCode": 0, "passed": 247, "total": 247 },
+    { "command": "pnpm harness:integration", "exitCode": 0, "passed": 61, "total": 61 },
+    { "command": "pnpm harness:replay", "exitCode": 0, "passed": 91, "total": 91 },
+    { "command": "npx tsx harness/shadow-compare.ts", "exitCode": 0 },
+    { "command": "pnpm harness:repo-guard", "exitCode": 0, "passed": 8, "total": 8 },
+    { "command": "pnpm build", "exitCode": 0 },
+    { "command": "npx playwright test", "exitCode": 0, "passed": 114, "total": 114 },
+    { "command": "pnpm harness:one-shot (run 1)", "exitCode": 0, "passed": 26, "total": 26 },
+    { "command": "pnpm harness:one-shot (run 2)", "exitCode": 0, "passed": 26, "total": 26, "drift": false },
+    { "command": "published asset baseline hash check", "exitCode": 0, "matched": 76, "total": 76 }
+  ],
+  "faultInjectionMatrix": {
+    "file": "tests/integration/repository-transaction/transaction.test.ts",
+    "tests": 25,
+    "cases": [
+      "multi-file successful commit",
+      "failure before first promotion",
+      "failure after first created asset promotion",
+      "failure after second asset promotion",
+      "failure after all assets but before project promotion",
+      "failure during project rename",
+      "failure during hash verification",
+      "process crash simulation with journal state=promoting",
+      "recovery executed twice",
+      "report write failure after commit",
+      "two concurrent publishes selecting same next version",
+      "stale project revision",
+      "stale referenced asset hash",
+      "write lock contention",
+      "stale write lock takeover"
+    ]
+  },
+  "visualTestResult": {
+    "totalTests": 38,
+    "viewports": ["desktop", "mobile-landscape", "narrow-320px"],
+    "totalRuns": 114,
+    "passed": 114,
+    "tickDriverConvertedTests": [
+      "the character responds to keyboard input",
+      "jump and attack drive the two layers independently",
+      "sword attacks play their matching recovery clips",
+      "the layer bar colours action-to-action blends",
+      "repeated clip tuning is exposed through the Inspector edit loop"
+    ],
+    "bugsFoundAndFixed": [
+      "SaveDestinationDialog double-mounted (App level + Asset Library dock)",
+      "Vite dev-server full-reload racing the app's own project.json write",
+      "Hierarchy dock covering its own toggle button on narrow viewports",
+      "stale-draft banner hidden under viewport-controls panel on a short viewport",
+      "bottom sheet overflowing 100px past a 320px viewport (width not reset in narrow media query)"
+    ]
+  },
+  "publishedAssetBaseline": {
+    "filesChecked": 76,
+    "unchanged": 76,
+    "modifiedInPlace": 0
+  },
+  "decisionRecords": [
+    "DECISIONS/0008-unarmed-root-displacement-baseline.md"
+  ],
+  "knownLimitations": [
+    "Container performance varied significantly across the session; every fix was verified with multiple repeated runs rather than trusted on a single pass.",
+    ".chamber-fake-git/ and .chamber-transactions/ are gitignored local scratch state, reset between verification runs, not part of the committed repository."
+  ],
+  "finalDeclaration": "PASS"
+}
