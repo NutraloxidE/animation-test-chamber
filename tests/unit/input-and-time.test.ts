@@ -9,10 +9,10 @@ import {
 } from '@atc/runtime-core';
 import { InputState, decodeButtons, emptyButtons, encodeButtons } from '@atc/input-runtime';
 import { ChamberEngine } from '../../apps/web/src/engine.ts';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 import { normalizedTimeOf, sampleRootMotion } from '@atc/animation-runtime';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 function sampleWith(buttons: Partial<Record<string, boolean>>, move = 0) {
   return {

@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-shield-attack-01",
+    "version": "1.0.0",
+    "displayName": "alt shield attack 01",
+    "description": "Migrated from the embedded clip \"shield-attack-01\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "104dd126ec01fa5e3b7d45cb611cc40928310c2b34af30a893422f161e99bac7",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-shield-attack-01",
+    "assetPath": null,
+    "proceduralGenerator": "attack-01",
+    "durationSec": 0.75,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.62,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.5
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [
+      {
+        "id": "a1-windup",
+        "kind": "AttackWindup",
+        "at": 0.15
+      },
+      {
+        "id": "a1-hit",
+        "kind": "AttackHit",
+        "at": 0.42,
+        "protection": {
+          "level": "approval-required",
+          "reason": "hit timing confirmed by hand"
+        }
+      },
+      {
+        "id": "a1-recoil",
+        "kind": "AttackRecoil",
+        "at": 0.7
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.6
+        }
+      ],
+      "right": [
+        {
+          "start": 0.2,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0.25,
+      "y1": 0.25,
+      "x2": 0.75,
+      "y2": 0.75
+    },
+    "provenance": {
+      "source": "human-adjustment"
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

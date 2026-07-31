@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-walk",
+    "version": "1.0.0",
+    "displayName": "alt walk",
+    "description": "Migrated from the embedded clip \"walk\".",
+    "tags": [
+      "migrated",
+      "loop"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "33c7115ff1718f4ae84f3405039678be369ccfb3b92e9223a3ca1266c9a01b23",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-walk",
+    "assetPath": null,
+    "proceduralGenerator": "walk",
+    "durationSec": 1,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 1.6
+    },
+    "rootMotionMode": "Hybrid",
+    "events": [
+      {
+        "id": "walk-foot-l",
+        "kind": "FootContactLeft",
+        "at": 0.02
+      },
+      {
+        "id": "walk-foot-r",
+        "kind": "FootContactRight",
+        "at": 0.52
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.45
+        }
+      ],
+      "right": [
+        {
+          "start": 0.5,
+          "end": 0.95
+        }
+      ]
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

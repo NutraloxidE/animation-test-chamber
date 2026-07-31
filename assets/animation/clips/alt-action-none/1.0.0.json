@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-action-none",
+    "version": "1.0.0",
+    "displayName": "alt action none",
+    "description": "Migrated from the embedded clip \"action-none\".",
+    "tags": [
+      "migrated",
+      "loop"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "73a7b56ced81ad6d9c587df2b0aaf45fc5631fff9b0cf03c800eaa72430181c3",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-action-none",
+    "assetPath": null,
+    "proceduralGenerator": "action-none",
+    "durationSec": 0.5,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "guard",
+    "version": "1.0.0",
+    "displayName": "guard",
+    "description": "Migrated from the embedded clip \"guard\".",
+    "tags": [
+      "migrated",
+      "loop"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "0c4b8bea4cb178ce4a7b3ba1e80d221555fd80e8757ab25b2c2b304296afdfe5",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "guard",
+    "assetPath": null,
+    "proceduralGenerator": "guard",
+    "durationSec": 0.6,
+    "loop": true,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

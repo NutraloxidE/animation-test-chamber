@@ -9,6 +9,7 @@ export default defineConfig({
       '@atc/schema': pkg('schema'),
       '@atc/runtime-core': pkg('runtime-core'),
       '@atc/animation-runtime': pkg('animation-runtime'),
+      '@atc/animation-asset-runtime': pkg('animation-asset-runtime'),
       '@atc/input-runtime': pkg('input-runtime'),
       '@atc/terrain-runtime': pkg('terrain-runtime'),
       '@atc/haptics-runtime': pkg('haptics-runtime'),

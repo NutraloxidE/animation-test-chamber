@@ -29,10 +29,11 @@ validation rules — is not duplicated here on purpose (see DECISIONS/0001).
          ┌───────────────┴──────────────────────────────┐
          │ apps/api — Hono (holds every secret)         │
          │  re-validates · re-runs diff policy ·        │
+         │  runs atomic asset transactions ·            │
          │  mints GitHub tokens · commits               │
          └───────────────┬──────────────────────────────┘
                          │
-              projects/*.json  →  Git branch  →  PR
+     projects/*.json + assets/animation/**  →  Git branch  →  PR
 ```
 
 ## Boundaries and why they are there
@@ -69,6 +70,53 @@ whole ticks, so 30 / 60 / 120fps produce identical logic. Nothing in the
 simulation reads the wall clock or `Math.random`; randomness comes from a seeded
 PRNG carried in the replay. This is the property the entire regression system
 rests on, and it is tested directly.
+
+### A character references its animation; it does not own it
+
+`projects/demo-character/project.json` used to hold the graph and all 35 clips
+inline. It now holds four asset references per character:
+
+```text
+assets/animation/
+  behaviors/humanoid-third-person-base/1.0.0.json    the state machine
+  motion-sets/demo-humanoid-motion-set/1.0.0.json    slot -> clip, per character
+  clips/<clip-id>/1.0.0.json                         one piece of motion
+  rigs/demo-humanoid-rig/1.0.0.json                  the skeleton
+  tuning/demo-default-tuning/1.0.0.json              numeric adjustments
+```
+
+The behaviour names **motion slots** (`locomotion.idle`, `action.primary.01`),
+never clip ids. The motion set binds those slots to a particular character's
+clips. That single indirection is what lets two characters run one state machine
+and still move differently — the demo project ships two of them, and the harness
+fails if their state sequences ever diverge or their clips ever coincide.
+
+Every reference carries a content hash. A published version edited in place is
+refused at load rather than discovered as a behaviour change later, and the repo
+guard fails on any modification to a version file that already existed.
+
+### `ResolvedProject` is derived, and deliberately unvalidatable
+
+The runtime, the panels, the diff engine and the Unity exporter all reasonably
+want a graph and a clip list. Rather than have each of them walk the asset
+registry, resolution happens once — `resolveCharacterAnimation` — and produces a
+`ResolvedProject`: the canonical project plus the graph, clips and slot bindings
+for one character.
+
+It has no TypeBox schema on purpose. Validating a derived document as if it were
+canonical is exactly the mistake the type exists to prevent, so there is nothing
+to validate it with; `validateResolvedProject` checks it in three parts against
+the schemas that own each piece.
+
+### Behaviour lives in fields, not in names
+
+The runtime used to read `stateId.startsWith('attack-')` and
+`actionState.endsWith('-recovery')`. Those were real, wanted behaviours — an
+attack holds its final frame; a recovery clip hands movement back immediately —
+selected by spelling, which meant a second character could only inherit them by
+choosing the same names. They are now `completionPolicy`, `recoveryPolicy` and
+`movementAuthorityPolicy` on the state, and the repo guard fails if a name-based
+branch reappears in a runtime package.
 
 ### Canonical paths, not indices
 

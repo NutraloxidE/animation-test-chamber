@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "jump",
+    "version": "1.0.0",
+    "displayName": "jump",
+    "description": "Migrated from the embedded clip \"jump\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "874b432ae22c8ec0eca5e163ccf77fc8e2783e3d9f0194a50f27cd537dd113bf",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "jump",
+    "assetPath": null,
+    "proceduralGenerator": "jump",
+    "durationSec": 0.5,
+    "loop": false,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "jump-takeoff",
+        "kind": "JumpTakeoff",
+        "at": 0.02
+      }
+    ],
+    "footContacts": {
+      "left": [],
+      "right": []
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

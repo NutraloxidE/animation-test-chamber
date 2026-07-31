@@ -4,15 +4,17 @@ import {
   dodgeRecoveryBlendWeight,
   resolveWeaponMode,
   type ParameterSource,
+  clipIdForState,
+  motionResolverFor,
 } from '@atc/animation-runtime';
 import { FIXED_DT } from '@atc/runtime-core';
 import { Simulation, defaultEquipped } from '@atc/replay-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
 import { emptyButtons } from '@atc/input-runtime';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 import { WEAPON_MODES } from '../../apps/web/src/three/catalog.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 /** Controllable parameter source so each test states exactly what is true. */
 function makeParams(overrides: {
@@ -39,6 +41,9 @@ function makeParams(overrides: {
   };
 }
 
+/** State definitions by id, so the recovery helpers get the policy they read. */
+const stateOf = (id: string) => project.graph.states.find((state) => state.id === id);
+
 describe('graph initialisation', () => {
   it('blends dodge movement authority over the visual transition duration', () => {
     const duration = 1.4666667;
@@ -46,30 +51,30 @@ describe('graph initialisation', () => {
     const midpoint = start + 0.14 / duration;
     const endpoint = start + 0.28 / duration;
 
-    expect(dodgeRecoveryBlendWeight('dodge', start, duration, 'run', start)).toBe(0);
-    expect(dodgeRecoveryBlendWeight('dodge', midpoint, duration, 'run', start)).toBeCloseTo(
+    expect(dodgeRecoveryBlendWeight(stateOf('dodge'), start, duration, stateOf('run'), start)).toBe(0);
+    expect(dodgeRecoveryBlendWeight(stateOf('dodge'), midpoint, duration, stateOf('run'), start)).toBeCloseTo(
       0.5,
     );
-    expect(dodgeRecoveryBlendWeight('dodge', endpoint, duration, 'run', start)).toBe(1);
-    expect(dodgeRecoveryBlendWeight('dodge', endpoint, duration, 'idle', start)).toBe(0);
+    expect(dodgeRecoveryBlendWeight(stateOf('dodge'), endpoint, duration, stateOf('run'), start)).toBe(1);
+    expect(dodgeRecoveryBlendWeight(stateOf('dodge'), endpoint, duration, stateOf('idle'), start)).toBe(0);
   });
 
   it('treats an attack recovery clip as recovery from its first frame', () => {
     const duration = 0.9666666;
     const midpoint = 0.14 / duration;
 
-    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 0, duration, 'walk')).toBe(0);
-    expect(dodgeRecoveryBlendWeight('attack-01-recovery', midpoint, duration, 'walk')).toBeCloseTo(
+    expect(dodgeRecoveryBlendWeight(stateOf('attack-01-recovery'), 0, duration, stateOf('walk'))).toBe(0);
+    expect(dodgeRecoveryBlendWeight(stateOf('attack-01-recovery'), midpoint, duration, stateOf('walk'))).toBeCloseTo(
       0.5,
     );
-    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 1, duration, 'walk')).toBe(1);
+    expect(dodgeRecoveryBlendWeight(stateOf('attack-01-recovery'), 1, duration, stateOf('walk'))).toBe(1);
     // No stick input means no blend, so the recovery pose plays out in place.
-    expect(dodgeRecoveryBlendWeight('attack-01-recovery', 1, duration, 'idle')).toBe(0);
-    expect(dodgeRecoveryBlendWeight('attack-01', 0.9, 0.75, 'walk')).toBe(0);
+    expect(dodgeRecoveryBlendWeight(stateOf('attack-01-recovery'), 1, duration, stateOf('idle'))).toBe(0);
+    expect(dodgeRecoveryBlendWeight(stateOf('attack-01'), 0.9, 0.75, stateOf('walk'))).toBe(0);
   });
 
   it('scales locomotion clip time by the layer speed scale', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     const params = makeParams({ numbers: { moveMagnitude: 0 } });
 
     graph.setLayerSpeedScale('locomotion', 0.5);
@@ -85,7 +90,7 @@ describe('graph initialisation', () => {
   });
 
   it('starts each layer in its declared default state', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     expect(graph.getLayer('locomotion').stateId).toBe('idle');
     expect(graph.getLayer('action').stateId).toBe('action-none');
   });
@@ -95,7 +100,7 @@ describe('transition conditions', () => {
   let graph: AnimationGraphRuntime;
 
   beforeEach(() => {
-    graph = new AnimationGraphRuntime(project.graph, project.clips);
+    graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
   });
 
   it('fires when a numeric condition is satisfied', () => {
@@ -120,7 +125,7 @@ describe('transition conditions', () => {
 
 describe('priority and forced ordering', () => {
   it('prefers jump over fall when both are eligible on the same tick', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     // Both any-to-jump (p200) and any-to-fall (p120) match; jump must win.
     graph.tick(
       makeParams({
@@ -132,7 +137,7 @@ describe('priority and forced ordering', () => {
   });
 
   it('consumes the buffered input that satisfied the transition', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     const params = makeParams({ booleans: { grounded: true }, buffered: { Jump: true } });
     graph.tick(params);
     expect(params.consumed).toContain('Jump');
@@ -151,7 +156,7 @@ describe('cancel windows', () => {
   }
 
   it('refuses a combo cancel before the window opens', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     enterAttack(graph);
     // attack-01 is 0.75s; the window opens at 0.35 normalized (~0.26s).
     advance(graph, 0.1);
@@ -160,7 +165,7 @@ describe('cancel windows', () => {
   });
 
   it('allows a combo cancel inside the window', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     enterAttack(graph);
     advance(graph, 0.4);
     graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
@@ -168,7 +173,7 @@ describe('cancel windows', () => {
   });
 
   it('refuses a combo cancel after the window closes', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     enterAttack(graph);
     // Past 0.8 normalized (~0.6s) but before the clip ends.
     advance(graph, 0.63);
@@ -177,7 +182,7 @@ describe('cancel windows', () => {
   });
 
   it('allows a late dodge cancel in its own, later window', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     enterAttack(graph);
     advance(graph, 0.45);
     graph.tick(makeParams({ buffered: { Dodge: true } }));
@@ -191,7 +196,7 @@ describe('cancel windows', () => {
    * sluggish input.
    */
   it('goes from one action straight into another', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     enterAttack(graph);
     advance(graph, 0.4);
     graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
@@ -209,7 +214,7 @@ describe('cancel windows', () => {
   });
 
   it('lets a jump break out of a dodge mid-roll', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ buffered: { Dodge: true } }));
     expect(graph.getLayer('action').stateId).toBe('dodge');
 
@@ -227,7 +232,7 @@ describe('cancel windows', () => {
   });
 
   it('leaves guard for another action without releasing guard first', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ booleans: { guardHeld: true } }));
     expect(graph.getLayer('action').stateId).toBe('guard');
 
@@ -238,7 +243,7 @@ describe('cancel windows', () => {
 
 describe('state lifecycle', () => {
   it('falls back to the declared state when a one-shot clip finishes', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
     expect(graph.getLayer('action').stateId).toBe('attack-01');
 
@@ -247,7 +252,7 @@ describe('state lifecycle', () => {
   });
 
   it('refuses re-entry into a state that forbids it', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
     const before = graph.getLayer('action').timeSec;
     // A second press on the very next tick must not restart attack-01.
@@ -257,7 +262,7 @@ describe('state lifecycle', () => {
   });
 
   it('blends in over the transition duration rather than snapping', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ numbers: { moveMagnitude: 0.3 } }));
     const layer = graph.getLayer('locomotion');
     expect(layer.blendDurationSec).toBeCloseTo(0.18, 3);
@@ -272,7 +277,7 @@ describe('state lifecycle', () => {
 
 describe('semantic events', () => {
   it('emits a clip event exactly once per pass', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     let hits = 0;
     graph.tick(makeParams({ buffered: { PrimaryAction: true } }));
     for (let i = 0; i < Math.round(0.7 / FIXED_DT); i += 1) {
@@ -283,7 +288,7 @@ describe('semantic events', () => {
   });
 
   it('emits looping clip events once per cycle', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     // run is a 0.7s looping clip with one FootContactLeft per cycle.
     for (let i = 0; i < 20; i += 1) graph.tick(makeParams({ numbers: { moveMagnitude: 1 } }));
     let contacts = 0;
@@ -299,7 +304,7 @@ describe('semantic events', () => {
 
 describe('live graph updates', () => {
   it('keeps playing the current state when canonical data is swapped in', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     graph.tick(makeParams({ numbers: { moveMagnitude: 1 } }));
     const stateBefore = graph.getLayer('locomotion').stateId;
 
@@ -307,7 +312,7 @@ describe('live graph updates', () => {
     const transition = edited.graph.transitions.find((t) => t.id === 'idle-to-walk')!;
     transition.blendDurationSec = 0.02;
 
-    graph.updateGraph(edited.graph, edited.clips);
+    graph.updateGraph(edited.graph, motionResolverFor(edited));
     expect(graph.getLayer('locomotion').stateId).toBe(stateBefore);
   });
 });
@@ -317,7 +322,7 @@ describe('playback speed', () => {
     const edited = structuredClone(project);
     edited.graph.states.find((s) => s.id === 'walk')!.speed = 2;
 
-    const graph = new AnimationGraphRuntime(edited.graph, edited.clips);
+    const graph = new AnimationGraphRuntime(edited.graph, motionResolverFor(edited));
     const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
     graph.tick(params);
 
@@ -333,7 +338,7 @@ describe('playback speed', () => {
    * tuning — the common case.
    */
   it('applies a speed edit to the state already playing', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
     graph.tick(params);
     expect(graph.getLayer('locomotion').stateId).toBe('walk');
@@ -343,7 +348,7 @@ describe('playback speed', () => {
 
     const edited = structuredClone(project);
     edited.graph.states.find((s) => s.id === 'walk')!.speed *= 2;
-    graph.updateGraph(edited.graph, edited.clips);
+    graph.updateGraph(edited.graph, motionResolverFor(edited));
 
     expect(graph.getLayer('locomotion').stateId).toBe('walk');
     expect(graph.getLayer('locomotion').playbackSpeed).toBeCloseTo(before * 2);
@@ -351,14 +356,14 @@ describe('playback speed', () => {
   });
 
   it('leaves playback speed alone on an unrelated edit', () => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     const params = makeParams({ numbers: { moveMagnitude: 0.3 }, booleans: { grounded: true } });
     graph.tick(params);
     const before = graph.getLayer('locomotion').playbackSpeed;
 
     const edited = structuredClone(project);
     edited.clips.find((c) => c.id === 'dodge')!.durationSec = 2;
-    graph.updateGraph(edited.graph, edited.clips);
+    graph.updateGraph(edited.graph, motionResolverFor(edited));
 
     expect(graph.getLayer('locomotion').playbackSpeed).toBeCloseTo(before);
   });
@@ -366,7 +371,7 @@ describe('playback speed', () => {
 
 describe('equipment', () => {
   const guardWith = (equippedShield: boolean): string => {
-    const graph = new AnimationGraphRuntime(project.graph, project.clips);
+    const graph = new AnimationGraphRuntime(project.graph, motionResolverFor(project));
     const params = makeParams({
       numbers: { moveMagnitude: 0 },
       booleans: { guardHeld: true, grounded: true, equippedShield },
@@ -448,14 +453,10 @@ describe('weapon modes', () => {
     const magic = resolveWeaponMode(project, 'magic');
     const sword = resolveWeaponMode(project, 'sword');
 
-    expect(magic.graph.states.find((state) => state.id === 'attack-01')!.clipId).toBe(
-      'magic-attack-01',
-    );
-    expect(sword.graph.states.find((state) => state.id === 'attack-01')!.clipId).toBe(
-      'sword-attack-01',
-    );
-    // Only the active weapon's clips are visible, so a panel listing clips lists
-    // exactly what this mode can play.
+    // The state names one slot for every weapon; the motion set's contextual
+    // bindings decide which clip fills it.
+    expect(clipIdForState(magic, 'attack-01', 'magic')).toBe('magic-attack-01');
+    expect(clipIdForState(sword, 'attack-01', 'sword')).toBe('sword-attack-01');
     expect(magic.clips.map((clip) => clip.id)).toContain('magic-attack-01');
     expect(magic.clips.map((clip) => clip.id)).not.toContain('sword-attack-01');
     // Shared, non-weapon clips survive for every mode.
@@ -495,16 +496,21 @@ describe('weapon modes', () => {
   });
 
   /**
-   * A mode missing from `weaponClips` silently falls back to the shared
-   * `clipId`, so tuning its curve or displacement would edit another weapon's
-   * clip with nothing on screen saying so. Every catalog mode needs its own.
+   * A mode with no contextual binding silently falls back to the slot's default
+   * clip, so tuning its curve or displacement would edit another weapon's clip
+   * with nothing on screen saying so. Every catalog mode needs its own.
    */
   it('gives every catalog weapon mode its own attack clips', () => {
-    const attackStates = project.graph.states.filter((state) => state.weaponClips);
+    const attackStates = project.graph.states.filter((state) =>
+      WEAPON_MODES.some(
+        (mode) =>
+          clipIdForState(project, state.id, mode.id) !== clipIdForState(project, state.id),
+      ),
+    );
     expect(attackStates.length).toBeGreaterThan(0);
 
     for (const state of attackStates) {
-      const clipIds = WEAPON_MODES.map((mode) => state.weaponClips![mode.id]);
+      const clipIds = WEAPON_MODES.map((mode) => clipIdForState(project, state.id, mode.id));
       expect(clipIds.filter(Boolean)).toHaveLength(WEAPON_MODES.length);
       expect(new Set(clipIds).size).toBe(WEAPON_MODES.length);
       for (const clipId of clipIds) {

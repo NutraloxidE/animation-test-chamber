@@ -1,8 +1,13 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ProjectDefinition } from '@atc/schema';
+import type { AnimationAsset, AnimationAssetType, ProjectDefinition, ResolvedProject } from '@atc/schema';
 import { validateProject, validateProjectReferences } from '@atc/schema';
+import {
+  AnimationAssetRegistry,
+  resolveCharacterAnimation,
+  type StoredAsset,
+} from '@atc/animation-asset-runtime';
 import {
   FakeGitAdapter,
   GitHubAppAdapter,
@@ -29,6 +34,68 @@ function findRepoRoot(start: string): string {
 
 export const REPO_ROOT = findRepoRoot(dirname(fileURLToPath(import.meta.url)));
 export const PROJECT_PATH = 'projects/demo-character/project.json';
+export const ASSET_ROOT = 'assets/animation';
+
+const DIRECTORY_BY_TYPE: Record<string, AnimationAssetType> = {
+  behaviors: 'animation-behavior',
+  'motion-sets': 'animation-motion-set',
+  clips: 'animation-clip',
+  rigs: 'humanoid-rig',
+  tuning: 'animation-tuning',
+};
+
+/**
+ * Loads every published asset version from disk, freshly, on each call.
+ *
+ * Not cached deliberately: the transaction endpoints write new versions into
+ * this directory, and a cached registry would answer the next request with the
+ * repository as it was before the write it just accepted.
+ */
+export function loadStoredAssets(root: string = REPO_ROOT): StoredAsset[] {
+  const assets: StoredAsset[] = [];
+  for (const directory of Object.keys(DIRECTORY_BY_TYPE).sort()) {
+    const base = resolve(root, ASSET_ROOT, directory);
+    if (!existsSync(base)) continue;
+    for (const assetId of readdirSync(base).sort()) {
+      for (const file of readdirSync(resolve(base, assetId)).sort()) {
+        if (!file.endsWith('.json')) continue;
+        assets.push({
+          assetType: DIRECTORY_BY_TYPE[directory]!,
+          id: assetId,
+          version: file.replace(/\.json$/, ''),
+          document: JSON.parse(
+            readFileSync(resolve(base, assetId, file), 'utf8'),
+          ) as AnimationAsset,
+        });
+      }
+    }
+  }
+  return assets;
+}
+
+export function loadAssetRegistry(root: string = REPO_ROOT): AnimationAssetRegistry {
+  return new AnimationAssetRegistry(loadStoredAssets(root));
+}
+
+/**
+ * The project as one character sees it. Every endpoint that wants a graph or a
+ * clip list goes through here, so there is one place that decides what
+ * "resolved" means on the server.
+ */
+export function loadResolvedProject(options: { characterId?: string } = {}): ResolvedProject {
+  const result = resolveCharacterAnimation({
+    registry: loadAssetRegistry(),
+    project: loadProject(),
+    ...(options.characterId ? { characterId: options.characterId } : {}),
+  });
+  const errors = result.issues.filter((issue) => issue.severity === 'error');
+  if (errors.length > 0) {
+    throw new Error(
+      `cannot resolve animation assets:\n  ${errors.map((issue) => `[${issue.code}] ${issue.message}`).join('\n  ')}`,
+    );
+  }
+  return result.project;
+}
 
 export interface ServerContext {
   git: GitAdapter;

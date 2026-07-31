@@ -8,6 +8,7 @@
  * commit, and what to do next.
  */
 import { staticStages } from './check-static.ts';
+import { animationAssetStages } from './check-animation-assets.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
@@ -131,6 +132,13 @@ async function main(): Promise<void> {
 
   // Static first: a type error makes every later stage meaningless.
   for (const result of staticStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  // Asset integrity before the tests: a stale index or an unresolvable
+  // reference makes every later failure a symptom rather than a cause.
+  for (const result of animationAssetStages()) {
     printStage(result);
     results.push(result);
   }

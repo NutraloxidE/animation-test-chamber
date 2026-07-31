@@ -1,4 +1,4 @@
-import type { AnimationClipDefinition, ButtonAction, ProjectDefinition, SemanticEventKind, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
+import type { AnimationClipDefinition, ButtonAction, ResolvedProject, SemanticEventKind, StateDefinition, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
   AnimationGraphRuntime,
@@ -6,8 +6,11 @@ import {
   DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
   dodgeRecoveryBlendWeight,
   isFootPlanted,
+  motionResolverFor,
   normalizedTimeOf,
   sampleRootMotion,
+  ACTION_LAYER,
+  LOCOMOTION_LAYER,
   type LayerId,
   type ParameterSource,
 } from '@atc/animation-runtime';
@@ -27,14 +30,14 @@ const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
 ]);
 
 /** Opening equipment state: every declared slot at its authored default. */
-export function defaultEquipped(project: ProjectDefinition): Record<string, boolean> {
+export function defaultEquipped(project: { equipment: { id: string; defaultEquipped: boolean }[] }): Record<string, boolean> {
   return Object.fromEntries(
     project.equipment.map((slot) => [slot.id, slot.defaultEquipped]),
   );
 }
 
 export interface SimulationInit {
-  project: ProjectDefinition;
+  project: ResolvedProject;
   terrain: TerrainPreset;
   seed: number;
   initialPosition: Vec3;
@@ -100,10 +103,10 @@ export class Simulation {
   private readonly footIkState = createFootIkState();
   private readonly random: () => number;
 
-  /** Canonical document as authored, weapon overrides still folded in. */
-  private baseProject: ProjectDefinition;
+  /** Resolved document as authored, weapon overrides still folded in. */
+  private baseProject: ResolvedProject;
   /** `baseProject` resolved for the active weapon mode. Everything reads this. */
-  private project: ProjectDefinition;
+  private project: ResolvedProject;
   private terrain: TerrainPreset;
 
   private tickIndex = 0;
@@ -142,7 +145,9 @@ export class Simulation {
     this.actionRootMotionTracks = init.actionRootMotionTracks ?? {};
     this.random = createRandom(init.seed);
 
-    this.graph = new AnimationGraphRuntime(this.project.graph, this.project.clips);
+    this.graph = new AnimationGraphRuntime(this.project.graph, motionResolverFor(this.project), {
+      contextKey: this.weaponModeId,
+    });
     this.input = new InputState(this.project.inputMap);
     this.lastTerrain = resolveTerrain(this.terrain, this.project.terrain, {
       position: this.position,
@@ -158,7 +163,7 @@ export class Simulation {
    * Applies edited canonical data mid-session. Used by the editor so a slider
    * drag shows up in the running preview without resetting the character.
    */
-  updateProject(project: ProjectDefinition): void {
+  updateProject(project: ResolvedProject): void {
     this.baseProject = project;
     this.applyWeaponMode();
   }
@@ -166,7 +171,9 @@ export class Simulation {
   /** Re-resolves the document for the active weapon and hot-swaps it in. */
   private applyWeaponMode(): void {
     this.project = resolveWeaponMode(this.baseProject, this.weaponModeId);
-    this.graph.updateGraph(this.project.graph, this.project.clips);
+    this.graph.updateGraph(this.project.graph, motionResolverFor(this.project), {
+      contextKey: this.weaponModeId,
+    });
     this.input.setInputMap(this.project.inputMap);
   }
 
@@ -402,14 +409,14 @@ export class Simulation {
     const action = this.graph.getLayer('action');
     const actionClip = this.graph.getClipFor(action.stateId);
     const recoveryWeight = dodgeRecoveryBlendWeight(
-      action.stateId,
+      this.actionStateDefinition(),
       action.normalizedTime,
       actionClip?.durationSec ?? 0,
-      this.graph.getLayer('locomotion').stateId,
+      this.locomotionStateDefinition(),
       actionClip?.recoveryTransitionStartNormalized,
     );
     const actionIsStationary = this.actionIsStationary();
-    const actionIsAttack = this.actionIsAttack();
+    const actionIsAttack = this.actionLocksMovement();
     // Attack recovery hands movement back on the same ramp the pose blends on, so
     // the character never slides under a frozen clip.
     const attackRecoveryScale = actionIsAttack ? recoveryWeight : 0;
@@ -541,9 +548,24 @@ export class Simulation {
     return this.graph.getClipFor(this.graph.getLayer('action').stateId)?.rootMotionMode === 'InPlace';
   }
 
-  private actionIsAttack(): boolean {
+  /**
+   * Does the active action pin the character until its recovery window opens?
+   *
+   * Was `stateId.startsWith('attack-')`. The runtime now asks the state what it
+   * does instead of inferring it from what it is called, so a behaviour variant
+   * that adds `heavy-swing` gets the same treatment without renaming anything.
+   */
+  private actionLocksMovement(): boolean {
     if (!this.graph.isActionActive()) return false;
-    return this.graph.getLayer('action').stateId.startsWith('attack-');
+    return this.actionStateDefinition()?.movementAuthorityPolicy.locksMovementUntilRecovery === true;
+  }
+
+  private actionStateDefinition(): StateDefinition | undefined {
+    return this.graph.getStateDefinition(this.graph.getLayer(ACTION_LAYER).stateId);
+  }
+
+  private locomotionStateDefinition(): StateDefinition | undefined {
+    return this.graph.getStateDefinition(this.graph.getLayer(LOCOMOTION_LAYER).stateId);
   }
 
   private currentRotationAuthority(): number {
@@ -604,10 +626,14 @@ export class Simulation {
    * stick is held halfway, on a slope, or still accelerating.
    */
   private locomotionSpeedScale(): number {
-    const stateId = this.graph.getLayer('locomotion').stateId;
-    if (stateId !== 'walk' && stateId !== 'run') return 1;
+    // Was `stateId !== 'walk' && stateId !== 'run'`. The state now declares
+    // which authored speed its clip was made at, so a behaviour with a `jog`
+    // between them can say so instead of silently playing at 1x.
+    const reference =
+      this.locomotionStateDefinition()?.movementAuthorityPolicy.locomotionSpeedReference ?? 'none';
+    if (reference === 'none') return 1;
     const movement = this.project.movement;
-    const nominal = stateId === 'run' ? movement.runSpeed : movement.walkSpeed;
+    const nominal = reference === 'run' ? movement.runSpeed : movement.walkSpeed;
     if (nominal <= 0) return 1;
     const speed = Math.hypot(this.velocity.x, this.velocity.z);
     // ponytail: fixed clamp, promote to a movement-profile field if it needs tuning per project.

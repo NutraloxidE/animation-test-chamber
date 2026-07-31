@@ -5,16 +5,16 @@ import { RuleBasedProvider } from '@atc/ai-adapter';
 import { analyzeDiff, getAtPath } from '@atc/runtime-core';
 import { buildUnityBundle } from '@atc/unity-export';
 import { REPLAY_FIXTURES, compareTraces, findReplayFixture, runReplay } from '@atc/replay-runtime';
-import { validateProject } from '@atc/schema';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { validateProject, validateResolvedProject } from '@atc/schema';
+import { loadDemoProject, loadResolvedDemoProject } from '../fixtures/project.ts';
 
 const PROJECT_PATH = 'projects/demo-character/project.json';
 const BLEND_PATH = '/graph/transitions/run-to-attack-01/blendDurationSec';
 const LOCKED_PATH = '/movement/jumpHeight';
 
 function newSession() {
-  const project = loadDemoProject();
-  return { project, session: new EditSession(project) };
+  const project = loadResolvedDemoProject();
+  return { project, canonical: loadDemoProject(), session: new EditSession(project) };
 }
 
 function newGit(project: unknown) {
@@ -69,8 +69,12 @@ describe('the full human tuning loop', () => {
     // 6. Commit through the fake Git adapter.
     const git = newGit(session.repositoryProject);
     const head = await git.getHead('main');
+    // The committed file is the canonical project, not the resolved document:
+    // the resolved graph is derived, and writing it back would re-embed exactly
+    // what the asset split took out.
+    const canonical = loadDemoProject();
     const draft = buildCommitDraft({
-      document: session.buildStagedDocument(),
+      document: session.buildStagedProjectDocument(canonical),
       diff: session.diff(),
       author: 'tester',
       intent: '初動を早めるが、切り替わりの硬さは残さない',
@@ -94,8 +98,14 @@ describe('the full human tuning loop', () => {
     expect(result.createdBranch).toBe(true);
     expect(result.branch).toBe('chamber/demo-character/sess1');
 
+    expect(validateProject(draft.document).valid).toBe(true);
+
     // 7. The revision records it as a human adjustment, with the intent.
-    session.acceptCommitted(draft.document);
+    session.acceptCommitted({
+      ...session.buildStagedDocument(),
+      revisionId: draft.document.revisionId,
+      revisions: draft.document.revisions,
+    });
     const revision = session.repositoryProject.revisions.at(-1)!;
     expect(revision.provenance?.source).toBe('human-adjustment');
     expect(revision.provenance?.intent).toContain('初動');
@@ -375,8 +385,12 @@ describe('commit messages', () => {
     session.setPreviewValue({ path: BLEND_PATH, value: 0.085, actor: 'human' });
     session.stageAll();
 
+    // The committed file is the canonical project, not the resolved document:
+    // the resolved graph is derived, and writing it back would re-embed exactly
+    // what the asset split took out.
+    const canonical = loadDemoProject();
     const draft = buildCommitDraft({
-      document: session.buildStagedDocument(),
+      document: session.buildStagedProjectDocument(canonical),
       diff: session.diff(),
       author: 'tester',
       intent: 'faster startup, same weight',
@@ -456,7 +470,7 @@ describe('canonical data integrity', () => {
     const { session } = newSession();
     session.setPreviewValue({ path: BLEND_PATH, value: 0.085, actor: 'human' });
     session.stageAll();
-    expect(validateProject(session.buildStagedDocument()).issues).toEqual([]);
+    expect(validateResolvedProject(session.buildStagedDocument()).issues).toEqual([]);
   });
 
   /**
@@ -477,7 +491,7 @@ describe('canonical data integrity', () => {
     session.stage(path);
 
     const document = session.buildStagedDocument();
-    expect(validateProject(document).issues).toEqual([]);
+    expect(validateResolvedProject(document).issues).toEqual([]);
     // Provenance must survive, not be quietly dropped to keep the schema happy.
     const owner = path.slice(0, path.lastIndexOf('/'));
     expect(getAtPath(document, `${owner}/provenance`)).toMatchObject({

@@ -1,8 +1,23 @@
 import { useMemo } from 'react';
 import { create, type StateCreator } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CapabilityProfile, ProjectDefinition, ReplayDefinition } from '@atc/schema';
+import type {
+  AnimationAssetSummary,
+  AssetIssue,
+  CapabilityProfile,
+  CharacterAnimationAssignment,
+  ProjectDefinition,
+  ReplayDefinition,
+  ResolvedProject,
+} from '@atc/schema';
 import { resolveWeaponMode } from '@atc/animation-runtime';
+import {
+  AnimationAssetRegistry,
+  diffToPatches,
+  registryFromLibraryIndex,
+  resolveCharacterAnimation,
+  stripGraphPrefix,
+} from '@atc/animation-asset-runtime';
 import { EditSession } from '@atc/editor-core';
 import type { DiffReport } from '@atc/runtime-core';
 import { setAtPath } from '@atc/runtime-core';
@@ -15,13 +30,48 @@ import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
 import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
 import seedProject from '@chamber/project';
+import seedAssetIndex from '@chamber/animation-assets';
 
 export type PanelId =
   'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
 
+/** Chamber or Asset Library. Deliberately not a router (PLAN 24.1). */
+export type WorkspaceMode = 'chamber' | 'asset-library';
+
+/**
+ * Where a chamber edit should be written (PLAN 28).
+ *
+ * There is no default. The whole point of the dialog is that "I nudged a blend
+ * duration" has four different meanings — mine only, this character's feel, a
+ * new variant, or everyone's — and picking one silently is how a shared asset
+ * stops being shared without anyone deciding to.
+ */
+export type SaveDestinationKind =
+  | 'character-override'
+  | 'tuning-profile'
+  | 'behavior-variant'
+  | 'new-behavior-variant'
+  | 'shared-behavior';
+
+export interface SaveDestination {
+  kind: SaveDestinationKind;
+  /** Required for `new-behavior-variant`. */
+  newAssetId?: string;
+  displayName?: string;
+}
+
+export interface SaveDestinationOption {
+  kind: SaveDestinationKind;
+  label: string;
+  /** Who is affected if this is chosen. Shown next to each option. */
+  impact: string;
+  available: boolean;
+  unavailableReason?: string;
+}
+
 export interface CompareSlot {
   label: string;
-  document: ProjectDefinition;
+  document: ResolvedProject;
   trace: ReplayTrace | null;
   proposal: AdjustmentProposal | null;
 }
@@ -29,7 +79,24 @@ export interface CompareSlot {
 interface ChamberState {
   session: EditSession;
   engine: ChamberEngine;
-  project: ProjectDefinition;
+  /** The resolved document the chamber edits and previews. */
+  project: ResolvedProject;
+  /** The reference-only document that is written to project.json. */
+  canonicalProject: ProjectDefinition;
+  registry: AnimationAssetRegistry;
+  assetIssues: AssetIssue[];
+
+  workspaceMode: WorkspaceMode;
+  activeCharacterId: string;
+
+  /** Asset Library view state. */
+  librarySelection: { assetType: string; assetId: string; version: string } | null;
+  libraryTypeFilter: string;
+  librarySearch: string;
+  libraryFacet: string;
+  /** Open dialog in the library, if any. */
+  libraryDialog: 'apply' | 'save-destination' | 'derive' | null;
+  libraryMessage: string;
 
   selectedTransitionId: string;
   selectedStateId: string;
@@ -70,6 +137,20 @@ interface ChamberState {
 }
 
 interface ChamberActions {
+  setWorkspaceMode(mode: WorkspaceMode): void;
+  setActiveCharacter(characterId: string): void;
+  selectLibraryAsset(selection: { assetType: string; assetId: string; version: string } | null): void;
+  setLibraryTypeFilter(assetType: string): void;
+  setLibrarySearch(text: string): void;
+  setLibraryFacet(facet: string): void;
+  openLibraryDialog(dialog: 'apply' | 'save-destination' | 'derive' | null): void;
+  librarySummaries(): AnimationAssetSummary[];
+  saveDestinationOptions(): SaveDestinationOption[];
+  saveStagedAnimationChanges(destination: SaveDestination): Promise<void>;
+  applyAssetsToCharacter(characterId: string, assignment: CharacterAnimationAssignment): Promise<void>;
+  deriveAsset(mode: 'variant' | 'fork' | 'duplicate', newAssetId: string, displayName: string, forkIntent?: string): Promise<void>;
+  promoteCandidateToClip(candidateId: string, motionSetId?: string, motionSlot?: string): Promise<void>;
+  reloadAssets(project?: ProjectDefinition): Promise<void>;
   setPreviewValue(path: string, value: unknown, options?: { intent?: string }): void;
   unlockPath(path: string): void;
   undo(): void;
@@ -108,8 +189,33 @@ interface ChamberActions {
   diff(): DiffReport;
 }
 
-const initialProject = seedProject as ProjectDefinition;
-const stagedDraftKey = `atc:staged-draft:${initialProject.id}`;
+const canonicalSeed = seedProject as ProjectDefinition;
+
+/**
+ * The registry the browser resolves against.
+ *
+ * Built from the generated index rather than fetched, so the chamber renders on
+ * a fresh clone and on a static host with no API. The API is still the only
+ * authority for writes; this is the read-only starting point, exactly as the
+ * project import always was.
+ */
+const seedRegistry: AnimationAssetRegistry = registryFromLibraryIndex(seedAssetIndex);
+
+function resolveFor(
+  project: ProjectDefinition,
+  characterId: string,
+  registry: AnimationAssetRegistry,
+): { project: ResolvedProject; issues: AssetIssue[] } {
+  return resolveCharacterAnimation({ registry, project, characterId });
+}
+
+const initialResolution = resolveFor(
+  canonicalSeed,
+  canonicalSeed.activeCharacterId,
+  seedRegistry,
+);
+const initialProject = initialResolution.project;
+const stagedDraftKey = `atc:staged-draft:${canonicalSeed.id}`;
 
 const sessionId = `s${Date.now().toString(36)}`;
 
@@ -127,7 +233,7 @@ function restoreStagedDraft(session: EditSession): number {
       revisionId?: string;
       changes?: { path: string; value: unknown }[];
     };
-    if (draft.revisionId !== initialProject.revisionId || !Array.isArray(draft.changes)) {
+    if (draft.revisionId !== canonicalSeed.revisionId || !Array.isArray(draft.changes)) {
       window.localStorage.removeItem(stagedDraftKey);
       return 0;
     }
@@ -184,14 +290,27 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     session,
     engine,
     project: session.previewProject,
+    canonicalProject: canonicalSeed,
+    registry: seedRegistry,
+    assetIssues: initialResolution.issues,
+
+    workspaceMode: 'chamber',
+    activeCharacterId: canonicalSeed.activeCharacterId,
+
+    librarySelection: null,
+    libraryTypeFilter: 'all',
+    librarySearch: '',
+    libraryFacet: 'all',
+    libraryDialog: null,
+    libraryMessage: '',
 
     selectedTransitionId: 'run-to-attack-01',
     selectedStateId: 'run',
     activePanel: 'inspector',
-    terrainPresetId: initialProject.defaultTerrainPresetId,
+    terrainPresetId: canonicalSeed.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
     weaponModeId: WEAPON_MODES[0]!.id,
-    equipped: defaultEquipped(initialProject),
+    equipped: defaultEquipped(canonicalSeed),
     weaponGripOverrides: {},
     gripEditorMode: null,
 
@@ -218,6 +337,414 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         : 'Ready. Editing the demo character with the fake Git adapter.',
     backendOnline: null,
     revision: 0,
+
+    setWorkspaceMode(mode) {
+      set({ workspaceMode: mode, statusMessage: mode === 'chamber' ? 'Chamber' : 'Asset Library' });
+    },
+
+    /**
+     * Switches which character the chamber is driving.
+     *
+     * The whole session is rebuilt because the resolved document is a different
+     * document: different clips, different tuning. Carrying staged edits across
+     * would mean applying one character's decisions to another's assets, which
+     * is exactly the leak the asset split exists to prevent.
+     */
+    setActiveCharacter(characterId) {
+      const canonical = get().canonicalProject;
+      if (!canonical.characters.some((entry) => entry.id === characterId)) return;
+      const resolution = resolveFor(canonical, characterId, get().registry);
+      const errors = resolution.issues.filter((issue) => issue.severity === 'error');
+      if (errors.length > 0) {
+        set({
+          assetIssues: resolution.issues,
+          statusMessage: `Cannot switch: ${errors[0]!.message}`,
+        });
+        return;
+      }
+      session.acceptCommitted(resolution.project);
+      engine.setProject(resolution.project);
+      set({
+        activeCharacterId: characterId,
+        project: resolution.project,
+        assetIssues: resolution.issues,
+        revision: get().revision + 1,
+        statusMessage: `Character: ${resolution.project.character.displayName}`,
+      });
+    },
+
+    selectLibraryAsset(selection) {
+      set({ librarySelection: selection, libraryDialog: null });
+    },
+
+    setLibraryTypeFilter(assetType) {
+      set({ libraryTypeFilter: assetType });
+    },
+
+    setLibrarySearch(text) {
+      set({ librarySearch: text });
+    },
+
+    setLibraryFacet(facet) {
+      set({ libraryFacet: facet });
+    },
+
+    openLibraryDialog(dialog) {
+      set({ libraryDialog: dialog });
+    },
+
+    /**
+     * The library list. Search runs in the browser against the terms the index
+     * carries (PLAN 24.5), so filtering stays instant and works with no API.
+     */
+    librarySummaries() {
+      const { registry, libraryTypeFilter, librarySearch, libraryFacet, project } = get();
+      const summaries = registry.summaries({
+        ...(libraryTypeFilter !== 'all'
+          ? { assetType: libraryTypeFilter as AnimationAssetSummary['assetType'] }
+          : {}),
+        ...(librarySearch.trim() ? { text: librarySearch.trim() } : {}),
+      });
+
+      const used = new Set<string>();
+      for (const character of get().canonicalProject.characters) {
+        for (const reference of [
+          character.animation.behavior,
+          character.animation.motionSet,
+          character.animation.rig,
+          character.animation.tuning,
+        ]) {
+          if (reference) used.add(`${reference.assetType}:${reference.assetId}`);
+        }
+      }
+      const activeUsed = new Set(
+        [
+          project.character.animation.behavior,
+          project.character.animation.motionSet,
+          project.character.animation.rig,
+          project.character.animation.tuning,
+        ]
+          .filter(Boolean)
+          .map((reference) => `${reference!.assetType}:${reference!.assetId}`),
+      );
+
+      return summaries.filter((summary) => {
+        const key = `${summary.assetType}:${summary.id}`;
+        switch (libraryFacet) {
+          case 'used-by-active':
+            return activeUsed.has(key);
+          case 'unused':
+            return !used.has(key);
+          case 'variant':
+            return summary.derivation === 'variant';
+          case 'fork':
+            return summary.derivation === 'fork';
+          case 'protected':
+            return summary.protectionLevel !== 'editable';
+          case 'invalid':
+            return !summary.valid;
+          default:
+            return true;
+        }
+      });
+    },
+
+    /**
+     * The destinations a staged animation edit could go to, each with the blast
+     * radius spelled out. Options the project cannot honour are shown disabled
+     * with the reason rather than hidden — a missing tuning profile is worth
+     * knowing about, and a silently shorter list teaches nothing.
+     */
+    saveDestinationOptions() {
+      const { project, canonicalProject } = get();
+      const behaviorId = project.character.animation.behavior.assetId;
+      const sharing = canonicalProject.characters.filter(
+        (character) => character.animation.behavior.assetId === behaviorId,
+      );
+      const hasTuning = Boolean(project.character.animation.tuning);
+      const isVariant =
+        get().registry.find(project.character.animation.behavior)?.metadata.assetType ===
+          'animation-behavior' &&
+        get().librarySummaries().some(
+          (summary) => summary.id === behaviorId && summary.derivation === 'variant',
+        );
+
+      return [
+        {
+          kind: 'character-override' as const,
+          label: 'Character instance override',
+          impact: `Only "${project.character.displayName}".`,
+          available: true,
+        },
+        {
+          kind: 'tuning-profile' as const,
+          label: 'New version of this character’s tuning profile',
+          impact: hasTuning
+            ? `Only "${project.character.displayName}", but reusable by other characters that adopt the profile.`
+            : '',
+          available: hasTuning,
+          ...(hasTuning ? {} : { unavailableReason: 'this character has no tuning profile' }),
+        },
+        {
+          kind: 'behavior-variant' as const,
+          label: 'New version of this behaviour variant',
+          impact: 'Every character on this variant.',
+          available: isVariant,
+          ...(isVariant ? {} : { unavailableReason: 'the active behaviour is not a variant' }),
+        },
+        {
+          kind: 'new-behavior-variant' as const,
+          label: 'New behaviour variant',
+          impact: 'Nothing, until a character is pointed at it.',
+          available: true,
+        },
+        {
+          kind: 'shared-behavior' as const,
+          label: 'New version of the shared behaviour',
+          impact:
+            sharing.length > 1
+              ? `All ${sharing.length} characters on "${behaviorId}": ${sharing.map((c) => c.displayName).join(', ')}. Replay verification is required.`
+              : `"${project.character.displayName}" only, for now — but anything that adopts "${behaviorId}" later inherits it.`,
+          available: true,
+        },
+      ];
+    },
+
+    /**
+     * Writes the staged animation edits to the chosen destination.
+     *
+     * The patch set is derived from repository-versus-preview rather than from
+     * the raw staged values, so a nested edit lands as one path instead of an
+     * object blob, and the path roots are converted to whatever the destination
+     * expects.
+     */
+    async saveStagedAnimationChanges(destination) {
+      const changes = session.stagedAssetChanges;
+      if (changes.length === 0) {
+        set({ statusMessage: 'No staged animation changes to save.' });
+        return;
+      }
+      if (!(await backendAvailable())) {
+        set({
+          statusMessage: `Save: ${NO_BACKEND_MESSAGE} The edit stays in this browser as a draft.`,
+        });
+        return;
+      }
+
+      const repository = session.repositoryProject;
+      const preview = session.buildStagedDocument();
+      const graphPatches = diffToPatches(repository.graph, preview.graph, '');
+      const clipPatches = diffToPatches(repository.clips, preview.clips, '');
+      const character = get().project.character;
+
+      try {
+        if (destination.kind === 'character-override') {
+          const assignment: CharacterAnimationAssignment = {
+            ...character.animation,
+            instanceOverrides: [
+              ...character.animation.instanceOverrides,
+              ...graphPatches.map((patch) => ({ ...patch, path: `/graph${patch.path}` })),
+              ...clipPatches.map((patch) => ({ ...patch, path: `/clips${patch.path}` })),
+            ],
+          };
+          await get().applyAssetsToCharacter(character.id, assignment);
+          return;
+        }
+
+        const response = await fetch('/api/animation-assets/save-destination', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            characterId: character.id,
+            destination,
+            graphPatches: graphPatches.map((patch) => ({
+              ...patch,
+              path: stripGraphPrefix(patch.path),
+            })),
+            clipPatches,
+          }),
+        });
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          error?: string;
+          issues?: AssetIssue[];
+          project?: ProjectDefinition;
+          reportPath?: string;
+        };
+        if (!response.ok || !payload.ok) {
+          set({
+            statusMessage: `Save refused: ${payload.error ?? ''} ${(payload.issues ?? [])
+              .map((issue) => issue.message)
+              .slice(0, 2)
+              .join('; ')}`,
+          });
+          return;
+        }
+        await get().reloadAssets(payload.project);
+        set({ statusMessage: `Saved to ${destination.kind}. Report: ${payload.reportPath}` });
+      } catch (error) {
+        set({ statusMessage: `Save failed: ${String(error)}` });
+      }
+    },
+
+    async applyAssetsToCharacter(characterId, assignment) {
+      if (!(await backendAvailable())) {
+        // Static mode still previews the assignment — it just cannot publish it.
+        const canonical: ProjectDefinition = {
+          ...get().canonicalProject,
+          characters: get().canonicalProject.characters.map((entry) =>
+            entry.id === characterId ? { ...entry, animation: assignment } : entry,
+          ),
+        };
+        const resolution = resolveFor(canonical, characterId, get().registry);
+        engine.setProject(resolution.project);
+        set({
+          project: resolution.project,
+          assetIssues: resolution.issues,
+          revision: get().revision + 1,
+          statusMessage: `Applied for preview only. ${NO_BACKEND_MESSAGE}`,
+        });
+        return;
+      }
+      try {
+        const response = await fetch('/api/animation-assets/apply', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ characterId, assignment }),
+        });
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          issues?: AssetIssue[];
+          project?: ProjectDefinition;
+          error?: string;
+        };
+        if (!response.ok || !payload.ok) {
+          set({
+            statusMessage: `Apply refused: ${payload.error ?? ''} ${(payload.issues ?? [])
+              .map((issue) => issue.message)
+              .slice(0, 2)
+              .join('; ')}`,
+          });
+          return;
+        }
+        await get().reloadAssets(payload.project);
+        set({ statusMessage: `Applied assets to "${characterId}".`, libraryDialog: null });
+      } catch (error) {
+        set({ statusMessage: `Apply failed: ${String(error)}` });
+      }
+    },
+
+    async deriveAsset(mode, newAssetId, displayName, forkIntent) {
+      const selection = get().librarySelection;
+      if (!selection) {
+        set({ statusMessage: 'Select an asset first.' });
+        return;
+      }
+      if (!(await backendAvailable())) {
+        set({ statusMessage: `Create ${mode}: ${NO_BACKEND_MESSAGE}` });
+        return;
+      }
+      const endpoint =
+        mode === 'variant'
+          ? 'create-variant'
+          : mode === 'fork'
+            ? 'create-fork'
+            : 'duplicate';
+      const parentKey = mode === 'duplicate' ? 'source' : 'parent';
+      try {
+        const response = await fetch(`/api/animation-assets/${endpoint}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            [parentKey]: selection,
+            newAssetId,
+            displayName,
+            patches: [],
+            ...(forkIntent ? { forkIntent } : {}),
+          }),
+        });
+        const payload = (await response.json()) as {
+          ok?: boolean;
+          error?: string;
+          issues?: AssetIssue[];
+        };
+        if (!response.ok || !payload.ok) {
+          set({
+            statusMessage: `Create ${mode} refused: ${payload.error ?? ''} ${(payload.issues ?? [])
+              .map((issue) => issue.message)
+              .slice(0, 2)
+              .join('; ')}`,
+          });
+          return;
+        }
+        await get().reloadAssets();
+        set({
+          statusMessage: `Created ${mode} "${newAssetId}".`,
+          libraryDialog: null,
+          librarySelection: {
+            assetType: selection.assetType,
+            assetId: newAssetId,
+            version: '1.0.0',
+          },
+        });
+      } catch (error) {
+        set({ statusMessage: `Create ${mode} failed: ${String(error)}` });
+      }
+    },
+
+    async promoteCandidateToClip(candidateId, motionSetId, motionSlot) {
+      if (!(await backendAvailable())) {
+        set({ statusMessage: `Promote candidate: ${NO_BACKEND_MESSAGE}` });
+        return;
+      }
+      try {
+        const response = await fetch('/api/animation-assets/promote-candidate', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            candidateId,
+            ...(motionSetId ? { motionSetId } : {}),
+            ...(motionSlot ? { motionSlot } : {}),
+          }),
+        });
+        const payload = (await response.json()) as { ok?: boolean; error?: string };
+        if (!response.ok || !payload.ok) {
+          set({ statusMessage: `Promotion refused: ${payload.error ?? 'unknown error'}` });
+          return;
+        }
+        await get().reloadAssets();
+        set({ statusMessage: `Promoted "${candidateId}" to a clip asset.` });
+      } catch (error) {
+        set({ statusMessage: `Promotion failed: ${String(error)}` });
+      }
+    },
+
+    /** Re-reads the registry from the API after a transaction changed it. */
+    async reloadAssets(project) {
+      try {
+        const response = await fetch('/api/animation-assets');
+        const payload = (await response.json()) as {
+          index?: Parameters<typeof registryFromLibraryIndex>[0];
+          project?: ProjectDefinition;
+        };
+        if (!payload.index) return;
+        const registry = registryFromLibraryIndex(payload.index);
+        const canonical = project ?? payload.project ?? get().canonicalProject;
+        const resolution = resolveFor(canonical, get().activeCharacterId, registry);
+        session.acceptCommitted(resolution.project);
+        engine.setProject(resolution.project);
+        set({
+          registry,
+          canonicalProject: canonical,
+          project: resolution.project,
+          assetIssues: resolution.issues,
+          revision: get().revision + 1,
+        });
+      } catch {
+        // A failed refresh leaves the previous registry in place; the caller's
+        // status message already says what happened.
+      }
+    },
 
     setPreviewValue(path, value, options) {
       const outcome = session.setPreviewValue({
@@ -336,7 +863,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     },
 
     setEquipped(slotId, equipped) {
-      const slot = initialProject.equipment.find((entry) => entry.id === slotId);
+      const slot = canonicalSeed.equipment.find((entry) => entry.id === slotId);
       if (!slot) return;
       engine.setEquipped(slotId, equipped);
       set({
@@ -569,6 +1096,19 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         return;
       }
 
+      // Animation edits belong to an asset, and which asset is a human's
+      // decision. Committing them into project.json would be that decision
+      // taken silently, so the commit stops and asks instead.
+      if (session.stagedAssetChanges.length > 0) {
+        set({
+          libraryDialog: 'save-destination',
+          statusMessage:
+            `${session.stagedAssetChanges.length} staged change(s) belong to an animation asset. ` +
+            `Choose where they should live before committing.`,
+        });
+        return;
+      }
+
       if (!(await backendAvailable())) {
         set({
           statusMessage: `Commit: ${NO_BACKEND_MESSAGE} Staged changes stay in this browser.`,
@@ -584,7 +1124,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            document: session.buildStagedDocument(),
+            document: session.buildStagedProjectDocument(get().canonicalProject),
             baseSha: head.sha ?? '',
             sessionId,
             author: 'chamber-user',
@@ -611,8 +1151,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           return;
         }
 
-        session.acceptCommitted(payload.document);
-        syncPreview();
+        // Report the commit before refreshing the registry. The refresh is a
+        // second round-trip, and writing project.json makes the dev server
+        // reload the page — a status message that waited for it would often
+        // never be seen.
         set({
           commitLog: [
             `${payload.commit.sha.slice(0, 8)} on ${payload.commit.branch}: ${payload.message}`,
@@ -620,6 +1162,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           ],
           statusMessage: `Committed ${payload.commit.sha.slice(0, 8)} to ${payload.commit.branch}.`,
         });
+        await get().reloadAssets(payload.document);
       } catch (error) {
         set({
           statusMessage: `Commit failed: ${
@@ -747,12 +1290,16 @@ export const useChamber = create<ChamberState & ChamberActions>()(
 );
 
 /**
- * The document as the active weapon sees it: its own attack clips, its own
- * transition timing, and none of the other weapons' clips. Panels edit through
- * canonical paths, and those paths already name the weapon-specific clip, so
- * editing this view writes exactly the weapon you are looking at.
+ * The document as the active weapon sees it: its own attack clips and its own
+ * transition timing.
+ *
+ * Clip selection is a motion-set binding now, so this narrows the clip list to
+ * the ones the active weapon actually resolves to and folds in that weapon's
+ * transition overrides. Panels keep editing through canonical paths, and those
+ * paths address the resolved document, so editing this view writes exactly the
+ * weapon you are looking at.
  */
-export function useWeaponProject(): ProjectDefinition {
+export function useWeaponProject(): ResolvedProject {
   const project = useChamber((state) => state.project);
   const weaponModeId = useChamber((state) => state.weaponModeId);
   return useMemo(() => resolveWeaponMode(project, weaponModeId), [project, weaponModeId]);

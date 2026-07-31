@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "fall",
+    "version": "1.0.0",
+    "displayName": "fall",
+    "description": "Migrated from the embedded clip \"fall\".",
+    "tags": [
+      "migrated",
+      "loop"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "84ed5b3b2619e6ef285a09d7813542380b590e0d1314658fdc951f23f81dbbee",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "fall",
+    "assetPath": null,
+    "proceduralGenerator": "fall",
+    "durationSec": 0.8,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

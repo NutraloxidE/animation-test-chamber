@@ -7,6 +7,7 @@ import { hasPath } from '@atc/runtime-core';
 import { buildGeneratedFiles } from './generate-schemas.ts';
 import { buildBundleFiles, loadCanonicalProject } from './export-unity.ts';
 import { printStage, readRepoFile, run, stage, type StageIssue, type StageResult } from './lib.ts';
+import { loadResolvedProject } from './animation-assets.ts';
 
 export function typecheckStage(): StageResult {
   return stage(
@@ -135,12 +136,21 @@ export function canonicalDataStage(): StageResult {
         }),
       );
 
-      // Dead canonical references: invariants must point at paths that exist.
-      // Resolved with the same getAtPath the runtime uses — a second copy of
-      // path resolution here would drift from it, which is how this check
-      // reported a false positive the first time it was written.
+      /*
+       * Dead canonical references: invariants must point at paths that exist.
+       * Resolved with the same getAtPath the runtime uses — a second copy of
+       * path resolution here would drift from it, which is how this check
+       * reported a false positive the first time it was written.
+       *
+       * Since the asset split an invariant may address something the project
+       * only references — `/graph/forcedTransitionOrder` lives in the behaviour
+       * asset now — so the resolved document is what it is checked against.
+       * Checking the canonical file alone would call every animation invariant
+       * dead, which is how this check reported its *second* false positive.
+       */
+      const resolved = loadResolvedProject();
       for (const invariant of project.invariants) {
-        if (!hasPath(project, invariant.path)) {
+        if (!hasPath(project, invariant.path) && !hasPath(resolved, invariant.path)) {
           issues.push({
             files: ['projects/demo-character/project.json'],
             expected: `invariant path ${invariant.path} to resolve`,

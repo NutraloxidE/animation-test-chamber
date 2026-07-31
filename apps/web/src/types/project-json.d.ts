@@ -8,3 +8,17 @@ declare module '@chamber/project' {
   const project: ProjectDefinition;
   export default project;
 }
+
+/**
+ * The generated animation asset library.
+ *
+ * The project only holds references now, so the chamber cannot render without
+ * the assets they point at. Importing the generated index is what keeps the
+ * static build working: a host with no API still gets a full registry, and the
+ * Asset Library degrades by losing the ability to *write*, not to look.
+ */
+declare module '@chamber/animation-assets' {
+  import type { AnimationAssetLibraryIndex } from '@atc/animation-asset-runtime';
+  const index: AnimationAssetLibraryIndex;
+  export default index;
+}

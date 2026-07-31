@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-throw-attack-02-recovery",
+    "version": "1.0.0",
+    "displayName": "alt throw attack 02 recovery",
+    "description": "Migrated from the embedded clip \"throw-attack-02-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "987e3d3f3aefc1242280f6cb9c1a3137f6bdc62798137ee1f19f73fa10674316",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-throw-attack-02-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-02-recovery",
+    "durationSec": 1.0333333,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.55
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

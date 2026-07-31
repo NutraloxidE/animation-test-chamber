@@ -21,6 +21,7 @@ import {
   type StageIssue,
   type StageResult,
 } from './lib.ts';
+import { loadResolvedProject } from './animation-assets.ts';
 
 const PROJECT_PATH = 'projects/demo-character/project.json';
 
@@ -62,7 +63,23 @@ export function protectedValuesStage(): StageResult {
 
       const previous = JSON.parse(previousRaw) as ProjectDefinition;
       const current = JSON.parse(currentRaw) as ProjectDefinition;
-      const report = analyzeDiff(previous, current);
+
+      /*
+       * Across the schema v1 -> v2 split the two files are not comparable: the
+       * clips and the graph moved out of project.json into assets, so a naive
+       * diff reports every clip as deleted when none of them went anywhere.
+       *
+       * The meaningful comparison is against the *resolved* document, which is
+       * what the runtime actually sees, so that is what gets diffed. This makes
+       * the guard stricter rather than weaker: a clip that genuinely vanished
+       * during the migration still fails, because it would be missing from the
+       * resolved document too.
+       */
+      const comparable =
+        previous.schemaVersion === current.schemaVersion
+          ? current
+          : loadResolvedProject();
+      const report = analyzeDiff(previous, comparable);
 
       const issues: StageIssue[] = report.findings
         .filter((finding) => finding.severity === 'blocking')
@@ -351,6 +368,120 @@ export function restrictedAssetStage(): StageResult {
   );
 }
 
+/**
+ * A published asset version is immutable (PLAN 38).
+ *
+ * Editing one in place changes behaviour for every character already pointing
+ * at it — retroactively, invisibly, and without any replay having been run
+ * against the new content. Adding a version file is always fine; changing one
+ * that already existed at HEAD never is.
+ */
+export function publishedAssetImmutabilityStage(): StageResult {
+  return stage(
+    'no published asset version modified in place',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'restore the published file and publish a new version instead — every reference to it carries its content hash',
+    },
+    () => {
+      if (!gitHasCommits()) {
+        return { ok: true, issues: [], output: 'no previous commit to compare against' };
+      }
+      const issues: StageIssue[] = [];
+      for (const file of listFiles('assets/animation')) {
+        if (!file.endsWith('.json')) continue;
+        const before = readAtRevision('HEAD', file);
+        if (before === null) continue; // A new version file: exactly what is allowed.
+        const after = readRepoFile(file);
+        if (after === null) {
+          issues.push({
+            files: [file],
+            expected: 'the published version to still exist',
+            actual: 'it was deleted',
+            message: `published asset ${file} was deleted`,
+          });
+          continue;
+        }
+        if (before !== after) {
+          issues.push({
+            files: [file],
+            expected: 'the published version to be byte-identical',
+            actual: 'its contents changed',
+            message: `published asset ${file} was modified in place`,
+          });
+        }
+      }
+      return { ok: issues.length === 0, issues };
+    },
+  );
+}
+
+/**
+ * The runtime must not infer behaviour from a state's name (PLAN 33).
+ *
+ * Every one of these branches was real, wanted behaviour selected by spelling,
+ * which meant a second character could only inherit it by naming its states the
+ * same way. They now live in canonical policy fields, and this keeps them from
+ * creeping back in.
+ */
+export function stateNameDependenceStage(): StageResult {
+  return stage(
+    'no runtime behaviour inferred from state names',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'move the special case onto a canonical field (completionPolicy, recoveryPolicy, movementAuthorityPolicy) and read that instead',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const patterns: { test: RegExp; label: string }[] = [
+        { test: /\.startsWith\(\s*['"]attack-/, label: "startsWith('attack-')" },
+        { test: /\.endsWith\(\s*['"]-recovery/, label: "endsWith('-recovery')" },
+        { test: /stateId\s*===\s*['"](dodge|guard|walk|run|idle|jump|fall|land|slide)['"]/, label: 'stateId === a specific state' },
+        { test: /stateId\s*!==\s*['"](dodge|guard|walk|run|idle|jump|fall|land|slide)['"]/, label: 'stateId !== a specific state' },
+        { test: /actionState\s*===\s*['"]/, label: 'actionState === a literal' },
+        { test: /locomotionState\s*===\s*['"](walk|run)['"]/, label: 'locomotionState === walk/run' },
+      ];
+
+      // Only the layers that decide behaviour. Panels legitimately name states
+      // for display, and the demo data is allowed to contain its own state ids.
+      const runtimeFiles = [
+        ...listFiles('packages/animation-runtime/src'),
+        ...listFiles('packages/replay-runtime/src'),
+        ...listFiles('packages/terrain-runtime/src'),
+      ].filter((file) => file.endsWith('.ts'));
+
+      for (const file of runtimeFiles) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        // Comments explaining what was removed are the point, not a violation.
+        const code = content
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .split('\n')
+          .filter((line) => !line.trim().startsWith('//'))
+          .join('\n');
+        for (const pattern of patterns) {
+          if (pattern.test.test(code)) {
+            issues.push({
+              files: [file],
+              expected: 'behaviour to be read from a canonical policy field',
+              actual: `it branches on ${pattern.label}`,
+              message: `${file} infers behaviour from a state name (${pattern.label})`,
+            });
+          }
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${runtimeFiles.length} runtime file(s) checked`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     protectedValuesStage(),
@@ -359,6 +490,8 @@ export function repoGuardStages(): StageResult[] {
     generatedNotCanonicalStage(),
     secretsStage(),
     restrictedAssetStage(),
+    publishedAssetImmutabilityStage(),
+    stateNameDependenceStage(),
   ];
 }
 

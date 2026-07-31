@@ -1,0 +1,862 @@
+{
+  "run-to-attack-forward": {
+    "tickCount": 150,
+    "traceHash": "a87323b6e0088c0ddb14d097492980a3e339a8a248020bb2cef9e7bb00dadc30",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "walk"
+    ],
+    "actionSequence": [
+      "action-none",
+      "attack-01",
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "AttackWindup",
+      "AttackHit",
+      "AttackRecoil",
+      "FootContactLeft",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 8.231249
+    },
+    "metrics": {
+      "footSlidingDistance": 6.7496,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 0,
+      "rootMotionError": 5.1013,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 8.231249
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "walk"
+      ],
+      "actionSequence": [
+        "action-none",
+        "attack-01",
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 6,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 29,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 50,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 71,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 80,
+          "event": "AttackWindup"
+        },
+        {
+          "tick": 89,
+          "event": "AttackHit"
+        },
+        {
+          "tick": 96,
+          "event": "AttackRecoil"
+        },
+        {
+          "tick": 125,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 143,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  },
+  "attack-01-to-attack-02": {
+    "tickCount": 160,
+    "traceHash": "a29028a82590ff1fc9780b0f7e69e2e3254f695a5c9c8adb8b28cdecbe9019a7",
+    "locomotionSequence": [
+      "idle"
+    ],
+    "actionSequence": [
+      "attack-01",
+      "attack-02",
+      "action-none"
+    ],
+    "events": [
+      "AttackWindup",
+      "AttackHit",
+      "AttackRecoil",
+      "AttackWindup",
+      "AttackHit",
+      "AttackRecoil"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "metrics": {
+      "footSlidingDistance": 3.5571,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 0,
+      "rootMotionError": 0,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "stateSequence": [
+        "idle"
+      ],
+      "actionSequence": [
+        "attack-01",
+        "attack-02",
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 12,
+          "event": "AttackWindup"
+        },
+        {
+          "tick": 20,
+          "event": "AttackHit"
+        },
+        {
+          "tick": 27,
+          "event": "AttackRecoil"
+        },
+        {
+          "tick": 36,
+          "event": "AttackWindup"
+        },
+        {
+          "tick": 47,
+          "event": "AttackHit"
+        },
+        {
+          "tick": 60,
+          "event": "AttackRecoil"
+        }
+      ]
+    }
+  },
+  "late-dodge-cancel": {
+    "tickCount": 160,
+    "traceHash": "75acb724f39b21fd3ebb7fcfd4d57a4f03b06725be802bbd583f0d7ea080f0e7",
+    "locomotionSequence": [
+      "idle"
+    ],
+    "actionSequence": [
+      "attack-01",
+      "dodge",
+      "action-none"
+    ],
+    "events": [
+      "AttackWindup",
+      "AttackHit",
+      "AttackRecoil",
+      "DodgeStart",
+      "DodgeEnd"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 3.5
+    },
+    "metrics": {
+      "footSlidingDistance": 8.8362,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 0,
+      "rootMotionError": 0,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 3.5
+      },
+      "stateSequence": [
+        "idle"
+      ],
+      "actionSequence": [
+        "attack-01",
+        "dodge",
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 12,
+          "event": "AttackWindup"
+        },
+        {
+          "tick": 20,
+          "event": "AttackHit"
+        },
+        {
+          "tick": 27,
+          "event": "AttackRecoil"
+        },
+        {
+          "tick": 38,
+          "event": "DodgeStart"
+        },
+        {
+          "tick": 104,
+          "event": "DodgeEnd"
+        }
+      ]
+    }
+  },
+  "jump-buffer-before-landing": {
+    "tickCount": 200,
+    "traceHash": "feab6b7dd30bc02118d610096c4bd0eb04f0a66ba14a18b875144696085f038d",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "jump",
+      "fall",
+      "jump",
+      "fall",
+      "land",
+      "run",
+      "walk"
+    ],
+    "actionSequence": [
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "FootContactRight",
+      "JumpTakeoff",
+      "Landing",
+      "JumpTakeoff",
+      "Landing",
+      "Landing",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 14.205272
+    },
+    "metrics": {
+      "footSlidingDistance": 9.9626,
+      "footFloatingTicks": 2,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 4,
+      "pelvisJerk": 58.303,
+      "rootMotionError": 10.6826,
+      "landingStabilizationTicks": 1,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 14.205272
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "jump",
+        "fall",
+        "jump",
+        "fall",
+        "land",
+        "run",
+        "walk"
+      ],
+      "actionSequence": [
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 6,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 29,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 30,
+          "event": "JumpTakeoff"
+        },
+        {
+          "tick": 70,
+          "event": "Landing"
+        },
+        {
+          "tick": 71,
+          "event": "JumpTakeoff"
+        },
+        {
+          "tick": 111,
+          "event": "Landing"
+        },
+        {
+          "tick": 113,
+          "event": "Landing"
+        },
+        {
+          "tick": 120,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 141,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 162,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 183,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 193,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  },
+  "dodge-jump-queued": {
+    "tickCount": 220,
+    "traceHash": "2aec944e2f43849f48cb0cca2173025ceb5be0c20bc54d5c0c0d1dac709bb0c5",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "jump",
+      "fall",
+      "land",
+      "run",
+      "walk",
+      "idle"
+    ],
+    "actionSequence": [
+      "action-none",
+      "dodge",
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "DodgeStart",
+      "FootContactRight",
+      "Landing",
+      "Landing",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 15.866427
+    },
+    "metrics": {
+      "footSlidingDistance": 13.9659,
+      "footFloatingTicks": 1,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 2,
+      "pelvisJerk": 28.494,
+      "rootMotionError": 9.1481,
+      "landingStabilizationTicks": 1,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 15.866427
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "jump",
+        "fall",
+        "land",
+        "run",
+        "walk",
+        "idle"
+      ],
+      "actionSequence": [
+        "action-none",
+        "dodge",
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 6,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 22,
+          "event": "DodgeStart"
+        },
+        {
+          "tick": 38,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 104,
+          "event": "Landing"
+        },
+        {
+          "tick": 106,
+          "event": "Landing"
+        },
+        {
+          "tick": 113,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 134,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 155,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 176,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 197,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 203,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  },
+  "downhill-root-motion": {
+    "tickCount": 220,
+    "traceHash": "d88a06e805291adee01e696bb6fc9bb9d66236fd5549035bb567a09e62f01d1e",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "walk"
+    ],
+    "actionSequence": [
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": -2,
+      "z": 19.755381
+    },
+    "metrics": {
+      "footSlidingDistance": 15.9224,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 6.9,
+      "rootMotionError": 12.2063,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": -2,
+        "z": 19.755381
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "walk"
+      ],
+      "actionSequence": [
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 6,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 29,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 48,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 68,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 88,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 107,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 127,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 148,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 169,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 190,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 211,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 213,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  },
+  "stair-foot-ik": {
+    "tickCount": 260,
+    "traceHash": "41bd0f118d5c615d4b001546cc700e05e3d3c2605b29e64070f6b2556ed24f1d",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "walk"
+    ],
+    "actionSequence": [
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 2.52,
+      "z": 22.765121
+    },
+    "metrics": {
+      "footSlidingDistance": 18.2187,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0.0108,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 154.986,
+      "rootMotionError": 14.0626,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 2.52,
+        "z": 22.765121
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "walk"
+      ],
+      "actionSequence": [
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 6,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 29,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 50,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 71,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 92,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 113,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 134,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 155,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 176,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 197,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 218,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 239,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 253,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  },
+  "moving-platform-jump": {
+    "tickCount": 240,
+    "traceHash": "5c24e3651829e35eaa990fef23515a284391961b6897fe8fb2ce76c303922b72",
+    "locomotionSequence": [
+      "idle",
+      "jump",
+      "fall",
+      "land",
+      "idle",
+      "jump",
+      "fall",
+      "land",
+      "idle"
+    ],
+    "actionSequence": [
+      "action-none"
+    ],
+    "events": [
+      "JumpTakeoff",
+      "Landing",
+      "Landing",
+      "JumpTakeoff",
+      "Landing",
+      "Landing"
+    ],
+    "finalPosition": {
+      "x": -1.889987,
+      "y": 0,
+      "z": 8
+    },
+    "metrics": {
+      "footSlidingDistance": 15.9991,
+      "footFloatingTicks": 2,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 4,
+      "pelvisJerk": 56.988,
+      "rootMotionError": 5.3814,
+      "landingStabilizationTicks": 1,
+      "movingPlatformDrift": 1.9423,
+      "finalPosition": {
+        "x": -1.889987,
+        "y": 0,
+        "z": 8
+      },
+      "stateSequence": [
+        "idle",
+        "jump",
+        "fall",
+        "land",
+        "idle",
+        "jump",
+        "fall",
+        "land",
+        "idle"
+      ],
+      "actionSequence": [
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 30,
+          "event": "JumpTakeoff"
+        },
+        {
+          "tick": 70,
+          "event": "Landing"
+        },
+        {
+          "tick": 72,
+          "event": "Landing"
+        },
+        {
+          "tick": 140,
+          "event": "JumpTakeoff"
+        },
+        {
+          "tick": 180,
+          "event": "Landing"
+        },
+        {
+          "tick": 182,
+          "event": "Landing"
+        }
+      ]
+    }
+  },
+  "ice-surface-stop": {
+    "tickCount": 240,
+    "traceHash": "5b3a48f027e5d73ddad57f4c1606d2e24c067aee8922f9c8dfd7210ca1f29d8e",
+    "locomotionSequence": [
+      "walk",
+      "run",
+      "walk",
+      "idle"
+    ],
+    "actionSequence": [
+      "action-none"
+    ],
+    "events": [
+      "FootContactLeft",
+      "FootContactLeft",
+      "FootContactRight",
+      "FootContactLeft",
+      "FootContactLeft"
+    ],
+    "finalPosition": {
+      "x": 0,
+      "y": 0,
+      "z": 6.929029
+    },
+    "metrics": {
+      "footSlidingDistance": 10.6245,
+      "footFloatingTicks": 0,
+      "maxPenetration": 0,
+      "groundedFlickerCount": 0,
+      "pelvisJerk": 0,
+      "rootMotionError": 4.7602,
+      "landingStabilizationTicks": 0,
+      "movingPlatformDrift": 0,
+      "finalPosition": {
+        "x": 0,
+        "y": 0,
+        "z": 6.929029
+      },
+      "stateSequence": [
+        "walk",
+        "run",
+        "walk",
+        "idle"
+      ],
+      "actionSequence": [
+        "action-none"
+      ],
+      "eventTimeline": [
+        {
+          "tick": 1,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 9,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 54,
+          "event": "FootContactRight"
+        },
+        {
+          "tick": 78,
+          "event": "FootContactLeft"
+        },
+        {
+          "tick": 93,
+          "event": "FootContactLeft"
+        }
+      ]
+    }
+  }
+}

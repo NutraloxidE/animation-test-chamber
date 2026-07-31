@@ -1,7 +1,7 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "revision:rev-0006",
+  "_generatedAt": "revision:rev-0008",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "movement": {
     "schemaVersion": 1,

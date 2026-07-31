@@ -210,25 +210,99 @@ export const TransitionDefinition = Type.Object(
 );
 export type TransitionDefinition = Static<typeof TransitionDefinition>;
 
+/**
+ * What happens when a state's clip reaches its end.
+ *
+ * This replaces `stateId.startsWith('attack-')` in the graph runtime. The old
+ * rule was real behaviour — an attack falls through one tick late so its final
+ * frame is rendered rather than swallowed — but it was keyed on a name, which
+ * meant a new character could only get it by choosing the right spelling.
+ */
+export const StateCompletionPolicy = Type.Object(
+  {
+    mode: Type.Union([
+      Type.Literal('loop'),
+      Type.Literal('immediate-fallback'),
+      Type.Literal('hold-final-frame'),
+      Type.Literal('wait-for-transition'),
+    ]),
+    /** Extra ticks to hold on the final frame. 0 is the one-tick default. */
+    holdTicks: Type.Integer({ minimum: 0, maximum: 240 }),
+  },
+  { $id: 'StateCompletionPolicy', additionalProperties: false },
+);
+export type StateCompletionPolicy = Static<typeof StateCompletionPolicy>;
+
+/**
+ * When an action hands the root back to locomotion. Replaces the
+ * `endsWith('-recovery')` branch: a dedicated recovery clip returns authority
+ * from its first frame, a dodge returns it near the end, and now both say so.
+ */
+export const StateRecoveryPolicy = Type.Object(
+  {
+    authorityReturnAtNormalized: NormalizedTime,
+    blendDurationSec: Type.Number({ minimum: 0, maximum: 2 }),
+  },
+  { $id: 'StateRecoveryPolicy', additionalProperties: false },
+);
+export type StateRecoveryPolicy = Static<typeof StateRecoveryPolicy>;
+
+/**
+ * Who is allowed to move the character while this state is active.
+ *
+ * Three separate name checks used to live in the simulation — `startsWith
+ * ('attack-')`, `=== 'dodge'`, `=== 'walk' || === 'run'`. They are three
+ * different questions, so they are three fields rather than one enum.
+ */
+export const MovementAuthorityPolicy = Type.Object(
+  {
+    /** Action layer: pins the character until its recovery window opens. */
+    locksMovementUntilRecovery: Type.Boolean(),
+    /** Action layer: blends movement authority back over the recovery ramp. */
+    returnsAuthorityOnRecovery: Type.Boolean(),
+    /** Locomotion layer: counts as active ground locomotion to receive it. */
+    providesLocomotionAuthority: Type.Boolean(),
+    /**
+     * Which authored speed this state's clip was made at, so playback can be
+     * scaled to the speed actually reached and the feet stop skating.
+     */
+    locomotionSpeedReference: Type.Union([
+      Type.Literal('none'),
+      Type.Literal('walk'),
+      Type.Literal('run'),
+    ]),
+  },
+  { $id: 'MovementAuthorityPolicy', additionalProperties: false },
+);
+export type MovementAuthorityPolicy = Static<typeof MovementAuthorityPolicy>;
+
 export const StateDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
     id: Id,
-    clipId: Id,
     /**
-     * Clip to play instead of `clipId`, keyed by weapon mode id. A swing belongs
-     * to the weapon, the state machine does not: one `attack-01` state keeps the
-     * combo structure shared while each weapon owns its own timing, displacement
-     * and events. `clipId` is the fallback for a mode with no entry here.
+     * Logical motion this state plays, e.g. `action.primary.01`. The state
+     * machine never names a clip: the character's motion set binds the slot.
+     * That is the whole reason two characters can share one behaviour.
      */
-    weaponClips: Type.Optional(Type.Record(Type.String(), Id)),
-    layer: Type.Union([Type.Literal('locomotion'), Type.Literal('action')]),
+    motionSlot: Type.String({ minLength: 1, maxLength: 128 }),
+    /**
+     * Slot to use instead, keyed by context (the weapon mode in the demo).
+     * Most contextual motion is expressed as a contextual *binding* inside the
+     * motion set — same slot, different clip. This is for the rarer case where
+     * a context should play a structurally different slot altogether.
+     */
+    contextualMotionSlots: Type.Optional(Type.Record(Type.String(), Type.String())),
+    layer: Type.String({ minLength: 1, maxLength: 64 }),
     loop: Type.Boolean(),
     speed: Type.Number({ minimum: 0.05, maximum: 4 }),
     /** Seconds after which the state force-exits. 0 disables. */
     timeoutSec: Type.Number({ minimum: 0, maximum: 60 }),
     /** State entered when the clip finishes and no transition matched. */
     fallbackState: Type.Optional(Id),
+    completionPolicy: StateCompletionPolicy,
+    recoveryPolicy: Type.Optional(StateRecoveryPolicy),
+    movementAuthorityPolicy: MovementAuthorityPolicy,
     /** May a transition re-enter this state from itself. */
     allowReEntry: Type.Boolean(),
     interruptible: Type.Boolean(),
@@ -250,7 +324,12 @@ export type StateDefinition = Static<typeof StateDefinition>;
 
 export const LayerDefinition = Type.Object(
   {
-    id: Type.Union([Type.Literal('locomotion'), Type.Literal('action')]),
+    /**
+     * A string, not a two-member union. The MVP still ships exactly the
+     * locomotion and action layers, but a behaviour asset that wanted a third
+     * would otherwise have to change this package to get it.
+     */
+    id: Type.String({ minLength: 1, maxLength: 64 }),
     /** Higher index composites on top. */
     order: Type.Integer({ minimum: 0, maximum: 8 }),
     defaultState: Id,

@@ -1296,3 +1296,525 @@ textarea {
   background: #fff;
   box-shadow: 0 0 5px #fff;
 }
+
+/* ---------------------------------------------------------------------------
+ * Asset Library (PLAN 24)
+ *
+ * Desktop is three panes; 320px is a drill-down, one pane at a time. The
+ * narrow layout is not the wide one squeezed — three columns of asset metadata
+ * at 320px is unreadable however carefully it scales — so `data-pane` on the
+ * root decides which single pane is visible instead.
+ * ------------------------------------------------------------------------- */
+
+.workspace-switch {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--panel, #111827);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.workspace-switch button {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.workspace-switch button.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.app--library {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.asset-library {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.asset-library__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.asset-library__bar label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.asset-library__static {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(234, 179, 8, 0.16);
+  color: #eab308;
+}
+
+.asset-library__crumbs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.asset-library__crumbs button {
+  flex: 1;
+  padding: 6px;
+  font-size: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.asset-library__crumbs button.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.asset-library__panes {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 200px minmax(280px, 1fr) minmax(320px, 1.2fr);
+}
+
+.asset-library__pane {
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.asset-library__pane:last-child {
+  border-right: none;
+}
+
+.asset-types h3 {
+  margin: 12px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.asset-types ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asset-types button {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: left;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.asset-types button.is-active {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--accent);
+}
+
+.asset-search input {
+  width: 100%;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.5);
+  color: inherit;
+}
+
+.asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.35);
+  color: inherit;
+  cursor: pointer;
+}
+
+.asset-card.is-selected {
+  border-color: var(--accent);
+}
+
+.asset-card.is-invalid {
+  border-color: rgba(248, 113, 113, 0.6);
+}
+
+.asset-card--static {
+  cursor: default;
+}
+
+.asset-card__name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.asset-card__meta,
+.asset-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.asset-card__tags {
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.asset-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.asset-badge--valid {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.asset-badge--invalid {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+}
+
+.asset-badge--protected {
+  background: rgba(234, 179, 8, 0.18);
+  color: #eab308;
+}
+
+.asset-detail h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.asset-detail section {
+  margin-top: 16px;
+}
+
+.asset-detail h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.asset-facts {
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.asset-facts div {
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-facts dt {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+}
+
+.asset-facts dd {
+  margin: 0;
+}
+
+.asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.asset-table th,
+.asset-table td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.asset-table th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+}
+
+.asset-warning {
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+.asset-issues {
+  margin: 8px 0 0;
+  padding: 8px 10px 8px 24px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  color: #fca5a5;
+}
+
+.asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.asset-actions button {
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.asset-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.asset-actions__blockers,
+.asset-actions__static {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+.clip-track {
+  position: relative;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.clip-track__event {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+}
+
+.clip-track__contact {
+  position: absolute;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(34, 197, 94, 0.5);
+}
+
+.clip-track__contact--left {
+  top: 3px;
+}
+
+.clip-track__contact--right {
+  bottom: 3px;
+}
+
+.asset-dependencies {
+  display: grid;
+  gap: 16px;
+}
+
+.asset-dependencies ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+
+.version-diff__list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+}
+
+.asset-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(520px, calc(100vw - 24px));
+  max-height: min(80vh, 720px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+  background: var(--panel, #0f172a);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%);
+}
+
+.asset-dialog h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.asset-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.asset-dialog__radio {
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+}
+
+.asset-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.asset-dialog__actions button {
+  padding: 6px 14px;
+  font-size: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.asset-dialog__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.save-destination__changes {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+}
+
+.save-destination__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.save-destination__option {
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+}
+
+.save-destination__option.is-disabled {
+  opacity: 0.5;
+}
+
+.save-destination__impact {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Narrow: one pane at a time, chosen by the crumb bar. */
+@media (max-width: 900px) {
+  .asset-library__panes {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-library__pane {
+    display: none;
+    border-right: none;
+  }
+
+  .asset-library[data-pane='types'] .asset-library__pane--types,
+  .asset-library[data-pane='list'] .asset-library__pane--list,
+  .asset-library[data-pane='detail'] .asset-library__pane--detail {
+    display: block;
+  }
+}
+
+/* Wide: all three panes, so the crumb bar has nothing to switch between. */
+@media (min-width: 901px) {
+  .asset-library__crumbs {
+    display: none;
+  }
+}

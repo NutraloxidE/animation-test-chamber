@@ -17,7 +17,8 @@
     "@atc/schema": "workspace:*",
     "@atc/unity-export": "workspace:*",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.15"
+    "hono": "^4.6.15",
+    "@atc/animation-asset-runtime": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.2"

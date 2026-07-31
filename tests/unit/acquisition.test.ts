@@ -13,7 +13,7 @@ import {
   canPromote,
   createWorkerClient,
 } from '@atc/acquisition-core';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
 /** Builds a minimal but structurally valid GLB with one animation. */
 function buildGlb(options: { animations?: boolean; skin?: boolean } = {}): Uint8Array {
@@ -189,7 +189,7 @@ describe('import', () => {
 });
 
 describe('candidate lifecycle', () => {
-  const project = loadDemoProject();
+  const project = loadResolvedDemoProject();
   const bytes = buildGlb({ skin: true });
   const candidate = importAsset({
     filename: 'swing.glb',

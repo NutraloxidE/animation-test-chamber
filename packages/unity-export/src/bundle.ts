@@ -1,4 +1,4 @@
-import type { ProjectDefinition, ReplayDefinition } from '@atc/schema';
+import type { ResolvedProject, ReplayDefinition } from '@atc/schema';
 import {
   ACTION_NAMES,
   AnimationGraphDefinition,
@@ -62,7 +62,7 @@ function json(value: unknown): string {
  * each file carries a `_generated` marker and the adapter README says so.
  */
 export function buildUnityBundle(
-  project: ProjectDefinition,
+  project: ResolvedProject,
   replays: ReplayDefinition[],
   generatedAt = new Date().toISOString(),
 ): ExportFile[] {

@@ -7,9 +7,9 @@ import {
   resolveBinding,
   unavailableCapability,
 } from '@atc/haptics-runtime';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 function capabilityAt(tier: CapabilityProfile['effectiveTier']): CapabilityProfile {
   return {

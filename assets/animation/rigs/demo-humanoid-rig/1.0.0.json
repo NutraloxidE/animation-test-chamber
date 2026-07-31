@@ -1,0 +1,203 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "humanoid-rig",
+    "id": "demo-humanoid-rig",
+    "version": "1.0.0",
+    "displayName": "Demo humanoid rig",
+    "description": "Canonical humanoid skeleton the demo clips were authored against.",
+    "tags": [
+      "humanoid",
+      "demo"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "2f8c7909d85613f6872337d287261ea1f4ef5a43649be0c5a270736bb6d91f6d",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "skeleton": {
+    "schemaVersion": 2,
+    "id": "canonical-humanoid",
+    "height": 1.8,
+    "hipsBone": "hips",
+    "leftFootBone": "foot_l",
+    "rightFootBone": "foot_r",
+    "bones": [
+      {
+        "name": "hips",
+        "parent": null,
+        "humanoid": "Hips",
+        "restPosition": {
+          "x": 0,
+          "y": 0.95,
+          "z": 0
+        }
+      },
+      {
+        "name": "spine",
+        "parent": "hips",
+        "humanoid": "Spine",
+        "restPosition": {
+          "x": 0,
+          "y": 1.2,
+          "z": 0
+        }
+      },
+      {
+        "name": "chest",
+        "parent": "spine",
+        "humanoid": "Chest",
+        "restPosition": {
+          "x": 0,
+          "y": 1.4,
+          "z": 0
+        }
+      },
+      {
+        "name": "head",
+        "parent": "chest",
+        "humanoid": "Head",
+        "restPosition": {
+          "x": 0,
+          "y": 1.68,
+          "z": 0
+        }
+      },
+      {
+        "name": "upperarm_l",
+        "parent": "chest",
+        "humanoid": "LeftUpperArm",
+        "restPosition": {
+          "x": -0.2,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "lowerarm_l",
+        "parent": "upperarm_l",
+        "humanoid": "LeftLowerArm",
+        "restPosition": {
+          "x": -0.45,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "hand_l",
+        "parent": "lowerarm_l",
+        "humanoid": "LeftHand",
+        "restPosition": {
+          "x": -0.65,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "upperarm_r",
+        "parent": "chest",
+        "humanoid": "RightUpperArm",
+        "restPosition": {
+          "x": 0.2,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "lowerarm_r",
+        "parent": "upperarm_r",
+        "humanoid": "RightLowerArm",
+        "restPosition": {
+          "x": 0.45,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "hand_r",
+        "parent": "lowerarm_r",
+        "humanoid": "RightHand",
+        "restPosition": {
+          "x": 0.65,
+          "y": 1.45,
+          "z": 0
+        }
+      },
+      {
+        "name": "upperleg_l",
+        "parent": "hips",
+        "humanoid": "LeftUpperLeg",
+        "restPosition": {
+          "x": -0.12,
+          "y": 0.9,
+          "z": 0
+        }
+      },
+      {
+        "name": "lowerleg_l",
+        "parent": "upperleg_l",
+        "humanoid": "LeftLowerLeg",
+        "restPosition": {
+          "x": -0.12,
+          "y": 0.5,
+          "z": 0
+        }
+      },
+      {
+        "name": "foot_l",
+        "parent": "lowerleg_l",
+        "humanoid": "LeftFoot",
+        "restPosition": {
+          "x": -0.12,
+          "y": 0.08,
+          "z": 0.05
+        }
+      },
+      {
+        "name": "upperleg_r",
+        "parent": "hips",
+        "humanoid": "RightUpperLeg",
+        "restPosition": {
+          "x": 0.12,
+          "y": 0.9,
+          "z": 0
+        }
+      },
+      {
+        "name": "lowerleg_r",
+        "parent": "upperleg_r",
+        "humanoid": "RightLowerLeg",
+        "restPosition": {
+          "x": 0.12,
+          "y": 0.5,
+          "z": 0
+        }
+      },
+      {
+        "name": "foot_r",
+        "parent": "lowerleg_r",
+        "humanoid": "RightFoot",
+        "restPosition": {
+          "x": 0.12,
+          "y": 0.08,
+          "z": 0.05
+        }
+      }
+    ]
+  },
+  "compatibilityKey": "canonical-humanoid@16",
+  "coordinateSystem": {
+    "upAxis": "Y",
+    "forwardAxis": "+Z",
+    "handedness": "right",
+    "unitMeters": 1
+  },
+  "humanoidBones": {
+    "hips": "hips",
+    "leftFoot": "foot_l",
+    "rightFoot": "foot_r"
+  },
+  "retargetStatus": "direct-compatible"
+}

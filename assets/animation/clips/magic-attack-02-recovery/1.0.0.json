@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "magic-attack-02-recovery",
+    "version": "1.0.0",
+    "displayName": "magic attack 02 recovery",
+    "description": "Migrated from the embedded clip \"magic-attack-02-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "6a15aabcca691e071be5d4a1f9e36bee846d56e71f93e2dd60fff48963b7be14",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "magic-attack-02-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-02-recovery",
+    "durationSec": 1.0333333,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

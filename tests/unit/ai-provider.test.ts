@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { RuleBasedProvider, createAiProvider, parseIntent } from '@atc/ai-adapter';
 import { analyzeDiff, getAtPath, setAtPath } from '@atc/runtime-core';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 const provider = new RuleBasedProvider();
 const TARGET = '/graph/transitions/run-to-attack-01';
 

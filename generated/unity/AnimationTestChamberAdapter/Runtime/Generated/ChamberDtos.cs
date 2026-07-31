@@ -60,10 +60,10 @@ namespace AnimationTestChamber.Generated
         public string id;
         public string displayName;
         public string revisionId;
-        public CharacterDefinition character;
-        public List<AnimationClipDefinition> clips;
-        public AnimationGraphDefinition graph;
+        public List<CharacterDefinition> characters;
+        public string activeCharacterId;
         public InputMapDefinition inputMap;
+        public List<EquipmentSlotDefinition> equipment;
         public MovementProfile movement;
         public RootMotionProfile rootMotion;
         public TerrainInteractionProfile terrain;
@@ -85,120 +85,44 @@ namespace AnimationTestChamber.Generated
         public string id;
         public string displayName;
         public string modelAssetPath;
-        public SkeletonDefinition skeleton;
         public float capsuleRadius;
         public float capsuleHeight;
+        public CharacterAnimationAssignment animation;
         // optional
         public ProtectionMetadata protection;
     }
 
     [Serializable]
-    public class SkeletonDefinition
+    public class CharacterAnimationAssignment
     {
-        public int schemaVersion;
-        public string id;
-        public float height;
-        public List<SkeletonBone> bones;
-        public string leftFootBone;
-        public string rightFootBone;
-        public string hipsBone;
-    }
-
-    [Serializable]
-    public class SkeletonBone
-    {
-        public string name;
-        public string parent;
+        public AssetReference behavior;
+        public AssetReference motionSet;
+        public AssetReference rig;
         // optional
-        public string humanoid;
-        public Vec3 restPosition;
+        public AssetReference tuning;
+        public List<CanonicalPatch> instanceOverrides;
     }
 
     [Serializable]
-    public class Vec3
+    public class AssetReference
     {
-        public float x;
-        public float y;
-        public float z;
+        public string /* animation-behavior | animation-motion-set | animation-clip | humanoid-rig | animation-tuning */ assetType;
+        public string assetId;
+        public string version;
+        public string contentHash;
     }
 
     [Serializable]
-    public class ProtectionMetadata
+    public class CanonicalPatch
     {
-        public string /* editable | approval-required | locked | invariant */ level;
+        public string path;
+        public string /* set | append | remove */ op;
+        // optional
+        public string value;
         // optional
         public string reason;
         // optional
-        public string setBy;
-        // optional
-        public string setAt;
-        // optional
-        public string fields;
-    }
-
-    [Serializable]
-    public class AnimationClipDefinition
-    {
-        public int schemaVersion;
-        public string id;
-        public string assetPath;
-        // optional
-        public string proceduralGenerator;
-        public float durationSec;
-        public bool loop;
-        // optional
-        public ClipTimeCurve timeCurve;
-        public Vec3 rootDisplacement;
-        public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
-        // optional
-        public string /* Linear | FastInSlowOut */ rootMotionCurve;
-        // optional
-        public float recoveryTransitionStartNormalized;
-        // optional
-        public float inputAcceptanceStartNormalized;
-        // optional
-        public float rotationScaleWhilePlaying;
-        public List<SemanticEventDefinition> events;
-        public AnimationClipDefinitionFootContacts footContacts;
-        // optional
-        public ProtectionMetadata protection;
-        // optional
         public ValueProvenance provenance;
-    }
-
-    [Serializable]
-    public class ClipTimeCurve
-    {
-        public float x1;
-        public float y1;
-        public float x2;
-        public float y2;
-    }
-
-    [Serializable]
-    public class SemanticEventDefinition
-    {
-        public string id;
-        public string /* FootContactLeft | FootContactRight | AttackWindup | AttackHit | AttackRecoil | JumpTakeoff | Landing | DamageReceived | DodgeStart | DodgeEnd | GuardImpact */ kind;
-        public float at;
-        // optional
-        public string payload;
-        // optional
-        public ProtectionMetadata protection;
-    }
-
-    [Serializable]
-    public class AnimationClipDefinitionFootContacts
-    {
-        public List<NormalizedWindow> left;
-        public List<NormalizedWindow> right;
-    }
-
-    [Serializable]
-    public class NormalizedWindow
-    {
-        public float start;
-        public float end;
     }
 
     [Serializable]
@@ -220,86 +144,17 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
-    public class AnimationGraphDefinition
+    public class ProtectionMetadata
     {
-        public int schemaVersion;
-        public string id;
-        public List<LayerDefinition> layers;
-        public List<StateDefinition> states;
-        public List<TransitionDefinition> transitions;
-        public List<string> forcedTransitionOrder;
+        public string /* editable | approval-required | locked | invariant */ level;
         // optional
-        public ProtectionMetadata protection;
-    }
-
-    [Serializable]
-    public class LayerDefinition
-    {
-        public string /* locomotion | action */ id;
-        public int order;
-        public string defaultState;
-        public float weight;
-        public string /* full | upper | lower */ bodyMask;
-    }
-
-    [Serializable]
-    public class StateDefinition
-    {
-        public int schemaVersion;
-        public string id;
-        public string clipId;
+        public string reason;
         // optional
-        public string weaponClips;
-        public string /* locomotion | action */ layer;
-        public bool loop;
-        public float speed;
-        public float timeoutSec;
+        public string setBy;
         // optional
-        public string fallbackState;
-        public bool allowReEntry;
-        public bool interruptible;
+        public string setAt;
         // optional
-        public string /* full | upper | lower */ bodyMask;
-        // optional
-        public ProtectionMetadata protection;
-    }
-
-    [Serializable]
-    public class TransitionDefinition
-    {
-        public int schemaVersion;
-        public string id;
-        public string from;
-        public string to;
-        public List<TransitionCondition> conditions;
-        public float blendDurationSec;
-        public float startOffsetNormalized;
-        // optional
-        public float exitTimeNormalized;
-        public float playbackSpeed;
-        public float momentumRetention;
-        public float rotationAuthority;
-        public bool interruptible;
-        public float inputBufferMs;
-        // optional
-        public NormalizedWindow cancelWindow;
-        public int priority;
-        // optional
-        public string weaponOverrides;
-        // optional
-        public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
-        // optional
-        public ProtectionMetadata protection;
-        // optional
-        public ValueProvenance provenance;
-    }
-
-    [Serializable]
-    public class TransitionCondition
-    {
-        public string parameter;
-        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ operator;
-        public string value;
+        public string fields;
     }
 
     [Serializable]
@@ -345,6 +200,17 @@ namespace AnimationTestChamber.Generated
         public float buttonScale;
         public float opacity;
         public bool hideForRecording;
+    }
+
+    [Serializable]
+    public class EquipmentSlotDefinition
+    {
+        public string id;
+        public string parameter;
+        public string label;
+        public bool defaultEquipped;
+        // optional
+        public ProtectionMetadata protection;
     }
 
     [Serializable]
@@ -584,6 +450,125 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
+    public class AnimationGraphDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public List<LayerDefinition> layers;
+        public List<StateDefinition> states;
+        public List<TransitionDefinition> transitions;
+        public List<string> forcedTransitionOrder;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class LayerDefinition
+    {
+        public string id;
+        public int order;
+        public string defaultState;
+        public float weight;
+        public string /* full | upper | lower */ bodyMask;
+    }
+
+    [Serializable]
+    public class StateDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string motionSlot;
+        // optional
+        public string contextualMotionSlots;
+        public string layer;
+        public bool loop;
+        public float speed;
+        public float timeoutSec;
+        // optional
+        public string fallbackState;
+        public StateCompletionPolicy completionPolicy;
+        // optional
+        public StateRecoveryPolicy recoveryPolicy;
+        public MovementAuthorityPolicy movementAuthorityPolicy;
+        public bool allowReEntry;
+        public bool interruptible;
+        // optional
+        public string /* full | upper | lower */ bodyMask;
+        // optional
+        public ProtectionMetadata protection;
+        // optional
+        public ValueProvenance provenance;
+    }
+
+    [Serializable]
+    public class StateCompletionPolicy
+    {
+        public string /* loop | immediate-fallback | hold-final-frame | wait-for-transition */ mode;
+        public int holdTicks;
+    }
+
+    [Serializable]
+    public class StateRecoveryPolicy
+    {
+        public float authorityReturnAtNormalized;
+        public float blendDurationSec;
+    }
+
+    [Serializable]
+    public class MovementAuthorityPolicy
+    {
+        public bool locksMovementUntilRecovery;
+        public bool returnsAuthorityOnRecovery;
+        public bool providesLocomotionAuthority;
+        public string /* none | walk | run */ locomotionSpeedReference;
+    }
+
+    [Serializable]
+    public class TransitionDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string from;
+        public string to;
+        public List<TransitionCondition> conditions;
+        public float blendDurationSec;
+        public float startOffsetNormalized;
+        // optional
+        public float exitTimeNormalized;
+        public float playbackSpeed;
+        public float momentumRetention;
+        public float rotationAuthority;
+        public bool interruptible;
+        public float inputBufferMs;
+        // optional
+        public NormalizedWindow cancelWindow;
+        public int priority;
+        // optional
+        public string weaponOverrides;
+        // optional
+        public string /* InPlace | RootMotion | Hybrid */ rootMotionMode;
+        // optional
+        public ProtectionMetadata protection;
+        // optional
+        public ValueProvenance provenance;
+    }
+
+    [Serializable]
+    public class TransitionCondition
+    {
+        public string parameter;
+        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ operator;
+        public string value;
+    }
+
+    [Serializable]
+    public class NormalizedWindow
+    {
+        public float start;
+        public float end;
+    }
+
+    [Serializable]
     public class TerrainPreset
     {
         public int schemaVersion;
@@ -618,6 +603,14 @@ namespace AnimationTestChamber.Generated
         public float angularVelocity;
         public float frequencyX;
         public float frequencyZ;
+    }
+
+    [Serializable]
+    public class Vec3
+    {
+        public float x;
+        public float y;
+        public float z;
     }
 
     [Serializable]

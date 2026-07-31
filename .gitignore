@@ -8,6 +8,12 @@ dist/
 reports/*.json
 reports/*.md
 !reports/.gitkeep
+# The completion report is a deliverable, not a harness run artifact: it records
+# what was built and what was left, and is meant to be read from the repository.
+!reports/animation-assets-one-shot-report.md
+# Asset transaction staging. Created and deleted within a single request; a
+# directory surviving here means a transaction died mid-flight.
+.chamber-asset-transactions/
 test-results/
 playwright-report/
 .vite/

@@ -8,9 +8,9 @@ import {
   runReplay,
   Simulation,
 } from '@atc/replay-runtime';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 const traceOf = (id: string) => runReplay(project, findReplayFixture(id));
 const swordARootTrack = {

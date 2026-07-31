@@ -1,0 +1,457 @@
+/**
+ * Asset detail views (PLAN 25).
+ *
+ * One component per asset type, dispatched by type, because the five types
+ * genuinely have nothing to show in common beyond their metadata — a shared
+ * "property grid" would have been a lie held together by conditionals.
+ */
+import type {
+  AnimationBehaviorAsset,
+  AnimationClipAsset,
+  AnimationMotionSetAsset,
+  AnimationTuningProfileAsset,
+  AssetReference,
+  HumanoidRigProfileAsset,
+} from '@atc/schema';
+import {
+  checkMotionSetCompatibility,
+  describeIncompatibility,
+  retargetStatusBetween,
+} from '@atc/animation-asset-runtime';
+import { getAtPath } from '@atc/runtime-core';
+import { useChamber } from '../store.ts';
+import { DependencyView } from './DependencyView.tsx';
+import { MotionSetEditor } from './MotionSetEditor.tsx';
+import { VersionDiff } from './VersionDiff.tsx';
+import { AssetActions } from './AssetActions.tsx';
+
+function Metadata({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const asset = registry.find(reference);
+  const validation = registry.validate(reference);
+  if (!asset) return null;
+
+  return (
+    <header className="asset-detail__header" data-testid="asset-detail-metadata">
+      <h2>{asset.metadata.displayName}</h2>
+      <p className="muted">{asset.metadata.description}</p>
+      <dl className="asset-facts">
+        <div>
+          <dt>Id</dt>
+          <dd>
+            <code>{asset.metadata.id}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Version</dt>
+          <dd data-testid="asset-detail-version">{asset.metadata.version}</dd>
+        </div>
+        <div>
+          <dt>Content hash</dt>
+          <dd>
+            <code>{asset.metadata.contentHash.slice(0, 12)}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Protection</dt>
+          <dd>{asset.metadata.protection?.level ?? 'editable'}</dd>
+        </div>
+        <div>
+          <dt>Created</dt>
+          <dd>
+            {asset.metadata.createdAt} by {asset.metadata.createdBy}
+          </dd>
+        </div>
+      </dl>
+      {asset.metadata.tags.length > 0 && (
+        <p className="asset-detail__tags">{asset.metadata.tags.join(' · ')}</p>
+      )}
+      {!validation.valid && (
+        <ul className="asset-issues" data-testid="asset-detail-issues">
+          {validation.issues.map((issue, index) => (
+            <li key={index}>
+              <strong>{issue.code}</strong> {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </header>
+  );
+}
+
+function BehaviorDetail({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const asset = registry.get(reference) as AnimationBehaviorAsset;
+  const project = useChamber((state) => state.project);
+
+  return (
+    <>
+      <section data-testid="behavior-derivation">
+        <h4>Derivation</h4>
+        {asset.derivation.mode === 'base' && <p className="muted">Authored outright.</p>}
+        {asset.derivation.mode === 'variant' && (
+          <p>
+            Variant of <code>{asset.derivation.parent.assetId}</code> v
+            {asset.derivation.parent.version}, storing {asset.derivation.patches.length} patch
+            {asset.derivation.patches.length === 1 ? '' : 'es'} and nothing else.
+          </p>
+        )}
+        {asset.derivation.mode === 'fork' && (
+          <p>
+            Forked from <code>{asset.derivation.forkedFrom.assetId}</code> v
+            {asset.derivation.forkedFrom.version}. Detached — it resolves without its origin.
+            <br />
+            <em>{asset.derivation.forkIntent}</em>
+          </p>
+        )}
+      </section>
+
+      <section data-testid="behavior-motion-slots">
+        <h4>Motion slot contract</h4>
+        <table className="asset-table">
+          <thead>
+            <tr>
+              <th>Slot</th>
+              <th>Required</th>
+              <th>Loop</th>
+              <th>Fallback</th>
+            </tr>
+          </thead>
+          <tbody>
+            {asset.motionSlots.map((slot) => (
+              <tr key={slot.id}>
+                <td>
+                  <code>{slot.id}</code>
+                </td>
+                <td>{slot.required ? 'yes' : 'no'}</td>
+                <td>{slot.expectedLoop ? 'yes' : '—'}</td>
+                <td>{slot.fallbackSlot ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section data-testid="behavior-parameters">
+        <h4>Parameters</h4>
+        <p className="muted">
+          {asset.parameters.map((parameter) => `${parameter.name}:${parameter.kind}`).join(', ') ||
+            'none declared'}
+        </p>
+      </section>
+
+      <section data-testid="behavior-states">
+        <h4>States</h4>
+        <p className="muted">
+          {(asset.graph?.states.length ?? project.graph.states.length)} states,{' '}
+          {(asset.graph?.transitions.length ?? project.graph.transitions.length)} transitions across{' '}
+          {(asset.graph?.layers.length ?? project.graph.layers.length)} layers. The full graph is
+          editable in the Chamber’s Graph panel.
+        </p>
+      </section>
+
+      <section data-testid="behavior-replays">
+        <h4>Replay fixtures</h4>
+        <p className="muted">{asset.replayFixtureIds.join(', ') || 'none'}</p>
+      </section>
+    </>
+  );
+}
+
+function MotionSetDetail({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const project = useChamber((state) => state.project);
+  const asset = registry.get(reference) as AnimationMotionSetAsset;
+
+  // Compatibility is reported against the *active character's* behaviour and
+  // rig, because "is this set usable" has no answer in the abstract.
+  const behaviorReference = project.character.animation.behavior;
+  const compatibility = registry.has(behaviorReference)
+    ? checkMotionSetCompatibility(
+        registry,
+        registry.getBehavior(behaviorReference),
+        asset,
+        project.character.animation.rig,
+      )
+    : null;
+
+  return (
+    <>
+      <section data-testid="motion-set-compatibility">
+        <h4>Compatibility with {project.character.displayName}</h4>
+        {compatibility === null ? (
+          <p className="muted">The active character’s behaviour could not be resolved.</p>
+        ) : (
+          <>
+            <p data-testid="motion-set-retarget">
+              Rig: <strong>{compatibility.retargetStatus}</strong>
+            </p>
+            {compatibility.missingSlots.length > 0 && (
+              <p className="asset-warning" data-testid="motion-set-missing">
+                Missing required slots: {compatibility.missingSlots.join(', ')}
+              </p>
+            )}
+            {compatibility.issues.map((issue, index) => (
+              <p key={index} className={issue.severity === 'error' ? 'asset-warning' : 'muted'}>
+                {issue.message}
+              </p>
+            ))}
+          </>
+        )}
+      </section>
+      <MotionSetEditor reference={reference} />
+    </>
+  );
+}
+
+function ClipDetail({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const asset = registry.get(reference) as AnimationClipAsset;
+  const clip = asset.clip;
+
+  return (
+    <>
+      <section data-testid="clip-facts">
+        <h4>Motion</h4>
+        <dl className="asset-facts">
+          <div>
+            <dt>Duration</dt>
+            <dd>{clip.durationSec.toFixed(3)}s</dd>
+          </div>
+          <div>
+            <dt>Loop</dt>
+            <dd>{clip.loop ? 'yes' : 'no'}</dd>
+          </div>
+          <div>
+            <dt>Root motion</dt>
+            <dd>
+              {clip.rootMotionMode} · z {clip.rootDisplacement.z.toFixed(3)}m
+            </dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd>{clip.assetPath ?? `procedural: ${clip.proceduralGenerator ?? 'none'}`}</dd>
+          </div>
+          <div>
+            <dt>From candidate</dt>
+            <dd>{asset.sourceCandidateId ?? '—'}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {/* A clip preview without a renderer would be a lie, so this is the
+          authored timing laid out to scale — which is what the timeline panel
+          shows anyway, and is honest on a static host. */}
+      <section data-testid="clip-preview">
+        <h4>Preview</h4>
+        <div className="clip-track" aria-hidden="true">
+          {clip.events.map((event) => (
+            <span
+              key={event.id}
+              className="clip-track__event"
+              style={{ left: `${event.at * 100}%` }}
+              title={`${event.kind} @ ${event.at.toFixed(2)}`}
+            />
+          ))}
+          {clip.footContacts.left.map((window, index) => (
+            <span
+              key={`l${index}`}
+              className="clip-track__contact clip-track__contact--left"
+              style={{
+                left: `${window.start * 100}%`,
+                width: `${(window.end - window.start) * 100}%`,
+              }}
+            />
+          ))}
+          {clip.footContacts.right.map((window, index) => (
+            <span
+              key={`r${index}`}
+              className="clip-track__contact clip-track__contact--right"
+              style={{
+                left: `${window.start * 100}%`,
+                width: `${(window.end - window.start) * 100}%`,
+              }}
+            />
+          ))}
+        </div>
+        <p className="muted">
+          {clip.events.length} semantic event{clip.events.length === 1 ? '' : 's'} ·{' '}
+          {clip.footContacts.left.length + clip.footContacts.right.length} foot contact window(s)
+        </p>
+      </section>
+
+      <section data-testid="clip-events">
+        <h4>Semantic events</h4>
+        {clip.events.length === 0 ? (
+          <p className="muted">None authored.</p>
+        ) : (
+          <ul>
+            {clip.events.map((event) => (
+              <li key={event.id}>
+                <code>{event.kind}</code> at {event.at.toFixed(3)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h4>Compatible rigs</h4>
+        <p className="muted">{asset.compatibleRigIds.join(', ') || 'any'}</p>
+      </section>
+    </>
+  );
+}
+
+function RigDetail({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const project = useChamber((state) => state.project);
+  const asset = registry.get(reference) as HumanoidRigProfileAsset;
+  const characterRigReference = project.character.animation.rig;
+  const characterRig = registry.has(characterRigReference)
+    ? registry.getRig(characterRigReference)
+    : null;
+  const status = characterRig ? retargetStatusBetween(asset, characterRig) : null;
+
+  return (
+    <>
+      <section data-testid="rig-facts">
+        <h4>Skeleton</h4>
+        <dl className="asset-facts">
+          <div>
+            <dt>Compatibility key</dt>
+            <dd>
+              <code>{asset.compatibilityKey}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Height</dt>
+            <dd>{asset.skeleton.height}m</dd>
+          </div>
+          <div>
+            <dt>Bones</dt>
+            <dd>{asset.skeleton.bones.length}</dd>
+          </div>
+          <div>
+            <dt>Forward axis</dt>
+            <dd>{asset.coordinateSystem.forwardAxis}</dd>
+          </div>
+          <div>
+            <dt>Retarget status</dt>
+            <dd data-testid="rig-retarget-status">{asset.retargetStatus}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section data-testid="rig-bones">
+        <h4>Humanoid bone mapping</h4>
+        <table className="asset-table">
+          <tbody>
+            {Object.entries(asset.humanoidBones).map(([slot, bone]) => (
+              <tr key={slot}>
+                <td>{slot}</td>
+                <td>
+                  <code>{bone}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      {status === 'conversion-required' && characterRig && (
+        <p className="asset-warning" data-testid="rig-conversion-reason">
+          Clips on this rig cannot play on {project.character.displayName}:{' '}
+          {describeIncompatibility(asset, characterRig)}
+        </p>
+      )}
+    </>
+  );
+}
+
+function TuningDetail({ reference }: { reference: AssetReference }) {
+  const registry = useChamber((state) => state.registry);
+  const project = useChamber((state) => state.project);
+  const asset = registry.get(reference) as AnimationTuningProfileAsset;
+
+  return (
+    <section data-testid="tuning-overrides">
+      <h4>Overrides</h4>
+      <p className="muted">
+        Target behaviour: <code>{asset.compatibleBehavior.assetId}</code> v
+        {asset.compatibleBehavior.version}
+      </p>
+      {asset.patches.length === 0 ? (
+        <p className="muted" data-testid="tuning-empty">
+          No overrides. This character runs the shared behaviour unmodified.
+        </p>
+      ) : (
+        <table className="asset-table">
+          <thead>
+            <tr>
+              <th>Path</th>
+              <th>Override</th>
+              <th>Effective</th>
+            </tr>
+          </thead>
+          <tbody>
+            {asset.patches.map((patch) => (
+              <tr key={patch.path}>
+                <td>
+                  <code>{patch.path}</code>
+                </td>
+                <td>{JSON.stringify(patch.value)}</td>
+                <td>{JSON.stringify(getAtPath(project.graph, patch.path))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+export function AssetDetail() {
+  const selection = useChamber((state) => state.librarySelection);
+  const registry = useChamber((state) => state.registry);
+  useChamber((state) => state.revision);
+
+  if (!selection) {
+    return (
+      <div className="asset-detail" data-testid="asset-detail-empty">
+        <p className="muted">Select an asset to see what it is, what it needs, and who uses it.</p>
+      </div>
+    );
+  }
+
+  const reference: AssetReference = {
+    assetType: selection.assetType as AssetReference['assetType'],
+    assetId: selection.assetId,
+    version: selection.version,
+    contentHash: '',
+  };
+
+  if (!registry.has(reference)) {
+    return (
+      <div className="asset-detail" data-testid="asset-detail-missing">
+        <p className="asset-warning">
+          {selection.assetId} v{selection.version} is no longer in the registry.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="asset-detail" data-testid="asset-detail">
+      <Metadata reference={reference} />
+      <AssetActions reference={reference} />
+      {reference.assetType === 'animation-behavior' && <BehaviorDetail reference={reference} />}
+      {reference.assetType === 'animation-motion-set' && <MotionSetDetail reference={reference} />}
+      {reference.assetType === 'animation-clip' && <ClipDetail reference={reference} />}
+      {reference.assetType === 'humanoid-rig' && <RigDetail reference={reference} />}
+      {reference.assetType === 'animation-tuning' && <TuningDetail reference={reference} />}
+      <VersionDiff reference={reference} />
+      <DependencyView reference={reference} />
+    </div>
+  );
+}

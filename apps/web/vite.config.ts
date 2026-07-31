@@ -14,6 +14,7 @@ export default defineConfig({
       '@atc/schema': resolve(repoRoot, 'packages/schema/src/index.ts'),
       '@atc/runtime-core': resolve(repoRoot, 'packages/runtime-core/src/index.ts'),
       '@atc/animation-runtime': resolve(repoRoot, 'packages/animation-runtime/src/index.ts'),
+      '@atc/animation-asset-runtime': resolve(repoRoot, 'packages/animation-asset-runtime/src/index.ts'),
       '@atc/input-runtime': resolve(repoRoot, 'packages/input-runtime/src/index.ts'),
       '@atc/terrain-runtime': resolve(repoRoot, 'packages/terrain-runtime/src/index.ts'),
       '@atc/haptics-runtime': resolve(repoRoot, 'packages/haptics-runtime/src/index.ts'),
@@ -22,6 +23,7 @@ export default defineConfig({
       '@atc/ai-adapter': resolve(repoRoot, 'packages/ai-adapter/src/index.ts'),
       '@atc/acquisition-core': resolve(repoRoot, 'packages/acquisition-core/src/index.ts'),
       '@chamber/project': resolve(repoRoot, 'projects/demo-character/project.json'),
+      '@chamber/animation-assets': resolve(repoRoot, 'generated/animation-assets/library-index.json'),
     },
   },
   server: {

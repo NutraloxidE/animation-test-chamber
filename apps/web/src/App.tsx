@@ -13,6 +13,8 @@ import { CapabilityPanel } from './panels/CapabilityPanel.tsx';
 import { TerrainPanel } from './panels/TerrainPanel.tsx';
 import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
+import { AssetLibrary } from './asset-library/AssetLibrary.tsx';
+import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
 import {
   CHARACTER_PRESETS,
@@ -31,7 +33,9 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'ai', label: 'AI' },
   { id: 'diff', label: 'Diff' },
   { id: 'capability', label: 'Haptics' },
-  { id: 'acquisition', label: 'Assets' },
+  // Renamed from "Assets" (PLAN 29): the Asset Library is where assets live
+  // now, and this panel does one specific thing — bring new motion in.
+  { id: 'acquisition', label: 'Import' },
 ];
 
 function PanelBody({ id }: { id: PanelId }) {
@@ -117,6 +121,33 @@ function Hud() {
   );
 }
 
+/**
+ * Chamber or Asset Library.
+ *
+ * A workspace switch rather than a route: the plan is explicit that no router
+ * is added, and the two workspaces share one live engine and one edit session
+ * anyway — navigating between them must not restart the simulation.
+ */
+function WorkspaceSwitch() {
+  const mode = useChamber((state) => state.workspaceMode);
+  const setMode = useChamber((state) => state.setWorkspaceMode);
+  return (
+    <nav className="workspace-switch" data-testid="workspace-switch">
+      {(['chamber', 'asset-library'] as const).map((entry) => (
+        <button
+          type="button"
+          key={entry}
+          className={mode === entry ? 'is-active' : ''}
+          onClick={() => setMode(entry)}
+          data-testid={`workspace-${entry}`}
+        >
+          {entry === 'chamber' ? 'Chamber' : 'Asset Library'}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export function App() {
   const engine = useChamber((state) => state.engine);
   const activePanel = useChamber((state) => state.activePanel);
@@ -141,6 +172,9 @@ export function App() {
   const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
   const detectBackend = useChamber((state) => state.detectBackend);
   const backendOnline = useChamber((state) => state.backendOnline);
+
+  const workspaceMode = useChamber((state) => state.workspaceMode);
+  const libraryDialog = useChamber((state) => state.libraryDialog);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [padAuto] = useState(() => detectTouchDevice());
@@ -182,8 +216,21 @@ export function App() {
       (project.inputMap.mobilePad.visibility === 'auto' && padAuto) ||
       showMobilePad);
 
+  if (workspaceMode === 'asset-library') {
+    return (
+      <div className="app app--library">
+        <WorkspaceSwitch />
+        <AssetLibrary />
+        <footer className="status" data-testid="status-bar">
+          {statusMessage}
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className={`app${hideUi ? ' app--clean' : ''}`}>
+      {!hideUi && <WorkspaceSwitch />}
       <div className="app__viewport">
         <Viewport />
         {!hideUi && <Hud />}
@@ -336,6 +383,11 @@ export function App() {
               <PanelBody id={activePanel} />
             </div>
           </aside>
+
+          {/* The dialog belongs to the Chamber too: a commit that turns out to
+              hold animation edits opens it here rather than sending the reader
+              to another workspace to find out why the commit stopped. */}
+          {libraryDialog === 'save-destination' && <SaveDestinationDialog />}
 
           <footer className="status" data-testid="status-bar">
             {statusMessage}

@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
-import type { ProjectDefinition } from '@atc/schema';
+import type { ProjectDefinition, ResolvedProject } from '@atc/schema';
 import { validateProject, validateProjectReferences } from '@atc/schema';
 import { analyzeDiff } from '@atc/runtime-core';
 import { buildCommitDraft } from '@atc/editor-core';
@@ -22,7 +22,15 @@ import {
   promoteCandidate,
   unknownLicenseManifest,
 } from '@atc/acquisition-core';
-import { createContext, loadProject, saveProject, PROJECT_PATH, REPO_ROOT } from './context.ts';
+import {
+  createContext,
+  loadProject,
+  loadResolvedProject,
+  saveProject,
+  PROJECT_PATH,
+  REPO_ROOT,
+} from './context.ts';
+import { animationAssetRoutes } from './routes/animation-assets.ts';
 
 const context = createContext();
 const app = new Hono();
@@ -53,6 +61,22 @@ app.get('/api/project', (c) => {
 
 app.get('/api/terrain-presets', (c) => c.json({ presets: TERRAIN_PRESETS }));
 
+/** The resolved document for one character, which is what the runtime wants. */
+app.get('/api/resolved-project', (c) => {
+  try {
+    return c.json({
+      project: loadResolvedProject({
+        ...(c.req.query('characterId') ? { characterId: c.req.query('characterId')! } : {}),
+        ...(c.req.query('contextKey') ? { contextKey: c.req.query('contextKey')! } : {}),
+      }),
+    });
+  } catch (error) {
+    return c.json({ error: message(error) }, 500);
+  }
+});
+
+app.route('/', animationAssetRoutes());
+
 app.get('/api/replays', (c) => c.json({ replays: REPLAY_FIXTURES }));
 
 app.post('/api/validate', async (c) => {
@@ -67,9 +91,9 @@ app.post('/api/validate', async (c) => {
 
 /** Runs a replay against a submitted document, for before/after comparison. */
 app.post('/api/replay/run', async (c) => {
-  const body = await c.req.json<{ document?: ProjectDefinition; replayId: string; terrainPresetId?: string }>();
+  const body = await c.req.json<{ document?: ResolvedProject; replayId: string; terrainPresetId?: string; characterId?: string; contextKey?: string }>();
   try {
-    const project = body.document ?? loadProject();
+    const project = body.document ?? loadResolvedProject(resolveOptions(body));
     const replay = REPLAY_FIXTURES.find((entry) => entry.id === body.replayId);
     if (!replay) return c.json({ error: `unknown replay "${body.replayId}"` }, 404);
     const terrain = body.terrainPresetId ? findTerrainPreset(body.terrainPresetId) : undefined;
@@ -81,14 +105,16 @@ app.post('/api/replay/run', async (c) => {
 
 app.post('/api/ai/propose', async (c) => {
   const body = await c.req.json<{
-    document?: ProjectDefinition;
+    document?: ResolvedProject;
     request: string;
     targetPath: string;
     replayId?: string;
     terrainPresetId?: string;
+    characterId?: string;
+    contextKey?: string;
   }>();
   try {
-    const project = body.document ?? loadProject();
+    const project = body.document ?? loadResolvedProject(resolveOptions(body));
     const proposals = await context.ai.proposeAdjustments({
       project,
       request: body.request,
@@ -103,9 +129,9 @@ app.post('/api/ai/propose', async (c) => {
 });
 
 app.post('/api/ai/harmonize', async (c) => {
-  const body = await c.req.json<{ document?: ProjectDefinition; targetPath: string; request?: string }>();
+  const body = await c.req.json<{ document?: ResolvedProject; targetPath: string; request?: string; characterId?: string; contextKey?: string }>();
   try {
-    const project = body.document ?? loadProject();
+    const project = body.document ?? loadResolvedProject(resolveOptions(body));
     const patch = await context.ai.harmonizeRelatedTransitions({
       project,
       request: body.request ?? '',
@@ -118,9 +144,9 @@ app.post('/api/ai/harmonize', async (c) => {
 });
 
 app.post('/api/ai/explain', async (c) => {
-  const body = await c.req.json<{ document: ProjectDefinition }>();
+  const body = await c.req.json<{ document: ResolvedProject }>();
   try {
-    const repository = loadProject();
+    const repository = loadResolvedProject();
     const diff = analyzeDiff(repository, body.document);
     return c.json({ explanation: await context.ai.explainDiff(diff), diff });
   } catch (error) {
@@ -314,13 +340,13 @@ app.post('/api/acquisition/import', async (c) => {
 
 app.post('/api/acquisition/promote', async (c) => {
   const body = await c.req.json<{
-    document?: ProjectDefinition;
+    document?: ResolvedProject;
     candidateId: string;
     to: Parameters<typeof promoteCandidate>[2];
     actor?: 'human' | 'ai';
   }>();
   try {
-    const project = body.document ?? loadProject();
+    const project = body.document ?? loadResolvedProject();
     const result = promoteCandidate(project, body.candidateId, body.to, body.actor ?? 'human');
     return c.json(result, result.ok ? 200 : 409);
   } catch (error) {
@@ -330,8 +356,10 @@ app.post('/api/acquisition/promote', async (c) => {
 
 app.post('/api/unity/export', async (c) => {
   try {
-    const body = await c.req.json<{ document?: ProjectDefinition }>().catch(() => ({}) as { document?: ProjectDefinition });
-    const project = body.document ?? loadProject();
+    const body = await c.req
+      .json<{ document?: ResolvedProject }>()
+      .catch(() => ({}) as { document?: ResolvedProject });
+    const project = body.document ?? loadResolvedProject();
     const files = buildUnityBundle(project, REPLAY_FIXTURES);
 
     const outputRoot = resolve(REPO_ROOT, 'generated/unity');
@@ -350,6 +378,17 @@ app.post('/api/unity/export', async (c) => {
     return c.json({ error: message(error) }, 500);
   }
 });
+
+/** Character and weapon context a request may pin its resolution to. */
+function resolveOptions(body: { characterId?: string; contextKey?: string }): {
+  characterId?: string;
+  contextKey?: string;
+} {
+  return {
+    ...(body.characterId ? { characterId: body.characterId } : {}),
+    ...(body.contextKey ? { contextKey: body.contextKey } : {}),
+  };
+}
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

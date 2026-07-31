@@ -1,5 +1,14 @@
-import type { ProjectDefinition, ValidationResult, ValueProvenance } from '@atc/schema';
-import { validateProject, validateProjectReferences } from '@atc/schema';
+import type {
+  ProjectDefinition,
+  ResolvedProject,
+  ValidationResult,
+  ValueProvenance,
+} from '@atc/schema';
+import {
+  validateProject,
+  validateProjectReferences,
+  validateResolvedProjectReferences,
+} from '@atc/schema';
 import {
   analyzeDiff,
   ancestorPaths,
@@ -66,8 +75,8 @@ function valuesEqual(left: unknown, right: unknown): boolean {
  * explicitly unlocking it.
  */
 export class EditSession {
-  private repository: ProjectDefinition;
-  private preview: ProjectDefinition;
+  private repository: ResolvedProject;
+  private preview: ResolvedProject;
   private readonly staged = new Set<CanonicalPath>();
   private readonly stagedValues = new Map<CanonicalPath, unknown>();
   private readonly stagedProvenance = new Map<CanonicalPath, ValueProvenance>();
@@ -78,17 +87,62 @@ export class EditSession {
   /** Paths a human has unlocked for the duration of this session. */
   private readonly unlocked = new Set<CanonicalPath>();
 
-  constructor(repository: ProjectDefinition) {
+  /**
+   * Paths owned by an animation asset rather than by project.json.
+   *
+   * A chamber edit to a blend duration no longer belongs in the project file:
+   * it belongs in a behaviour variant, a tuning profile or a character
+   * override, and which of those is a question only a human can answer (PLAN
+   * 28). Splitting the staged set by prefix is what lets the commit path write
+   * the project without silently swallowing the animation half.
+   */
+  private static readonly ASSET_OWNED_PREFIXES = [
+    '/graph/',
+    '/clips/',
+    '/motionBindings/',
+    '/resolution',
+    '/character/',
+  ];
+
+  constructor(repository: ResolvedProject) {
     this.repository = repository;
     this.preview = repository;
   }
 
-  get repositoryProject(): ProjectDefinition {
+  static isAssetOwnedPath(path: CanonicalPath): boolean {
+    return EditSession.ASSET_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
+  }
+
+  /** Staged edits that must go through an asset transaction, not project.json. */
+  get stagedAssetChanges(): { path: CanonicalPath; value: unknown }[] {
+    return this.stagedChanges.filter((change) => EditSession.isAssetOwnedPath(change.path));
+  }
+
+  /** Staged edits that belong in project.json. */
+  get stagedProjectChanges(): { path: CanonicalPath; value: unknown }[] {
+    return this.stagedChanges.filter((change) => !EditSession.isAssetOwnedPath(change.path));
+  }
+
+  /**
+   * The canonical project document to commit: the repository project with only
+   * the staged non-asset paths applied. Resolved-only fields are stripped, so
+   * a derived graph can never be written back into project.json.
+   */
+  buildStagedProjectDocument(canonicalRepository: ProjectDefinition): ProjectDefinition {
+    let document = canonicalRepository;
+    for (const change of this.stagedProjectChanges) {
+      if (change.value === undefined) continue;
+      document = setAtPath(document, change.path, change.value);
+    }
+    return document;
+  }
+
+  get repositoryProject(): ResolvedProject {
     return this.repository;
   }
 
   /** The document the live preview renders from. */
-  get previewProject(): ProjectDefinition {
+  get previewProject(): ResolvedProject {
     return this.preview;
   }
 
@@ -277,7 +331,7 @@ export class EditSession {
    * The document that would be committed: repository plus only the staged
    * paths. Unstaged preview edits stay local to the session.
    */
-  buildStagedDocument(): ProjectDefinition {
+  buildStagedDocument(): ResolvedProject {
     let document = this.repository;
     for (const path of this.stagedPaths) {
       const value = this.stagedValues.get(path);
@@ -287,7 +341,7 @@ export class EditSession {
     return this.attachProvenance(document);
   }
 
-  private attachProvenance(document: ProjectDefinition): ProjectDefinition {
+  private attachProvenance(document: ResolvedProject): ResolvedProject {
     let next = document;
     for (const path of this.stagedPaths) {
       const record = this.stagedProvenance.get(path);
@@ -304,8 +358,19 @@ export class EditSession {
   }
 
   /** Schema plus structural validation of the staged document. */
+  /**
+   * Structural validation of the staged *resolved* document. The canonical
+   * project is validated separately by `validateStagedProject`, because the two
+   * documents now have genuinely different shapes and validating the resolved
+   * one against the canonical schema would reject the graph it is supposed to
+   * carry.
+   */
   validate(): ValidationResult {
-    const document = this.buildStagedDocument();
+    return validateResolvedProjectReferences(this.buildStagedDocument());
+  }
+
+  validateStagedProject(canonicalRepository: ProjectDefinition): ValidationResult {
+    const document = this.buildStagedProjectDocument(canonicalRepository);
     const schemaResult = validateProject(document);
     const referenceResult = validateProjectReferences(document);
     return {
@@ -319,7 +384,7 @@ export class EditSession {
    * the Git adapter reports success, so the session never claims a commit that
    * did not land.
    */
-  acceptCommitted(document: ProjectDefinition): void {
+  acceptCommitted(document: ResolvedProject): void {
     this.repository = document;
     this.preview = document;
     this.staged.clear();

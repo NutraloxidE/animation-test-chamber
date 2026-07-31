@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-shield-attack-02-recovery",
+    "version": "1.0.0",
+    "displayName": "alt shield attack 02 recovery",
+    "description": "Migrated from the embedded clip \"shield-attack-02-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "aef091ad0a16715d6a40e8d6b41949f10ec8baa267f881fa722f11e16c158808",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-shield-attack-02-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-02-recovery",
+    "durationSec": 1.0333333,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.55
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

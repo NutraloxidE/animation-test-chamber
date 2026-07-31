@@ -1,0 +1,58 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "land",
+    "version": "1.0.0",
+    "displayName": "land",
+    "description": "Migrated from the embedded clip \"land\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "677ab0b58b7fa9bd6dddb202dd2b95c7d6bba10678db037dcda21f9586a7885e",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "land",
+    "assetPath": null,
+    "proceduralGenerator": "land",
+    "durationSec": 0.35,
+    "loop": false,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "land-impact",
+        "kind": "Landing",
+        "at": 0.05
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

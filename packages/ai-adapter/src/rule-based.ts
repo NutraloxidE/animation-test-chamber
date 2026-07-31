@@ -1,4 +1,4 @@
-import type { ProjectDefinition, TransitionDefinition } from '@atc/schema';
+import type { ResolvedProject, TransitionDefinition } from '@atc/schema';
 import {
   canAiEdit,
   canAiPropose,
@@ -101,7 +101,7 @@ interface FieldRule {
   min: number;
   max: number;
   /** Change per unit of intent, per variant strength. */
-  compute: (current: number, intent: Intent, strength: number, project: ProjectDefinition) => number;
+  compute: (current: number, intent: Intent, strength: number, project: ResolvedProject) => number;
   reason: string;
 }
 
@@ -357,7 +357,7 @@ export class RuleBasedProvider implements AiProvider {
   }
 }
 
-function requiresApproval(project: ProjectDefinition, targetPath: CanonicalPath): boolean {
+function requiresApproval(project: ResolvedProject, targetPath: CanonicalPath): boolean {
   const target = getAtPath(project, targetPath);
   const protection = (target as { protection?: { level?: string } } | undefined)?.protection;
   return protection?.level === 'approval-required';

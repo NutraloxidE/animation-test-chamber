@@ -247,10 +247,13 @@ test.describe('committing', () => {
   });
 
   test('the full stage, validate and commit loop works with the fake Git adapter', async ({ page }) => {
-    await openPanel(page, 'inspector');
-
-    await page.getByTestId('clip-select').selectOption('dodge');
-    await page.getByTestId('field-/clips/dodge/rootDisplacement/z').locator('input[type=range]').fill('6.2');
+    // A project-owned value: terrain belongs to the project file, not to an
+    // animation asset, so it commits straight through.
+    await openPanel(page, 'terrain');
+    await page
+      .getByTestId('field-/terrain/groundSnapStrength')
+      .locator('input[type=range]')
+      .fill('0.42');
 
     await openPanel(page, 'diff');
     await page.getByTestId('stage-all').click();
@@ -264,9 +267,54 @@ test.describe('committing', () => {
     });
 
     const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
-      clips: { id: string; rootDisplacement: { z: number } }[];
+      terrain: { groundSnapStrength: number };
     };
-    expect(saved.clips.find((clip) => clip.id === 'dodge')?.rootDisplacement.z).toBe(6.2);
+    expect(saved.terrain.groundSnapStrength).toBe(0.42);
+  });
+
+  /**
+   * An animation value cannot be committed into project.json any more: it
+   * belongs to an asset, and which asset is a decision only a human can make.
+   * The commit stops and asks rather than picking one (PLAN 12.5, 28).
+   */
+  test('an animation edit stops the commit and asks where it should live', async ({ page }) => {
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await page
+      .getByTestId('field-/clips/dodge/rootDisplacement/z')
+      .locator('input[type=range]')
+      .fill('6.2');
+
+    await openPanel(page, 'diff');
+    await page.getByTestId('stage-all').click();
+    await page.getByTestId('commit-button').click();
+
+    const dialog = page.getByTestId('save-destination-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId('status-bar')).toContainText('belong to an animation asset');
+    await expect(page.getByTestId('save-destination-changes')).toContainText('/clips/dodge');
+
+    // Nothing is preselected, so nothing can be saved until a human chooses.
+    await expect(page.getByTestId('save-destination-submit')).toBeDisabled();
+
+    await page.getByTestId('save-destination-character-override').locator('input').check();
+    await expect(page.getByTestId('save-destination-submit')).toBeEnabled();
+    await page.getByTestId('save-destination-submit').click();
+
+    await expect(page.getByTestId('status-bar')).toContainText(/Applied assets to/, {
+      timeout: 15_000,
+    });
+
+    // The value landed on the character, not in the shared clip asset.
+    const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
+      characters: {
+        animation: { instanceOverrides: { path: string; value: unknown }[] };
+      }[];
+    };
+    const override = saved.characters[0]!.animation.instanceOverrides.find((entry) =>
+      entry.path.includes('/clips/dodge/rootDisplacement/z'),
+    );
+    expect(override?.value).toBe(6.2);
   });
 });
 

@@ -65,10 +65,10 @@ namespace AnimationTestChamber
         [Serializable]
         private class ProjectEnvelope
         {
-            public ProjectDefinition project;
+            public ResolvedProject project;
         }
 
-        public static ProjectDefinition LoadFromJson(string json)
+        public static ResolvedProject LoadFromJson(string json)
         {
             if (string.IsNullOrEmpty(json))
             {
@@ -84,7 +84,7 @@ namespace AnimationTestChamber
             return envelope.project;
         }
 
-        public static ProjectDefinition LoadFromFile(string path)
+        public static ResolvedProject LoadFromFile(string path)
         {
             return LoadFromJson(File.ReadAllText(path));
         }
@@ -120,10 +120,10 @@ namespace AnimationTestChamber
 
         public const float FixedDeltaTime = 1f / 60f;
 
-        private readonly ProjectDefinition _project;
+        private readonly ResolvedProject _project;
         private readonly Dictionary<string, LayerState> _layers = new Dictionary<string, LayerState>();
 
-        public ChamberStateMachine(ProjectDefinition project)
+        public ChamberStateMachine(ResolvedProject project)
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             Reset();

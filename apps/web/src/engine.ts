@@ -1,4 +1,4 @@
-import type { ProjectDefinition, TerrainPreset, SemanticEventKind } from '@atc/schema';
+import type { ResolvedProject, TerrainPreset, SemanticEventKind } from '@atc/schema';
 import { FixedStepAccumulator } from '@atc/runtime-core';
 import {
   BrowserInputSampler,
@@ -20,6 +20,7 @@ import {
 } from '@atc/replay-runtime';
 import type { ReplayDefinition } from '@atc/schema';
 import type { LayerId, LayerRuntimeState } from '@atc/animation-runtime';
+import { ACTION_LAYER, LOCOMOTION_LAYER } from '@atc/animation-runtime';
 import { HapticPlayer, detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
 
 export type PlaybackMode = 'live' | 'replay';
@@ -56,7 +57,7 @@ export class ChamberEngine {
   private readonly sampler: BrowserInputSampler;
   private haptics: HapticPlayer;
 
-  private project: ProjectDefinition;
+  private project: ResolvedProject;
   private terrain: TerrainPreset;
 
   private recorder: ReplayRecorder | null = null;
@@ -83,7 +84,7 @@ export class ChamberEngine {
 
   private listeners = new Set<() => void>();
 
-  constructor(project: ProjectDefinition) {
+  constructor(project: ResolvedProject) {
     this.project = project;
     this.equipped = defaultEquipped(project);
     this.terrain = findTerrainPreset(project.defaultTerrainPresetId);
@@ -127,7 +128,7 @@ export class ChamberEngine {
   }
 
   /** Applies edited canonical data to the running preview without a restart. */
-  setProject(project: ProjectDefinition): void {
+  setProject(project: ResolvedProject): void {
     this.project = project;
     this.simulation.updateProject(project);
     this.sampler.setInputMap(project.inputMap);
@@ -152,7 +153,7 @@ export class ChamberEngine {
     return this.terrain;
   }
 
-  get currentProject(): ProjectDefinition {
+  get currentProject(): ResolvedProject {
     return this.project;
   }
 
@@ -289,7 +290,7 @@ export class ChamberEngine {
   }
 
   /** Runs a replay headlessly against a document, for comparison panels. */
-  traceFor(document: ProjectDefinition, replay: ReplayDefinition): ReplayTrace {
+  traceFor(document: ResolvedProject, replay: ReplayDefinition): ReplayTrace {
     return runReplay(document, replay);
   }
 
@@ -397,18 +398,22 @@ export class ChamberEngine {
     const state = this.simulation.state;
     const record = this.lastRecord;
     const stateMachine = this.simulation.graphRuntime.snapshot();
+    // Layers are named by the behaviour asset now, so a snapshot is a record
+    // rather than a fixed pair. A behaviour without these two still renders.
+    const locomotion = stateMachine[LOCOMOTION_LAYER];
+    const action = stateMachine[ACTION_LAYER];
     return {
       tick: state.tick,
       position: state.position,
       yawRad: state.yawRad,
       grounded: state.grounded,
       terrainState: state.terrain.state,
-      locomotionState: record?.locomotionState ?? stateMachine.locomotion.stateId,
-      actionState: record?.actionState ?? stateMachine.action.stateId,
+      locomotionState: record?.locomotionState ?? locomotion?.stateId ?? '',
+      actionState: record?.actionState ?? action?.stateId ?? '',
       locomotionNormalizedTime:
-        record?.locomotionNormalizedTime ?? stateMachine.locomotion.normalizedTime,
-      actionNormalizedTime: record?.actionNormalizedTime ?? stateMachine.action.normalizedTime,
-      blendWeight: record?.blendWeight ?? stateMachine.locomotion.blendWeight,
+        record?.locomotionNormalizedTime ?? locomotion?.normalizedTime ?? 0,
+      actionNormalizedTime: record?.actionNormalizedTime ?? action?.normalizedTime ?? 0,
+      blendWeight: record?.blendWeight ?? locomotion?.blendWeight ?? 1,
       stateMachine,
       speed: Math.hypot(state.velocity.x, state.velocity.z),
       mode: this.mode,
