@@ -1331,6 +1331,10 @@ textarea {
     position: fixed;
     left: 0;
     right: 0;
+    /* The base rule's 420px only applies above this breakpoint; left/right
+       alone can't override an explicit width, so without this the whole
+       sheet (tabs included) overflows past a narrow viewport's right edge. */
+    width: auto;
     bottom: 0;
     max-height: 62vh;
     transform: translateY(100%);

@@ -90,11 +90,10 @@ test('the character responds to keyboard input', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await expect(hud).toContainText('idle');
 
-  // `force` skips the visually-unobstructed check: the input sampler listens
-  // on `window`, not the canvas, so keyboard input works regardless of what
-  // overlays the canvas (the mobile pad, an open panel) — this click only
-  // needs to move focus off whatever else might otherwise capture it.
-  await page.locator('canvas').click({ force: true });
+  // No canvas click: the input sampler listens on `window`, not the canvas,
+  // so keyboard input works with no explicit focus step at all — which also
+  // sidesteps whatever happens to overlay the canvas at a given viewport
+  // size (the mobile pad, an open panel, the viewport-controls panel).
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(700);
   await expect(hud).toContainText(/walk|run/);
@@ -123,6 +122,7 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
+  await closeHierarchy(page);
   await page.getByTestId('grip-editor-select').selectOption('rotate');
   await expect(page.getByTestId('reset-grip')).toBeVisible();
   await expect(page.getByTestId('mobile-pad')).toBeHidden();
@@ -140,7 +140,9 @@ test('character and weapon presets can be selected', async ({ page }) => {
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
   const hud = page.getByTestId('hud');
-  await page.locator('canvas').click({ force: true });
+  // No canvas click: the input sampler listens on `window`, not the canvas,
+  // so keyboard input needs no explicit focus step — see the keyboard-input
+  // test above for why.
   // Fixed-tick driver (PLAN Part VII §27): the jump's air time is physics-
   // derived, not a fixed duration, so waiting on it with a wall-clock timeout
   // either guesses too short (flaky) or too long (slow). Ticking forward
@@ -258,9 +260,18 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(page.getByTestId('action-input-unarmed-attack-01')).toBeVisible();
   await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('0%');
 
+  // Fixed-tick driver (PLAN Part VII §27): the replay's progress only moves
+  // when something advances it, and how much real time that needs depends
+  // on however fast this machine happens to render — ticking forward
+  // deterministically replaces waiting on however fast the replay plays.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
   await openPanel(page, 'replay');
   await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
+  await page.evaluate(async () => {
+    window.__ATC_TEST__!.advanceTicks(75);
+    await window.__ATC_TEST__!.flushReact();
+  });
   await openPanel(page, 'inspector');
   await page.getByTestId('clip-select').selectOption('unarmed-attack-01');
   await page.getByTestId('action-input-list').click();
@@ -268,7 +279,7 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(liveAttack).toHaveClass(/blend-row--live/);
   await expect(liveAttack).toContainText('PLAYING');
   await expect(page.getByTestId('selected-action-playback')).toContainText('PLAYING');
-  await expect.poll(async () => Number(await liveAttack.getAttribute('data-progress'))).toBeGreaterThan(0);
+  expect(Number(await liveAttack.getAttribute('data-progress'))).toBeGreaterThan(0);
   await page.getByTestId('clip-select').selectOption('dodge');
 
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');
