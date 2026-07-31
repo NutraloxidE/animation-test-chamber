@@ -259,7 +259,7 @@
                   "type": "string"
                 },
                 "contentHash": {
-                  "pattern": "^([a-f0-9]{64})?$",
+                  "pattern": "^[a-f0-9]{64}$",
                   "type": "string"
                 }
               }
@@ -311,7 +311,7 @@
                   "type": "string"
                 },
                 "contentHash": {
-                  "pattern": "^([a-f0-9]{64})?$",
+                  "pattern": "^[a-f0-9]{64}$",
                   "type": "string"
                 }
               }
@@ -386,7 +386,7 @@
           "type": "string"
         },
         "contentHash": {
-          "pattern": "^([a-f0-9]{64})?$",
+          "pattern": "^[a-f0-9]{64}$",
           "type": "string"
         }
       }
@@ -455,7 +455,7 @@
                 "type": "string"
               },
               "contentHash": {
-                "pattern": "^([a-f0-9]{64})?$",
+                "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               }
             }

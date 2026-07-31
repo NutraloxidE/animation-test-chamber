@@ -3765,6 +3765,218 @@
       "throw",
       "unarmed"
     ],
+    "clipAssetSources": {
+      "unarmed-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "unarmed-attack-01",
+        "version": "1.0.0",
+        "contentHash": "6eddc911911c9626b870e65c5c1a6a4a56231f07d9090989d9290be4e34fdd88"
+      },
+      "magic-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "magic-attack-01",
+        "version": "1.0.0",
+        "contentHash": "362a83684f8a7287acf5cd283cc5b7f20b258985d79368bdd7b3107a52afedda"
+      },
+      "pistol-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "pistol-attack-01",
+        "version": "1.0.0",
+        "contentHash": "086f8775a9b3987ab8c19211251fc4cda9231e55360b13084b3c474aefb30b1f"
+      },
+      "shield-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "shield-attack-01",
+        "version": "1.0.0",
+        "contentHash": "2b8d7febedcde0758c4e321c50add447fc0c553f770c72eee1b4ca95228a36f5"
+      },
+      "sword-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "sword-attack-01",
+        "version": "1.0.0",
+        "contentHash": "d4aecc1ddbf543d79c1bd67f985c0006de0be46a842f9b02fb00c73376c0b441"
+      },
+      "throw-attack-01": {
+        "assetType": "animation-clip",
+        "assetId": "throw-attack-01",
+        "version": "1.0.0",
+        "contentHash": "33017d3624be97ba6864794e6e931a3c82408dae3d2a87cf893a1db78d3a0de9"
+      },
+      "unarmed-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "unarmed-attack-02",
+        "version": "1.0.0",
+        "contentHash": "7c3b4e4b4fc68acfe65ac0affcc1d4f34a153ab5002c0ade3cb8ba4fcc820103"
+      },
+      "magic-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "magic-attack-02",
+        "version": "1.0.0",
+        "contentHash": "3d038e7eda14e450c326517ddb4118d989c629aba328c45016346ef9a4302533"
+      },
+      "pistol-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "pistol-attack-02",
+        "version": "1.0.0",
+        "contentHash": "b03552968fec226c63e351111be413212cc8e75f34006f5d659508e94cceeb13"
+      },
+      "shield-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "shield-attack-02",
+        "version": "1.0.0",
+        "contentHash": "91eda2c07a49d0893e7f70484befebce723132cab1d36cdd4a9f5ead2547f3c8"
+      },
+      "sword-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "sword-attack-02",
+        "version": "1.0.0",
+        "contentHash": "6710e9f3b5cd86f60d7c8e55790148f5f88c47523baa5a08605bf0048cc037dd"
+      },
+      "throw-attack-02": {
+        "assetType": "animation-clip",
+        "assetId": "throw-attack-02",
+        "version": "1.0.0",
+        "contentHash": "818cba32154b2c741c9d66f380cbacb3146a60b8cb22581eaf2da467dcd0297b"
+      },
+      "fall": {
+        "assetType": "animation-clip",
+        "assetId": "fall",
+        "version": "1.0.0",
+        "contentHash": "84ed5b3b2619e6ef285a09d7813542380b590e0d1314658fdc951f23f81dbbee"
+      },
+      "jump": {
+        "assetType": "animation-clip",
+        "assetId": "jump",
+        "version": "1.0.0",
+        "contentHash": "874b432ae22c8ec0eca5e163ccf77fc8e2783e3d9f0194a50f27cd537dd113bf"
+      },
+      "land": {
+        "assetType": "animation-clip",
+        "assetId": "land",
+        "version": "1.0.0",
+        "contentHash": "677ab0b58b7fa9bd6dddb202dd2b95c7d6bba10678db037dcda21f9586a7885e"
+      },
+      "idle": {
+        "assetType": "animation-clip",
+        "assetId": "idle",
+        "version": "1.0.0",
+        "contentHash": "75ea94a91d9bf5d808e7eaa414e3c0598856294b5cdcc3ec7caea831e39b0ce3"
+      },
+      "run": {
+        "assetType": "animation-clip",
+        "assetId": "run",
+        "version": "1.0.0",
+        "contentHash": "f31b0fdd646b7cdcfd080c8ad7e1e27a0a7d372a9029c131652350a57d571f32"
+      },
+      "walk": {
+        "assetType": "animation-clip",
+        "assetId": "walk",
+        "version": "1.0.0",
+        "contentHash": "4be219fa08baf1969d28c0a1c8834e5dab6c576a4d596813434552e9d9bae254"
+      },
+      "dodge": {
+        "assetType": "animation-clip",
+        "assetId": "dodge",
+        "version": "1.0.0",
+        "contentHash": "0925d2a5bb22c7873fd9f9a27f159b0bc7bd3b0d939238d10d4a70415e6ad875"
+      },
+      "action-none": {
+        "assetType": "animation-clip",
+        "assetId": "action-none",
+        "version": "1.0.0",
+        "contentHash": "f40a30c2689931146696c3d8ef6e18f2495415000c42b2111b1b7b447b806788"
+      },
+      "unarmed-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "unarmed-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "3659c319b7f429fa7084ef2aeb3eef1881c60b5879cb13a6c0f824f5f1fada65"
+      },
+      "magic-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "magic-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "88ff80dc87ca4bb9fd81ed78978e07d607b41de39d6f58d241e0eb84f7d842e9"
+      },
+      "pistol-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "pistol-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "2b520e7a9f99165c05efe1d6b8f00598ff40f149ad60a5e3df75681001b0e6a4"
+      },
+      "shield-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "shield-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "6f6c14b6c391d74cb2335c880976220f71cfea7530e4016599de58b9a74a9aec"
+      },
+      "sword-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "sword-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "fc556a85b62cd0952892142f6c41f1fc89d4aed8645927fc40d304ae229ec828"
+      },
+      "throw-attack-01-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "throw-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "a4e6c76d535f1ef4dea36ff641bb923690ccfcece60891b2e3a76e5f157f0c11"
+      },
+      "unarmed-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "unarmed-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "d2721e0bd254661b0a18e5e653b5ca1c099c2615912c08a45caa7492f391a614"
+      },
+      "magic-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "magic-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "6a15aabcca691e071be5d4a1f9e36bee846d56e71f93e2dd60fff48963b7be14"
+      },
+      "pistol-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "pistol-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "a69b8a4459856d7973a8a438af0bde914570a11569101882d8eb58bf8fe637cc"
+      },
+      "shield-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "shield-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "381245476cb1e09d86019f99ed150d0a76a0c1a31dfee3ce722578fab6eaa21b"
+      },
+      "sword-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "sword-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "0c0ffcd44e690941e8f986ffe91d72e6845e6892d15b0537a97ad262a8f5afcf"
+      },
+      "throw-attack-02-recovery": {
+        "assetType": "animation-clip",
+        "assetId": "throw-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "cdb21efa47f65ec5247332e97c432d2f0f0281ad49ea0cd9af435800f2759de4"
+      },
+      "guard": {
+        "assetType": "animation-clip",
+        "assetId": "guard",
+        "version": "1.0.0",
+        "contentHash": "0c4b8bea4cb178ce4a7b3ba1e80d221555fd80e8757ab25b2c2b304296afdfe5"
+      },
+      "hit": {
+        "assetType": "animation-clip",
+        "assetId": "hit",
+        "version": "1.0.0",
+        "contentHash": "689ecbf55213fb4f989f56ec60309e4c3e6021f82549eda130bc3b98e595769f"
+      },
+      "slide": {
+        "assetType": "animation-clip",
+        "assetId": "slide",
+        "version": "1.0.0",
+        "contentHash": "6eca27c54a3f063b4868e5dc9c65f15b0662dd79c2569c189b4dceb5548afc26"
+      }
+    },
     "resolution": [
       {
         "value": "unarmed-attack-01",
