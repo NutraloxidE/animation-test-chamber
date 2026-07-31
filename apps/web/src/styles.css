@@ -48,6 +48,12 @@ body {
 .workspace-switch {
   grid-column: 1 / -1;
   grid-row: 1;
+  /* On a narrow viewport the Hierarchy dock is a fixed, top:0 overlay
+     (z-index 25) that would otherwise cover this bar's own toggle button —
+     the one control that closes it. Navigation must outrank the docks it
+     opens and closes. */
+  position: relative;
+  z-index: 26;
 }
 
 .app__hierarchy {
@@ -1198,6 +1204,11 @@ textarea {
   color: var(--warning, #d97706);
   background: var(--panel-2);
   border-top: 1px solid var(--line);
+  /* On a short viewport, the always-expanded viewport-controls panel (itself
+     absolutely positioned) can extend down far enough to visually overlap
+     this banner. It carries an actionable warning, so it wins the stack. */
+  position: relative;
+  z-index: 30;
 }
 
 .app__stale-draft-banner p {

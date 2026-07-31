@@ -25,6 +25,29 @@ async function openPanel(page: Page, id: string): Promise<void> {
 }
 
 /**
+ * The Hierarchy dock (character/weapon/equipment) only defaults open above
+ * the 900px breakpoint — below it, it would otherwise overlay and block the
+ * rest of the narrow layout (PLAN Part VI, the same overlay-by-default bug
+ * fixed for the bottom sheet).
+ */
+async function openHierarchy(page: Page): Promise<void> {
+  if (!(await page.getByTestId('character-select').isVisible())) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+/**
+ * On a narrow viewport the Hierarchy dock is a full-height overlay (unlike
+ * desktop, where it is a reserved column) — closing it once done frees the
+ * area other overlays (the bottom sheet, its buttons) also need.
+ */
+async function closeHierarchy(page: Page): Promise<void> {
+  if (await page.getByTestId('character-select').isVisible()) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+/**
  * Fixed-tick waiting (PLAN Part VII §27): pumps the simulation forward in
  * exact steps instead of waiting on the wall clock, so how fast this
  * particular machine happens to be rendering frames can never make a test
@@ -67,7 +90,11 @@ test('the character responds to keyboard input', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await expect(hud).toContainText('idle');
 
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // `force` skips the visually-unobstructed check: the input sampler listens
+  // on `window`, not the canvas, so keyboard input works regardless of what
+  // overlays the canvas (the mobile pad, an open panel) — this click only
+  // needs to move focus off whatever else might otherwise capture it.
+  await page.locator('canvas').click({ force: true });
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(700);
   await expect(hud).toContainText(/walk|run/);
@@ -87,6 +114,7 @@ test('camera control switches between mouse movement and click-drag', async ({ p
 });
 
 test('character and weapon presets can be selected', async ({ page }) => {
+  await openHierarchy(page);
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   const swordAsset = page.waitForResponse((response) =>
@@ -112,7 +140,7 @@ test('character and weapon presets can be selected', async ({ page }) => {
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
   const hud = page.getByTestId('hud');
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  await page.locator('canvas').click({ force: true });
   // Fixed-tick driver (PLAN Part VII §27): the jump's air time is physics-
   // derived, not a fixed duration, so waiting on it with a wall-clock timeout
   // either guesses too short (flaky) or too long (slow). Ticking forward
@@ -141,8 +169,10 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
+  await openHierarchy(page);
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await page.getByTestId('weapon-mode-select').selectOption('sword');
+  await closeHierarchy(page);
   // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
   // of scripted replay, so ticking forward deterministically replaces waiting
   // on however fast this machine renders frames.
@@ -517,7 +547,10 @@ test('the layer bar colours action-to-action blends', async ({ page }) => {
     .fill('0.5');
 
   await openPanel(page, 'graph');
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // No canvas click here: the input sampler listens on `window`, not the
+  // canvas, and on a narrow viewport the open graph panel visually covers
+  // the canvas — a forced click would actually land on the panel's own
+  // content underneath instead, which is not what focusing input is for.
   // Fixed-tick driver (PLAN Part VII §27): the combo window opens at 62% of
   // unarmed-attack-01's 45-tick duration. Advancing exact ticks instead of
   // waiting on the wall clock means the second press always lands inside
