@@ -175,6 +175,8 @@ export function App() {
   const activePanel = useChamber((state) => state.activePanel);
   const setPanel = useChamber((state) => state.setPanel);
   const statusMessage = useChamber((state) => state.statusMessage);
+  const staleCharacterDrafts = useChamber((state) => state.staleCharacterDrafts);
+  const discardStaleCharacterDraft = useChamber((state) => state.discardStaleCharacterDraft);
   const showMobilePad = useChamber((state) => state.showMobilePad);
   const toggleMobilePad = useChamber((state) => state.toggleMobilePad);
   const hideUi = useChamber((state) => state.hideUiForRecording);
@@ -404,6 +406,27 @@ export function App() {
               hold animation edits opens it here rather than sending the reader
               to another workspace to find out why the commit stopped. */}
           {libraryDialog === 'save-destination' && <SaveDestinationDialog />}
+
+          {/* A draft made against a repository revision that has since moved
+              on is never reapplied silently (PLAN Part V §24) — it is only
+              ever offered here, for a human to discard. */}
+          {staleCharacterDrafts.length > 0 && (
+            <div className="app__stale-draft-banner" data-testid="stale-character-draft-banner">
+              {staleCharacterDrafts.map((draft) => (
+                <p key={`${draft.characterId}:${draft.revisionId}`}>
+                  A browser-only draft for “{draft.characterId}” was made against an older
+                  repository revision and was not applied.
+                  <button
+                    type="button"
+                    onClick={() => discardStaleCharacterDraft(draft.characterId, draft.revisionId)}
+                    data-testid={`stale-character-draft-discard-${draft.characterId}`}
+                  >
+                    Discard
+                  </button>
+                </p>
+              ))}
+            </div>
+          )}
 
           <footer className="status" data-testid="status-bar">
             {statusMessage}

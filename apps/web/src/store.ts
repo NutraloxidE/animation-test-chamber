@@ -3,6 +3,7 @@ import { create, type StateCreator } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   AnimationAssetSummary,
+  AnimationBehaviorAsset,
   AssetIssue,
   AssetReference,
   CanonicalPatch,
@@ -20,6 +21,7 @@ import { resolveWeaponMode } from '@atc/animation-runtime';
 import {
   AnimationAssetRegistry,
   diffToPatches,
+  isVariantAsset,
   registryFromLibraryIndex,
   resolveCharacterAnimation,
   stripGraphPrefix,
@@ -184,11 +186,19 @@ interface ChamberState {
   backendOnline: boolean | null;
   /** Bumped whenever the preview document changes, to re-render panels. */
   revision: number;
+  /**
+   * Browser-only character animation drafts left over from a repository
+   * revision that no longer matches (PLAN Part V §24). Never auto-applied —
+   * surfaced so a human can discard them, or (in a later session against the
+   * same revision) they would already be live.
+   */
+  staleCharacterDrafts: { characterId: string; revisionId: string }[];
 }
 
 interface ChamberActions {
   setWorkspaceMode(mode: WorkspaceMode): void;
   setActiveCharacter(characterId: string): void;
+  discardStaleCharacterDraft(characterId: string, revisionId: string): void;
   selectLibraryAsset(selection: { assetType: string; assetId: string; version: string } | null): void;
   setLibraryTypeFilter(assetType: string): void;
   setLibrarySearch(text: string): void;
@@ -285,9 +295,113 @@ function groupClipPatches(patches: CanonicalPatch[]): { clipId: string; patches:
   return [...byClip.entries()].map(([clipId, clipPatches]) => ({ clipId, patches: clipPatches }));
 }
 
+/**
+ * Static / offline character animation drafts (PLAN Part V §24).
+ *
+ * A character-override save is meant to work with no API server at all — a
+ * static host never has one — so it is committed to an in-memory
+ * `instanceOverrides` update immediately, and mirrored here only so a page
+ * reload does not lose it. The key embeds the revision the draft was made
+ * against on purpose: a repository revision that has since moved on must
+ * never have a stale draft silently reapplied on top of it, so a key that
+ * simply stops matching is the whole mechanism.
+ */
+const CHARACTER_DRAFT_PREFIX = 'atc:character-animation-draft';
+
+interface CharacterAnimationDraft {
+  revisionId: string;
+  characterId: string;
+  /** The character's complete `instanceOverrides`, not a delta — restoring replaces, never appends. */
+  instanceOverrides: CanonicalPatch[];
+}
+
+function characterDraftKey(projectId: string, revisionId: string, characterId: string): string {
+  return `${CHARACTER_DRAFT_PREFIX}:${projectId}:${revisionId}:${characterId}`;
+}
+
+function saveCharacterDraft(
+  projectId: string,
+  revisionId: string,
+  characterId: string,
+  instanceOverrides: CanonicalPatch[],
+): void {
+  try {
+    window.localStorage.setItem(
+      characterDraftKey(projectId, revisionId, characterId),
+      JSON.stringify({ revisionId, characterId, instanceOverrides } satisfies CharacterAnimationDraft),
+    );
+  } catch {
+    // Storage may be unavailable in privacy modes; the in-memory override
+    // still applies for the rest of this session.
+  }
+}
+
+function clearCharacterDraft(projectId: string, revisionId: string, characterId: string): void {
+  try {
+    window.localStorage.removeItem(characterDraftKey(projectId, revisionId, characterId));
+  } catch {
+    // Nothing to clear if storage was never reachable.
+  }
+}
+
+/** Every character-animation draft on disk for this project, whatever revision it was made against. */
+function listCharacterDrafts(projectId: string): CharacterAnimationDraft[] {
+  const drafts: CharacterAnimationDraft[] = [];
+  try {
+    const prefix = `${CHARACTER_DRAFT_PREFIX}:${projectId}:`;
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !key.startsWith(prefix)) continue;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const draft = JSON.parse(raw) as Partial<CharacterAnimationDraft>;
+        if (
+          typeof draft.revisionId === 'string' &&
+          typeof draft.characterId === 'string' &&
+          Array.isArray(draft.instanceOverrides)
+        ) {
+          drafts.push(draft as CharacterAnimationDraft);
+        }
+      } catch {
+        // Malformed entry; ignore rather than fail the whole scan.
+      }
+    }
+  } catch {
+    // Storage unavailable; no drafts to report.
+  }
+  return drafts;
+}
+
+const characterDraftsAtLoad = listCharacterDrafts(canonicalSeed.id);
+const currentRevisionDrafts = characterDraftsAtLoad.filter(
+  (draft) => draft.revisionId === canonicalSeed.revisionId,
+);
+const staleCharacterDraftsAtLoad = characterDraftsAtLoad
+  .filter((draft) => draft.revisionId !== canonicalSeed.revisionId)
+  .map((draft) => ({ characterId: draft.characterId, revisionId: draft.revisionId }));
+
+/**
+ * The seed project with any current-revision character drafts already
+ * applied — a page reload must not look like the draft never happened.
+ * Stale-revision drafts (a different revision) are deliberately left out:
+ * they are surfaced as discardable rather than reapplied (PLAN Part V §24).
+ */
+const canonicalSeedWithDrafts: ProjectDefinition = {
+  ...canonicalSeed,
+  characters: canonicalSeed.characters.map((character) => {
+    const draft = currentRevisionDrafts.find((entry) => entry.characterId === character.id);
+    if (!draft) return character;
+    return {
+      ...character,
+      animation: { ...character.animation, instanceOverrides: draft.instanceOverrides },
+    };
+  }),
+};
+
 const initialResolution = resolveFor(
-  canonicalSeed,
-  canonicalSeed.activeCharacterId,
+  canonicalSeedWithDrafts,
+  canonicalSeedWithDrafts.activeCharacterId,
   seedRegistry,
 );
 const initialProject = initialResolution.project;
@@ -366,12 +480,13 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     session,
     engine,
     project: session.previewProject,
-    canonicalProject: canonicalSeed,
+    canonicalProject: canonicalSeedWithDrafts,
     registry: seedRegistry,
     assetIssues: initialResolution.issues,
+    staleCharacterDrafts: staleCharacterDraftsAtLoad,
 
     workspaceMode: 'chamber',
-    activeCharacterId: canonicalSeed.activeCharacterId,
+    activeCharacterId: canonicalSeedWithDrafts.activeCharacterId,
 
     librarySelection: null,
     libraryTypeFilter: 'all',
@@ -446,6 +561,15 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         assetIssues: resolution.issues,
         revision: get().revision + 1,
         statusMessage: `Character: ${resolution.project.character.displayName}`,
+      });
+    },
+
+    discardStaleCharacterDraft(characterId, revisionId) {
+      clearCharacterDraft(get().canonicalProject.id, revisionId, characterId);
+      set({
+        staleCharacterDrafts: get().staleCharacterDrafts.filter(
+          (entry) => !(entry.characterId === characterId && entry.revisionId === revisionId),
+        ),
       });
     },
 
@@ -538,12 +662,14 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         (character) => character.animation.behavior.assetId === behaviorId,
       );
       const hasTuning = Boolean(project.character.animation.tuning);
+      // A domain fact — is the active behaviour a variant — must never
+      // depend on what the library's search box or type filter currently
+      // shows (PLAN Part VI §25): asked directly of the registry, not of
+      // `librarySummaries()`, which is exactly the filtered view.
+      const behaviorAsset = get().registry.find(project.character.animation.behavior);
       const isVariant =
-        get().registry.find(project.character.animation.behavior)?.metadata.assetType ===
-          'animation-behavior' &&
-        get().librarySummaries().some(
-          (summary) => summary.id === behaviorId && summary.derivation === 'variant',
-        );
+        behaviorAsset?.metadata.assetType === 'animation-behavior' &&
+        isVariantAsset(behaviorAsset as AnimationBehaviorAsset);
 
       return [
         {
@@ -651,12 +777,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         });
         return;
       }
-      if (!(await backendAvailable())) {
-        set({
-          statusMessage: `Save: ${NO_BACKEND_MESSAGE} The edit stays in this browser as a draft.`,
-        });
-        return;
-      }
 
       const repository = session.repositoryProject;
       const preview = session.buildStagedDocument();
@@ -664,6 +784,58 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       const clipPatches = diffToPatches(repository.clips, preview.clips, '');
       const clipChangeGroups = groupClipPatches(clipPatches);
       const character = get().project.character;
+
+      const clipChanges: ClipChange[] = clipChangeGroups.flatMap(({ clipId, patches }) => {
+        const sourceClip = repository.clipAssetSources[clipId];
+        return sourceClip ? [{ sourceClip, clipId, patches }] : [];
+      });
+
+      // A character-override destination needs no server at all — it never
+      // publishes an asset, only rewrites this character's own overrides —
+      // so it is the one save this chamber can always complete offline
+      // (PLAN Part V §24). Anything else genuinely needs the API.
+      const graphNeedsBackend = summary.graphPatchCount > 0 && choice.graph.kind !== 'character-override';
+      const clipNeedsBackend = clipChanges.length > 0 && choice.clips.kind !== 'character-override';
+
+      if (!(await backendAvailable())) {
+        if (graphNeedsBackend || clipNeedsBackend) {
+          set({
+            statusMessage:
+              `Save: ${NO_BACKEND_MESSAGE} Choose "Character instance override" for every changed ` +
+              'domain to save this as a browser-only draft instead.',
+          });
+          return;
+        }
+
+        const overrides = [
+          ...character.animation.instanceOverrides,
+          ...graphPatches.map((patch) => ({ ...patch, path: `/graph${patch.path}` })),
+          ...clipChanges.flatMap((change) =>
+            change.patches.map((patch) => ({ ...patch, path: `/clips/${change.clipId}${patch.path}` })),
+          ),
+        ];
+        const canonical = get().canonicalProject;
+        const nextCanonical: ProjectDefinition = {
+          ...canonical,
+          characters: canonical.characters.map((entry) =>
+            entry.id === character.id
+              ? { ...entry, animation: { ...entry.animation, instanceOverrides: overrides } }
+              : entry,
+          ),
+        };
+        const resolution = resolveFor(nextCanonical, get().activeCharacterId, get().registry);
+        session.acceptCommitted(resolution.project);
+        engine.setProject(resolution.project);
+        saveCharacterDraft(nextCanonical.id, nextCanonical.revisionId, character.id, overrides);
+        set({
+          canonicalProject: nextCanonical,
+          project: resolution.project,
+          assetIssues: resolution.issues,
+          revision: get().revision + 1,
+          statusMessage: 'Saved as a browser-only character draft. No repository files were changed.',
+        });
+        return;
+      }
 
       const graphDestination: GraphChangeDestination =
         summary.graphPatchCount === 0
@@ -675,11 +847,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
                 displayName: choice.graph.displayName ?? choice.graph.newAssetId ?? '',
               }
             : { kind: choice.graph.kind as Exclude<GraphDestinationKind, 'new-behavior-variant'> };
-
-      const clipChanges: ClipChange[] = clipChangeGroups.flatMap(({ clipId, patches }) => {
-        const sourceClip = repository.clipAssetSources[clipId];
-        return sourceClip ? [{ sourceClip, clipId, patches }] : [];
-      });
       const clipDestination: ClipChangeDestination =
         clipChanges.length === 0 ? { kind: 'none' } : { kind: choice.clips.kind };
 
@@ -723,6 +890,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           });
           return;
         }
+        // A real publish supersedes any browser-only draft for this
+        // character at this revision — keeping both would let the stale
+        // draft resurface a change the repository no longer agrees with.
+        clearCharacterDraft(repository.id, repository.revisionId, character.id);
         await get().reloadAssets(payload.project);
         set({ statusMessage: `Saved. Report: ${payload.reportPath}` });
       } catch (error) {

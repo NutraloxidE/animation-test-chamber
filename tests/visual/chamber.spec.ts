@@ -322,6 +322,105 @@ test.describe('committing', () => {
   });
 });
 
+test.describe('static character drafts', () => {
+  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
+
+  /**
+   * A character-override save never publishes an asset, so it is the one
+   * save the chamber must complete with no API server at all (PLAN Part V
+   * §24) — exactly the shape a static host is. Blocking /api/health before
+   * the app's own startup probe runs makes `backendAvailable()` resolve
+   * false for the rest of the page's life, the same as a real static
+   * deployment.
+   */
+  test('an offline character-override save persists as a browser-only draft and survives reload', async ({
+    page,
+    context,
+  }) => {
+    await context.route('**/api/health', (route) => route.abort());
+    await page.goto('/');
+    await expect(page.getByTestId('hud')).toBeVisible();
+
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await page
+      .getByTestId('field-/clips/dodge/rootDisplacement/z')
+      .locator('input[type=range]')
+      .fill('6.2');
+
+    await openPanel(page, 'diff');
+    await page.getByTestId('stage-all').click();
+    await page.getByTestId('commit-button').click();
+
+    const dialog = page.getByTestId('save-destination-dialog');
+    await expect(dialog).toBeVisible();
+    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
+    await page.getByTestId('save-destination-submit').click();
+
+    await expect(page.getByTestId('status-bar')).toContainText(
+      'Saved as a browser-only character draft. No repository files were changed.',
+    );
+
+    // No repository file was touched — this is the whole point.
+    const untouched = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
+      characters: { animation: { instanceOverrides: unknown[] } }[];
+    };
+    expect(
+      untouched.characters.some((character) =>
+        character.animation.instanceOverrides.some(
+          (entry) => JSON.stringify(entry).includes('dodge') && JSON.stringify(entry).includes('6.2'),
+        ),
+      ),
+    ).toBe(false);
+
+    // Survives a reload: still offline, still applied, from localStorage.
+    await page.reload();
+    await expect(page.getByTestId('hud')).toBeVisible();
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText('6.2 m');
+  });
+
+  /**
+   * A draft made against a repository revision that has since moved on must
+   * never be silently reapplied (PLAN Part V §24) — only ever offered as
+   * something to discard.
+   */
+  test('a stale-revision character draft is not applied and can be discarded', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
+        JSON.stringify({
+          revisionId: 'rev-not-current',
+          characterId: 'demo-humanoid',
+          instanceOverrides: [{ path: '/clips/dodge/rootDisplacement/z', op: 'set', value: 9.9 }],
+        }),
+      );
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('hud')).toBeVisible();
+
+    const banner = page.getByTestId('stale-character-draft-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('demo-humanoid');
+
+    // Not applied: the field shows the repository value, not the stale draft's.
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).not.toContainText('9.9 m');
+
+    await page.getByTestId('stale-character-draft-discard-demo-humanoid').click();
+    await expect(banner).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        window.localStorage.getItem(
+          'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
+        ),
+      ),
+    ).toBeNull();
+  });
+});
+
 test('a replay plays back and reports a before/after comparison', async ({ page }) => {
   await openPanel(page, 'replay');
   await expect(page.getByTestId('replay-panel')).toBeVisible();

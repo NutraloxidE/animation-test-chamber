@@ -34,13 +34,18 @@ export function SaveDestinationDialog() {
 
   const graphSatisfied = !hasGraphChanges || graphChosen !== null;
   const clipSatisfied = !hasClipChanges || clipChosen !== null;
+  // A character-override destination is applied locally and never touches the
+  // API; any other destination publishes a shared asset and needs it.
+  const graphNeedsBackend = hasGraphChanges && graphChosen !== 'character-override';
+  const clipNeedsBackend = hasClipChanges && clipChosen !== 'character-override';
+  const needsBackend = graphNeedsBackend || clipNeedsBackend;
   const canSubmit =
     hasAnyChanges &&
     !summary.hasUnresolvedClipChanges &&
     graphSatisfied &&
     clipSatisfied &&
     (!needsNewId || newAssetId.trim() !== '') &&
-    backendOnline !== false;
+    (backendOnline !== false || !needsBackend);
 
   const willUpdate: string[] = [];
   const willCreate: string[] = [];
@@ -200,7 +205,7 @@ export function SaveDestinationDialog() {
           type="button"
           disabled={!canSubmit}
           title={
-            backendOnline === false
+            backendOnline === false && needsBackend
               ? 'Publishing to an asset needs the local API server; a character override still previews here.'
               : undefined
           }

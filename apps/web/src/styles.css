@@ -1191,6 +1191,22 @@ textarea {
   overflow-y: auto;
 }
 
+.app__stale-draft-banner {
+  grid-column: 1 / -1;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--warning, #d97706);
+  background: var(--panel-2);
+  border-top: 1px solid var(--line);
+}
+
+.app__stale-draft-banner p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+}
+
 .sheet-handle {
   display: none;
 }
