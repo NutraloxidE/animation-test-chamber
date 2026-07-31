@@ -19,6 +19,7 @@ export default defineConfig({
       '@atc/ai-adapter': pkg('ai-adapter'),
       '@atc/acquisition-core': pkg('acquisition-core'),
       '@atc/unity-export': pkg('unity-export'),
+      '@atc/repository-transaction': pkg('repository-transaction'),
     },
   },
   test: {

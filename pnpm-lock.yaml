@@ -251,6 +251,8 @@ importers:
         specifier: workspace:*
         version: link:../terrain-runtime
 
+  packages/repository-transaction: {}
+
   packages/runtime-core:
     dependencies:
       '@atc/schema':

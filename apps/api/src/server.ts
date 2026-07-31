@@ -30,14 +30,50 @@ import {
   PROJECT_PATH,
   REPO_ROOT,
 } from './context.ts';
+import { recoverRepository } from '@atc/repository-transaction';
 import { animationAssetRoutes } from './routes/animation-assets.ts';
 
 const context = createContext();
 const app = new Hono();
 
+/**
+ * Resolve any repository transaction a previous process crashed in the
+ * middle of, before this one accepts a single write (PLAN Part I §9). If a
+ * transaction could not be fully rolled back, writes are refused rather than
+ * risking a second one landing on top of an already-inconsistent repository.
+ */
+const startupRecovery = recoverRepository(REPO_ROOT);
+if (startupRecovery.transactions.length > 0) {
+  console.log(
+    `[repository-transaction] startup recovery resolved ${startupRecovery.transactions.length} ` +
+      `transaction(s): ${startupRecovery.transactions.map((t) => `${t.transactionId}=${t.outcome}`).join(', ')}`,
+  );
+}
+const repositoryReadOnly = startupRecovery.readOnly;
+if (repositoryReadOnly) {
+  console.error(
+    '[repository-transaction] one or more transactions could not be fully rolled back; ' +
+      'the write API is disabled until a human resolves .chamber-transactions/',
+  );
+}
+
 // The web dev server runs on a different port; nothing here is authenticated,
 // so it is bound to localhost only (see serve() below).
 app.use('/api/*', cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
+
+app.use('/api/*', async (c, next) => {
+  if (repositoryReadOnly && c.req.method !== 'GET') {
+    return c.json(
+      {
+        error:
+          'the repository is in read-only mode: a prior transaction could not be fully rolled back ' +
+          'and needs manual resolution under .chamber-transactions/',
+      },
+      503,
+    );
+  }
+  await next();
+});
 
 app.get('/api/health', (c) =>
   c.json({

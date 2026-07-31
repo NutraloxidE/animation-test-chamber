@@ -1,21 +1,17 @@
 /**
- * Atomic asset transactions (PLAN 39).
+ * Animation asset transactions (PLAN, Part I §10).
  *
- * One asset operation touches several files: a new behaviour version, a motion
- * set that binds it, and the project reference that points at both. Half of
- * that landing is worse than none of it landing — the repository would be in a
- * state no validation run had ever seen.
- *
- * So nothing is written where the repository can see it until the *whole*
- * proposed repository has been validated: proposed files go to a staging
- * directory, the registry is built from disk-plus-proposals, every character is
- * resolved against it, and only then is anything moved into place. A failure at
- * any point deletes the staging directory and leaves published assets and the
- * project exactly as they were.
+ * This file is a thin domain adapter now: it turns an animation-specific
+ * proposal (new asset versions, an optional rewritten project) into
+ * `PlannedFileWrite[]` and a validator closure, then hands both to the
+ * generic, crash-safe `@atc/repository-transaction` engine, which owns the
+ * journal, the write lock, promotion-by-rename and rollback. This file knows
+ * nothing about *how* a transaction survives a crash — only what "valid"
+ * means for animation assets.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import type { AnimationAsset, AssetIssue, ProjectDefinition } from '@atc/schema';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { AnimationAsset, AssetIssue, AssetIssueCode, ProjectDefinition } from '@atc/schema';
 import { assetFilePath, validateProject, validateProjectReferences } from '@atc/schema';
 import {
   AnimationAssetRegistry,
@@ -25,16 +21,22 @@ import {
   sealAsset,
   type StoredAsset,
 } from '@atc/animation-asset-runtime';
+import {
+  runRepositoryTransaction,
+  sha256Hex,
+  type PlannedFileWrite,
+  type PreparedRepositoryView,
+  type TransactionIssue,
+  type TransactionValidationResult,
+} from '@atc/repository-transaction';
 import { PROJECT_PATH, REPO_ROOT, loadProject, loadStoredAssets } from './context.ts';
-
-export const TRANSACTION_ROOT = '.chamber-asset-transactions';
 
 export interface ProposedAsset {
   asset: AnimationAsset;
 }
 
 export interface TransactionRequest {
-  /** Human-readable reason, recorded in the transaction report. */
+  /** Human-readable reason, recorded in the transaction journal and report. */
   intent: string;
   /** New asset versions to publish. */
   assets: AnimationAsset[];
@@ -64,48 +66,26 @@ function storedOf(asset: AnimationAsset): StoredAsset {
   };
 }
 
-/**
- * A published version is immutable (PLAN 12.3). Overwriting one would change
- * behaviour for every character already pointing at it, retroactively and
- * invisibly, which is precisely what content hashes exist to make impossible.
- */
-function immutabilityIssues(assets: readonly AnimationAsset[]): AssetIssue[] {
-  const issues: AssetIssue[] = [];
-  for (const asset of assets) {
-    const path = assetFilePath(assetTypeOf(asset), asset.metadata.id, asset.metadata.version);
-    if (!existsSync(resolve(REPO_ROOT, path))) continue;
-    const existing = readFileSync(resolve(REPO_ROOT, path), 'utf8');
-    const proposed = `${JSON.stringify(asset, null, 2)}\n`;
-    if (existing === proposed) continue;
-    issues.push({
-      code: 'published-asset-modified',
-      severity: 'error',
-      message:
-        `${asset.metadata.id}@${asset.metadata.version} is already published and differs from ` +
-        `this proposal. Publish a new version instead of rewriting this one.`,
-      reference: {
-        assetType: assetTypeOf(asset),
-        assetId: asset.metadata.id,
-        version: asset.metadata.version,
-        contentHash: asset.metadata.contentHash,
-      },
-    });
-  }
-  return issues;
+function assetContent(asset: AnimationAsset): string {
+  return `${JSON.stringify(asset, null, 2)}\n`;
 }
 
 /**
- * Validates the repository *as it would be* after the proposal lands: existing
- * assets plus the proposed ones, with every character resolved against the
- * combination. Checking the proposal in isolation would miss exactly the
- * failure that matters — a new version that is fine on its own and breaks the
- * character that references it.
+ * Validates the repository *as it would be* after the proposal lands:
+ * existing assets plus the proposed ones, with every character resolved
+ * against the combination. Checking the proposal in isolation would miss
+ * exactly the failure that matters — a new version that is fine on its own
+ * and breaks the character that references it.
+ *
+ * A published version being overwritten in place is no longer checked here:
+ * every asset write is `mode: 'create'`, so the generic transaction engine
+ * refuses it (`create-target-exists`) before this validator ever runs.
  */
 export function validateProposedRepository(
   assets: readonly AnimationAsset[],
   project: ProjectDefinition,
 ): AssetIssue[] {
-  const issues: AssetIssue[] = [...immutabilityIssues(assets)];
+  const issues: AssetIssue[] = [];
 
   for (const asset of assets) {
     if (!assetHashMatches(asset)) {
@@ -145,114 +125,82 @@ export function validateProposedRepository(
   return issues;
 }
 
-function renderReport(
-  transactionId: string,
-  request: TransactionRequest,
-  issues: AssetIssue[],
-  written: string[],
-): string {
-  const errors = issues.filter((issue) => issue.severity === 'error');
-  const lines = [
-    `# Animation asset transaction ${transactionId}`,
-    '',
-    `- Intent: ${request.intent}`,
-    `- Outcome: ${errors.length === 0 ? 'committed' : 'rolled back'}`,
-    `- Proposed assets: ${request.assets.length}`,
-    `- Project rewritten: ${request.project ? 'yes' : 'no'}`,
-    '',
-    '## Proposed assets',
-    '',
-  ];
-  for (const asset of request.assets) {
-    lines.push(`- ${asset.metadata.assetType} \`${asset.metadata.id}@${asset.metadata.version}\``);
-  }
-  if (issues.length > 0) {
-    lines.push('', '## Issues', '');
-    for (const issue of issues) {
-      lines.push(`- [${issue.severity}] ${issue.code}: ${issue.message}`);
-    }
-  }
-  lines.push('', '## Files', '');
-  if (written.length === 0) {
-    lines.push('Nothing was written. Published assets and the project are untouched.');
-  } else {
-    for (const path of written) lines.push(`- ${path}`);
-  }
-  return `${lines.join('\n')}\n`;
+function toGenericIssue(issue: AssetIssue): TransactionIssue {
+  return { code: issue.code, severity: issue.severity, message: issue.message, ...(issue.path ? { path: issue.path } : {}) };
 }
-
-function writeFile(path: string, content: string): void {
-  const full = resolve(REPO_ROOT, path);
-  mkdirSync(dirname(full), { recursive: true });
-  writeFileSync(full, content, 'utf8');
-}
-
-let transactionCounter = 0;
 
 /**
  * Runs one transaction. Never throws for a validation failure — the caller
  * needs the issue list to show the human, and an exception would lose it.
+ *
+ * Async because the generic engine underneath it is (crash-safe promotion
+ * involves no blocking I/O primitives that would justify staying sync).
+ * Every route calling this already runs inside an `async` handler.
  */
-export function runAssetTransaction(request: TransactionRequest): TransactionResult {
-  transactionCounter += 1;
-  const transactionId = `tx-${Date.now().toString(36)}-${transactionCounter}`;
-  const stagingDirectory = `${TRANSACTION_ROOT}/${transactionId}`;
-  const reportPath = `reports/animation-asset-transaction-${transactionId}.md`;
-
-  const originalProject = readFileSync(resolve(REPO_ROOT, PROJECT_PATH), 'utf8');
+export async function runAssetTransaction(request: TransactionRequest): Promise<TransactionResult> {
   const project = request.project ?? loadProject();
 
-  try {
-    // 1. Proposed files land in the staging directory first.
-    for (const asset of request.assets) {
-      writeFile(
-        `${stagingDirectory}/${assetFilePath(assetTypeOf(asset), asset.metadata.id, asset.metadata.version)}`,
-        `${JSON.stringify(asset, null, 2)}\n`,
-      );
-    }
-    writeFile(
-      `${stagingDirectory}/${PROJECT_PATH}`,
-      `${JSON.stringify(project, null, 2)}\n`,
-    );
-
-    // 2. Validate the complete proposed repository view.
-    const issues = validateProposedRepository(request.assets, project);
-    if (issues.some((issue) => issue.severity === 'error')) {
-      rmSync(resolve(REPO_ROOT, stagingDirectory), { recursive: true, force: true });
-      writeFile(reportPath, renderReport(transactionId, request, issues, []));
-      return { ok: false, transactionId, written: [], issues, reportPath };
-    }
-
-    // 3. Move into canonical paths. Only now does the repository change.
-    const written: string[] = [];
-    for (const asset of request.assets) {
-      const path = assetFilePath(assetTypeOf(asset), asset.metadata.id, asset.metadata.version);
-      writeFile(path, `${JSON.stringify(asset, null, 2)}\n`);
-      written.push(path);
-    }
-    if (request.project) {
-      writeFile(PROJECT_PATH, `${JSON.stringify(project, null, 2)}\n`);
-      written.push(PROJECT_PATH);
-    }
-
-    rmSync(resolve(REPO_ROOT, stagingDirectory), { recursive: true, force: true });
-    writeFile(reportPath, renderReport(transactionId, request, issues, written));
-    return { ok: true, transactionId, written, issues, reportPath };
-  } catch (error) {
-    // Any throw is a rollback: staging goes, the project comes back byte for
-    // byte, and nothing under assets/ was touched because step 3 never ran.
-    rmSync(resolve(REPO_ROOT, stagingDirectory), { recursive: true, force: true });
-    writeFileSync(resolve(REPO_ROOT, PROJECT_PATH), originalProject, 'utf8');
-    const issues: AssetIssue[] = [
-      {
-        code: 'schema-invalid',
-        severity: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      },
-    ];
-    writeFile(reportPath, renderReport(transactionId, request, issues, []));
-    return { ok: false, transactionId, written: [], issues, reportPath };
+  const writes: PlannedFileWrite[] = request.assets.map((asset) => ({
+    repositoryPath: assetFilePath(assetTypeOf(asset), asset.metadata.id, asset.metadata.version),
+    mode: 'create',
+    content: assetContent(asset),
+  }));
+  if (request.project) {
+    writes.push({ repositoryPath: PROJECT_PATH, mode: 'replace', content: `${JSON.stringify(project, null, 2)}\n` });
   }
+
+  // Optimistic concurrency: the project this proposal was built against must
+  // still be the project on disk once the write lock is held. Computed here,
+  // before the lock — the generic engine re-checks it fresh, after. Read
+  // straight from disk rather than `project`, which for a rewritten proposal
+  // is already the *new* revision, not the one being superseded.
+  const currentProjectBytes = readFileSync(resolve(REPO_ROOT, PROJECT_PATH));
+  const expectedProjectHash = sha256Hex(new Uint8Array(currentProjectBytes));
+  const currentProjectRevisionId = (JSON.parse(currentProjectBytes.toString('utf8')) as ProjectDefinition)
+    .revisionId;
+
+  // Stashed so a validation refusal can report the rich, reference-carrying
+  // AssetIssue[] the rest of this codebase (and the UI) expects, rather than
+  // the generic engine's stripped-down TransactionIssue[].
+  let richIssues: AssetIssue[] = [];
+
+  const result = await runRepositoryTransaction(
+    REPO_ROOT,
+    {
+      intent: request.intent,
+      expected: {
+        projectRevisionId: currentProjectRevisionId,
+        files: [{ repositoryPath: PROJECT_PATH, expectedSha256: expectedProjectHash }],
+      },
+      writes,
+      validatePreparedView(_view: PreparedRepositoryView): TransactionValidationResult {
+        richIssues = validateProposedRepository(request.assets, project);
+        return { issues: richIssues.map(toGenericIssue) };
+      },
+    },
+  );
+
+  const reportPath = `reports/animation-asset-transaction-${result.transactionId}.md`;
+
+  if (result.ok) {
+    return { ok: true, transactionId: result.transactionId, written: result.written, issues: [], reportPath };
+  }
+
+  // Prefer the rich domain issues captured during validation; for refusals
+  // that never reached the validator (path errors, lock/optimistic-concurrency
+  // conflicts), fall back to the generic engine's own issues, recast as
+  // AssetIssue so the response shape stays stable for existing callers.
+  const issues: AssetIssue[] =
+    richIssues.length > 0
+      ? richIssues
+      : result.issues.map((issue) => ({
+          code: issue.code as AssetIssueCode,
+          severity: issue.severity,
+          message: issue.message,
+          ...(issue.path ? { path: issue.path } : {}),
+        }));
+
+  return { ok: false, transactionId: result.transactionId, written: [], issues, reportPath };
 }
 
 /** Seals every asset in a proposal so callers cannot forget to hash one. */

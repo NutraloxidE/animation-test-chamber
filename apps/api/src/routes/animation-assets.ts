@@ -153,7 +153,7 @@ export function animationAssetRoutes(): Hono {
         createdBy: body.createdBy ?? 'chamber-user',
         ...(body.createdAt ? { createdAt: body.createdAt } : {}),
       });
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `create variant ${body.newAssetId} of ${referenceKey(parent)}`,
         assets: [asset],
       });
@@ -184,7 +184,7 @@ export function animationAssetRoutes(): Hono {
       if (issues.some((issue) => issue.severity === 'error')) {
         return c.json({ error: 'the parent asset could not be resolved', issues }, 409);
       }
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `fork ${referenceKey(parent)} as ${body.newAssetId}: ${body.forkIntent}`,
         assets: [asset],
       });
@@ -214,7 +214,7 @@ export function animationAssetRoutes(): Hono {
       if (issues.some((issue) => issue.severity === 'error')) {
         return c.json({ error: 'the source asset could not be resolved', issues }, 409);
       }
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `duplicate ${referenceKey(source)} as ${body.newAssetId}`,
         assets: [asset],
       });
@@ -251,7 +251,7 @@ export function animationAssetRoutes(): Hono {
         ...body.asset,
         metadata: { ...body.asset.metadata, version, contentHash: '' },
       }) as AnimationAsset;
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `publish ${asset.metadata.id}@${version}`,
         assets: [asset],
         ...(body.project ? { project: body.project } : {}),
@@ -291,7 +291,7 @@ export function animationAssetRoutes(): Hono {
         ),
       };
 
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `apply animation assets to character "${body.characterId}"`,
         assets: body.assets ?? [],
         project: nextProject,
@@ -418,7 +418,7 @@ export function animationAssetRoutes(): Hono {
         );
       }
 
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: `promote candidate "${candidate.id}" to clip asset "${assetId}"`,
         assets,
       });
@@ -445,7 +445,7 @@ export function animationAssetRoutes(): Hono {
           notes: migration.notes,
         });
       }
-      const result = runAssetTransaction({
+      const result = await runAssetTransaction({
         intent: 'migrate a schema v1 project to animation assets',
         assets: migration.assets.map((asset) => asset.document),
         project: migration.project,
@@ -596,7 +596,7 @@ export function animationAssetRoutes(): Hono {
         ),
       };
 
-      const result = runAssetTransaction({ intent, assets, project: nextProject });
+      const result = await runAssetTransaction({ intent, assets, project: nextProject });
       return c.json(
         { ...result, assignment, project: result.ok ? nextProject : project },
         result.ok ? 200 : 409,
