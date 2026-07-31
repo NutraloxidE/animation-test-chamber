@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import type { AnimationMotionSetAsset, AssetReference } from '@atc/schema';
-import { retargetStatusBetween } from '@atc/animation-asset-runtime';
+import { resolveBehaviorAsset, retargetStatusBetween } from '@atc/animation-asset-runtime';
 import { useChamber } from '../store.ts';
 
 export function MotionSetEditor({ reference }: { reference: AssetReference }) {
@@ -21,7 +21,7 @@ export function MotionSetEditor({ reference }: { reference: AssetReference }) {
   const motionSet = registry.get(reference) as AnimationMotionSetAsset;
   const behaviorReference = project.character.animation.behavior;
   const behavior = registry.has(behaviorReference)
-    ? registry.getBehavior(behaviorReference)
+    ? resolveBehaviorAsset(registry, behaviorReference).asset
     : null;
 
   const contextKeys = [

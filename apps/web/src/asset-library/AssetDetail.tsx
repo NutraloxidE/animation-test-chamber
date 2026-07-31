@@ -16,6 +16,7 @@ import type {
 import {
   checkMotionSetCompatibility,
   describeIncompatibility,
+  resolveBehaviorAsset,
   retargetStatusBetween,
 } from '@atc/animation-asset-runtime';
 import { getAtPath } from '@atc/runtime-core';
@@ -81,7 +82,12 @@ function Metadata({ reference }: { reference: AssetReference }) {
 
 function BehaviorDetail({ reference }: { reference: AssetReference }) {
   const registry = useChamber((state) => state.registry);
+  // `asset` is the stored shape — a variant has no payload of its own, so the
+  // derivation section reads it directly. Everything else shows the
+  // *resolved* contract (inherited slots and patches applied), which is what
+  // a human means by "what does this behaviour actually do".
   const asset = registry.get(reference) as AnimationBehaviorAsset;
+  const resolved = resolveBehaviorAsset(registry, reference).asset;
   const project = useChamber((state) => state.project);
 
   return (
@@ -118,7 +124,7 @@ function BehaviorDetail({ reference }: { reference: AssetReference }) {
             </tr>
           </thead>
           <tbody>
-            {asset.motionSlots.map((slot) => (
+            {resolved.motionSlots.map((slot) => (
               <tr key={slot.id}>
                 <td>
                   <code>{slot.id}</code>
@@ -135,7 +141,7 @@ function BehaviorDetail({ reference }: { reference: AssetReference }) {
       <section data-testid="behavior-parameters">
         <h4>Parameters</h4>
         <p className="muted">
-          {asset.parameters.map((parameter) => `${parameter.name}:${parameter.kind}`).join(', ') ||
+          {resolved.parameters.map((parameter) => `${parameter.name}:${parameter.kind}`).join(', ') ||
             'none declared'}
         </p>
       </section>
@@ -143,16 +149,16 @@ function BehaviorDetail({ reference }: { reference: AssetReference }) {
       <section data-testid="behavior-states">
         <h4>States</h4>
         <p className="muted">
-          {(asset.graph?.states.length ?? project.graph.states.length)} states,{' '}
-          {(asset.graph?.transitions.length ?? project.graph.transitions.length)} transitions across{' '}
-          {(asset.graph?.layers.length ?? project.graph.layers.length)} layers. The full graph is
+          {(resolved.graph.states.length ?? project.graph.states.length)} states,{' '}
+          {(resolved.graph.transitions.length ?? project.graph.transitions.length)} transitions across{' '}
+          {(resolved.graph.layers.length ?? project.graph.layers.length)} layers. The full graph is
           editable in the Chamber’s Graph panel.
         </p>
       </section>
 
       <section data-testid="behavior-replays">
         <h4>Replay fixtures</h4>
-        <p className="muted">{asset.replayFixtureIds.join(', ') || 'none'}</p>
+        <p className="muted">{resolved.replayFixtureIds.join(', ') || 'none'}</p>
       </section>
     </>
   );
@@ -169,7 +175,7 @@ function MotionSetDetail({ reference }: { reference: AssetReference }) {
   const compatibility = registry.has(behaviorReference)
     ? checkMotionSetCompatibility(
         registry,
-        registry.getBehavior(behaviorReference),
+        resolveBehaviorAsset(registry, behaviorReference).asset,
         asset,
         project.character.animation.rig,
       )
@@ -424,14 +430,14 @@ export function AssetDetail() {
     );
   }
 
-  const reference: AssetReference = {
+  const selectionKey: AssetReference = {
     assetType: selection.assetType as AssetReference['assetType'],
     assetId: selection.assetId,
     version: selection.version,
     contentHash: '',
   };
 
-  if (!registry.has(reference)) {
+  if (!registry.has(selectionKey)) {
     return (
       <div className="asset-detail" data-testid="asset-detail-missing">
         <p className="asset-warning">
@@ -440,6 +446,12 @@ export function AssetDetail() {
       </div>
     );
   }
+
+  // The selection only ever carries assetType/id/version (there is no reason
+  // for the library card to know a hash), so the real reference — the one
+  // every downstream `checkReference` call actually verifies against — is
+  // filled in here, once, from the registry.
+  const reference = registry.referenceTo(selectionKey.assetType, selectionKey.assetId, selectionKey.version);
 
   return (
     <div className="asset-detail" data-testid="asset-detail">

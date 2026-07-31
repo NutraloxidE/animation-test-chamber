@@ -7,12 +7,12 @@
  * pure and runs during project load.
  */
 import type {
-  AnimationBehaviorAsset,
   AnimationMotionSetAsset,
   AssetIssue,
   AssetReference,
   HumanoidRigProfileAsset,
   MotionSlotDefinition,
+  ResolvedAnimationBehaviorAsset,
   RetargetStatus,
 } from '@atc/schema';
 import type { AnimationAssetRegistry } from './registry.ts';
@@ -109,7 +109,7 @@ export interface MotionSetCompatibility {
  */
 export function checkMotionSetCompatibility(
   registry: AnimationAssetRegistry,
-  behavior: AnimationBehaviorAsset,
+  behavior: ResolvedAnimationBehaviorAsset,
   motionSet: AnimationMotionSetAsset,
   characterRigReference: AssetReference,
 ): MotionSetCompatibility {

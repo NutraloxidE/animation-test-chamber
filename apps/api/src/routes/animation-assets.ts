@@ -11,12 +11,14 @@ import type {
   AnimationAsset,
   AnimationBehaviorAsset,
   AnimationClipAsset,
+  AnimationGraphDefinition,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
   AssetReference,
   CanonicalPatch,
   CharacterAnimationAssignment,
   ProjectDefinition,
+  VariantAnimationBehaviorAsset,
 } from '@atc/schema';
 import {
   ANIMATION_ASSET_TYPES,
@@ -26,6 +28,7 @@ import {
   validateAgainst,
 } from '@atc/schema';
 import {
+  addGraphPrefix,
   applyPatches,
   buildLibraryIndex,
   checkDeletePolicy,
@@ -34,6 +37,8 @@ import {
   createBehaviorFork,
   createBehaviorVariant,
   duplicateBehavior,
+  isVariantAsset,
+  resolveBehaviorAsset,
   resolveCharacterAnimation,
   sealAsset,
   transitiveDependencies,
@@ -307,7 +312,7 @@ export function animationAssetRoutes(): Hono {
       // the transaction validated against.
       let compatibility = null;
       try {
-        const behavior = registry.getBehavior(body.assignment.behavior);
+        const behavior = resolveBehaviorAsset(registry, body.assignment.behavior).asset;
         const motionSet = registry.getMotionSet(body.assignment.motionSet);
         compatibility = checkMotionSetCompatibility(
           registry,
@@ -488,7 +493,15 @@ export function animationAssetRoutes(): Hono {
         return c.json({ error: `unknown character "${body.characterId}"` }, 404);
       }
 
+      // The client diffs against the graph directly and strips the `/graph`
+      // prefix before sending (chamber paths are project-rooted), so these
+      // patches are graph-rooted bare paths — correct as-is for a tuning
+      // profile's patches (also graph-rooted) and for rewriting a base/fork
+      // asset's `.graph` directly. A *variant*'s patches apply against its
+      // whole resolved payload, not just the graph, so storing them into
+      // `derivation.patches` needs the explicit `/graph` prefix added back.
       const patches = body.graphPatches ?? [];
+      const variantPatches = patches.map((patch) => ({ ...patch, path: addGraphPrefix(patch.path) }));
       const createdAt = body.createdAt ?? new Date().toISOString();
       const createdBy = body.createdBy ?? 'chamber-user';
       const assets: AnimationAsset[] = [];
@@ -527,7 +540,7 @@ export function animationAssetRoutes(): Hono {
         const variant = createBehaviorVariant(
           registry,
           character.animation.behavior,
-          patches,
+          variantPatches,
           {
             newAssetId: body.destination.newAssetId,
             displayName: body.destination.displayName ?? body.destination.newAssetId,
@@ -552,24 +565,23 @@ export function animationAssetRoutes(): Hono {
       ) {
         const current = registry.getBehavior(character.animation.behavior);
         const version = bumpAssetVersion(current.metadata.version, 'patch');
-        const next =
-          current.derivation.mode === 'variant'
-            ? sealAsset<AnimationBehaviorAsset>({
-                ...current,
-                metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-                derivation: {
-                  ...current.derivation,
-                  patches: [...current.derivation.patches, ...patches],
-                },
-              })
-            : sealAsset<AnimationBehaviorAsset>({
-                ...current,
-                metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-                graph: applyPatches(current.graph, patches, {
-                  source: 'behavior-variant',
-                  requireExistingPath: false,
-                }).document as NonNullable<AnimationBehaviorAsset['graph']>,
-              });
+        const next: AnimationBehaviorAsset = isVariantAsset(current)
+          ? sealAsset<VariantAnimationBehaviorAsset>({
+              ...current,
+              metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
+              derivation: {
+                ...current.derivation,
+                patches: [...current.derivation.patches, ...variantPatches],
+              },
+            })
+          : sealAsset<AnimationBehaviorAsset>({
+              ...current,
+              metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
+              graph: applyPatches(current.graph, patches, {
+                source: 'behavior-variant',
+                requireExistingPath: false,
+              }).document as AnimationGraphDefinition,
+            });
         assets.push(next);
         assignment = {
           ...assignment,

@@ -3,7 +3,9 @@ import type {
   AnimationBehaviorAsset,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
+  VariantAnimationBehaviorAsset,
 } from '@atc/schema';
+import { validateAgainst } from '@atc/schema';
 import {
   AnimationAssetRegistry,
   applyPatches,
@@ -50,7 +52,7 @@ describe('behaviour variants', () => {
   const variant = createBehaviorVariant(
     registry,
     behaviorRef,
-    [{ path: '/transitions/idle-to-walk/blendDurationSec', op: 'set', value: 0.02 }],
+    [{ path: '/graph/transitions/idle-to-walk/blendDurationSec', op: 'set', value: 0.02 }],
     {
       newAssetId: 'humanoid-snappy',
       displayName: 'Snappy',
@@ -61,9 +63,10 @@ describe('behaviour variants', () => {
 
   it('stores patches, not a copy of the parent', () => {
     expect(variant.derivation.mode).toBe('variant');
-    // The absence of a graph is the whole property: a variant that carried one
-    // would silently stop tracking its parent.
-    expect(variant.graph).toBeUndefined();
+    // Not just "empty" — the key does not exist at all. A variant that
+    // carried a graph field, even an empty one, would be the "secretly a
+    // full copy" failure the schema exists to make unrepresentable.
+    expect('graph' in variant).toBe(false);
     expect(JSON.stringify(variant).length).toBeLessThan(
       JSON.stringify(registry.get(behaviorRef)).length / 4,
     );
@@ -79,7 +82,9 @@ describe('behaviour variants', () => {
       resolved.graph.transitions.find((entry) => entry.id === 'idle-to-walk')!.blendDurationSec,
     ).toBe(0.02);
     // Everything not patched still comes from the parent.
-    expect(resolved.graph.states.length).toBe(registry.getBehavior(behaviorRef).graph!.states.length);
+    expect(resolved.graph.states.length).toBe(
+      resolveBehaviorAsset(registry, behaviorRef).graph.states.length,
+    );
     expect(resolved.lineage.map((entry) => entry.assetId)).toEqual([BEHAVIOR_ID, 'humanoid-snappy']);
   });
 
@@ -124,7 +129,7 @@ describe('behaviour variants', () => {
   });
 
   it('refuses a variant that weakens the parent’s protection', () => {
-    const parentGraph = registry.getBehavior(behaviorRef).graph!;
+    const parentGraph = resolveBehaviorAsset(registry, behaviorRef).graph;
     const locked = applyPatches(
       parentGraph,
       [{ path: '/states/idle/protection', op: 'set', value: { level: 'locked' } }],
@@ -144,7 +149,7 @@ describe('behaviour variants', () => {
     const broken = createBehaviorVariant(
       registry,
       behaviorRef,
-      [{ path: '/states/does-not-exist/speed', op: 'set', value: 2 }],
+      [{ path: '/graph/states/does-not-exist/speed', op: 'set', value: 2 }],
       { newAssetId: 'broken-variant', displayName: 'Broken', createdBy: 'test', createdAt: '2026-01-01T00:00:00.000Z' },
     );
     const withBroken = registryWith(stored(broken));
@@ -153,6 +158,79 @@ describe('behaviour variants', () => {
       withBroken.referenceTo('animation-behavior', 'broken-variant', '1.0.0'),
     );
     expect(resolved.issues.map((issue) => issue.code)).toContain('invalid-patch-path');
+  });
+
+  it('a variant cannot store a payload — schema-illegal, not merely discouraged', () => {
+    const withPayload = {
+      metadata: variant.metadata,
+      derivation: variant.derivation,
+      // A variant's derivation carries no payload; grafting one on is what
+      // PLAN Part IV §21-22 requires to be unrepresentable.
+      motionSlots: [],
+    };
+    const result = validateAgainst('AnimationBehaviorAsset', withPayload);
+    expect(result.valid).toBe(false);
+  });
+
+  it('a contract the parent gains in a later version reaches an existing variant that repoints to it, with no patch changes', () => {
+    const parentV1Resolved = resolveBehaviorAsset(registry, behaviorRef);
+
+    // Parent v1.1.0 adds one optional motion slot and one replay fixture id
+    // that v1.0.0 never had.
+    const parentV1_1 = sealAsset<AnimationBehaviorAsset>({
+      metadata: { ...parentV1Resolved.asset.metadata, version: '1.1.0', contentHash: '' },
+      derivation: { mode: 'base' },
+      parameters: parentV1Resolved.asset.parameters,
+      motionSlots: [
+        ...parentV1Resolved.asset.motionSlots,
+        { id: 'action.taunt', displayName: 'taunt', required: false, tags: [] },
+      ],
+      semanticEvents: parentV1Resolved.asset.semanticEvents,
+      graph: parentV1Resolved.asset.graph,
+      replayFixtureIds: [...parentV1Resolved.asset.replayFixtureIds, 'a-fixture-only-v1-1-has'],
+    });
+
+    const v1Registry = registryWith(stored(variant));
+    const resolvedAtV1 = resolveBehaviorAsset(
+      v1Registry,
+      v1Registry.referenceTo('animation-behavior', 'humanoid-snappy', '1.0.0'),
+    );
+    expect(resolvedAtV1.asset.motionSlots.map((slot) => slot.id)).not.toContain('action.taunt');
+    expect(resolvedAtV1.asset.replayFixtureIds).not.toContain('a-fixture-only-v1-1-has');
+
+    // A new variant *version* whose only change is which parent version it
+    // names — the patches are untouched. No payload field exists on a
+    // variant for this to have gotten wrong.
+    const variantV1_1: VariantAnimationBehaviorAsset = sealAsset<VariantAnimationBehaviorAsset>({
+      metadata: { ...variant.metadata, version: '1.0.1', contentHash: '' },
+      derivation: {
+        mode: 'variant',
+        parent: {
+          assetType: 'animation-behavior',
+          assetId: parentV1_1.metadata.id,
+          version: '1.1.0',
+          contentHash: computeContentHash(parentV1_1),
+        },
+        patches: variant.derivation.patches,
+      },
+    });
+
+    const v1_1Registry = new AnimationAssetRegistry([
+      ...loadDemoAssets(),
+      stored(parentV1_1),
+      stored(variantV1_1),
+    ]);
+    const resolvedAtV1_1 = resolveBehaviorAsset(
+      v1_1Registry,
+      v1_1Registry.referenceTo('animation-behavior', 'humanoid-snappy', '1.0.1'),
+    );
+    expect(resolvedAtV1_1.issues).toEqual([]);
+    expect(resolvedAtV1_1.asset.motionSlots.map((slot) => slot.id)).toContain('action.taunt');
+    expect(resolvedAtV1_1.asset.replayFixtureIds).toContain('a-fixture-only-v1-1-has');
+    // The original graph patch this variant exists for still applies.
+    expect(
+      resolvedAtV1_1.graph.transitions.find((entry) => entry.id === 'idle-to-walk')!.blendDurationSec,
+    ).toBe(0.02);
   });
 });
 
@@ -166,7 +244,7 @@ describe('forks and duplicates', () => {
 
   it('a fork carries its own graph', () => {
     expect(fork.derivation.mode).toBe('fork');
-    expect(fork.graph?.states.length).toBe(registry.getBehavior(behaviorRef).graph!.states.length);
+    expect(fork.graph.states.length).toBe(resolveBehaviorAsset(registry, behaviorRef).graph.states.length);
   });
 
   it('a fork resolves with the parent absent', () => {
@@ -201,7 +279,7 @@ describe('forks and duplicates', () => {
 });
 
 describe('motion slots and compatibility', () => {
-  const behavior = registry.getBehavior(behaviorRef);
+  const behavior = resolveBehaviorAsset(registry, behaviorRef).asset;
   const motionSetRef = registry.referenceTo(
     'animation-motion-set',
     'demo-humanoid-motion-set',
@@ -474,7 +552,7 @@ describe('dependencies', () => {
 
 describe('patches', () => {
   it('round-trips a diff back into the document that produced it', () => {
-    const before = registry.getBehavior(behaviorRef).graph!;
+    const before = resolveBehaviorAsset(registry, behaviorRef).graph;
     const after = applyPatches(
       before,
       [{ path: '/states/idle/speed', op: 'set', value: 1.5 }],

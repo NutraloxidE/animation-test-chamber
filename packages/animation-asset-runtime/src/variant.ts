@@ -1,5 +1,5 @@
 /**
- * Variants, forks and duplicates (PLAN 22, 23).
+ * Variants, forks and duplicates (PLAN 22, 23; PLAN Part IV).
  *
  * The three exist because "I want to change this shared thing" has three
  * genuinely different answers, and picking one silently is how a shared asset
@@ -8,16 +8,30 @@
  *   variant   — stays attached to the parent, stores only the difference.
  *   fork      — takes a snapshot and cuts the link. Parent may be deleted.
  *   duplicate — a new base asset that merely happens to start here.
+ *
+ * A variant's stored shape has no payload fields at all (PLAN Part IV §21) —
+ * `VariantAnimationBehaviorAsset` is schema-illegal to populate with a graph,
+ * motion slots, or anything else the parent already declares. Resolving one
+ * applies `derivation.patches` to the *parent's resolved payload as a whole*,
+ * not just its graph, so a patch may target `/motionSlots/...`,
+ * `/parameters/...`, `/semanticEvents/...`, `/replayFixtureIds/...` or
+ * `/defaultTuning/...` exactly as it targets `/graph/...` today. That is the
+ * entire mechanism behind "a contract the parent gains later reaches every
+ * existing variant automatically": there is no stored copy to go stale.
  */
 import type {
   AnimationBehaviorAsset,
-  AnimationGraphDefinition,
+  AnimationBehaviorPayload,
   AssetIssue,
   AssetReference,
+  BaseAnimationBehaviorAsset,
   CanonicalPatch,
+  ForkAnimationBehaviorAsset,
   ProtectionLevel,
   ProtectionMetadata,
+  ResolvedAnimationBehaviorAsset,
   ResolvedValue,
+  VariantAnimationBehaviorAsset,
 } from '@atc/schema';
 import { NEW_ASSET_VERSION, referenceKey } from '@atc/schema';
 import { flattenValues, getAtPath } from '@atc/runtime-core';
@@ -26,8 +40,8 @@ import { sealAsset } from './hashing.ts';
 import type { AnimationAssetRegistry } from './registry.ts';
 
 export interface ResolvedBehavior {
-  asset: AnimationBehaviorAsset;
-  graph: AnimationGraphDefinition;
+  asset: ResolvedAnimationBehaviorAsset;
+  graph: AnimationBehaviorPayload['graph'];
   /** Chain from the base asset to the requested one, base first. */
   lineage: AssetReference[];
   resolved: ResolvedValue[];
@@ -39,6 +53,15 @@ const PROTECTION_RANK: Record<ProtectionLevel, number> = {
   'approval-required': 1,
   locked: 2,
   invariant: 3,
+};
+
+const EMPTY_GRAPH: AnimationBehaviorPayload['graph'] = {
+  schemaVersion: 2,
+  id: 'unresolved',
+  layers: [],
+  states: [],
+  transitions: [],
+  forcedTransitionOrder: [],
 };
 
 /**
@@ -64,8 +87,40 @@ export function protectionWeakenings(
   return findings;
 }
 
+function unresolved(issues: AssetIssue[]): ResolvedBehavior {
+  return {
+    asset: {} as ResolvedAnimationBehaviorAsset,
+    graph: EMPTY_GRAPH,
+    lineage: [],
+    resolved: [],
+    issues,
+  };
+}
+
 /**
- * Resolves a behaviour to a concrete graph, walking up the variant chain.
+ * A user-defined type guard rather than a plain `asset.derivation.mode`
+ * check: TypeScript narrows a union only on its *own* discriminant property,
+ * not on a nested one reached through another property, so checking
+ * `asset.derivation.mode` inline would leave `asset` itself unnarrowed.
+ */
+export function isVariantAsset(asset: AnimationBehaviorAsset): asset is VariantAnimationBehaviorAsset {
+  return asset.derivation.mode === 'variant';
+}
+
+/** The concrete payload fields off a resolved (or base/fork) behaviour asset. */
+function payloadOf(asset: BaseAnimationBehaviorAsset | ForkAnimationBehaviorAsset): AnimationBehaviorPayload {
+  return {
+    parameters: asset.parameters,
+    motionSlots: asset.motionSlots,
+    semanticEvents: asset.semanticEvents,
+    graph: asset.graph,
+    ...(asset.defaultTuning !== undefined ? { defaultTuning: asset.defaultTuning } : {}),
+    replayFixtureIds: asset.replayFixtureIds,
+  };
+}
+
+/**
+ * Resolves a behaviour to a concrete payload, walking up the variant chain.
  *
  * `seen` carries the references already on the stack. A variant whose ancestry
  * loops back on itself is refused rather than recursed into, because the
@@ -78,57 +133,30 @@ export function resolveBehaviorAsset(
 ): ResolvedBehavior {
   const key = referenceKey(reference);
   if (seen.includes(key)) {
-    return {
-      asset: {} as AnimationBehaviorAsset,
-      graph: { schemaVersion: 2, id: 'unresolved', layers: [], states: [], transitions: [], forcedTransitionOrder: [] },
-      lineage: [],
-      resolved: [],
-      issues: [
-        {
-          code: 'circular-variant',
-          severity: 'error',
-          message: `variant chain loops: ${[...seen, key].join(' -> ')}`,
-          reference,
-        },
-      ],
-    };
+    return unresolved([
+      {
+        code: 'circular-variant',
+        severity: 'error',
+        message: `variant chain loops: ${[...seen, key].join(' -> ')}`,
+        reference,
+      },
+    ]);
   }
 
   const referenceIssues = registry.checkReference(reference);
   if (referenceIssues.length > 0) {
-    return {
-      asset: {} as AnimationBehaviorAsset,
-      graph: { schemaVersion: 2, id: 'unresolved', layers: [], states: [], transitions: [], forcedTransitionOrder: [] },
-      lineage: [],
-      resolved: [],
-      issues: referenceIssues,
-    };
+    return unresolved(referenceIssues);
   }
 
   const asset = registry.getBehavior(reference);
 
-  if (asset.derivation.mode !== 'variant') {
-    // Base and fork both carry their own graph. A fork reads no parent at all,
-    // which is exactly the property that lets the parent be deleted.
-    if (!asset.graph) {
-      return {
-        asset,
-        graph: { schemaVersion: 2, id: asset.metadata.id, layers: [], states: [], transitions: [], forcedTransitionOrder: [] },
-        lineage: [reference],
-        resolved: [],
-        issues: [
-          {
-            code: 'schema-invalid',
-            severity: 'error',
-            message: `${asset.metadata.id} is a ${asset.derivation.mode} behaviour but has no graph`,
-            reference,
-          },
-        ],
-      };
-    }
+  if (!isVariantAsset(asset)) {
+    // Base and fork both carry their own full payload. A fork reads no parent
+    // at all, which is exactly the property that lets the parent be deleted.
+    const payload = payloadOf(asset);
     return {
-      asset,
-      graph: asset.graph,
+      asset: { metadata: asset.metadata, derivation: asset.derivation, ...payload },
+      graph: payload.graph,
       lineage: [reference],
       resolved: [],
       issues: [],
@@ -141,7 +169,15 @@ export function resolveBehaviorAsset(
   }
 
   const issues: AssetIssue[] = [...parent.issues];
-  const application = applyPatches(parent.graph, asset.derivation.patches, {
+  const parentPayload: AnimationBehaviorPayload = {
+    parameters: parent.asset.parameters,
+    motionSlots: parent.asset.motionSlots,
+    semanticEvents: parent.asset.semanticEvents,
+    graph: parent.asset.graph,
+    ...(parent.asset.defaultTuning !== undefined ? { defaultTuning: parent.asset.defaultTuning } : {}),
+    replayFixtureIds: parent.asset.replayFixtureIds,
+  };
+  const application = applyPatches(parentPayload, asset.derivation.patches, {
     source: 'behavior-variant',
     sourceAsset: reference,
     requireExistingPath: false,
@@ -156,9 +192,9 @@ export function resolveBehaviorAsset(
     });
   }
 
-  const graph = application.document as AnimationGraphDefinition;
+  const patchedPayload = application.document as AnimationBehaviorPayload;
 
-  for (const weakening of protectionWeakenings(parent.graph, graph)) {
+  for (const weakening of protectionWeakenings(parentPayload, patchedPayload)) {
     issues.push({
       code: 'protection-weakened',
       severity: 'error',
@@ -170,11 +206,11 @@ export function resolveBehaviorAsset(
 
   // A required motion slot the parent declares cannot be dropped by a variant.
   const parentRequired = new Set(
-    (parent.asset.motionSlots ?? []).filter((slot) => slot.required).map((slot) => slot.id),
+    parentPayload.motionSlots.filter((slot) => slot.required).map((slot) => slot.id),
   );
-  const ownSlots = new Set((asset.motionSlots ?? []).map((slot) => slot.id));
+  const resolvedSlotIds = new Set(patchedPayload.motionSlots.map((slot) => slot.id));
   for (const required of parentRequired) {
-    if (asset.motionSlots.length > 0 && !ownSlots.has(required)) {
+    if (!resolvedSlotIds.has(required)) {
       issues.push({
         code: 'missing-required-motion-slot',
         severity: 'error',
@@ -185,16 +221,8 @@ export function resolveBehaviorAsset(
   }
 
   return {
-    asset: {
-      ...asset,
-      // The resolved graph and slot contract are derived, never stored back.
-      graph,
-      motionSlots: asset.motionSlots.length > 0 ? asset.motionSlots : parent.asset.motionSlots,
-      parameters: asset.parameters.length > 0 ? asset.parameters : parent.asset.parameters,
-      semanticEvents:
-        asset.semanticEvents.length > 0 ? asset.semanticEvents : parent.asset.semanticEvents,
-    },
-    graph,
+    asset: { metadata: asset.metadata, derivation: asset.derivation, ...patchedPayload },
+    graph: patchedPayload.graph,
     lineage: [...parent.lineage, reference],
     resolved: [...parent.resolved, ...application.resolved],
     issues,
@@ -221,9 +249,9 @@ export function createBehaviorVariant(
   parentReference: AssetReference,
   patches: CanonicalPatch[],
   request: DerivationRequest,
-): AnimationBehaviorAsset {
+): VariantAnimationBehaviorAsset {
   const parent = registry.getBehavior(parentReference);
-  return sealAsset<AnimationBehaviorAsset>({
+  return sealAsset<VariantAnimationBehaviorAsset>({
     metadata: {
       schemaVersion: 2,
       assetType: 'animation-behavior',
@@ -238,10 +266,6 @@ export function createBehaviorVariant(
       ...(parent.metadata.protection ? { protection: parent.metadata.protection } : {}),
     },
     derivation: { mode: 'variant', parent: parentReference, patches },
-    parameters: [],
-    motionSlots: parent.motionSlots,
-    semanticEvents: [],
-    replayFixtureIds: parent.replayFixtureIds,
   });
 }
 
@@ -254,10 +278,10 @@ export function createBehaviorFork(
   parentReference: AssetReference,
   forkIntent: string,
   request: DerivationRequest,
-): { asset: AnimationBehaviorAsset; issues: AssetIssue[] } {
+): { asset: ForkAnimationBehaviorAsset; issues: AssetIssue[] } {
   const resolved = resolveBehaviorAsset(registry, parentReference);
   const parent = registry.getBehavior(parentReference);
-  const asset = sealAsset<AnimationBehaviorAsset>({
+  const asset = sealAsset<ForkAnimationBehaviorAsset>({
     metadata: {
       schemaVersion: 2,
       assetType: 'animation-behavior',
@@ -277,7 +301,7 @@ export function createBehaviorFork(
     motionSlots: resolved.asset.motionSlots ?? [],
     semanticEvents: resolved.asset.semanticEvents ?? [],
     graph: { ...resolved.graph, id: request.newAssetId },
-    replayFixtureIds: parent.replayFixtureIds,
+    replayFixtureIds: resolved.asset.replayFixtureIds ?? [],
   });
   return { asset, issues: resolved.issues };
 }
@@ -291,10 +315,10 @@ export function duplicateBehavior(
   registry: AnimationAssetRegistry,
   sourceReference: AssetReference,
   request: DerivationRequest,
-): { asset: AnimationBehaviorAsset; issues: AssetIssue[] } {
+): { asset: BaseAnimationBehaviorAsset; issues: AssetIssue[] } {
   const resolved = resolveBehaviorAsset(registry, sourceReference);
   const source = registry.getBehavior(sourceReference);
-  const asset = sealAsset<AnimationBehaviorAsset>({
+  const asset = sealAsset<BaseAnimationBehaviorAsset>({
     metadata: {
       schemaVersion: 2,
       assetType: 'animation-behavior',

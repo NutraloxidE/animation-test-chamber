@@ -22,6 +22,7 @@ import type {
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
   AssetReference,
+  BaseAnimationBehaviorAsset,
   CharacterDefinition,
   HumanoidRigProfileAsset,
   MotionSlotDefinition,
@@ -319,7 +320,7 @@ export function migrateProjectToAssets(legacy: LegacyProject): MigrationResult {
     legacy.clips.flatMap((clip) => clip.events.map((event) => event.kind)),
   );
 
-  const behavior = sealAsset<AnimationBehaviorAsset>({
+  const behavior = sealAsset<BaseAnimationBehaviorAsset>({
     metadata: metadata(
       'animation-behavior',
       DEMO_BEHAVIOR_ID,
@@ -550,8 +551,8 @@ function motionSetAsset(
 /** Parameters the graph actually reads, so the behaviour declares its inputs. */
 function collectParameters(
   transitions: AnimationGraphDefinition['transitions'],
-): AnimationBehaviorAsset['parameters'] {
-  const seen = new Map<string, AnimationBehaviorAsset['parameters'][number]>();
+): BaseAnimationBehaviorAsset['parameters'] {
+  const seen = new Map<string, BaseAnimationBehaviorAsset['parameters'][number]>();
   for (const transition of transitions) {
     for (const condition of transition.conditions) {
       if (seen.has(condition.parameter)) continue;

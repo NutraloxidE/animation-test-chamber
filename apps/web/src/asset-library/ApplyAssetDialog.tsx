@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import type { AssetReference, CharacterAnimationAssignment } from '@atc/schema';
-import { checkMotionSetCompatibility } from '@atc/animation-asset-runtime';
+import { checkMotionSetCompatibility, resolveBehaviorAsset } from '@atc/animation-asset-runtime';
 import { useChamber } from '../store.ts';
 
 function pickerOptions(
@@ -55,14 +55,14 @@ export function ApplyAssetDialog() {
     behavior && motionSet && rig
       ? checkMotionSetCompatibility(
           registry,
-          registry.getBehavior(behavior),
+          resolveBehaviorAsset(registry, behavior).asset,
           registry.getMotionSet(motionSet),
           rig,
         )
       : null;
 
   const affectedOverrides = character.animation.instanceOverrides.length;
-  const replayFixtures = behavior ? registry.getBehavior(behavior).replayFixtureIds : [];
+  const replayFixtures = behavior ? resolveBehaviorAsset(registry, behavior).asset.replayFixtureIds : [];
 
   const submit = (): void => {
     if (!behavior || !motionSet || !rig) return;

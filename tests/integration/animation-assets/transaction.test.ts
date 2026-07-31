@@ -12,6 +12,7 @@ import {
   auditRegistry,
   computeContentHash,
   createBehaviorVariant,
+  resolveBehaviorAsset,
   resolveCharacterAnimation,
   sealAsset,
   type StoredAsset,
@@ -176,13 +177,14 @@ describe('shared behaviour changes require replay verification', () => {
    */
   it('every character referencing the behaviour still runs after a new version', () => {
     const current = registry.getBehavior(behaviorRef);
+    const currentGraph = resolveBehaviorAsset(registry, behaviorRef).graph;
     const version = bumpAssetVersion(current.metadata.version, 'patch');
     const next = sealAsset<AnimationBehaviorAsset>({
       ...current,
       metadata: { ...current.metadata, version, contentHash: '' },
       graph: {
-        ...current.graph!,
-        transitions: current.graph!.transitions.map((transition) =>
+        ...currentGraph,
+        transitions: currentGraph.transitions.map((transition) =>
           transition.id === 'idle-to-walk'
             ? { ...transition, blendDurationSec: 0.05 }
             : transition,

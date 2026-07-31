@@ -204,49 +204,108 @@ export type MotionSlotDefinition = Static<typeof MotionSlotDefinition>;
  *   fork     — a snapshot taken from a parent, then detached. Resolving a fork
  *              never reads the parent, so deleting the parent is harmless.
  */
-export const AssetDerivation = Type.Union(
-  [
-    Type.Object({ mode: Type.Literal('base') }, { additionalProperties: false }),
-    Type.Object(
-      {
-        mode: Type.Literal('variant'),
-        parent: AssetReference,
-        patches: Type.Array(CanonicalPatch),
-      },
-      { additionalProperties: false },
-    ),
-    Type.Object(
-      {
-        mode: Type.Literal('fork'),
-        forkedFrom: AssetReference,
-        forkIntent: Type.String({ minLength: 1 }),
-      },
-      { additionalProperties: false },
-    ),
-  ],
-  { $id: 'AssetDerivation' },
+const BaseDerivation = Type.Object({ mode: Type.Literal('base') }, { additionalProperties: false });
+const VariantDerivation = Type.Object(
+  {
+    mode: Type.Literal('variant'),
+    parent: AssetReference,
+    patches: Type.Array(CanonicalPatch),
+  },
+  { additionalProperties: false },
 );
+const ForkDerivation = Type.Object(
+  {
+    mode: Type.Literal('fork'),
+    forkedFrom: AssetReference,
+    forkIntent: Type.String({ minLength: 1 }),
+  },
+  { additionalProperties: false },
+);
+
+export const AssetDerivation = Type.Union([BaseDerivation, VariantDerivation, ForkDerivation], {
+  $id: 'AssetDerivation',
+});
 export type AssetDerivation = Static<typeof AssetDerivation>;
 
-export const AnimationBehaviorAsset = Type.Object(
+/** Every field a behaviour's payload has, shared by the `base` and `fork` shapes below. */
+const ANIMATION_BEHAVIOR_PAYLOAD_FIELDS = {
+  parameters: Type.Array(AnimationParameterDefinition),
+  motionSlots: Type.Array(MotionSlotDefinition),
+  semanticEvents: Type.Array(SemanticEventContract),
+  graph: AnimationGraphDefinition,
+  defaultTuning: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  replayFixtureIds: Type.Array(Type.String()),
+};
+
+export const BaseAnimationBehaviorAsset = Type.Object(
   {
     metadata: AnimationAssetMetadata,
-    derivation: AssetDerivation,
-    parameters: Type.Array(AnimationParameterDefinition),
-    motionSlots: Type.Array(MotionSlotDefinition),
-    semanticEvents: Type.Array(SemanticEventContract),
-    /**
-     * Present on `base` and `fork` assets. A variant leaves it out and the
-     * resolver builds it from the parent plus patches — storing it would be
-     * exactly the "variant is a full copy" failure the plan forbids.
-     */
-    graph: Type.Optional(AnimationGraphDefinition),
-    defaultTuning: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-    replayFixtureIds: Type.Array(Type.String()),
+    derivation: BaseDerivation,
+    ...ANIMATION_BEHAVIOR_PAYLOAD_FIELDS,
   },
-  { $id: 'AnimationBehaviorAsset', additionalProperties: false },
+  { $id: 'BaseAnimationBehaviorAsset', additionalProperties: false },
+);
+export type BaseAnimationBehaviorAsset = Static<typeof BaseAnimationBehaviorAsset>;
+
+export const ForkAnimationBehaviorAsset = Type.Object(
+  {
+    metadata: AnimationAssetMetadata,
+    derivation: ForkDerivation,
+    ...ANIMATION_BEHAVIOR_PAYLOAD_FIELDS,
+  },
+  { $id: 'ForkAnimationBehaviorAsset', additionalProperties: false },
+);
+export type ForkAnimationBehaviorAsset = Static<typeof ForkAnimationBehaviorAsset>;
+
+/**
+ * A variant stores its parent reference and its patches, and nothing else —
+ * no payload field is even a legal key here, which is what makes "a variant
+ * that is secretly a full copy" unrepresentable rather than merely
+ * discouraged (PLAN Part IV §21-22). Every payload value a variant needs is
+ * derived at resolve time by applying `derivation.patches` to the *parent's*
+ * resolved payload, so a contract the parent gains later — an optional
+ * motion slot, a new replay fixture id — is visible to every existing
+ * variant without touching it.
+ */
+export const VariantAnimationBehaviorAsset = Type.Object(
+  {
+    metadata: AnimationAssetMetadata,
+    derivation: VariantDerivation,
+  },
+  { $id: 'VariantAnimationBehaviorAsset', additionalProperties: false },
+);
+export type VariantAnimationBehaviorAsset = Static<typeof VariantAnimationBehaviorAsset>;
+
+export const AnimationBehaviorAsset = Type.Union(
+  [BaseAnimationBehaviorAsset, ForkAnimationBehaviorAsset, VariantAnimationBehaviorAsset],
+  { $id: 'AnimationBehaviorAsset' },
 );
 export type AnimationBehaviorAsset = Static<typeof AnimationBehaviorAsset>;
+
+/**
+ * The payload fields resolution always produces, regardless of the stored
+ * asset's derivation mode — a base/fork asset already carries them, a
+ * variant's are derived fresh from its parent plus patches every time.
+ */
+export interface AnimationBehaviorPayload {
+  parameters: AnimationParameterDefinition[];
+  motionSlots: MotionSlotDefinition[];
+  semanticEvents: SemanticEventContract[];
+  graph: AnimationGraphDefinition;
+  defaultTuning?: Record<string, unknown>;
+  replayFixtureIds: string[];
+}
+
+/**
+ * What `resolveBehaviorAsset` returns as `.asset`: metadata and derivation as
+ * stored, plus a payload that is always populated. Never persisted — writing
+ * this to disk for a variant would be exactly the snapshot this schema
+ * exists to make impossible, so this type only ever lives in memory.
+ */
+export interface ResolvedAnimationBehaviorAsset extends AnimationBehaviorPayload {
+  metadata: AnimationAssetMetadata;
+  derivation: AssetDerivation;
+}
 
 export const MotionSetBinding = Type.Object(
   {

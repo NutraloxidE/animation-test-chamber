@@ -12,6 +12,7 @@ import type {
   AnimationAssetSummary,
   AnimationAssetType,
   AnimationBehaviorAsset,
+  AnimationBehaviorPayload,
   AnimationClipAsset,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
@@ -59,7 +60,9 @@ function searchTermsOf(asset: AnimationAsset): string[] {
     asset.metadata.description,
     ...asset.metadata.tags,
   ]);
-  const behavior = asset as AnimationBehaviorAsset;
+  // A variant's stored shape has no payload fields at all (only base/fork do),
+  // so this is deliberately loose: whichever of these happen to be present.
+  const behavior = asset as Partial<AnimationBehaviorPayload>;
   for (const slot of behavior.motionSlots ?? []) terms.add(slot.id);
   for (const state of behavior.graph?.states ?? []) {
     terms.add(state.id);
