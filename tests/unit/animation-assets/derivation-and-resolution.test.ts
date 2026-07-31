@@ -9,6 +9,7 @@ import {
   applyPatches,
   checkDeletePolicy,
   checkMotionSetCompatibility,
+  computeContentHash,
   createBehaviorFork,
   createBehaviorVariant,
   diffToPatches,
@@ -84,26 +85,41 @@ describe('behaviour variants', () => {
 
   it('refuses a variant chain that loops back on itself', () => {
     // Two variants naming each other as parent. Recursing would be a stack
-    // overflow at project-load time with nothing useful to report.
-    const makeLoop = (id: string, parentId: string): AnimationBehaviorAsset =>
-      sealAsset<AnimationBehaviorAsset>({
-        ...variant,
-        metadata: { ...variant.metadata, id },
-        derivation: {
-          mode: 'variant',
-          parent: { assetType: 'animation-behavior', assetId: parentId, version: '1.0.0', contentHash: '' },
-          patches: [],
+    // overflow at project-load time with nothing useful to report. Resolving
+    // "loop-a" reaches "loop-b" (whose embedded parent reference must carry
+    // loop-a's *real* hash to pass `checkReference`), then loop-a again — at
+    // which point the cycle is caught by `seen` before that second
+    // reference's hash is ever consulted, so it can stay a placeholder.
+    const b = sealAsset<AnimationBehaviorAsset>({
+      ...variant,
+      metadata: { ...variant.metadata, id: 'loop-b' },
+      derivation: {
+        mode: 'variant',
+        parent: {
+          assetType: 'animation-behavior',
+          assetId: 'loop-a',
+          version: '1.0.0',
+          contentHash: '0'.repeat(64),
         },
-      });
-    const a = makeLoop('loop-a', 'loop-b');
-    const b = makeLoop('loop-b', 'loop-a');
-    const looped = registryWith(stored(a), stored(b));
-    const resolved = resolveBehaviorAsset(looped, {
-      assetType: 'animation-behavior',
-      assetId: 'loop-a',
-      version: '1.0.0',
-      contentHash: '',
+        patches: [],
+      },
     });
+    const a = sealAsset<AnimationBehaviorAsset>({
+      ...variant,
+      metadata: { ...variant.metadata, id: 'loop-a' },
+      derivation: {
+        mode: 'variant',
+        parent: {
+          assetType: 'animation-behavior',
+          assetId: 'loop-b',
+          version: '1.0.0',
+          contentHash: computeContentHash(b),
+        },
+        patches: [],
+      },
+    });
+    const looped = registryWith(stored(a), stored(b));
+    const resolved = resolveBehaviorAsset(looped, looped.referenceTo('animation-behavior', 'loop-a', '1.0.0'));
     expect(resolved.issues.map((issue) => issue.code)).toContain('circular-variant');
   });
 

@@ -29,6 +29,13 @@ export interface AnimationAssetLibraryIndex {
  */
 export function buildLibraryIndex(registry: AnimationAssetRegistry): AnimationAssetLibraryIndex {
   const assets = registry.all();
+  const unsealed = assets.filter((asset) => asset.document.metadata.contentHash === '');
+  if (unsealed.length > 0) {
+    throw new Error(
+      `unsealed-published-asset: the library index cannot include a draft: ` +
+        unsealed.map((asset) => `${asset.assetType}:${asset.id}@${asset.version}`).join(', '),
+    );
+  }
   return {
     schemaVersion: 2,
     indexHash: sha256Hex(canonicalJson(assets)),

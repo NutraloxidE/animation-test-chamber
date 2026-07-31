@@ -85,8 +85,32 @@ export class AnimationAssetRegistry {
     for (const asset of assets) this.add(asset);
   }
 
+  /**
+   * Registers one asset version. Throws rather than silently overwriting
+   * (PLAN Part III §18) — a caller building a registry from disk plus a
+   * proposed transaction has already guaranteed these keys are disjoint (the
+   * transaction engine refuses a `create` write whose target exists), so two
+   * `StoredAsset`s landing on the same key here is an integrity bug in the
+   * caller, not a normal outcome to validate around. Likewise a wrapper whose
+   * assetType/id/version disagrees with the document's own metadata means the
+   * asset was loaded from the wrong place — real data never does this.
+   */
   add(asset: StoredAsset): void {
     const key = `${asset.assetType}:${asset.id}@${asset.version}`;
+    if (this.byKey.has(key)) {
+      throw new Error(`duplicate-asset-key: ${key} was registered more than once`);
+    }
+    const metadata = asset.document.metadata;
+    if (
+      metadata.assetType !== asset.assetType ||
+      metadata.id !== asset.id ||
+      metadata.version !== asset.version
+    ) {
+      throw new Error(
+        `asset-metadata-mismatch: ${key} wrapper disagrees with document metadata ` +
+          `(${metadata.assetType}:${metadata.id}@${metadata.version})`,
+      );
+    }
     this.byKey.set(key, asset);
     const lineage = `${asset.assetType}:${asset.id}`;
     const known = this.versions.get(lineage) ?? [];
@@ -150,11 +174,8 @@ export class AnimationAssetRegistry {
     return this.get(reference) as AnimationTuningProfileAsset;
   }
 
-  /**
-   * Why a reference cannot be honoured, in the order a reader would ask:
-   * is the lineage known, is the version there, does the content still match.
-   */
-  checkReference(reference: AssetReference): AssetIssue[] {
+  /** Is this lineage/version known at all — no hash opinion either way. */
+  private checkLineage(reference: Pick<AssetReference, 'assetType' | 'assetId' | 'version'>): AssetIssue[] {
     const lineage = this.versions.get(`${reference.assetType}:${reference.assetId}`);
     if (!lineage || lineage.length === 0) {
       return [
@@ -162,7 +183,7 @@ export class AnimationAssetRegistry {
           code: 'missing-reference',
           severity: 'error',
           message: `no asset "${reference.assetId}" of type ${reference.assetType} exists`,
-          reference,
+          reference: reference as AssetReference,
         },
       ];
     }
@@ -172,13 +193,29 @@ export class AnimationAssetRegistry {
           code: 'version-not-found',
           severity: 'error',
           message: `${reference.assetId} has no version ${reference.version} (have ${lineage.join(', ')})`,
-          reference,
+          reference: reference as AssetReference,
         },
       ];
     }
+    return [];
+  }
+
+  /**
+   * Why a reference cannot be honoured, in the order a reader would ask: is
+   * the lineage known, is the version there, does the content still match.
+   *
+   * The hash comparison has no bypass (PLAN Part III §18): every real
+   * `AssetReference` carries a `PublishedContentHash`, which the schema
+   * guarantees is never empty, so there is no "the caller didn't know the
+   * hash yet" case here to make room for.
+   */
+  checkReference(reference: AssetReference): AssetIssue[] {
+    const lineageIssues = this.checkLineage(reference);
+    if (lineageIssues.length > 0) return lineageIssues;
+
     const asset = this.get(reference);
     const actual = computeContentHash(asset);
-    if (reference.contentHash !== '' && reference.contentHash !== actual) {
+    if (reference.contentHash !== actual) {
       return [
         {
           code: 'hash-mismatch',
@@ -193,9 +230,15 @@ export class AnimationAssetRegistry {
     return [];
   }
 
-  /** Schema validity plus self-consistency of the stored hash. */
+  /**
+   * Schema validity plus self-consistency of the stored hash. Unlike
+   * `checkReference`, this is not checking an incoming reference's claimed
+   * hash against reality — callers here (library summaries, the audit pass
+   * checking an asset against itself) only have assetType/id/version, no
+   * opinion on the hash, so this never compares one.
+   */
   validate(reference: AssetReference): AssetValidationReport {
-    const issues = this.checkReference(reference);
+    const issues = this.checkLineage(reference);
     if (issues.length > 0) return { valid: false, issues };
 
     const asset = this.get(reference);

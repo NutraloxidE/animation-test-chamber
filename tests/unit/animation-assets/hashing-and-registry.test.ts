@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   AnimationAssetRegistry,
   assetHashMatches,
+  buildLibraryIndex,
   canonicalJson,
   computeContentHash,
   sealAsset,
   sha256Hex,
+  type StoredAsset,
 } from '@atc/animation-asset-runtime';
 import { demoRegistry, loadDemoAssets } from '../../fixtures/project.ts';
 
@@ -150,5 +152,46 @@ describe('registry construction', () => {
         contentHash: '',
       })[0]?.code,
     ).toBe('missing-reference');
+  });
+
+  it('refuses to register the same asset key twice', () => {
+    const one = loadDemoAssets()[0]!;
+    expect(() => new AnimationAssetRegistry([one, one])).toThrow(/duplicate-asset-key/);
+  });
+
+  it('refuses a stored asset whose wrapper disagrees with its own document metadata', () => {
+    const one = loadDemoAssets()[0]!;
+    const mismatched: StoredAsset = { ...one, id: `${one.id}-not-the-real-id` };
+    expect(() => new AnimationAssetRegistry([mismatched])).toThrow(/asset-metadata-mismatch/);
+  });
+});
+
+describe('empty-hash references (PLAN Part III)', () => {
+  const registry = demoRegistry();
+  const behaviorRef = registry.referenceTo(
+    'animation-behavior',
+    'humanoid-third-person-base',
+    '1.0.0',
+  );
+
+  it('checkReference has no bypass for an empty content hash on an otherwise-real reference', () => {
+    const blanked = { ...behaviorRef, contentHash: '' };
+    const issues = registry.checkReference(blanked);
+    expect(issues[0]?.code).toBe('hash-mismatch');
+  });
+
+  it('the library index refuses an unsealed (draft) asset', () => {
+    const draftClip = {
+      ...loadDemoAssets().find((entry) => entry.assetType === 'animation-clip')!,
+    };
+    const unsealed: StoredAsset = {
+      ...draftClip,
+      document: { ...draftClip.document, metadata: { ...draftClip.document.metadata, contentHash: '' } },
+    };
+    const withDraft = new AnimationAssetRegistry([
+      ...loadDemoAssets().filter((entry) => entry.id !== draftClip.id || entry.assetType !== draftClip.assetType),
+      unsealed,
+    ]);
+    expect(() => buildLibraryIndex(withDraft)).toThrow(/unsealed-published-asset/);
   });
 });

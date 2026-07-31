@@ -19,6 +19,7 @@ import type {
   ProjectDefinition,
 } from '@atc/schema';
 import {
+  ANIMATION_ASSET_TYPES,
   bumpAssetVersion,
   NEW_ASSET_VERSION,
   referenceKey,
@@ -53,6 +54,11 @@ function referenceFrom(
 ): AssetReference {
   if (!body.assetType || !body.assetId || !body.version) {
     throw new Error('assetType, assetId and version are required');
+  }
+  if (!(ANIMATION_ASSET_TYPES as readonly string[]).includes(body.assetType)) {
+    throw new Error(
+      `"${body.assetType}" is not an animation asset type (expected one of ${ANIMATION_ASSET_TYPES.join(', ')})`,
+    );
   }
   const registry = loadAssetRegistry();
   return registry.referenceTo(

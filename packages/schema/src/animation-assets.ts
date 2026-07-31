@@ -53,8 +53,23 @@ export type AnimationAssetType = Static<typeof AnimationAssetType>;
 /** SemVer, exactly three numeric components. Asset files are named after it. */
 export const AssetVersion = Type.String({ pattern: '^\\d+\\.\\d+\\.\\d+$' });
 
-/** Lowercase hex SHA-256, or the empty string on a draft that has not been sealed. */
-export const ContentHash = Type.String({ pattern: '^([a-f0-9]{64})?$' });
+/**
+ * Lowercase hex SHA-256 of a *published* asset version. Never empty: a
+ * reference with no hash is indistinguishable from one nobody checked, which
+ * is exactly the bypass PLAN Part III closes. Anything that points at a
+ * published asset — `AssetReference`, a character's animation assignment, a
+ * motion set binding, a variant's parent — carries this type.
+ */
+export const PublishedContentHash = Type.String({ pattern: '^[a-f0-9]{64}$' });
+
+/**
+ * Lowercase hex SHA-256, or the empty string on a draft that has not been
+ * sealed yet. Only `AnimationAssetMetadata.contentHash` uses this — an asset
+ * still being authored in memory or inside a prepared transaction view has no
+ * hash until `sealAsset()` computes one, and that is fine precisely because
+ * nothing else has been allowed to reference it yet.
+ */
+export const DraftContentHash = Type.String({ pattern: '^([a-f0-9]{64})?$' });
 
 /**
  * Motion slot ids are dotted (`locomotion.idle`), which the plain `Id` pattern
@@ -78,7 +93,7 @@ export const AssetReference = Type.Object(
     assetType: AnimationAssetType,
     assetId: Id,
     version: AssetVersion,
-    contentHash: ContentHash,
+    contentHash: PublishedContentHash,
   },
   { $id: 'AssetReference', additionalProperties: false },
 );
@@ -108,8 +123,8 @@ export const AnimationAssetMetadata = Type.Object(
     tags: Type.Array(Type.String()),
     createdAt: Type.String(),
     createdBy: Type.String(),
-    /** SHA-256 of this document with `contentHash` itself blanked out. */
-    contentHash: ContentHash,
+    /** SHA-256 of this document with `contentHash` itself blanked out. Empty until sealed. */
+    contentHash: DraftContentHash,
     protection: Type.Optional(ProtectionMetadata),
     provenance: Type.Optional(ValueProvenance),
     assetProvenance: Type.Optional(AssetDerivationProvenance),
@@ -419,7 +434,11 @@ export type AssetIssueCode =
   | 'tuning-changes-structure'
   | 'schema-invalid'
   | 'missing-semantic-event'
-  | 'duplicate-binding';
+  | 'duplicate-binding'
+  | 'duplicate-asset-key'
+  | 'asset-metadata-mismatch'
+  | 'asset-path-mismatch'
+  | 'unsealed-published-asset';
 
 export interface AssetValidationReport {
   valid: boolean;

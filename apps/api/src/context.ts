@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { AnimationAsset, AnimationAssetType, ProjectDefinition, ResolvedProject } from '@atc/schema';
-import { validateProject, validateProjectReferences } from '@atc/schema';
+import { assetFilePath, validateProject, validateProjectReferences } from '@atc/schema';
 import {
   AnimationAssetRegistry,
   resolveCharacterAnimation,
@@ -59,14 +59,18 @@ export function loadStoredAssets(root: string = REPO_ROOT): StoredAsset[] {
     for (const assetId of readdirSync(base).sort()) {
       for (const file of readdirSync(resolve(base, assetId)).sort()) {
         if (!file.endsWith('.json')) continue;
-        assets.push({
-          assetType: DIRECTORY_BY_TYPE[directory]!,
-          id: assetId,
-          version: file.replace(/\.json$/, ''),
-          document: JSON.parse(
-            readFileSync(resolve(base, assetId, file), 'utf8'),
-          ) as AnimationAsset,
-        });
+        const assetType = DIRECTORY_BY_TYPE[directory]!;
+        const version = file.replace(/\.json$/, '');
+        const relativePath = `${ASSET_ROOT}/${directory}/${assetId}/${file}`;
+        const document = JSON.parse(readFileSync(resolve(base, assetId, file), 'utf8')) as AnimationAsset;
+        const expectedPath = assetFilePath(document.metadata.assetType, document.metadata.id, document.metadata.version);
+        if (expectedPath !== relativePath) {
+          throw new Error(
+            `asset-path-mismatch: ${relativePath} contains ${document.metadata.assetType}:` +
+              `${document.metadata.id}@${document.metadata.version}, which belongs at ${expectedPath}`,
+          );
+        }
+        assets.push({ assetType, id: assetId, version, document });
       }
     }
   }
