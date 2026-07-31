@@ -35,18 +35,134 @@ body {
   overscroll-behavior: none;
 }
 
+/* Unity-style dock layout: menu bar on top, Hierarchy left, Scene centre,
+   Inspector right, Project (asset library) along the bottom, status last.
+   Every dock is optional — an absent one leaves an `auto` track at 0 width. */
 .app {
   display: grid;
-  grid-template-columns: 1fr 420px;
-  grid-template-rows: 1fr auto;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   height: 100%;
+}
+
+.workspace-switch {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.app__hierarchy {
+  grid-column: 1;
+  grid-row: 2;
+  width: 240px;
+  min-height: 0;
+  display: flex;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
 }
 
 .app__viewport {
   position: relative;
-  grid-row: 1 / 3;
+  grid-column: 2;
+  grid-row: 2;
   min-width: 0;
   min-height: 0;
+}
+
+.app__library-dock {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  height: min(40vh, 360px);
+  min-height: 0;
+  display: flex;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* ---- Hierarchy ---- */
+
+.hierarchy {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.hierarchy__header,
+.dock__header {
+  padding: 6px 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.hierarchy__tree {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.hierarchy__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+}
+
+.hierarchy__row.is-active {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.hierarchy__row input[type="checkbox"] {
+  margin: 0;
+}
+
+.hierarchy__spacer {
+  width: 13px;
+}
+
+.hierarchy__label {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 4px;
+  font-size: 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hierarchy__label:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.hierarchy__row.is-active .hierarchy__label {
+  color: var(--accent);
+}
+
+.hierarchy__icon {
+  color: var(--muted);
+}
+
+.hierarchy__inline {
+  padding-right: 6px;
+  padding-bottom: 4px;
+}
+
+.hierarchy__inline select {
+  width: 100%;
+  font-size: 11px;
+  padding: 2px 4px;
 }
 
 .app__viewport canvas {
@@ -55,6 +171,9 @@ body {
 }
 
 .app__panels {
+  grid-column: 3;
+  grid-row: 2;
+  width: 420px;
   display: flex;
   flex-direction: column;
   background: var(--panel);
@@ -71,6 +190,11 @@ body {
 
 .app--clean {
   grid-template-columns: 1fr;
+}
+
+.app--clean .app__viewport {
+  grid-column: 1;
+  grid-row: 1 / -1;
 }
 
 .tabs {
@@ -1055,7 +1179,8 @@ textarea {
 }
 
 .status {
-  grid-column: 2;
+  grid-column: 1 / -1;
+  grid-row: 4;
   padding: 6px 10px;
   font-size: 11px;
   color: var(--muted);
@@ -1139,11 +1264,31 @@ textarea {
 @media (max-width: 900px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
   }
 
   .app__viewport {
-    grid-row: 1;
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  /* Narrow: the side and bottom docks overlay the scene instead of squeezing
+     it. They are toggles, so an overlay is the honest shape. */
+  .app__hierarchy {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(240px, 78vw);
+    z-index: 25;
+  }
+
+  .app__library-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 72vh;
+    z-index: 22;
   }
 
   .sheet-handle {
@@ -1175,7 +1320,6 @@ textarea {
   }
 
   .status {
-    grid-column: 1;
     border-left: none;
   }
 
@@ -1308,6 +1452,7 @@ textarea {
 
 .workspace-switch {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 6px 10px;
   background: var(--panel, #111827);
@@ -1329,11 +1474,12 @@ textarea {
   color: var(--accent);
 }
 
-.app--library {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
+.workspace-switch__title {
+  align-self: center;
+  margin-right: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .asset-library {
