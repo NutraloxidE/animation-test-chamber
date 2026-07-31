@@ -40,6 +40,34 @@ import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalo
 import seedProject from '@chamber/project';
 import seedAssetIndex from '@chamber/animation-assets';
 
+/**
+ * Vite watches `@chamber/project` and `@chamber/animation-assets` (plain
+ * module imports of files that live above `apps/web`) and full-reloads the
+ * page whenever either changes on disk. That's exactly what a human
+ * hand-editing them wants, but it actively fights this app's own save/commit
+ * flows: they already push the write's result into the running app via the
+ * API response, so a reload on top of that races the in-memory update and
+ * the confirmation message to the screen — and can win, discarding both
+ * before either is ever seen. `markSelfInitiatedWrite()` suppresses only the
+ * one reload that immediately follows a write this tab made itself; every
+ * other change (including a human editing the file directly) still reloads
+ * normally.
+ */
+let awaitingOwnWrite = false;
+export function markSelfInitiatedWrite(): void {
+  awaitingOwnWrite = true;
+}
+if (import.meta.hot) {
+  import.meta.hot.on('vite:beforeFullReload', () => {
+    if (awaitingOwnWrite) {
+      awaitingOwnWrite = false;
+      // Vite's documented escape hatch for cancelling a pending full reload
+      // from within a 'vite:beforeFullReload' listener.
+      throw 'stop the reload — this write already updated the running app';
+    }
+  });
+}
+
 export type PanelId =
   'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
 
@@ -463,6 +491,33 @@ function persistStagedDraft(session: EditSession): void {
   }
 }
 
+const PENDING_STATUS_KEY = 'atc:pending-status-message';
+
+/**
+ * A successful commit writes project.json, which the dev server watches
+ * (`@chamber/project` is a plain module import) and reacts to with a full
+ * page reload — a real one, not React re-rendering. That reload can land
+ * before this tab ever paints the confirmation message, wiping it. Stashing
+ * the message here lets the next boot show it once instead of losing it.
+ */
+function persistStatusForReload(message: string): void {
+  try {
+    window.sessionStorage.setItem(PENDING_STATUS_KEY, message);
+  } catch {
+    // Storage may be unavailable in privacy modes; the in-memory message still works.
+  }
+}
+
+function consumePersistedStatusMessage(): string | null {
+  try {
+    const message = window.sessionStorage.getItem(PENDING_STATUS_KEY);
+    if (message !== null) window.sessionStorage.removeItem(PENDING_STATUS_KEY);
+    return message;
+  } catch {
+    return null;
+  }
+}
+
 const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) => {
   const session = new EditSession(initialProject);
   const restoredChanges = restoreStagedDraft(session);
@@ -523,9 +578,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     commitLog: [],
     statusMessage:
-      restoredChanges > 0
+      consumePersistedStatusMessage() ??
+      (restoredChanges > 0
         ? `Restored ${restoredChanges} staged change(s).`
-        : 'Ready. Editing the demo character with the fake Git adapter.',
+        : 'Ready. Editing the demo character with the fake Git adapter.'),
     backendOnline: null,
     revision: 0,
 
@@ -869,6 +925,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       };
 
       try {
+        markSelfInitiatedWrite();
         const response = await fetch('/api/animation-assets/save-destination', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -882,6 +939,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           reportPath?: string;
         };
         if (!response.ok || !payload.ok) {
+          // Nothing was written, so there is no reload to suppress.
+          awaitingOwnWrite = false;
           set({
             statusMessage: `Save refused: ${payload.error ?? ''} ${(payload.issues ?? [])
               .map((issue) => issue.message)
@@ -894,9 +953,16 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         // character at this revision — keeping both would let the stale
         // draft resurface a change the repository no longer agrees with.
         clearCharacterDraft(repository.id, repository.revisionId, character.id);
+        // Report the save before refreshing the registry, same as commit()
+        // below: reloadAssets is a second round-trip, and writing project.json
+        // makes the dev server reload the page, so a status message that
+        // waited for it would often never be seen.
+        const message = `Saved. Report: ${payload.reportPath}`;
+        persistStatusForReload(message);
+        set({ statusMessage: message });
         await get().reloadAssets(payload.project);
-        set({ statusMessage: `Saved. Report: ${payload.reportPath}` });
       } catch (error) {
+        awaitingOwnWrite = false;
         set({ statusMessage: `Save failed: ${String(error)}` });
       }
     },
@@ -1434,6 +1500,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         const headResponse = await fetch('/api/git/head?branch=main');
         const head = (await headResponse.json()) as { sha?: string };
 
+        markSelfInitiatedWrite();
         const response = await fetch('/api/commit', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -1455,6 +1522,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         };
 
         if (!response.ok || !payload.commit || !payload.document) {
+          // Nothing was written, so there is no reload to suppress.
+          awaitingOwnWrite = false;
           const detail =
             payload.findings?.map((f) => `${f.path}: ${f.message}`).join('; ') ??
             payload.conflicts?.map((c) => c.path).join(', ') ??
@@ -1468,16 +1537,20 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         // Report the commit before refreshing the registry. The refresh is a
         // second round-trip, and writing project.json makes the dev server
         // reload the page — a status message that waited for it would often
-        // never be seen.
+        // never be seen. persistStatusForReload covers the rest: even when
+        // the reload wins anyway, the next boot still shows it once.
+        const commitMessage = `Committed ${payload.commit.sha.slice(0, 8)} to ${payload.commit.branch}.`;
+        persistStatusForReload(commitMessage);
         set({
           commitLog: [
             `${payload.commit.sha.slice(0, 8)} on ${payload.commit.branch}: ${payload.message}`,
             ...get().commitLog,
           ],
-          statusMessage: `Committed ${payload.commit.sha.slice(0, 8)} to ${payload.commit.branch}.`,
+          statusMessage: commitMessage,
         });
         await get().reloadAssets(payload.document);
       } catch (error) {
+        awaitingOwnWrite = false;
         set({
           statusMessage: `Commit failed: ${
             error instanceof Error ? error.message : String(error)
@@ -1594,10 +1667,21 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       } catch {
         state.setTerrainPreset(initialProject.defaultTerrainPresetId);
       }
-      state.setWeaponMode(state.weaponModeId);
+      // Weapon and equipment fields are already correct here — persist merges
+      // them in before this callback runs — so only the engine (which persist
+      // never touches) needs re-syncing. Going through setWeaponMode/
+      // setEquipped would work too, but both also overwrite statusMessage
+      // with a "Weapon: X" / "Shield: unequipped" message on every single
+      // page load, stomping anything more meaningful — like a just-completed
+      // commit's confirmation — a few hundred milliseconds after it appears.
+      const weapon = WEAPON_MODES.find((mode) => mode.id === state.weaponModeId);
+      if (weapon) {
+        state.engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
+        state.engine.setWeaponModeId(weapon.id);
+      }
       // A slot may have been added or removed since this was stored.
       for (const slot of initialProject.equipment) {
-        state.setEquipped(slot.id, state.equipped[slot.id] ?? slot.defaultEquipped);
+        state.engine.setEquipped(slot.id, state.equipped[slot.id] ?? slot.defaultEquipped);
       }
     },
   }),

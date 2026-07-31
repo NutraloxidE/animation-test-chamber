@@ -11,7 +11,6 @@ import { useChamber } from '../store.ts';
 import { AssetBrowser, AssetTypeFilter } from './AssetBrowser.tsx';
 import { AssetDetail } from './AssetDetail.tsx';
 import { ApplyAssetDialog, DeriveAssetDialog } from './ApplyAssetDialog.tsx';
-import { SaveDestinationDialog } from './SaveDestinationDialog.tsx';
 
 type NarrowPane = 'types' | 'list' | 'detail';
 
@@ -110,7 +109,9 @@ export function AssetLibrary() {
 
       {dialog === 'apply' && <ApplyAssetDialog />}
       {dialog === 'derive' && <DeriveAssetDialog />}
-      {dialog === 'save-destination' && <SaveDestinationDialog />}
+      {/* save-destination is rendered once, at the App level — it belongs to
+          the Chamber too, and this pane stays mounted (docked) even when the
+          library is open, so rendering it here as well would mount it twice. */}
     </div>
   );
 }

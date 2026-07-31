@@ -309,6 +309,24 @@ export class ChamberEngine {
   }
 
   /**
+   * Test-only: true while `window.__ATC_TEST__` owns simulation advancement.
+   * The rAF loop must not also advance ticks from wall-clock deltas while
+   * this is set, or the two sources of ticks would race.
+   */
+  testDriven = false;
+
+  /**
+   * Test-only: advances exactly `count` fixed ticks synchronously, regardless
+   * of pause state, frame rate or real elapsed time. This is what makes a
+   * Playwright test's input-then-assert sequence reproduce identically on
+   * every run instead of depending on how fast this machine happens to be.
+   */
+  advanceTicksForTest(count: number): void {
+    for (let i = 0; i < count; i += 1) this.runTick();
+    if (count > 0) this.notify();
+  }
+
+  /**
    * Called once per rendered frame. Converts elapsed real time into whole
    * simulation ticks; the number of ticks varies with frame rate but the result
    * of each tick does not.

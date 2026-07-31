@@ -24,6 +24,30 @@ async function openPanel(page: Page, id: string): Promise<void> {
   await page.getByTestId(`tab-${id}`).click();
 }
 
+/**
+ * Fixed-tick waiting (PLAN Part VII §27): pumps the simulation forward in
+ * exact steps instead of waiting on the wall clock, so how fast this
+ * particular machine happens to be rendering frames can never make a test
+ * flake. Requires `window.__ATC_TEST__.enable()` to already have been called.
+ */
+async function advanceTicksUntil(
+  page: Page,
+  isDone: () => Promise<boolean>,
+  maxTicks: number,
+  step = 10,
+): Promise<void> {
+  for (let advanced = 0; advanced < maxTicks; advanced += step) {
+    // One round trip per step: advancing and flushing separately doubles the
+    // Playwright <-> browser IPC overhead for no benefit, and that overhead
+    // (not simulation cost) is what dominates a many-iteration wait.
+    await page.evaluate(async (n) => {
+      window.__ATC_TEST__!.advanceTicks(n);
+      await window.__ATC_TEST__!.flushReact();
+    }, step);
+    if (await isDone()) return;
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('hud')).toBeVisible();
@@ -81,41 +105,69 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  await expect(page.getByTestId('character-select')).toBeHidden();
+  // Character, weapon and equipment moved into the Hierarchy dock; only
+  // viewport-controls' own body (e.g. the grip editor) collapses with it.
+  await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // Fixed-tick driver (PLAN Part VII §27): the jump's air time is physics-
+  // derived, not a fixed duration, so waiting on it with a wall-clock timeout
+  // either guesses too short (flaky) or too long (slow). Ticking forward
+  // until the HUD itself reports landed sidesteps the guess entirely.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
 
   await page.keyboard.press('Space');
-  // The HUD samples on an interval, so the airborne window can be missed on a
-  // slow run. `land` is equally proof that the jump fired, and is not transient.
+  await advanceTicksUntil(
+    page,
+    async () => /jump|fall|land/.test((await hud.textContent()) ?? ''),
+    20,
+    2,
+  );
   await expect(hud).toContainText(/jump|fall|land/);
 
-  await page.waitForTimeout(1200);
+  await advanceTicksUntil(page, async () => (await hud.textContent())?.includes('idle') ?? false, 240);
+  await expect(hud).toContainText('idle');
+
   await page.keyboard.press('KeyJ');
-  await page.waitForTimeout(200);
+  await advanceTicksUntil(page, async () => (await hud.textContent())?.includes('attack-01') ?? false, 40);
   await expect(hud).toContainText('attack-01');
 });
 
 test('sword attacks play their matching recovery clips', async ({ page }) => {
+  // Deterministic now, not slow — just several dozen tick-and-check round
+  // trips to the browser, which the default 45s budget can be tight on.
+  test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await page.getByTestId('weapon-mode-select').selectOption('sword');
+  // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
+  // of scripted replay, so ticking forward deterministically replaces waiting
+  // on however fast this machine renders frames.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
+
+  const includesText = (locator: ReturnType<Page['getByTestId']>, text: string) => async () =>
+    (await locator.textContent())?.includes(text) ?? false;
 
   await openPanel(page, 'replay');
   const replaySelect = page.getByTestId('replay-panel').locator('select').first();
   await replaySelect.selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
-  await expect(hud).toContainText('attack-01-recovery', { timeout: 2500 });
-  await expect(hud).toContainText('action-none', { timeout: 2500 });
+  await advanceTicksUntil(page, includesText(hud, 'attack-01-recovery'), 200);
+  await expect(hud).toContainText('attack-01-recovery');
+  await advanceTicksUntil(page, includesText(hud, 'action-none'), 100);
+  await expect(hud).toContainText('action-none');
 
   await page.getByTestId('replay-panel').locator('select').first().selectOption('attack-01-to-attack-02');
   await page.getByTestId('play-replay').click();
-  await expect(hud).toContainText('attack-02', { timeout: 1500 });
-  await expect(hud).toContainText('attack-02-recovery', { timeout: 2500 });
-  await expect(hud).toContainText('action-none', { timeout: 2500 });
+  await advanceTicksUntil(page, includesText(hud, 'attack-02'), 100);
+  await expect(hud).toContainText('attack-02');
+  await advanceTicksUntil(page, includesText(hud, 'attack-02-recovery'), 100);
+  await expect(hud).toContainText('attack-02-recovery');
+  await advanceTicksUntil(page, includesText(hud, 'action-none'), 150);
+  await expect(hud).toContainText('action-none');
 
   await openPanel(page, 'inspector');
   await page.getByTestId('blend-list').click();
@@ -169,11 +221,12 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText(
     'Forward displacement adjustment',
   );
-  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText('+0.00 m');
-  await expect(page.getByTestId('field-/clips/unarmed-attack-01/inputAcceptanceStartNormalized')).toContainText('20%');
+  // Canonical value is 0.5, a deliberate human tuning (DECISIONS/0008).
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText('+0.50 m');
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/inputAcceptanceStartNormalized')).toContainText('62%');
   await page.getByTestId('action-input-list').click();
   await expect(page.getByTestId('action-input-unarmed-attack-01')).toBeVisible();
-  await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('85%');
+  await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('0%');
 
   await openPanel(page, 'replay');
   await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
@@ -190,8 +243,8 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
 
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');
   await expect(distance).toBeVisible();
-  await expect(distance).toContainText('5.5 m');
-  await expect(page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized')).toContainText('0.720');
+  await expect(distance).toContainText('10.0 m');
+  await expect(page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized')).toContainText('0.620');
   await distance.locator('input[type=range]').fill('6.2');
   await expect(distance).toContainText('human preview');
   await distance.getByRole('button', { name: 'stage', exact: true }).click();
@@ -465,9 +518,16 @@ test('the layer bar colours action-to-action blends', async ({ page }) => {
 
   await openPanel(page, 'graph');
   await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // Fixed-tick driver (PLAN Part VII §27): the combo window opens at 62% of
+  // unarmed-attack-01's 45-tick duration. Advancing exact ticks instead of
+  // waiting on the wall clock means the second press always lands inside
+  // that window, on every machine, instead of racing it.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
   await page.keyboard.press('KeyJ');
-  await page.waitForTimeout(350);
+  await page.evaluate(() => window.__ATC_TEST__!.advanceTicks(31));
   await page.keyboard.press('KeyJ');
+  await page.evaluate(() => window.__ATC_TEST__!.advanceTicks(2));
+  await page.evaluate(() => window.__ATC_TEST__!.flushReact());
 
   const gauge = page.getByTestId('layer-mix');
   await expect(page.getByTestId('graph-live-action')).toContainText('attack-02');
