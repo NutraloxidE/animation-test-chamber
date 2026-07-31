@@ -497,7 +497,9 @@ export type AssetIssueCode =
   | 'duplicate-asset-key'
   | 'asset-metadata-mismatch'
   | 'asset-path-mismatch'
-  | 'unsealed-published-asset';
+  | 'unsealed-published-asset'
+  | 'duplicate-resolved-clip-id'
+  | 'missing-clip-source';
 
 export interface AssetValidationReport {
   valid: boolean;

@@ -11,14 +11,13 @@ import type {
   AnimationAsset,
   AnimationBehaviorAsset,
   AnimationClipAsset,
-  AnimationGraphDefinition,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
   AssetReference,
   CanonicalPatch,
   CharacterAnimationAssignment,
   ProjectDefinition,
-  VariantAnimationBehaviorAsset,
+  SaveAnimationChangesRequest,
 } from '@atc/schema';
 import {
   ANIMATION_ASSET_TYPES,
@@ -28,8 +27,6 @@ import {
   validateAgainst,
 } from '@atc/schema';
 import {
-  addGraphPrefix,
-  applyPatches,
   buildLibraryIndex,
   checkDeletePolicy,
   checkMotionSetCompatibility,
@@ -37,7 +34,7 @@ import {
   createBehaviorFork,
   createBehaviorVariant,
   duplicateBehavior,
-  isVariantAsset,
+  planSaveAnimationChanges,
   resolveBehaviorAsset,
   resolveCharacterAnimation,
   sealAsset,
@@ -468,136 +465,45 @@ export function animationAssetRoutes(): Hono {
   });
 
   /**
-   * Writes a chamber edit to the destination a human chose (PLAN 28).
+   * Writes a chamber edit to the destinations a human chose (PLAN Part II
+   * §14-15).
    *
-   * The four destinations are four genuinely different writes, and the server
-   * performs whichever was asked for rather than inferring one — the whole
-   * value of the dialog is that the choice was made explicitly, and quietly
-   * "improving" on it here would throw that away.
+   * Graph changes and clip changes each carry their own destination, chosen
+   * independently, and every clip change names the exact published asset it
+   * came from — so a clip edit staged alongside a graph edit has somewhere
+   * to go instead of being silently dropped. Both land in one repository
+   * transaction, so a mixed save is atomic: either the new behaviour
+   * version, the new clip versions, the new motion-set version and the
+   * character's updated assignment all land together, or none of them do.
    */
   app.post('/api/animation-assets/save-destination', async (c) => {
-    const body = await c.req.json<{
-      characterId: string;
-      destination: { kind: string; newAssetId?: string; displayName?: string };
-      graphPatches: CanonicalPatch[];
-      clipPatches: CanonicalPatch[];
-      createdBy?: string;
-      createdAt?: string;
-    }>();
+    const body = (await c.req.json()) as SaveAnimationChangesRequest;
+    const requestValidation = validateAgainst('SaveAnimationChangesRequest', body);
+    if (!requestValidation.valid) {
+      return c.json({ error: 'malformed save request', issues: requestValidation.issues }, 400);
+    }
 
     try {
       const registry = loadAssetRegistry();
       const project = loadProject();
-      const character = project.characters.find((entry) => entry.id === body.characterId);
-      if (!character) {
-        return c.json({ error: `unknown character "${body.characterId}"` }, 404);
+
+      // Optimistic concurrency on the project itself: the repository
+      // transaction re-checks this against disk once the write lock is
+      // held; this is the early, human-readable version of that refusal.
+      if (body.expected.projectRevisionId !== project.revisionId) {
+        return c.json(
+          {
+            error:
+              `the project has moved on (expected revision "${body.expected.projectRevisionId}", ` +
+              `found "${project.revisionId}")`,
+          },
+          409,
+        );
       }
 
-      // The client diffs against the graph directly and strips the `/graph`
-      // prefix before sending (chamber paths are project-rooted), so these
-      // patches are graph-rooted bare paths — correct as-is for a tuning
-      // profile's patches (also graph-rooted) and for rewriting a base/fork
-      // asset's `.graph` directly. A *variant*'s patches apply against its
-      // whole resolved payload, not just the graph, so storing them into
-      // `derivation.patches` needs the explicit `/graph` prefix added back.
-      const patches = body.graphPatches ?? [];
-      const variantPatches = patches.map((patch) => ({ ...patch, path: addGraphPrefix(patch.path) }));
-      const createdAt = body.createdAt ?? new Date().toISOString();
-      const createdBy = body.createdBy ?? 'chamber-user';
-      const assets: AnimationAsset[] = [];
-      let assignment: CharacterAnimationAssignment = character.animation;
-      let intent = '';
-
-      if (body.destination.kind === 'tuning-profile') {
-        if (!character.animation.tuning) {
-          return c.json({ error: 'this character has no tuning profile to extend' }, 409);
-        }
-        const current = registry.getTuning(character.animation.tuning);
-        const version = bumpAssetVersion(current.metadata.version, 'patch');
-        const next = sealAsset<AnimationTuningProfileAsset>({
-          ...current,
-          metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-          // A tuning profile adjusts values only; a structural patch is refused
-          // by the resolver, and refusing it here too keeps the error close to
-          // the decision that caused it.
-          patches: [...current.patches, ...patches.filter((patch) => patch.op === 'set')],
-        });
-        assets.push(next);
-        assignment = {
-          ...assignment,
-          tuning: {
-            assetType: 'animation-tuning',
-            assetId: next.metadata.id,
-            version,
-            contentHash: computeContentHash(next),
-          },
-        };
-        intent = `save chamber edits to tuning profile ${next.metadata.id}@${version}`;
-      } else if (body.destination.kind === 'new-behavior-variant') {
-        if (!body.destination.newAssetId) {
-          return c.json({ error: 'a new variant needs an asset id' }, 400);
-        }
-        const variant = createBehaviorVariant(
-          registry,
-          character.animation.behavior,
-          variantPatches,
-          {
-            newAssetId: body.destination.newAssetId,
-            displayName: body.destination.displayName ?? body.destination.newAssetId,
-            createdBy,
-            createdAt,
-          },
-        );
-        assets.push(variant);
-        assignment = {
-          ...assignment,
-          behavior: {
-            assetType: 'animation-behavior',
-            assetId: variant.metadata.id,
-            version: variant.metadata.version,
-            contentHash: computeContentHash(variant),
-          },
-        };
-        intent = `save chamber edits to new behaviour variant ${variant.metadata.id}`;
-      } else if (
-        body.destination.kind === 'behavior-variant' ||
-        body.destination.kind === 'shared-behavior'
-      ) {
-        const current = registry.getBehavior(character.animation.behavior);
-        const version = bumpAssetVersion(current.metadata.version, 'patch');
-        const next: AnimationBehaviorAsset = isVariantAsset(current)
-          ? sealAsset<VariantAnimationBehaviorAsset>({
-              ...current,
-              metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-              derivation: {
-                ...current.derivation,
-                patches: [...current.derivation.patches, ...variantPatches],
-              },
-            })
-          : sealAsset<AnimationBehaviorAsset>({
-              ...current,
-              metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-              graph: applyPatches(current.graph, patches, {
-                source: 'behavior-variant',
-                requireExistingPath: false,
-              }).document as AnimationGraphDefinition,
-            });
-        assets.push(next);
-        assignment = {
-          ...assignment,
-          behavior: {
-            assetType: 'animation-behavior',
-            assetId: next.metadata.id,
-            version,
-            contentHash: computeContentHash(next),
-          },
-        };
-        intent = `save chamber edits to behaviour ${next.metadata.id}@${version}`;
-      } else {
-        return c.json(
-          { error: `unsupported save destination "${body.destination.kind}"` },
-          400,
-        );
+      const plan = planSaveAnimationChanges(registry, project, body);
+      if (!plan.ok) {
+        return c.json({ error: plan.error, ...(plan.issues ? { issues: plan.issues } : {}) }, plan.status);
       }
 
       /*
@@ -610,13 +516,13 @@ export function animationAssetRoutes(): Hono {
       const nextProject: ProjectDefinition = {
         ...project,
         characters: project.characters.map((entry) =>
-          entry.id === body.characterId ? { ...entry, animation: assignment } : entry,
+          entry.id === body.characterId ? { ...entry, animation: plan.assignment } : entry,
         ),
       };
 
-      const result = await runAssetTransaction({ intent, assets, project: nextProject });
+      const result = await runAssetTransaction({ intent: plan.intent, assets: plan.assets, project: nextProject });
       return c.json(
-        { ...result, assignment, project: result.ok ? nextProject : project },
+        { ...result, assignment: plan.assignment, project: result.ok ? nextProject : project },
         result.ok ? 200 : 409,
       );
     } catch (error) {

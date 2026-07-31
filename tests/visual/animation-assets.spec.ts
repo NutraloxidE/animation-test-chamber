@@ -150,7 +150,7 @@ test('the derive dialog explains what each kind of derivation means', async ({ p
   await page.getByTestId('derive-cancel').click();
 });
 
-test('the save destination dialog never preselects a destination', async ({ page }) => {
+test('the save destination dialog shows no destinations with nothing staged, and submit stays disabled', async ({ page }) => {
   await showPane(page, 'list');
   await page.getByTestId('asset-card-humanoid-third-person-base').click();
   await showPane(page, 'detail');
@@ -159,14 +159,14 @@ test('the save destination dialog never preselects a destination', async ({ page
   const dialog = page.getByTestId('save-destination-dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('Where should this change live?');
+  await expect(page.getByTestId('save-destination-empty')).toBeVisible();
 
-  // Nothing chosen, so nothing can be saved. Choosing is the whole point.
+  // Neither section has anything to choose a destination for, so neither
+  // shows — a graph or clip destination picker with nothing to attach it to
+  // would have no correct default (PLAN Part II §16).
+  await expect(page.getByTestId('save-destination-graph-section')).toHaveCount(0);
+  await expect(page.getByTestId('save-destination-clip-section')).toHaveCount(0);
   await expect(page.getByTestId('save-destination-submit')).toBeDisabled();
-  const options = page.locator('[data-testid^="save-destination-"] input[type="radio"]');
-  expect(await options.count()).toBeGreaterThanOrEqual(4);
-  for (const option of await options.all()) {
-    expect(await option.isChecked()).toBe(false);
-  }
 });
 
 test('switching the active character changes which clips resolve', async ({ page }) => {

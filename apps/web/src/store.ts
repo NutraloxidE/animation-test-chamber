@@ -4,11 +4,17 @@ import { persist } from 'zustand/middleware';
 import type {
   AnimationAssetSummary,
   AssetIssue,
+  AssetReference,
+  CanonicalPatch,
   CapabilityProfile,
   CharacterAnimationAssignment,
+  ClipChange,
+  ClipChangeDestination,
+  GraphChangeDestination,
   ProjectDefinition,
   ReplayDefinition,
   ResolvedProject,
+  SaveAnimationChangesRequest,
 } from '@atc/schema';
 import { resolveWeaponMode } from '@atc/animation-runtime';
 import {
@@ -39,34 +45,78 @@ export type PanelId =
 export type WorkspaceMode = 'chamber' | 'asset-library';
 
 /**
- * Where a chamber edit should be written (PLAN 28).
+ * Where a chamber edit should be written (PLAN Part II §14-16).
  *
- * There is no default. The whole point of the dialog is that "I nudged a blend
- * duration" has four different meanings — mine only, this character's feel, a
- * new variant, or everyone's — and picking one silently is how a shared asset
- * stops being shared without anyone deciding to.
+ * Graph changes and clip changes are chosen *separately* — a save can touch
+ * both, and mixing a clip edit into a destination that only understands
+ * graph structure (a tuning profile, a behaviour variant) is exactly the
+ * silent-loss failure this whole contract exists to close. There is no
+ * default: "I nudged a blend duration" has several different meanings — mine
+ * only, this character's feel, a new variant, or everyone's — and picking
+ * one silently is how a shared asset stops being shared without anyone
+ * deciding to.
  */
-export type SaveDestinationKind =
+export type GraphDestinationKind =
   | 'character-override'
   | 'tuning-profile'
-  | 'behavior-variant'
+  | 'existing-behavior-variant'
   | 'new-behavior-variant'
-  | 'shared-behavior';
+  | 'shared-behavior'
+  | 'none';
 
-export interface SaveDestination {
-  kind: SaveDestinationKind;
+export type ClipDestinationKind = 'character-override' | 'new-clip-versions-and-motion-set' | 'none';
+
+export interface GraphDestinationChoice {
+  kind: GraphDestinationKind;
   /** Required for `new-behavior-variant`. */
   newAssetId?: string;
   displayName?: string;
 }
 
-export interface SaveDestinationOption {
-  kind: SaveDestinationKind;
+export interface ClipDestinationChoice {
+  kind: ClipDestinationKind;
+}
+
+export interface SaveDestinationChoice {
+  graph: GraphDestinationChoice;
+  clips: ClipDestinationChoice;
+}
+
+export interface GraphDestinationOption {
+  kind: GraphDestinationKind;
   label: string;
   /** Who is affected if this is chosen. Shown next to each option. */
   impact: string;
   available: boolean;
   unavailableReason?: string;
+}
+
+export interface ClipDestinationOption {
+  kind: ClipDestinationKind;
+  label: string;
+  impact: string;
+  available: boolean;
+  unavailableReason?: string;
+}
+
+/** One changed clip, for the Save Destination dialog's breakdown (PLAN §16). */
+export interface StagedClipChangeSummary {
+  clipId: string;
+  patchCount: number;
+  sourceClip: AssetReference | null;
+}
+
+/**
+ * What is actually staged, split by domain, before any destination is
+ * chosen. `clipChanges` with a null `sourceClip` are exactly the "unresolved"
+ * case §12 requires never be silently dropped — a clip edit whose resolved
+ * clip id has no recorded source (should not normally happen; surfaced
+ * rather than guessed at).
+ */
+export interface StagedChangeSummary {
+  graphPatchCount: number;
+  clipChanges: StagedClipChangeSummary[];
+  hasUnresolvedClipChanges: boolean;
 }
 
 export interface CompareSlot {
@@ -145,8 +195,10 @@ interface ChamberActions {
   setLibraryFacet(facet: string): void;
   openLibraryDialog(dialog: 'apply' | 'save-destination' | 'derive' | null): void;
   librarySummaries(): AnimationAssetSummary[];
-  saveDestinationOptions(): SaveDestinationOption[];
-  saveStagedAnimationChanges(destination: SaveDestination): Promise<void>;
+  graphDestinationOptions(): GraphDestinationOption[];
+  clipDestinationOptions(): ClipDestinationOption[];
+  stagedChangeSummary(): StagedChangeSummary;
+  saveStagedAnimationChanges(choice: SaveDestinationChoice): Promise<void>;
   applyAssetsToCharacter(characterId: string, assignment: CharacterAnimationAssignment): Promise<void>;
   deriveAsset(mode: 'variant' | 'fork' | 'duplicate', newAssetId: string, displayName: string, forkIntent?: string): Promise<void>;
   promoteCandidateToClip(candidateId: string, motionSetId?: string, motionSlot?: string): Promise<void>;
@@ -207,6 +259,30 @@ function resolveFor(
   registry: AnimationAssetRegistry,
 ): { project: ResolvedProject; issues: AssetIssue[] } {
   return resolveCharacterAnimation({ registry, project, characterId });
+}
+
+/**
+ * `diffToPatches(repository.clips, preview.clips, '')` diffs the whole clips
+ * array at once, so its output is a flat list of patches rooted at that
+ * array — each path's first segment is the clip id the array is keyed by
+ * (PLAN Part II §13 depends on this to attribute a clip edit to the asset it
+ * came from). This regroups that flat list back into one entry per clip,
+ * with the id stripped off so each group's patches are relative to the clip
+ * itself, matching what the save endpoint expects to apply.
+ */
+function groupClipPatches(patches: CanonicalPatch[]): { clipId: string; patches: CanonicalPatch[] }[] {
+  const byClip = new Map<string, CanonicalPatch[]>();
+  for (const patch of patches) {
+    const segments = patch.path.split('/').filter((segment) => segment.length > 0);
+    const clipId = segments[0];
+    if (!clipId) continue;
+    const relative = segments.length > 1 ? `/${segments.slice(1).join('/')}` : '/';
+    const existing = byClip.get(clipId);
+    const entry = { ...patch, path: relative };
+    if (existing) existing.push(entry);
+    else byClip.set(clipId, [entry]);
+  }
+  return [...byClip.entries()].map(([clipId, clipPatches]) => ({ clipId, patches: clipPatches }));
 }
 
 const initialResolution = resolveFor(
@@ -455,7 +531,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
      * with the reason rather than hidden — a missing tuning profile is worth
      * knowing about, and a silently shorter list teaches nothing.
      */
-    saveDestinationOptions() {
+    graphDestinationOptions() {
       const { project, canonicalProject } = get();
       const behaviorId = project.character.animation.behavior.assetId;
       const sharing = canonicalProject.characters.filter(
@@ -486,7 +562,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           ...(hasTuning ? {} : { unavailableReason: 'this character has no tuning profile' }),
         },
         {
-          kind: 'behavior-variant' as const,
+          kind: 'existing-behavior-variant' as const,
           label: 'New version of this behaviour variant',
           impact: 'Every character on this variant.',
           available: isVariant,
@@ -510,18 +586,69 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       ];
     },
 
+    clipDestinationOptions() {
+      const { project } = get();
+      return [
+        {
+          kind: 'character-override' as const,
+          label: 'Character instance override',
+          impact: `Only "${project.character.displayName}".`,
+          available: true,
+        },
+        {
+          kind: 'new-clip-versions-and-motion-set' as const,
+          label: 'New clip version(s) + new motion-set version',
+          impact:
+            'A new version of each changed clip, and a new motion-set version pointing the ' +
+            'affected slots at them. Only this character adopts it.',
+          available: true,
+        },
+      ];
+    },
+
     /**
-     * Writes the staged animation edits to the chosen destination.
-     *
-     * The patch set is derived from repository-versus-preview rather than from
-     * the raw staged values, so a nested edit lands as one path instead of an
-     * object blob, and the path roots are converted to whatever the destination
-     * expects.
+     * What is staged, split into the two domains a save destination can
+     * apply to (PLAN Part II §12-13, §16). Grouped by clip id so the dialog
+     * can show "2 clip assets changed: sword-attack-01, sword-attack-01-recovery"
+     * rather than a flat patch list with no idea which asset each belongs to.
      */
-    async saveStagedAnimationChanges(destination) {
-      const changes = session.stagedAssetChanges;
-      if (changes.length === 0) {
+    stagedChangeSummary() {
+      const repository = session.repositoryProject;
+      const preview = session.buildStagedDocument();
+      const graphPatches = diffToPatches(repository.graph, preview.graph, '');
+      const clipPatches = diffToPatches(repository.clips, preview.clips, '');
+      const grouped = groupClipPatches(clipPatches);
+      const clipChanges = grouped.map(({ clipId, patches }) => ({
+        clipId,
+        patchCount: patches.length,
+        sourceClip: repository.clipAssetSources[clipId] ?? null,
+      }));
+      return {
+        graphPatchCount: graphPatches.length,
+        clipChanges,
+        hasUnresolvedClipChanges: clipChanges.some((change) => change.sourceClip === null),
+      };
+    },
+
+    /**
+     * Writes the staged animation edits to the chosen destinations.
+     *
+     * Graph and clip changes are computed and sent independently — repository-
+     * versus-preview, not raw staged values, so a nested edit lands as one path
+     * instead of an object blob — and each clip change carries the exact
+     * published asset it was diffed against, so the server never has to guess.
+     */
+    async saveStagedAnimationChanges(choice) {
+      const summary = get().stagedChangeSummary();
+      if (summary.graphPatchCount === 0 && summary.clipChanges.length === 0) {
         set({ statusMessage: 'No staged animation changes to save.' });
+        return;
+      }
+      if (summary.hasUnresolvedClipChanges) {
+        set({
+          statusMessage:
+            'One or more changed clips have no recorded source asset; cannot save until resolved.',
+        });
         return;
       }
       if (!(await backendAvailable())) {
@@ -535,34 +662,50 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       const preview = session.buildStagedDocument();
       const graphPatches = diffToPatches(repository.graph, preview.graph, '');
       const clipPatches = diffToPatches(repository.clips, preview.clips, '');
+      const clipChangeGroups = groupClipPatches(clipPatches);
       const character = get().project.character;
 
-      try {
-        if (destination.kind === 'character-override') {
-          const assignment: CharacterAnimationAssignment = {
-            ...character.animation,
-            instanceOverrides: [
-              ...character.animation.instanceOverrides,
-              ...graphPatches.map((patch) => ({ ...patch, path: `/graph${patch.path}` })),
-              ...clipPatches.map((patch) => ({ ...patch, path: `/clips${patch.path}` })),
-            ],
-          };
-          await get().applyAssetsToCharacter(character.id, assignment);
-          return;
-        }
+      const graphDestination: GraphChangeDestination =
+        summary.graphPatchCount === 0
+          ? { kind: 'none' }
+          : choice.graph.kind === 'new-behavior-variant'
+            ? {
+                kind: 'new-behavior-variant',
+                newAssetId: choice.graph.newAssetId ?? '',
+                displayName: choice.graph.displayName ?? choice.graph.newAssetId ?? '',
+              }
+            : { kind: choice.graph.kind as Exclude<GraphDestinationKind, 'new-behavior-variant'> };
 
+      const clipChanges: ClipChange[] = clipChangeGroups.flatMap(({ clipId, patches }) => {
+        const sourceClip = repository.clipAssetSources[clipId];
+        return sourceClip ? [{ sourceClip, clipId, patches }] : [];
+      });
+      const clipDestination: ClipChangeDestination =
+        clipChanges.length === 0 ? { kind: 'none' } : { kind: choice.clips.kind };
+
+      const assetReferences: AssetReference[] = [
+        character.animation.behavior,
+        character.animation.motionSet,
+        character.animation.rig,
+        ...(character.animation.tuning ? [character.animation.tuning] : []),
+        ...clipChanges.map((change) => change.sourceClip),
+      ];
+
+      const request: SaveAnimationChangesRequest = {
+        characterId: character.id,
+        graph: {
+          patches: graphPatches.map((patch) => ({ ...patch, path: stripGraphPrefix(patch.path) })),
+          destination: graphDestination,
+        },
+        clips: { changes: clipChanges, destination: clipDestination },
+        expected: { projectRevisionId: repository.revisionId, assetReferences },
+      };
+
+      try {
         const response = await fetch('/api/animation-assets/save-destination', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            characterId: character.id,
-            destination,
-            graphPatches: graphPatches.map((patch) => ({
-              ...patch,
-              path: stripGraphPrefix(patch.path),
-            })),
-            clipPatches,
-          }),
+          body: JSON.stringify(request),
         });
         const payload = (await response.json()) as {
           ok?: boolean;
@@ -581,7 +724,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           return;
         }
         await get().reloadAssets(payload.project);
-        set({ statusMessage: `Saved to ${destination.kind}. Report: ${payload.reportPath}` });
+        set({ statusMessage: `Saved. Report: ${payload.reportPath}` });
       } catch (error) {
         set({ statusMessage: `Save failed: ${String(error)}` });
       }

@@ -25,7 +25,7 @@ import type {
   ResolvedValue,
   SkeletonDefinition,
 } from '@atc/schema';
-import { activeCharacter } from '@atc/schema';
+import { activeCharacter, referenceKey, referencesEqual } from '@atc/schema';
 import { applyPatches } from './patch.ts';
 import { checkMotionSetCompatibility } from './compatibility.ts';
 import type { AnimationAssetRegistry } from './registry.ts';
@@ -89,6 +89,8 @@ interface MotionResolution {
   contextualBindings: Record<string, Record<string, string>>;
   contextKeys: string[];
   clips: AnimationClipDefinition[];
+  /** Resolved clip id -> the asset that supplied it (PLAN Part II §13). */
+  clipAssetSources: Record<string, AssetReference>;
   issues: AssetIssue[];
 }
 
@@ -111,13 +113,14 @@ function resolveMotionSet(
   motionSetReference: AssetReference,
   slots: readonly MotionSlotDefinition[],
 ): MotionResolution {
-  const empty = { bindings: {}, contextualBindings: {}, contextKeys: [], clips: [] };
+  const empty = { bindings: {}, contextualBindings: {}, contextKeys: [], clips: [], clipAssetSources: {} };
   const issues: AssetIssue[] = [...registry.checkReference(motionSetReference)];
   if (issues.length > 0) return { ...empty, issues };
 
   const motionSet = registry.getMotionSet(motionSetReference);
   const bindings: Record<string, string> = {};
   const clipsById = new Map<string, AnimationClipDefinition>();
+  const clipAssetSources = new Map<string, AssetReference>();
 
   const fallbackFor = new Map(
     motionSet.fallbackBindings.map((entry) => [entry.missingSlot, entry.fallbackSlot]),
@@ -175,11 +178,30 @@ function resolveMotionSet(
       return;
     }
     const clipAsset = registry.getClip(clipReference);
-    clipsById.set(clipAsset.clip.id, clipAsset.clip);
+    const clipId = clipAsset.clip.id;
+
+    // Two different assets resolving to the same clip id would make "which
+    // asset does this clip patch belong to" ambiguous — refused here, at
+    // resolution time, rather than guessed at when a save tries to answer it.
+    const existingSource = clipAssetSources.get(clipId);
+    if (existingSource && !referencesEqual(existingSource, clipReference)) {
+      issues.push({
+        code: 'duplicate-resolved-clip-id',
+        severity: 'error',
+        message:
+          `resolved clip id "${clipId}" is supplied by two different assets: ` +
+          `${referenceKey(existingSource)} and ${referenceKey(clipReference)}`,
+        reference: clipReference,
+      });
+      return;
+    }
+    clipAssetSources.set(clipId, clipReference);
+
+    clipsById.set(clipId, clipAsset.clip);
     if (contextKey === undefined) {
-      bindings[slotId] = clipAsset.clip.id;
+      bindings[slotId] = clipId;
     } else {
-      (contextualBindings[contextKey] ??= {})[slotId] = clipAsset.clip.id;
+      (contextualBindings[contextKey] ??= {})[slotId] = clipId;
     }
   };
 
@@ -193,6 +215,7 @@ function resolveMotionSet(
     contextualBindings,
     contextKeys,
     clips: [...clipsById.values()].sort((a, b) => a.id.localeCompare(b.id)),
+    clipAssetSources: Object.fromEntries(clipAssetSources),
     issues,
   };
 }
@@ -319,6 +342,7 @@ export function resolveCharacterAnimation(request: ResolveRequest): ResolveResul
     motionBindings: motion.bindings,
     contextualMotionBindings: motion.contextualBindings,
     motionContextKeys: motion.contextKeys,
+    clipAssetSources: motion.clipAssetSources,
     resolution,
   };
 

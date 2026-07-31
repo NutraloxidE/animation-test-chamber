@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   AnimationBehaviorAsset,
+  AnimationClipAsset,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
   VariantAnimationBehaviorAsset,
@@ -503,6 +504,58 @@ describe('resolution order', () => {
     const b = resolveCharacterAnimation({ registry, project: withOverride, characterId: second!.id });
     expect(a.project.graph.states.find((state) => state.id === 'idle')!.speed).toBe(1.75);
     expect(b.project.graph.states.find((state) => state.id === 'idle')!.speed).not.toBe(1.75);
+  });
+});
+
+describe('resolved clip provenance (PLAN Part II §13)', () => {
+  it('refuses when two different clip assets resolve to the same clip id', () => {
+    const motionSetRef = registry.referenceTo(
+      'animation-motion-set',
+      'demo-humanoid-motion-set',
+      '1.0.0',
+    );
+    const motionSet = registry.getMotionSet(motionSetRef);
+    const idleBinding = motionSet.bindings.find(
+      (binding) => binding.motionSlot === 'locomotion.idle' && binding.contextualKey === undefined,
+    )!;
+    const idleClip = registry.getClip(idleBinding.clip);
+
+    // A second, differently-named published asset whose clip.id happens to
+    // collide with the one above — the exact ambiguity §13 exists to catch.
+    const duplicateIdleClip = sealAsset<AnimationClipAsset>({
+      ...idleClip,
+      metadata: { ...idleClip.metadata, id: 'idle-duplicate-asset', contentHash: '' },
+    });
+    const withDuplicate = registryWith(stored(duplicateIdleClip));
+    const duplicateRef = withDuplicate.referenceTo('animation-clip', 'idle-duplicate-asset', '1.0.0');
+
+    const conflictingMotionSet = sealAsset<AnimationMotionSetAsset>({
+      ...motionSet,
+      metadata: { ...motionSet.metadata, id: 'conflicting-motion-set', contentHash: '' },
+      bindings: [...motionSet.bindings, { motionSlot: 'action.taunt', clip: duplicateRef }],
+    });
+    const conflictRegistry = registryWith(stored(duplicateIdleClip), stored(conflictingMotionSet));
+    const conflictingMotionSetRef = conflictRegistry.referenceTo(
+      'animation-motion-set',
+      'conflicting-motion-set',
+      '1.0.0',
+    );
+
+    const character = project.characters[0]!;
+    const resolved = resolveCharacterAnimation({
+      registry: conflictRegistry,
+      project: {
+        ...project,
+        characters: project.characters.map((entry) =>
+          entry.id === character.id
+            ? { ...entry, animation: { ...entry.animation, motionSet: conflictingMotionSetRef } }
+            : entry,
+        ),
+      },
+      characterId: character.id,
+    });
+
+    expect(resolved.issues.map((issue) => issue.code)).toContain('duplicate-resolved-clip-id');
   });
 });
 

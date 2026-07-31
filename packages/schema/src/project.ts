@@ -1,7 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox';
 import { Id, ProtectionMetadata, SchemaVersion, ValueProvenance } from './common.ts';
 import { AnimationClipDefinition, AnimationGraphDefinition, SkeletonDefinition } from './animation.ts';
-import { CharacterAnimationAssignment, type ResolvedValue } from './animation-assets.ts';
+import { CharacterAnimationAssignment, type AssetReference, type ResolvedValue } from './animation-assets.ts';
 import { InputMapDefinition } from './input.ts';
 import { CameraProfile, MovementProfile, RootMotionProfile } from './movement.ts';
 import { TerrainInteractionProfile } from './terrain.ts';
@@ -208,6 +208,15 @@ export interface ResolvedProject extends ProjectDefinition {
   resolution: ResolvedValue[];
   /** Context keys the motion set binds, for the chamber's weapon selector. */
   motionContextKeys: string[];
+  /**
+   * Resolved clip id -> the published `AnimationClipAsset` it came from
+   * (PLAN Part II §13). This is what lets a staged clip edit be saved back
+   * as a new version of the asset that actually authored it, rather than
+   * guessed at from the clip id alone — and what catches two different
+   * assets supplying the same resolved clip id before that ambiguity reaches
+   * a save. Never written to a canonical file; resolve-time only.
+   */
+  clipAssetSources: Record<string, AssetReference>;
 }
 
 /** The active character, or the first one when the id no longer exists. */

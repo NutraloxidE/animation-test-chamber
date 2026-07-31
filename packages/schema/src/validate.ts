@@ -18,6 +18,7 @@ import {
   CharacterAnimationAssignment,
   HumanoidRigProfileAsset,
 } from './animation-assets.ts';
+import { SaveAnimationChangesRequest } from './animation-save.ts';
 
 export interface ValidationIssue {
   path: string;
@@ -57,6 +58,7 @@ export const SCHEMA_REGISTRY = {
   AnimationTuningProfileAsset,
   AssetReference,
   CharacterAnimationAssignment,
+  SaveAnimationChangesRequest,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
@@ -133,6 +135,7 @@ export function validateResolvedProject(data: unknown): ValidationResult {
     contextualMotionBindings?: unknown;
     motionContextKeys?: unknown;
     resolution?: unknown;
+    clipAssetSources?: unknown;
   };
   // The resolved-only members are destructured out so `canonical` is exactly
   // the shape ProjectDefinition describes; only `graph` and `clips` are then
@@ -145,6 +148,7 @@ export function validateResolvedProject(data: unknown): ValidationResult {
     contextualMotionBindings: _contextualMotionBindings,
     motionContextKeys: _motionContextKeys,
     resolution: _resolution,
+    clipAssetSources: _clipAssetSources,
     ...canonical
   } = resolved;
 

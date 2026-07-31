@@ -294,14 +294,18 @@ test.describe('committing', () => {
     await expect(page.getByTestId('status-bar')).toContainText('belong to an animation asset');
     await expect(page.getByTestId('save-destination-changes')).toContainText('/clips/dodge');
 
+    // A clip-only edit: no graph section, only the clip section.
+    await expect(page.getByTestId('save-destination-graph-section')).toHaveCount(0);
+    await expect(page.getByTestId('save-destination-clip-section')).toBeVisible();
+
     // Nothing is preselected, so nothing can be saved until a human chooses.
     await expect(page.getByTestId('save-destination-submit')).toBeDisabled();
 
-    await page.getByTestId('save-destination-character-override').locator('input').check();
+    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
     await expect(page.getByTestId('save-destination-submit')).toBeEnabled();
     await page.getByTestId('save-destination-submit').click();
 
-    await expect(page.getByTestId('status-bar')).toContainText(/Applied assets to/, {
+    await expect(page.getByTestId('status-bar')).toContainText(/Saved\. Report:/, {
       timeout: 15_000,
     });
 

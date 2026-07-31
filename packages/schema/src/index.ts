@@ -1,6 +1,7 @@
 export * from './common.ts';
 export * from './animation.ts';
 export * from './animation-assets.ts';
+export * from './animation-save.ts';
 export * from './input.ts';
 export * from './movement.ts';
 export * from './terrain.ts';
