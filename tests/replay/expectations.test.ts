@@ -145,8 +145,11 @@ describe('attack-01-to-attack-02', () => {
     expect(attackTicks.at(-1)!.actionNormalizedTime).toBe(1);
     expect(windupZ).toBeLessThan(0.01);
     expect(midpointZ).toBeGreaterThan(0.2);
-    expect(attackEndZ).toBeGreaterThan(0.28);
-    expect(attackEndZ).toBeLessThan(0.3);
+    // unarmed-attack-01's rootDisplacement.z is 0.5 (DECISIONS/0008), added onto
+    // the captured track's own 0.824524 total before the 0.35 horizontal-authority
+    // scale: (0.824524 + 0.5) * 0.35 ≈ 0.4636.
+    expect(attackEndZ).toBeGreaterThan(0.45);
+    expect(attackEndZ).toBeLessThan(0.48);
     expect(attackEndZ).toBeCloseTo(withoutInput.attackTicks.at(-1)!.position.z, 5);
     expect(attackTicks.every((tick) => tick.grounded)).toBe(true);
   });
@@ -168,7 +171,15 @@ describe('attack-01-to-attack-02', () => {
       (tick) => tick.actionNormalizedTime >= 0.5,
     )!.position.z;
 
-    expect(adjustedEnd - baselineEnd).toBeCloseTo(0.2 * project.rootMotion.horizontalAuthority, 3);
+    // The delta scales off the *canonical* displacement (0.5, DECISIONS/0008),
+    // not zero: (0.2 - 0.5) * horizontalAuthority.
+    const canonicalDisplacement = project.clips.find(
+      (clip) => clip.id === 'unarmed-attack-01',
+    )!.rootDisplacement.z;
+    expect(adjustedEnd - baselineEnd).toBeCloseTo(
+      (0.2 - canonicalDisplacement) * project.rootMotion.horizontalAuthority,
+      3,
+    );
     expect(adjustedMid / adjustedEnd).toBeCloseTo(baselineMid / baselineEnd, 4);
   });
 
@@ -427,10 +438,13 @@ describe('ice-surface-stop', () => {
 describe('regression detection', () => {
   it('rejects a combo press made before the action input window opens', () => {
     const replay = findReplayFixture('attack-01-to-attack-02');
+    // The fixture's second press lands at ~0.77 normalized through attack-01
+    // (DECISIONS/0008), so the window must open later than that for this edit
+    // to actually exercise the rejection path.
     const edited = setAtPath(
       project,
       '/clips/unarmed-attack-01/inputAcceptanceStartNormalized',
-      0.75,
+      0.8,
     );
     const trace = runReplay(edited, replay);
     expect(trace.metrics.actionSequence).toEqual(['attack-01', 'action-none']);

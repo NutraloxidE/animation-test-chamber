@@ -197,7 +197,11 @@ export function App() {
   const libraryDialog = useChamber((state) => state.libraryDialog);
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [showHierarchy, setShowHierarchy] = useState(true);
+  // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
+  // (styles.css) rather than a reserved grid column, so leaving it open by
+  // default there would cover the sheet handle and every other narrow-width
+  // control before the user ever asked for it.
+  const [showHierarchy, setShowHierarchy] = useState(() => window.matchMedia('(min-width: 901px)').matches);
   const [showInspector, setShowInspector] = useState(true);
   const [padAuto] = useState(() => detectTouchDevice());
   const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
