@@ -11,7 +11,7 @@ boundary those already drew.
 | Pull request | #12 |
 | Base SHA | `30f39724e6eb544520c7c39598acc7dbffd22104` |
 | Starting head SHA | `21cf0ff946a2e0fa062446a6e01a3c2bc6399e11` |
-| Final head SHA | `PLACEHOLDER_FINAL_SHA` |
+| Final head SHA | `1c885b9cb558fa862739ce67c35deadf7ff37ae9` |
 | Branch | `claude/pr-12-continuation-0cpio7`, branched from PR #12's head |
 | Baseline | `reports/pr12-critical-finalization-baseline.md` |
 

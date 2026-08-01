@@ -4,7 +4,7 @@
   "pullRequest": 12,
   "baseSha": "30f39724e6eb544520c7c39598acc7dbffd22104",
   "startingHeadSha": "21cf0ff946a2e0fa062446a6e01a3c2bc6399e11",
-  "finalHeadSha": "PLACEHOLDER_FINAL_SHA",
+  "finalHeadSha": "1c885b9cb558fa862739ce67c35deadf7ff37ae9",
   "branch": "claude/pr-12-continuation-0cpio7",
   "lastReviewedHeadInWorkPackage": "e0a64a9ccb1bfde2e2e572021bed7e270660c806",
   "workPackages": [
@@ -24,7 +24,7 @@
     { "sha": "2ca2c4a", "subject": "fix: refuse unsupported tuning patches in PR12 saves" },
     { "sha": "42761c0", "subject": "test: verify PR12 critical integrity paths end to end" },
     { "sha": "a8ab1e9", "subject": "fix: stop excluding the asset index the chamber build reads from the Vercel upload" },
-    { "sha": "PLACEHOLDER_DOCS_SHA", "subject": "docs: synchronize PR12 completion evidence" }
+    { "sha": "1c885b9", "subject": "docs: synchronize PR12 completion evidence" }
   ],
   "filesChanged": [
     "packages/repository-transaction/src/transaction.ts",
