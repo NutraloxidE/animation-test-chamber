@@ -144,6 +144,83 @@ describe('save: graph-only destinations (PLAN Part II §30)', () => {
     expect(plan.assignment.behavior).toEqual(resolved.character.animation.behavior);
   });
 
+  /**
+   * A tuning profile stores value changes and nothing else. The dangerous
+   * failure is not refusing a structural patch — it is accepting the request,
+   * publishing a tuning version, and quietly leaving the structural patch out
+   * of it: the human is told the edit was saved, and it was not.
+   */
+  describe('tuning profile refuses what it cannot store', () => {
+    const appendPatch = {
+      path: '/states',
+      op: 'append' as const,
+      value: { id: 'invented-state', motionSlot: 'locomotion.idle.01' },
+    };
+    const removePatch = { path: '/transitions/idle-to-walk', op: 'remove' as const };
+
+    function tuningRequest(patches: SaveAnimationChangesRequest['graph']['patches']): SaveAnimationChangesRequest {
+      return { ...baseRequest(resolved), graph: { patches, destination: { kind: 'tuning-profile' } } };
+    }
+
+    it('refuses an append patch instead of dropping it', () => {
+      const plan = planSaveAnimationChanges(registry, project, tuningRequest([appendPatch]));
+      expect(plan.ok).toBe(false);
+      if (plan.ok) return;
+      expect(plan.status).toBe(409);
+      expect(plan.error).toMatch(/behaviour variant|behavior variant/i);
+      expect(plan.issues?.map((issue) => issue.code)).toContain('unsupported-tuning-patch');
+    });
+
+    it('refuses a remove patch instead of dropping it', () => {
+      const plan = planSaveAnimationChanges(registry, project, tuningRequest([removePatch]));
+      expect(plan.ok).toBe(false);
+      if (plan.ok) return;
+      expect(plan.status).toBe(409);
+      expect(plan.issues?.map((issue) => issue.code)).toContain('unsupported-tuning-patch');
+    });
+
+    it('refuses a mixed request entirely rather than saving the half it likes', () => {
+      const plan = planSaveAnimationChanges(
+        registry,
+        project,
+        tuningRequest([...graphPatches, appendPatch]),
+      );
+      expect(plan.ok).toBe(false);
+      if (plan.ok) return;
+      expect(plan.status).toBe(409);
+      // The valid `set` is not published on its own: a partial save is a
+      // different edit from the one that was requested.
+      expect(plan.issues?.every((issue) => issue.path !== graphPatches[0]!.path)).toBe(true);
+    });
+
+    it('refuses a set whose path does not exist in the behaviour it tunes', () => {
+      const plan = planSaveAnimationChanges(
+        registry,
+        project,
+        tuningRequest([{ path: '/transitions/idle-to-walk/noSuchField', op: 'set', value: 1 }]),
+      );
+      expect(plan.ok).toBe(false);
+      if (plan.ok) return;
+      expect(plan.status).toBe(409);
+      expect(plan.issues?.map((issue) => issue.code)).toContain('invalid-patch-path');
+    });
+
+    it('leaves the character assignment untouched when it refuses', () => {
+      const before = structuredClone(project.characters.find((c) => c.id === CHARACTER_ID)!.animation);
+      const plan = planSaveAnimationChanges(registry, project, tuningRequest([appendPatch]));
+      expect(plan.ok).toBe(false);
+      expect(project.characters.find((c) => c.id === CHARACTER_ID)!.animation).toEqual(before);
+    });
+
+    it('still saves a request that only sets existing values', () => {
+      const plan = planSaveAnimationChanges(registry, project, tuningRequest(graphPatches));
+      expect(plan.ok).toBe(true);
+      if (!plan.ok) return;
+      expect(plan.assets).toHaveLength(1);
+      expect(plan.assets[0]!.metadata.assetType).toBe('animation-tuning');
+    });
+  });
+
   it('new behaviour variant: a new variant asset is published and adopted', () => {
     const request: SaveAnimationChangesRequest = {
       ...baseRequest(resolved),

@@ -13,6 +13,7 @@ import {
   releaseWriteLock,
   type FilesystemOps,
   type RepositoryTransactionRequest,
+  type TransactionJournal,
 } from '@atc/repository-transaction';
 
 let repoRoot: string;
@@ -397,6 +398,238 @@ describe('crash recovery', () => {
 
     const again = recoverRepository(repoRoot, { fs });
     expect(again.readOnly).toBe(true);
+  });
+});
+
+describe('point of no return', () => {
+  const real = createNodeFilesystem();
+
+  /** The journal file a write targets, whether it goes through a temp file or not. */
+  function primaryJournalPathOf(writtenPath: string): string {
+    return writtenPath.replace(/\.next$/, '');
+  }
+
+  function journalOnDisk(writtenPath: string): TransactionJournal | null {
+    const bytes = real.readFileIfExists(primaryJournalPathOf(writtenPath));
+    if (!bytes) return null;
+    try {
+      return JSON.parse(new TextDecoder().decode(bytes)) as TransactionJournal;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Fails one specific journal write, identified by the state already on disk
+   * rather than by a call index. A call index would silently start pointing at
+   * a different moment the first time the journal gains or loses an
+   * intermediate write; "the write that follows this exact recorded state" goes
+   * on meaning the same thing.
+   */
+  function failJournalWriteAfter(
+    predicate: (journal: TransactionJournal) => boolean,
+  ): { fs: FilesystemOps; fired: () => boolean } {
+    let fired = false;
+    const fs = withFaultInjection(real, (ctx) => {
+      if (ctx.op !== 'writeFile' || !/journal\.json(\.next)?$/.test(ctx.path)) return;
+      const journal = journalOnDisk(ctx.path);
+      if (!journal || !predicate(journal)) return;
+      fired = true;
+      throw new Error('injected journal write failure');
+    });
+    return { fs, fired: () => fired };
+  }
+
+  const allPromoted = (journal: TransactionJournal): boolean =>
+    journal.state === 'promoting' && journal.writes.every((entry) => entry.promoted);
+
+  it('rolls back every canonical write when the final committed journal write fails', async () => {
+    const projectHash = hashOf('project.json');
+    const { fs, fired } = failJournalWriteAfter(allPromoted);
+
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
+
+    expect(fired()).toBe(true);
+    expect(result.ok).toBe(false);
+    // The canonical files were all in place when this failed. Reporting it as a
+    // validation refusal would claim nothing had happened yet, which is the one
+    // thing that is definitely untrue at this point.
+    expect(result.state).not.toBe('validation-refused');
+    expect(result.state).toBe('rolled-back');
+    // Byte-identical, not merely "looks restored".
+    expect(readText('project.json')).toBe('project-v1\n');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+  });
+
+  it('never returns validation-refused once the promoting journal write is attempted', async () => {
+    const projectHash = hashOf('project.json');
+    const { fs, fired } = failJournalWriteAfter((journal) => journal.state === 'prepared');
+
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
+
+    expect(fired()).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+  });
+
+  it('rolls back the files already promoted when a per-entry journal write fails', async () => {
+    const projectHash = hashOf('project.json');
+    // Fails the write that would record the *first* entry as promoted — by
+    // which point that entry's rename has already landed.
+    const { fs, fired } = failJournalWriteAfter(
+      (journal) => journal.state === 'promoting' && journal.writes.every((entry) => !entry.promoted),
+    );
+
+    const result = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [
+          { repositoryPath: 'assets/one.json', mode: 'create', content: 'one\n' },
+          { repositoryPath: 'assets/two.json', mode: 'create', content: 'two\n' },
+          { repositoryPath: 'project.json', mode: 'replace', content: 'project-v2\n' },
+        ],
+      }),
+      { fs },
+    );
+
+    expect(fired()).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/one.json'))).toThrow();
+    expect(() => readFileSync(join(repoRoot, 'assets/two.json'))).toThrow();
+  });
+
+  it('preserves the transaction directory as evidence when rollback cannot be certified', async () => {
+    // The backup a rollback would restore from is destroyed after it is taken,
+    // so the replace target cannot be put back and the outcome is fatal.
+    let backupPath: string | undefined;
+    const fs = withFaultInjection(real, (ctx) => {
+      if (ctx.op === 'writeFile' && /backups[/\\]project\.json$/.test(ctx.path)) {
+        backupPath = ctx.path;
+      }
+      if (ctx.op !== 'writeFile' || !/journal\.json(\.next)?$/.test(ctx.path)) return;
+      const journal = journalOnDisk(ctx.path);
+      if (!journal || !allPromoted(journal)) return;
+      if (backupPath) real.remove(backupPath);
+      throw new Error('injected journal write failure with an unrecoverable backup');
+    });
+
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
+
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    // Whatever the outcome is called, the evidence a human needs must survive.
+    const remaining = real.listFilesRecursive(transactionRootDir(repoRoot));
+    expect(remaining.some((path) => path.endsWith('journal.json'))).toBe(true);
+  });
+
+  it('a successful transaction still commits with no injected failure', async () => {
+    const result = await runRepositoryTransaction(repoRoot, baseRequest());
+    expect(result.ok).toBe(true);
+    expect(result.state).toBe('committed');
+  });
+});
+
+describe('create rollback ownership', () => {
+  it('never deletes a foreign create target during rollback', async () => {
+    const real = createNodeFilesystem();
+    const foreignAbs = join(repoRoot, 'assets/new-asset.json');
+    const foreignBytes = 'written-by-another-process\n';
+    const projectHash = hashOf('project.json');
+
+    // The create target is absent when prepare checks it, and a foreign
+    // process creates it before promotion reaches that entry. Ordering the
+    // replace first gives that window a deterministic place to open.
+    const fs = withFaultInjection(real, (ctx) => {
+      if (ctx.op === 'rename' && ctx.path === join(repoRoot, 'project.json')) {
+        writeFileSync(foreignAbs, foreignBytes, 'utf8');
+      }
+    });
+
+    const result = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [
+          { repositoryPath: 'project.json', mode: 'replace', content: 'project-v2\n' },
+          { repositoryPath: 'assets/new-asset.json', mode: 'create', content: 'ours\n' },
+        ],
+      }),
+      { fs },
+    );
+
+    expect(result.ok).toBe(false);
+    // The bytes belong to whoever wrote them. This transaction never promoted
+    // that path, so it has no claim to delete it.
+    expect(readText('assets/new-asset.json')).toBe(foreignBytes);
+    expect(hashOf('project.json')).toBe(projectHash);
+    // Ownership could not be proven, so the repository must stop accepting
+    // writes rather than carry on over an unexplained file.
+    const recovery = recoverRepository(repoRoot, { fs: real });
+    expect(recovery.readOnly).toBe(true);
+    expect(readText('assets/new-asset.json')).toBe(foreignBytes);
+  });
+
+  it('removes a create target it promoted itself and can still prove it wrote', async () => {
+    const projectHash = hashOf('project.json');
+    const fs = withFaultInjection(createNodeFilesystem(), (ctx) => {
+      // Fail the last rename, after the create above it has been promoted.
+      if (ctx.op === 'rename' && ctx.path === join(repoRoot, 'project.json')) {
+        throw new Error('injected failure promoting the project');
+      }
+    });
+
+    const result = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [
+          { repositoryPath: 'assets/new-asset.json', mode: 'create', content: 'ours\n' },
+          { repositoryPath: 'project.json', mode: 'replace', content: 'project-v2\n' },
+        ],
+      }),
+      { fs },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.state).toBe('rolled-back');
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+    expect(hashOf('project.json')).toBe(projectHash);
+  });
+
+  it('leaves a create target it promoted but that someone else has since rewritten', async () => {
+    const real = createNodeFilesystem();
+    const targetAbs = join(repoRoot, 'assets/new-asset.json');
+    const rewritten = 'rewritten-after-promotion\n';
+
+    const fs = withFaultInjection(real, (ctx) => {
+      if (ctx.op === 'rename' && ctx.path === join(repoRoot, 'project.json')) {
+        // Our create is already promoted; a third party rewrites it, then our
+        // own promotion fails and rollback runs.
+        writeFileSync(targetAbs, rewritten, 'utf8');
+        throw new Error('injected failure promoting the project');
+      }
+    });
+
+    const result = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [
+          { repositoryPath: 'assets/new-asset.json', mode: 'create', content: 'ours\n' },
+          { repositoryPath: 'project.json', mode: 'replace', content: 'project-v2\n' },
+        ],
+      }),
+      { fs },
+    );
+
+    expect(result.ok).toBe(false);
+    // We promoted it, but these are not the bytes we promoted, so they are not
+    // ours to delete.
+    expect(readText('assets/new-asset.json')).toBe(rewritten);
+    expect(recoverRepository(repoRoot, { fs: real }).readOnly).toBe(true);
+    expect(readText('assets/new-asset.json')).toBe(rewritten);
   });
 });
 
