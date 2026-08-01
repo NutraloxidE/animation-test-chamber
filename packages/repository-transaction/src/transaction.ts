@@ -124,10 +124,23 @@ export async function runRepositoryTransaction(
     { now, isProcessAlive, staleLockAfterMs },
   );
   if (!lock.acquired) {
+    const message =
+      lock.reason === 'blocked-by-unresolved-transaction'
+        ? 'a prior transaction could not be fully rolled back and needs manual resolution ' +
+          'under .chamber-transactions/ before the write lock can be taken over'
+        : 'another repository transaction is in progress';
     return refusal('conflict-refused', [
-      { code: 'write-lock-held', severity: 'error', message: 'another repository transaction is in progress' },
+      { code: 'write-lock-held', severity: 'error', message },
     ]);
   }
+
+  // Point of no return: once true, every exit from this function must be
+  // committed / rolled-back / fatal. A refusal that deletes the transaction
+  // directory is only legal while this is still false, i.e. before the
+  // canonical repository has been touched. Declared outside the try below so
+  // the outer catch — reachable only if rollback itself throws — can still
+  // see it; a `let` declared inside a try block is out of scope in its catch.
+  let promotionStarted = false;
 
   try {
     // 1. Validate paths before touching disk at all.
@@ -256,11 +269,13 @@ export async function runRepositoryTransaction(
       }
     }
 
-    // 10. Point of no return: from here, failure means rollback, not refusal.
-    journal = { ...journal, state: 'promoting', updatedAt: now() };
-    writeJournal(fs, txDir, journal);
-
+    // 10. Cross the point of no return.
     try {
+      promotionStarted = true;
+
+      journal = { ...journal, state: 'promoting', updatedAt: now() };
+      writeJournal(fs, txDir, journal);
+
       // 11-12. Promote by same-filesystem rename, journaling each success.
       for (const entry of writeEntries) {
         const preparedAbs = join(preparedDir(txDir), entry.repositoryPath);
@@ -283,6 +298,13 @@ export async function runRepositoryTransaction(
           throw new PromotionFailure(`${entry.repositoryPath} hash mismatch after promotion`);
         }
       }
+
+      // 14. The final journal write is still inside the point-of-no-return
+      // guard: canonical files are already promoted, so a failure writing
+      // this journal must roll back those files too, not be reported as a
+      // refusal that leaves them changed.
+      journal = { ...journal, state: 'committed', updatedAt: now() };
+      writeJournal(fs, txDir, journal);
     } catch (error) {
       const rolledBack = rollbackTransaction(fs, repoRoot, txDir, journal);
       releaseWriteLock(fs, repoRoot, transactionId);
@@ -301,9 +323,7 @@ export async function runRepositoryTransaction(
       ]);
     }
 
-    // 14-15. Committed. Release the lock before the non-critical report write.
-    journal = { ...journal, state: 'committed', updatedAt: now() };
-    writeJournal(fs, txDir, journal);
+    // 15. Committed. Release the lock before the non-critical report write.
     releaseWriteLock(fs, repoRoot, transactionId);
 
     const written = writeEntries.map((entry) => entry.repositoryPath);
@@ -312,6 +332,23 @@ export async function runRepositoryTransaction(
 
     return { ok: true, transactionId, state: 'committed', written, issues: [], journalPath };
   } catch (error) {
+    if (promotionStarted) {
+      // The inner catch above owns every ordinary promotion-phase failure;
+      // this is reached only if rollback itself (or releasing the lock)
+      // threw. Canonical files may already be promoted, so evidence must be
+      // kept and this must never be reported as a refusal.
+      return refusal('rolled-back', [
+        {
+          code: 'rollback-incomplete',
+          severity: 'error',
+          message: error instanceof Error ? error.message : String(error),
+        },
+      ]);
+    }
+    // A failure before promotion began (path/optimistic validation,
+    // prepare-phase writes, or the validator itself) — the canonical
+    // repository has not been touched, so it is still safe to discard the
+    // transaction directory and refuse.
     fs.remove(txDir, { recursive: true });
     releaseWriteLock(fs, repoRoot, transactionId);
     return refusal('validation-refused', [

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -214,9 +214,17 @@ describe('optimistic concurrency', () => {
 });
 
 describe('fault injection during promotion', () => {
+  // The journal itself now lands via a `journal.json.next` -> `journal.json`
+  // rename (atomic-journal write), so `rename` calls are no longer only
+  // promotion renames. Counting only renames that are not the journal swap
+  // keeps these fault points aimed at the Nth *promotion* rename, same as
+  // before that change.
   function failOnRename(atCallIndex: number) {
+    let promotionRenameIndex = 0;
     return withFaultInjection(createNodeFilesystem(), (ctx) => {
-      if (ctx.op === 'rename' && ctx.callIndex === atCallIndex) {
+      if (ctx.op !== 'rename' || ctx.path.endsWith('journal.json')) return;
+      promotionRenameIndex += 1;
+      if (promotionRenameIndex === atCallIndex) {
         throw new Error(`injected failure at rename #${atCallIndex}`);
       }
     });
@@ -268,7 +276,7 @@ describe('fault injection during promotion', () => {
     expect(hashOf('project.json')).toBe(projectHash);
   });
 
-  it('failure surfaced during post-promotion hash verification triggers a full rollback', async () => {
+  it('failure surfaced during post-promotion hash verification rolls back what it safely can', async () => {
     const seenAt = new Map<string, number>();
     const targetAbs = join(repoRoot, 'assets/new-asset.json');
     const fs: FilesystemOps = withFaultInjection(createNodeFilesystem(), (ctx) => {
@@ -286,8 +294,18 @@ describe('fault injection during promotion', () => {
     const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
     expect(result.ok).toBe(false);
     expect(result.state).toBe('rolled-back');
+    // The project.json replace target was untouched by the corruption and
+    // rolls back cleanly.
     expect(hashOf('project.json')).toBe(projectHash);
-    expect(() => readFileSync(targetAbs)).toThrow();
+    // The create target's bytes no longer match what this transaction wrote
+    // (the corruption is indistinguishable, from rollback's point of view,
+    // from a foreign process having overwritten it right after promotion).
+    // Ownership-safe rollback (WP-03) must not delete content it cannot
+    // prove is its own, so the file is left in place — fatal, not silently
+    // removed — and the outcome is reported as incomplete rather than a
+    // clean success.
+    expect(readText('assets/new-asset.json')).toBe('CORRUPTED-BY-TEST\n');
+    expect(result.issues.some((issue) => issue.code === 'rollback-incomplete')).toBe(true);
   });
 });
 
@@ -397,6 +415,242 @@ describe('crash recovery', () => {
 
     const again = recoverRepository(repoRoot, { fs });
     expect(again.readOnly).toBe(true);
+  });
+
+  it('a promoted create with a matching hash is removed on recovery', async () => {
+    const fs = createNodeFilesystem();
+    const txId = 'tx-create-match-0001';
+    const txDir = join(transactionRootDir(repoRoot), txId);
+    mkdirSync(txDir, { recursive: true });
+    const bytes = 'new-asset-v1\n';
+    writeFileSync(join(repoRoot, 'assets/new-asset.json'), bytes, 'utf8');
+
+    const journal = {
+      schemaVersion: 1 as const,
+      transactionId: txId,
+      intent: 'create match',
+      state: 'promoting' as const,
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expected: {},
+      writes: [
+        {
+          repositoryPath: 'assets/new-asset.json',
+          mode: 'create' as const,
+          preparedSha256: sha256Hex(new TextEncoder().encode(bytes)),
+          originalSha256: null,
+          promoted: true,
+        },
+      ],
+    };
+    writeFileSync(join(txDir, 'journal.json'), JSON.stringify(journal, null, 2), 'utf8');
+
+    const result = recoverRepository(repoRoot, { fs });
+    expect(result.readOnly).toBe(false);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+  });
+
+  it('an unpromoted, foreign create target survives recovery and is reported fatal', async () => {
+    const fs = createNodeFilesystem();
+    const txId = 'tx-create-foreign-0001';
+    const txDir = join(transactionRootDir(repoRoot), txId);
+    mkdirSync(txDir, { recursive: true });
+    const foreignBytes = 'not-ours\n';
+    writeFileSync(join(repoRoot, 'assets/foreign.json'), foreignBytes, 'utf8');
+
+    const journal = {
+      schemaVersion: 1 as const,
+      transactionId: txId,
+      intent: 'never got to promote',
+      state: 'promoting' as const,
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expected: {},
+      writes: [
+        {
+          repositoryPath: 'assets/foreign.json',
+          mode: 'create' as const,
+          preparedSha256: sha256Hex(new TextEncoder().encode('ours\n')),
+          originalSha256: null,
+          promoted: false,
+        },
+      ],
+    };
+    writeFileSync(join(txDir, 'journal.json'), JSON.stringify(journal, null, 2), 'utf8');
+
+    const result = recoverRepository(repoRoot, { fs });
+    expect(result.readOnly).toBe(true);
+    expect(result.transactions[0]?.outcome).toBe('fatal');
+    expect(readFileSync(join(repoRoot, 'assets/foreign.json'), 'utf8')).toBe(foreignBytes);
+
+    // Recovery is idempotent, and a second pass does not delete the foreign
+    // file either.
+    const again = recoverRepository(repoRoot, { fs });
+    expect(again.readOnly).toBe(true);
+    expect(readFileSync(join(repoRoot, 'assets/foreign.json'), 'utf8')).toBe(foreignBytes);
+  });
+
+  it('a promoted create modified afterward (hash no longer matches) survives recovery, marked fatal', async () => {
+    const fs = createNodeFilesystem();
+    const txId = 'tx-create-modified-0001';
+    const txDir = join(transactionRootDir(repoRoot), txId);
+    mkdirSync(txDir, { recursive: true });
+    writeFileSync(join(repoRoot, 'assets/modified.json'), 'edited-after-promotion\n', 'utf8');
+
+    const journal = {
+      schemaVersion: 1 as const,
+      transactionId: txId,
+      intent: 'promoted then edited by someone else',
+      state: 'promoting' as const,
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      expected: {},
+      writes: [
+        {
+          repositoryPath: 'assets/modified.json',
+          mode: 'create' as const,
+          preparedSha256: sha256Hex(new TextEncoder().encode('original-promoted-content\n')),
+          originalSha256: null,
+          promoted: true,
+        },
+      ],
+    };
+    writeFileSync(join(txDir, 'journal.json'), JSON.stringify(journal, null, 2), 'utf8');
+
+    const result = recoverRepository(repoRoot, { fs });
+    expect(result.readOnly).toBe(true);
+    expect(result.transactions[0]?.outcome).toBe('fatal');
+    expect(readFileSync(join(repoRoot, 'assets/modified.json'), 'utf8')).toBe('edited-after-promotion\n');
+  });
+});
+
+/** Fails the journal write whose serialized content contains `match` (e.g. a state or promoted flag). */
+function failOnJournalContent(match: string): FilesystemOps {
+  const base = createNodeFilesystem();
+  return {
+    ...base,
+    writeFile(absolutePath, data) {
+      if (absolutePath.endsWith('journal.json.next')) {
+        const text = new TextDecoder().decode(data);
+        if (text.includes(match)) {
+          throw new Error(`injected failure writing journal (matched "${match}")`);
+        }
+      }
+      base.writeFile(absolutePath, data);
+    },
+  };
+}
+
+function listTransactionDirs(): string[] {
+  return readdirSync(transactionRootDir(repoRoot)).filter((name) => name !== 'write.lock');
+}
+
+describe('point of no return: promotion-phase journal failures (WP-02)', () => {
+  it('failure writing state=promoting leaves the canonical repository unchanged and never refuses as validation-refused', async () => {
+    const projectHash = hashOf('project.json');
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), {
+      fs: failOnJournalContent('"state": "promoting"'),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    expect(result.state).toBe('rolled-back');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+  });
+
+  it('failure writing a promoted-entry journal rolls back the files already promoted and never refuses as validation-refused', async () => {
+    const projectHash = hashOf('project.json');
+    let promotedJournalWrites = 0;
+    const base = createNodeFilesystem();
+    const fs: FilesystemOps = {
+      ...base,
+      writeFile(absolutePath, data) {
+        if (absolutePath.endsWith('journal.json.next')) {
+          const text = new TextDecoder().decode(data);
+          if (text.includes('"promoted": true')) {
+            promotedJournalWrites += 1;
+            if (promotedJournalWrites === 1) {
+              throw new Error('injected failure writing promoted-entry journal');
+            }
+          }
+        }
+        base.writeFile(absolutePath, data);
+      },
+    };
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    expect(result.state).toBe('rolled-back');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+  });
+
+  it('failure writing the final state=committed journal rolls back every canonical write (WP-01-A / P1-A)', async () => {
+    const projectHash = hashOf('project.json');
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), {
+      fs: failOnJournalContent('"state": "committed"'),
+    });
+    expect(result.ok).toBe(false);
+    // The bug this reproduces: canonical files already promoted, then the
+    // final journal write throws, and the transaction incorrectly reports
+    // validation-refused — implying nothing changed when it did.
+    expect(result.state).not.toBe('validation-refused');
+    expect(result.state).toBe('rolled-back');
+    expect(readText('project.json')).toBe('project-v1\n');
+    expect(hashOf('project.json')).toBe(projectHash);
+    expect(() => readFileSync(join(repoRoot, 'assets/new-asset.json'))).toThrow();
+    // Evidence is preserved rather than deleted, unlike a validation refusal.
+    expect(listTransactionDirs().length).toBeGreaterThan(0);
+  });
+
+  it('successful transaction still returns committed', async () => {
+    const result = await runRepositoryTransaction(repoRoot, baseRequest());
+    expect(result.ok).toBe(true);
+    expect(result.state).toBe('committed');
+  });
+});
+
+describe('ownership-safe create rollback (WP-01-B / WP-03)', () => {
+  it('never deletes a foreign create target during rollback', async () => {
+    const base = createNodeFilesystem();
+    const foreignPath = join(repoRoot, 'assets/foreign.json');
+    const foreignBytes = 'planted-by-a-concurrent-writer\n';
+    let intercepted = false;
+    const fs: FilesystemOps = {
+      ...base,
+      rename(fromAbsolute, toAbsolute) {
+        if (toAbsolute === foreignPath && !intercepted) {
+          intercepted = true;
+          // The prepare phase saw this path absent; a foreign writer lands
+          // here the instant before this transaction would have renamed
+          // onto it, and the transaction detects the collision rather than
+          // silently overwriting it.
+          writeFileSync(foreignPath, foreignBytes, 'utf8');
+          throw new Error('detected a foreign write at the create target');
+        }
+        base.rename(fromAbsolute, toAbsolute);
+      },
+    };
+
+    const result = await runRepositoryTransaction(
+      repoRoot,
+      {
+        intent: 'plant a new asset',
+        expected: {},
+        writes: [{ repositoryPath: 'assets/foreign.json', mode: 'create', content: 'ours\n' }],
+        validatePreparedView: noopValidator,
+      },
+      { fs },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.state).not.toBe('validation-refused');
+    // The foreign bytes must remain byte-identical: rollback never deletes a
+    // create target it cannot prove it promoted.
+    expect(readFileSync(foreignPath, 'utf8')).toBe(foreignBytes);
+    expect(result.issues.some((issue) => issue.code === 'rollback-incomplete')).toBe(true);
+    // Evidence preserved, not cleaned up as if nothing happened.
+    expect(listTransactionDirs().length).toBeGreaterThan(0);
   });
 });
 

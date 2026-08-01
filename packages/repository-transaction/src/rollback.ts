@@ -8,7 +8,7 @@
 import { join } from 'node:path';
 import { backupsDir, sha256Hex, writeJournal } from './journal.ts';
 import type { FilesystemOps } from './filesystem.ts';
-import type { TransactionJournal } from './types.ts';
+import type { TransactionFatalReason, TransactionJournal } from './types.ts';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -27,6 +27,7 @@ export function rollbackTransaction(
   }
 
   const unrestored: string[] = [];
+  const reasons: TransactionFatalReason[] = [];
   const writes = journal.writes.map((entry) => ({ ...entry }));
 
   for (const entry of writes) {
@@ -34,9 +35,32 @@ export function rollbackTransaction(
 
     if (entry.mode === 'create') {
       const current = fs.readFileIfExists(canonicalAbs);
-      if (current !== null) {
-        fs.remove(canonicalAbs);
+      if (current === null) {
+        // Nothing there: never promoted, or a previous rollback attempt (or
+        // the prepare-phase collision check) already ensured absence.
+        entry.promoted = false;
+        continue;
       }
+      const currentHash = sha256Hex(current);
+      if (!entry.promoted) {
+        // This transaction never renamed anything to this path, yet
+        // something is there. It could be a concurrent writer's file — never
+        // delete a path this transaction cannot prove it created.
+        unrestored.push(entry.repositoryPath);
+        reasons.push({ path: entry.repositoryPath, code: 'ownership-unknown' });
+        continue;
+      }
+      if (currentHash !== entry.preparedSha256) {
+        // Promoted by this transaction, but the bytes no longer match what
+        // it wrote: something else touched the file afterward. Deleting it
+        // would destroy that other write.
+        unrestored.push(entry.repositoryPath);
+        reasons.push({ path: entry.repositoryPath, code: 'content-changed-after-promotion' });
+        continue;
+      }
+      // Promoted by this transaction and byte-identical to what it wrote:
+      // provably ours to remove.
+      fs.remove(canonicalAbs);
       const stillThere = fs.readFileIfExists(canonicalAbs);
       if (stillThere !== null) {
         unrestored.push(entry.repositoryPath);
@@ -65,6 +89,7 @@ export function rollbackTransaction(
     const backupBytes = fs.readFileIfExists(backupAbs);
     if (!backupBytes) {
       unrestored.push(entry.repositoryPath);
+      reasons.push({ path: entry.repositoryPath, code: 'backup-missing' });
       continue;
     }
     fs.writeFile(canonicalAbs, backupBytes);
@@ -72,6 +97,7 @@ export function rollbackTransaction(
     const restoredHash = sha256Hex(backupBytes);
     if (restoredHash !== entry.originalSha256) {
       unrestored.push(entry.repositoryPath);
+      reasons.push({ path: entry.repositoryPath, code: 'restore-hash-mismatch' });
       continue;
     }
     entry.promoted = false;
@@ -86,6 +112,7 @@ export function rollbackTransaction(
       fatal: {
         message: `rollback could not restore ${unrestored.length} file(s): ${unrestored.join(', ')}`,
         unrestoredPaths: unrestored,
+        ...(reasons.length > 0 ? { reasons } : {}),
       },
     };
     writeJournal(fs, txDir, fatalJournal);
