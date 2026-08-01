@@ -269,7 +269,7 @@ describe('fault injection during promotion', () => {
     expect(hashOf('project.json')).toBe(projectHash);
   });
 
-  it('failure surfaced during post-promotion hash verification triggers a full rollback', async () => {
+  it('failure surfaced during post-promotion hash verification restores what it can and refuses to guess at the rest', async () => {
     const seenAt = new Map<string, number>();
     const targetAbs = join(repoRoot, 'assets/new-asset.json');
     const fs: FilesystemOps = withFaultInjection(createNodeFilesystem(), (ctx) => {
@@ -286,9 +286,15 @@ describe('fault injection during promotion', () => {
     const projectHash = hashOf('project.json');
     const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
     expect(result.ok).toBe(false);
-    expect(result.state).toBe('rolled-back');
+    // The replace had a backup and goes back byte-for-byte.
     expect(hashOf('project.json')).toBe(projectHash);
-    expect(() => readFileSync(targetAbs)).toThrow();
+    // The create does not: these are not the bytes this transaction wrote, so
+    // deleting them would be destroying somebody else's data to tidy up our
+    // own. The file stays and the repository stops accepting writes.
+    expect(result.state).toBe('fatal');
+    expect(readText('assets/new-asset.json')).toBe('CORRUPTED-BY-TEST\n');
+    expect(result.issues.some((issue) => issue.code === 'content-changed-after-promotion')).toBe(true);
+    expect(recoverRepository(repoRoot).readOnly).toBe(true);
   });
 });
 
