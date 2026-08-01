@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -10,12 +10,10 @@ import {
   journalNextFilePath,
   readJournal,
   recoverRepository,
-  sha256Hex,
   transactionDir,
   transactionRootDir,
   withFaultInjection,
   writeJournal,
-  type FilesystemOps,
   type TransactionJournal,
 } from '@atc/repository-transaction';
 
