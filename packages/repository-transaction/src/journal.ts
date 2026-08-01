@@ -128,8 +128,13 @@ export function listTransactionIds(fs: FilesystemOps, repoRoot: string): string[
   const files = fs.listFilesRecursive(root);
   const ids = new Set<string>();
   for (const relativeFile of files) {
-    const [id] = relativeFile.split('/');
-    if (id) ids.add(id);
+    // Only nested paths name a transaction. A file sitting directly in the
+    // root is not one — `write.lock` lives there, and treating it as a
+    // transaction id made recovery "clean up" the very lock a fatal
+    // transaction is holding, on the next startup after it.
+    const separator = relativeFile.indexOf('/');
+    if (separator <= 0) continue;
+    ids.add(relativeFile.slice(0, separator));
   }
   return [...ids].sort();
 }

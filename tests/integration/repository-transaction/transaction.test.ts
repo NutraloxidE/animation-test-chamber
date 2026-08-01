@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -715,5 +715,126 @@ describe('write lock', () => {
       staleLockAfterMs: 1000,
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+/**
+ * A fatal transaction is not a failed one that happens to be noisier. It means
+ * the canonical repository is in a state this process cannot describe, and the
+ * only safe thing left to do is stop being a repository anyone can write to.
+ * These tests pin the two halves of that: the lock is not handed on, and the
+ * next writer is refused rather than building on top of the uncertainty.
+ */
+describe('fatal lockdown', () => {
+  const lockPath = (): string => join(transactionRootDir(repoRoot), 'write.lock');
+
+  function readLock(): { transactionId: string } {
+    return JSON.parse(readFileSync(lockPath(), 'utf8')) as { transactionId: string };
+  }
+
+  /**
+   * Drives one transaction to `fatal` the same way a real one gets there: a
+   * create target that no longer holds the bytes this transaction promoted, so
+   * rollback cannot prove the file is its own to delete.
+   */
+  async function runFatalTransaction() {
+    const targetAbs = join(repoRoot, 'assets/new-asset.json');
+    let reads = 0;
+    const fs = withFaultInjection(createNodeFilesystem(), (ctx) => {
+      if (ctx.op !== 'readFileBytes' || ctx.path !== targetAbs) return;
+      reads += 1;
+      // Second read is the post-promotion verification; rewrite the file just
+      // before it, as another process would.
+      if (reads === 2) writeFileSync(targetAbs, 'WRITTEN-BY-SOMEONE-ELSE\n', 'utf8');
+    });
+    const result = await runRepositoryTransaction(repoRoot, baseRequest(), { fs });
+    expect(result.state).toBe('fatal');
+    return result;
+  }
+
+  it('keeps the write lock and rejects a second transaction after fatal rollback', async () => {
+    const first = await runFatalTransaction();
+    expect(first.ok).toBe(false);
+
+    const foreignBytes = readText('assets/new-asset.json');
+    const projectText = readText('project.json');
+
+    expect(existsSync(lockPath())).toBe(true);
+    expect(readLock().transactionId).toBe(first.transactionId);
+
+    const second = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [{ repositoryPath: 'assets/second-writer.json', mode: 'create', content: 'second\n' }],
+      }),
+    );
+
+    expect(second.ok).toBe(false);
+    expect(second.state).toBe('conflict-refused');
+    expect(second.issues.some((issue) => issue.code === 'write-lock-held')).toBe(true);
+    // Refused before anything of its own was written, and nothing the fatal
+    // transaction left behind was touched to make room for it.
+    expect(existsSync(join(repoRoot, 'assets/second-writer.json'))).toBe(false);
+    expect(readText('assets/new-asset.json')).toBe(foreignBytes);
+    expect(readText('project.json')).toBe(projectText);
+    expect(readLock().transactionId).toBe(first.transactionId);
+  });
+
+  it('does not let the stale-lock timeout steal a lock a fatal transaction still owns', async () => {
+    const first = await runFatalTransaction();
+
+    // Everything the takeover path looks for: the holder is gone and the lock
+    // is far older than the staleness window. It still must not be taken,
+    // because the transaction behind it was never resolved.
+    const second = await runRepositoryTransaction(repoRoot, baseRequest(), {
+      isProcessAlive: () => false,
+      staleLockAfterMs: 0,
+    });
+
+    expect(second.ok).toBe(false);
+    expect(second.state).toBe('conflict-refused');
+    expect(second.issues.some((issue) => issue.code === 'repository-unresolved')).toBe(true);
+    expect(readLock().transactionId).toBe(first.transactionId);
+    expect(recoverRepository(repoRoot).readOnly).toBe(true);
+  });
+
+  it('releases the lock for every outcome that leaves the repository accountable', async () => {
+    // Committed.
+    const committed = await runRepositoryTransaction(repoRoot, baseRequest());
+    expect(committed.state).toBe('committed');
+    expect(existsSync(lockPath())).toBe(false);
+
+    // Validation refusal.
+    const refused = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [{ repositoryPath: 'assets/other.json', mode: 'create', content: 'x\n' }],
+        validatePreparedView: () => ({
+          issues: [{ code: 'nope', severity: 'error' as const, message: 'refused by test' }],
+        }),
+      }),
+    );
+    expect(refused.state).toBe('validation-refused');
+    expect(existsSync(lockPath())).toBe(false);
+
+    // Clean rollback: promotion fails, but every canonical path goes back.
+    let promotions = 0;
+    const fs = withFaultInjection(createNodeFilesystem(), (ctx) => {
+      if (ctx.op !== 'rename' || ctx.path.includes(TRANSACTION_ROOT)) return;
+      promotions += 1;
+      if (promotions === 2) throw new Error('injected promotion failure');
+    });
+    const rolledBack = await runRepositoryTransaction(
+      repoRoot,
+      baseRequest({
+        writes: [
+          { repositoryPath: 'assets/rollback-a.json', mode: 'create', content: 'a\n' },
+          { repositoryPath: 'assets/rollback-b.json', mode: 'create', content: 'b\n' },
+        ],
+      }),
+      { fs },
+    );
+    expect(rolledBack.state).toBe('rolled-back');
+    expect(existsSync(lockPath())).toBe(false);
   });
 });
