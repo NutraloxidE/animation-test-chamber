@@ -34,7 +34,18 @@ function decodeLock(bytes: Uint8Array): WriteLockPayload {
   return JSON.parse(new TextDecoder().decode(bytes)) as WriteLockPayload;
 }
 
-export type LockAcquisition = { acquired: true } | { acquired: false; reason: 'held' };
+export type LockAcquisition =
+  | { acquired: true }
+  | {
+      acquired: false;
+      /**
+       * `held` is ordinary contention and the caller may retry. An
+       * `unresolved-transaction` is not contention at all: the lock belongs to
+       * a transaction whose outcome nobody can establish, and taking it over
+       * would mean writing on top of a repository in an unknown state.
+       */
+      reason: 'held' | 'unresolved-transaction';
+    };
 
 /**
  * Acquires the repository write lock, taking over a stale one (dead process,

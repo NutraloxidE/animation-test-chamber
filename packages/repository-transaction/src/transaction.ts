@@ -117,6 +117,26 @@ export async function runRepositoryTransaction(
     return { ok: false, transactionId, state, written: [], issues, journalPath };
   }
 
+  /**
+   * The single point of no return. Everything before it can be refused with
+   * the repository untouched; nothing after it can.
+   */
+  let promotionStarted = false;
+
+  /**
+   * The lock is released exactly once, and only for an outcome that leaves the
+   * repository safe for the next writer. A `fatal` transaction deliberately
+   * keeps it: the canonical files are in a state nobody can account for, and
+   * the next write must not land on top of that just because this process
+   * happened to exit.
+   */
+  let lockReleased = false;
+  function releaseLockOnce(): void {
+    if (lockReleased) return;
+    lockReleased = true;
+    releaseWriteLock(fs, repoRoot, transactionId);
+  }
+
   const lock = acquireWriteLock(
     fs,
     repoRoot,
@@ -125,7 +145,15 @@ export async function runRepositoryTransaction(
   );
   if (!lock.acquired) {
     return refusal('conflict-refused', [
-      { code: 'write-lock-held', severity: 'error', message: 'another repository transaction is in progress' },
+      lock.reason === 'unresolved-transaction'
+        ? {
+            code: 'repository-unresolved',
+            severity: 'error',
+            message:
+              'a previous transaction under .chamber-transactions/ is unresolved or its journal is ' +
+              'unreadable; the repository is read-only until a human resolves it',
+          }
+        : { code: 'write-lock-held', severity: 'error', message: 'another repository transaction is in progress' },
     ]);
   }
 
@@ -144,7 +172,7 @@ export async function runRepositoryTransaction(
       }
     }
     if (pathIssues.length > 0) {
-      releaseWriteLock(fs, repoRoot, transactionId);
+      releaseLockOnce();
       return refusal('validation-refused', pathIssues);
     }
 
@@ -167,7 +195,7 @@ export async function runRepositoryTransaction(
       }
     }
     if (conflictIssues.length > 0) {
-      releaseWriteLock(fs, repoRoot, transactionId);
+      releaseLockOnce();
       return refusal('conflict-refused', conflictIssues);
     }
 
@@ -197,7 +225,7 @@ export async function runRepositoryTransaction(
       const originalBytes = fs.readFileIfExists(canonicalAbs);
       if (write.mode === 'create' && originalBytes !== null) {
         fs.remove(txDir, { recursive: true });
-        releaseWriteLock(fs, repoRoot, transactionId);
+        releaseLockOnce();
         return refusal('conflict-refused', [
           {
             code: 'create-target-exists',
@@ -209,7 +237,7 @@ export async function runRepositoryTransaction(
       }
       if (write.mode === 'replace' && originalBytes === null) {
         fs.remove(txDir, { recursive: true });
-        releaseWriteLock(fs, repoRoot, transactionId);
+        releaseLockOnce();
         return refusal('conflict-refused', [
           {
             code: 'replace-target-missing',
@@ -236,7 +264,7 @@ export async function runRepositoryTransaction(
     const validationErrors = validation.issues.filter((issue) => issue.severity === 'error');
     if (validationErrors.length > 0) {
       fs.remove(txDir, { recursive: true });
-      releaseWriteLock(fs, repoRoot, transactionId);
+      releaseLockOnce();
       return refusal('validation-refused', validation.issues);
     }
 
@@ -257,10 +285,18 @@ export async function runRepositoryTransaction(
     }
 
     // 10. Point of no return: from here, failure means rollback, not refusal.
-    journal = { ...journal, state: 'promoting', updatedAt: now() };
-    writeJournal(fs, txDir, journal);
+    //
+    // The `state=promoting` journal write is inside the guard, not before it.
+    // It is the write that makes a crash recoverable, and a failure to record
+    // it is itself a promotion-phase failure — treating it as a pre-promotion
+    // error would let the outer catch delete the directory a recovering
+    // process needs.
+    promotionStarted = true;
 
     try {
+      journal = { ...journal, state: 'promoting', updatedAt: now() };
+      writeJournal(fs, txDir, journal);
+
       // 11-12. Promote by same-filesystem rename, journaling each success.
       for (const entry of writeEntries) {
         const preparedAbs = join(preparedDir(txDir), entry.repositoryPath);
@@ -283,28 +319,61 @@ export async function runRepositoryTransaction(
           throw new PromotionFailure(`${entry.repositoryPath} hash mismatch after promotion`);
         }
       }
+
+      // 14. Committed. This journal write is what makes the promotion true;
+      // until it lands, a recovering process would roll every one of those
+      // files back, so failing it has to mean rolling them back here too.
+      journal = { ...journal, state: 'committed', updatedAt: now() };
+      writeJournal(fs, txDir, journal);
     } catch (error) {
-      const rolledBack = rollbackTransaction(fs, repoRoot, txDir, journal);
-      releaseWriteLock(fs, repoRoot, transactionId);
-      if (rolledBack.fatal) {
+      const cause = error instanceof Error ? error.message : String(error);
+
+      // Rollback runs with the lock still held: nothing else may touch these
+      // paths while their contents are being decided.
+      let rolledBack: TransactionJournal | null = null;
+      let rollbackError: string | null = null;
+      try {
+        rolledBack = rollbackTransaction(fs, repoRoot, txDir, journal);
+      } catch (failure) {
+        rollbackError = failure instanceof Error ? failure.message : String(failure);
+      }
+
+      if (rolledBack && !rolledBack.fatal) {
+        releaseLockOnce();
+        writeReportBestEffort(fs, txDir, rolledBack, []);
         return refusal('rolled-back', [
-          { code: 'rollback-incomplete', severity: 'error', message: rolledBack.fatal.message },
+          { code: 'promotion-failed', severity: 'error', message: cause },
         ]);
       }
-      writeReportBestEffort(fs, txDir, rolledBack, []);
-      return refusal('rolled-back', [
-        {
-          code: 'promotion-failed',
-          severity: 'error',
-          message: error instanceof Error ? error.message : String(error),
-        },
-      ]);
+
+      // Rollback could not be certified. The transaction directory stays
+      // exactly as it is — it is the only record of which files are in doubt —
+      // and the lock stays held so the next writer cannot build on top of a
+      // repository nobody can describe.
+      const detail = rolledBack?.fatal
+        ? rolledBack.fatal.message
+        : `rollback itself failed: ${rollbackError ?? 'unknown error'}`;
+      return {
+        ok: false,
+        transactionId,
+        state: 'fatal',
+        written: [],
+        journalPath,
+        issues: [
+          { code: 'promotion-failed', severity: 'error', message: cause },
+          { code: 'rollback-incomplete', severity: 'error', message: detail },
+          ...(rolledBack?.fatal?.reasons ?? []).map((reason) => ({
+            code: reason.code,
+            severity: 'error' as const,
+            message: `${reason.path}: ${reason.code}`,
+            path: reason.path,
+          })),
+        ],
+      };
     }
 
-    // 14-15. Committed. Release the lock before the non-critical report write.
-    journal = { ...journal, state: 'committed', updatedAt: now() };
-    writeJournal(fs, txDir, journal);
-    releaseWriteLock(fs, repoRoot, transactionId);
+    // 15. Release the lock before the non-critical report write.
+    releaseLockOnce();
 
     const written = writeEntries.map((entry) => entry.repositoryPath);
     // 16. Report failures must never undo a commit that already happened.
@@ -312,8 +381,28 @@ export async function runRepositoryTransaction(
 
     return { ok: true, transactionId, state: 'committed', written, issues: [], journalPath };
   } catch (error) {
+    // Only reachable before promotion: the promotion phase has its own guard
+    // and returns from inside it. Cleaning up here is safe precisely because
+    // nothing canonical has moved — and if that ever stops being true, this
+    // must not be the code that decides.
+    if (promotionStarted) {
+      return {
+        ok: false,
+        transactionId,
+        state: 'fatal',
+        written: [],
+        journalPath,
+        issues: [
+          {
+            code: 'transaction-error',
+            severity: 'error',
+            message: error instanceof Error ? error.message : String(error),
+          },
+        ],
+      };
+    }
     fs.remove(txDir, { recursive: true });
-    releaseWriteLock(fs, repoRoot, transactionId);
+    releaseLockOnce();
     return refusal('validation-refused', [
       {
         code: 'transaction-error',

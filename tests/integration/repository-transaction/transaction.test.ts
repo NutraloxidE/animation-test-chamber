@@ -431,6 +431,11 @@ describe('point of no return', () => {
   ): { fs: FilesystemOps; fired: () => boolean } {
     let fired = false;
     const fs = withFaultInjection(real, (ctx) => {
+      // Once only: the scenario is a single failed write, not a disk that has
+      // stopped accepting journals altogether. Rollback's own journal writes
+      // must be allowed to succeed so this exercises the rollback path rather
+      // than the fatal one.
+      if (fired) return;
       if (ctx.op !== 'writeFile' || !/journal\.json(\.next)?$/.test(ctx.path)) return;
       const journal = journalOnDisk(ctx.path);
       if (!journal || !predicate(journal)) return;

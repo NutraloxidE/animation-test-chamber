@@ -65,11 +65,23 @@ export interface RepositoryTransactionRequest {
   ): Promise<TransactionValidationResult> | TransactionValidationResult;
 }
 
+/**
+ * Which of these are legal depends on how far the transaction got.
+ *
+ * Before promotion begins, nothing on disk has moved, so a refusal is an
+ * honest answer: `validation-refused` and `conflict-refused` both mean "the
+ * repository is exactly as you left it". Once promotion begins that claim can
+ * no longer be made, and only `committed`, `rolled-back` and `fatal` remain —
+ * a refusal returned after a canonical file has moved would describe a
+ * repository that does not exist.
+ */
 export type RepositoryTransactionState =
   | 'committed'
   | 'validation-refused'
   | 'conflict-refused'
   | 'rolled-back'
+  /** Promotion failed and rollback could not be certified. Evidence is preserved; the repository needs a human. */
+  | 'fatal'
   | 'recovered';
 
 export interface RepositoryTransactionResult {
@@ -113,7 +125,32 @@ export interface TransactionJournal {
    * this condition must not be treated as resolved by recovery; the write API
    * is expected to fall back to read-only until a human intervenes.
    */
-  fatal?: { message: string; unrestoredPaths: string[] };
+  fatal?: TransactionFatal;
+}
+
+/** Why a specific path could not be put back the way it was. */
+export type TransactionFatalCode =
+  /** Something is at a create target this transaction never promoted, so it belongs to someone else. */
+  | 'ownership-unknown'
+  /** A create target we did promote no longer holds the bytes we wrote. */
+  | 'content-changed-after-promotion'
+  /** A remove that reported success left the file in place. */
+  | 'remove-failed'
+  /** A replace target with no backup to restore from. */
+  | 'backup-missing'
+  /** The restored bytes are not the bytes that were there before. */
+  | 'restore-hash-mismatch'
+  /** A replace entry that claims no original — a replace requires one. */
+  | 'replace-without-original';
+
+export interface TransactionFatal {
+  message: string;
+  unrestoredPaths: string[];
+  /**
+   * Per-path detail. Optional so existing consumers that only read
+   * `message`/`unrestoredPaths` keep working unchanged.
+   */
+  reasons?: { path: string; code: TransactionFatalCode }[];
 }
 
 export interface WriteLockPayload {
