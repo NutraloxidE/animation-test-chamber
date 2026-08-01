@@ -1,7 +1,13 @@
 # Nothing here is read by `pnpm build`; leaving it out keeps the upload small.
+#
+# `generated/` is not excluded wholesale any more: the chamber imports
+# `generated/animation-assets/library-index.json` as `@chamber/animation-assets`
+# so it resolves assets on a static host with no API, which makes that file a
+# build input rather than an output. Excluding it built fine locally and failed
+# on Vercel with ENOENT, because only the deploy upload was missing it.
 tests/
 reports/
-generated/
+generated/unity/
 docs/
 DECISIONS/
 agents/

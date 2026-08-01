@@ -5,13 +5,34 @@
   "finalHeadSha": "ede232721927317eb8955014ca33c3712cb8ded0",
   "branch": "claude/new-session-9h6hb7",
   "wpMatrix": {
-    "WP-01": { "status": "done", "note": "reproduction tests folded into WP-02/03/04/05/06 fix commits; each independently confirmed to fail pre-fix via git stash" },
-    "WP-02": { "status": "done", "commit": "116a453" },
-    "WP-03": { "status": "done", "commit": "116a453" },
-    "WP-04": { "status": "done", "commit": "ee597d4" },
-    "WP-05": { "status": "done", "commit": "d394537" },
-    "WP-06": { "status": "done", "commit": "42dfae8" },
-    "WP-07": { "status": "done", "commit": "ede2327" }
+    "WP-01": {
+      "status": "done",
+      "note": "reproduction tests folded into WP-02/03/04/05/06 fix commits; each independently confirmed to fail pre-fix via git stash"
+    },
+    "WP-02": {
+      "status": "done",
+      "commit": "116a453"
+    },
+    "WP-03": {
+      "status": "done",
+      "commit": "116a453"
+    },
+    "WP-04": {
+      "status": "done",
+      "commit": "ee597d4"
+    },
+    "WP-05": {
+      "status": "done",
+      "commit": "d394537"
+    },
+    "WP-06": {
+      "status": "done",
+      "commit": "42dfae8"
+    },
+    "WP-07": {
+      "status": "done",
+      "commit": "ede2327"
+    }
   },
   "filesChanged": [
     "apps/api/src/context.ts",
@@ -33,24 +54,114 @@
     ".gitignore"
   ],
   "faultInjectionMatrix": [
-    { "scenario": "state=committed journal write throws after all files promoted", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "state=promoting journal write throws", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "per-entry promoted-journal write throws mid-promotion", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "foreign file created at a create target between prepare and promote", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "unpromoted create target occupied (crash-recovery path)", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "promoted create target modified after promotion (crash-recovery path)", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "torn journal.json", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": ".next orphaned (no matching primary)", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": ".next beside a corrupt primary", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "stale lock pointing at a corrupt/fatal transaction", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "append patch staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "remove patch staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "mixed set + append staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "set to a non-existent path staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "mixed real save, final journal write throws (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "foreign file at a real new-clip-version path (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "corrupt journal at (simulated) API startup (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
-    { "scenario": "structural patch via a real tuning-profile save request (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true }
+    {
+      "scenario": "state=committed journal write throws after all files promoted",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "state=promoting journal write throws",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "per-entry promoted-journal write throws mid-promotion",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "foreign file created at a create target between prepare and promote",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "unpromoted create target occupied (crash-recovery path)",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "promoted create target modified after promotion (crash-recovery path)",
+      "test": "transaction.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "torn journal.json",
+      "test": "journal.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": ".next orphaned (no matching primary)",
+      "test": "journal.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": ".next beside a corrupt primary",
+      "test": "journal.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "stale lock pointing at a corrupt/fatal transaction",
+      "test": "journal.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "append patch staged for a tuning profile",
+      "test": "save-classification.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "remove patch staged for a tuning profile",
+      "test": "save-classification.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "mixed set + append staged for a tuning profile",
+      "test": "save-classification.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "set to a non-existent path staged for a tuning profile",
+      "test": "save-classification.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "mixed real save, final journal write throws (end to end)",
+      "test": "save-destination.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "foreign file at a real new-clip-version path (end to end)",
+      "test": "save-destination.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "corrupt journal at (simulated) API startup (end to end)",
+      "test": "save-destination.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    },
+    {
+      "scenario": "structural patch via a real tuning-profile save request (end to end)",
+      "test": "save-destination.test.ts",
+      "prefixFails": true,
+      "postFixPasses": true
+    }
   ],
   "results": {
     "finalCommittedJournalFailure": {
@@ -117,16 +228,21 @@
     "durationSeconds": 990.5,
     "stagesPassed": "26/26"
   },
-  "generatedDriftResult": "none — schema:generate/assets:animation:index/unity:export produced zero git diff after run 1; git status clean after run 2 as well",
+  "generatedDriftResult": "none \u2014 schema:generate/assets:animation:index/unity:export produced zero git diff after run 1; git status clean after run 2 as well",
   "knownNonBlockingLimitations": [
-    "Two visual tests (chamber.spec.ts:232 mobile-landscape, animation-assets.spec.ts:37 narrow) are flaky under this container's load — failed in a standalone harness:visual run, passed in the very next run as part of a clean one-shot; neither test touches code this work package changed.",
+    "Two visual tests (chamber.spec.ts:232 mobile-landscape, animation-assets.spec.ts:37 narrow) are flaky under this container's load \u2014 failed in a standalone harness:visual run, passed in the very next run as part of a clean one-shot; neither test touches code this work package changed.",
     "Some WP-specific tests share a commit with their fix rather than a strictly preceding red-test-only commit, where the test's fault-injection mechanism depends on the fix under test (WP-02's tests target the .next temp file WP-04 introduces); every test was independently confirmed to fail pre-fix via git stash before being confirmed to pass post-fix."
   ],
   "vercel": {
-    "status": "EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON",
+    "status": "fixed in this repository",
     "failingProject": "animation-test-chamber-api",
-    "deploymentId": "dpl_8JMDKbQZG4BHSup2FxFGb5QLkVvy",
-    "reason": "Root vercel.json only builds/deploys apps/web as a static bundle (confirmed passing locally). apps/api has no vercel.json, no build script, and no serverless-function adapter — it is a persistent @hono/node-server process, not deployable to Vercel as configured, and README.md documents this as intentional ('there is no Hono server behind the deployment'). The failing check targets a distinct Vercel project literally named animation-test-chamber-api, which appears to be a second project pointed at this repo without a compatible build configuration for apps/api. Not fixable from the repository without adding a serverless adapter, which would be a deployment-architecture redesign outside this work package's scope and contrary to the repository's documented design."
+    "classification": "actual source/config failure introduced by this branch",
+    "evidence": "PR #11 (c0f4067) deployed successfully on this same Vercel project; its configuration did not change between #11 and #12, so the failure arrived with this branch",
+    "cause": "the chamber imports generated/animation-assets/library-index.json as @chamber/animation-assets, and .vercelignore excluded generated/ wholesale, so the deploy upload was missing a build input",
+    "fix": ".vercelignore excludes generated/unity/ instead of generated/",
+    "verification": "moving generated/ aside reproduces the exact ENOENT vite reports; building a copy of the tree pruned exactly as .vercelignore prunes it fails before the change and succeeds after",
+    "supersedes": "an earlier revision of this report concluded EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON; that was wrong",
+    "note": "no Vercel-side configuration was changed and no serverless adapter was added to apps/api; not yet observed green on Vercel, which requires the push"
   },
   "finalDeclaration": {
     "prCriticalIntegrityFinalization": "PASS",
@@ -142,6 +258,6 @@
     "oneShotRun1": "PASS",
     "oneShotRun2": "PASS",
     "prEvidenceSynchronization": "PASS",
-    "vercel": "EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON"
+    "vercel": "PASS - cause found in this repository and fixed; not yet observed green on Vercel, which requires the push"
   }
 }

@@ -267,52 +267,52 @@ export files.
 
 ## Vercel
 
-GitHub commit status on this branch's head: **failure** — context
-`Vercel`, deployment `dpl_8JMDKbQZG4BHSup2FxFGb5QLkVvy` under the Vercel
-project **`animation-test-chamber-api`**
-(`vercel.com/nutraloxides-projects/animation-test-chamber-api`).
+GitHub commit status on this branch: **failure** — context `Vercel`, on the
+project **`animation-test-chamber-api`**.
 
-Investigated, not fixed from the repository — reasons:
+An earlier revision of this report concluded that this was external Vercel
+project misconfiguration and not fixable from the repository. That conclusion
+was wrong, and the evidence that settles it is one check away: **PR #11
+(`c0f4067`) deployed successfully on this same `animation-test-chamber-api`
+project.** The project builds this repository's root `vercel.json` — which
+targets `apps/web` — perfectly well. Nothing about its configuration changed
+between #11 and #12. The failure arrived with this branch.
 
-- The repository's only `vercel.json` (root) builds and deploys
-  **`apps/web`** as a static bundle (`buildCommand: pnpm build`,
-  `outputDirectory: apps/web/dist`) — confirmed passing locally in every
-  run in this report (`pnpm build`, exit 0).
-- `apps/api` (`@hono/node-server`, `serve()` bound to a persistent process)
-  has **no** `vercel.json`, **no** `build` script in its `package.json`,
-  and **no** serverless-function adapter (`export default`, `@vercel/node`,
-  or an `api/` handler directory) anywhere in the package — it is not
-  structured to run as a Vercel deployment at all.
-- `README.md`'s own "Deploying to Vercel" section is explicit: *"Vercel
-  serves static files only; there is no Hono server behind the
-  deployment."* Publish/write/commit/export features are documented as
-  disabled on that deployment by design, with the reason on the button —
-  not a gap this work is meant to close.
-- The failing check's target project is literally named
-  `animation-test-chamber-api` — a second Vercel project, distinct from
-  whichever one is correctly building `apps/web`, apparently pointed at
-  this same repository without a compatible build configuration for
-  `apps/api`. Vercel's dashboard/API were not reachable from this session
-  (`vercel.com/.../8JMDKbQZG4BHSup2FxFGb5QLkVvy` returned 403 — Vercel
-  authentication, unavailable here) to confirm the exact Root
-  Directory/Framework setting, but every signal available from the
-  repository points at the same conclusion: this is a Vercel *project*
-  configuration issue, external to the repository, not a source or build
-  defect.
+The cause is in this repository. This branch made the chamber import
+`generated/animation-assets/library-index.json` as `@chamber/animation-assets`
+(`apps/web/vite.config.ts`), so it resolves assets on a static host with no
+API. `.vercelignore` excluded `generated/` wholesale, on the reasoning that
+nothing under it is read by `pnpm build` — true when that line was written,
+false the moment that import existed. The file became a build input while
+still being treated as an output.
 
-Per the work package's own rule (§7.6): "do not redesign deployment." Adding
-a serverless adapter to `apps/api` so a second Vercel project could deploy
-it would be exactly that — a deployment-architecture change beyond this
-work package's scope, and contrary to the repository's documented design
-(static-only Vercel deployment, full API only via `pnpm dev`/self-hosting).
+Local builds never showed it, because locally the file is simply there. Only
+the deploy upload was missing it, which is why `pnpm build` passed in every run
+recorded above while Vercel failed.
 
-**Recommended external fix** (for whoever holds the Vercel dashboard): either
-delete/disconnect the `animation-test-chamber-api` project, or fix its Root
-Directory and build settings so it also deploys `apps/web` the same way the
-correctly-configured project does — nothing in the repository needs to
-change for either option.
+Reproduced and verified:
 
-**Vercel: EXTERNALLY BLOCKED WITH DOCUMENTED REASON.**
+```text
+mv generated/ aside && pnpm build
+  -> error during build:
+     [vite:load-fallback] Could not load generated/animation-assets/library-index.json
+     (imported by src/store.ts): ENOENT
+
+build a copy of the tree pruned exactly as .vercelignore prunes it
+  before the fix -> same ENOENT
+  after the fix  -> built in 12.84s
+```
+
+The fix is one line: `.vercelignore` now excludes `generated/unity/` rather
+than `generated/`. `generated/unity/` really is output that nothing reads at
+build time. No deployment configuration was redesigned, no serverless adapter
+was added to `apps/api`, and nothing outside this repository was changed —
+`apps/api` remains a persistent `@hono/node-server` process that Vercel does
+not deploy, exactly as `README.md` documents.
+
+**Vercel: fixed in the repository.** Not yet observed green on Vercel itself,
+which cannot happen until this branch is pushed and the deployment re-runs.
+
 
 ## Final declaration
 
@@ -331,5 +331,5 @@ Visual Harness: PASS
 One-shot Run 1: PASS
 One-shot Run 2: PASS
 PR Evidence Synchronization: PASS
-Vercel: EXTERNALLY BLOCKED WITH DOCUMENTED REASON
+Vercel: PASS - cause found in this repository and fixed
 ```
