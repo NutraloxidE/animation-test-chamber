@@ -26,6 +26,7 @@ export type FsOpName =
   | 'rename'
   | 'remove'
   | 'fsyncFile'
+  | 'fsyncDirectory'
   | 'createExclusive';
 
 export interface FilesystemOps {
@@ -36,6 +37,8 @@ export interface FilesystemOps {
   remove(absolutePath: string, options?: { recursive?: boolean }): void;
   exists(absolutePath: string): boolean;
   fsyncFile(absolutePath: string): void;
+  /** Best-effort directory-entry durability after a rename; never fatal if unsupported. */
+  fsyncDirectory(absolutePath: string): void;
   /** Repository-relative, forward-slash paths of every regular file under `absoluteDir`. */
   listFilesRecursive(absoluteDir: string): string[];
   /** Atomically creates a file only if it does not already exist. Returns false without writing if it does. */
@@ -84,6 +87,21 @@ export function createNodeFilesystem(): FilesystemOps {
         // for the in-process rollback/recovery logic this package implements.
       }
     },
+    fsyncDirectory(absolutePath) {
+      // Same best-effort rationale as fsyncFile: not every platform lets a
+      // directory be opened for fsync at all, and the atomicity this package
+      // relies on comes from the rename syscall itself, not from this.
+      try {
+        const fd = openSync(absolutePath, 'r');
+        try {
+          fsyncSync(fd);
+        } finally {
+          closeSync(fd);
+        }
+      } catch {
+        // ignored, see above.
+      }
+    },
     listFilesRecursive(absoluteDir) {
       const out: string[] = [];
       const walk = (dir: string): void => {
@@ -129,6 +147,7 @@ export function withFaultInjection(fs: FilesystemOps, hook: FaultInjectionHook):
     rename: 0,
     remove: 0,
     fsyncFile: 0,
+    fsyncDirectory: 0,
     createExclusive: 0,
   };
   function guard(op: FsOpName, path: string): void {
@@ -162,6 +181,10 @@ export function withFaultInjection(fs: FilesystemOps, hook: FaultInjectionHook):
     fsyncFile(absolutePath) {
       guard('fsyncFile', absolutePath);
       fs.fsyncFile(absolutePath);
+    },
+    fsyncDirectory(absolutePath) {
+      guard('fsyncDirectory', absolutePath);
+      fs.fsyncDirectory(absolutePath);
     },
     listFilesRecursive(absoluteDir) {
       return fs.listFilesRecursive(absoluteDir);

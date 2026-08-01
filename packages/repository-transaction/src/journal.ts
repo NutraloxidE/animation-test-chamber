@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { FilesystemOps } from './filesystem.ts';
 import type { TransactionJournal } from './types.ts';
 
@@ -26,6 +26,16 @@ export function journalFilePath(txDir: string): string {
   return join(txDir, 'journal.json');
 }
 
+/**
+ * The staging path a journal write lands at before the atomic rename onto
+ * `journal.json`. A leftover file here after a crash means the write never
+ * completed; recovery treats it as a stale temp, never as the source of
+ * truth.
+ */
+export function journalNextFilePath(txDir: string): string {
+  return join(txDir, 'journal.json.next');
+}
+
 export function reportFilePath(txDir: string): string {
   return join(txDir, 'report.json');
 }
@@ -38,17 +48,44 @@ export function generateTransactionId(): string {
   return `tx-${Date.now().toString(36)}-${randomBytes(5).toString('hex')}`;
 }
 
+/**
+ * Never truncates `journal.json` in place. A process that dies mid-write to
+ * the primary file would leave a torn, unparseable JSON document behind —
+ * exactly the file the next startup's recovery has to be able to read. The
+ * write lands at `journal.json.next`, fsynced, then swapped onto the primary
+ * by rename, which is atomic on the same filesystem: recovery only ever sees
+ * either the old primary or the fully-written new one, never a partial one.
+ */
 export function writeJournal(fs: FilesystemOps, txDir: string, journal: TransactionJournal): void {
   const path = journalFilePath(txDir);
+  const nextPath = journalNextFilePath(txDir);
   const bytes = new TextEncoder().encode(`${JSON.stringify(journal, null, 2)}\n`);
-  fs.writeFile(path, bytes);
-  fs.fsyncFile(path);
+  fs.writeFile(nextPath, bytes);
+  fs.fsyncFile(nextPath);
+  fs.rename(nextPath, path);
+  fs.fsyncDirectory(dirname(path));
 }
 
-export function readJournal(fs: FilesystemOps, txDir: string): TransactionJournal | null {
+export type JournalReadResult =
+  | { status: 'missing' }
+  | { status: 'valid'; journal: TransactionJournal }
+  | { status: 'corrupt'; error: string };
+
+/**
+ * Never throws. A journal a previous process died in the middle of writing —
+ * before atomic writes existed, or from a `.next` promoted by a filesystem
+ * that does not make rename atomic — must not take down the recovery path
+ * that is specifically there to clean it up.
+ */
+export function readJournal(fs: FilesystemOps, txDir: string): JournalReadResult {
   const bytes = fs.readFileIfExists(journalFilePath(txDir));
-  if (!bytes) return null;
-  return JSON.parse(new TextDecoder().decode(bytes)) as TransactionJournal;
+  if (!bytes) return { status: 'missing' };
+  try {
+    const journal = JSON.parse(new TextDecoder().decode(bytes)) as TransactionJournal;
+    return { status: 'valid', journal };
+  } catch (error) {
+    return { status: 'corrupt', error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 /** Every transaction id with a directory under `.chamber-transactions/`, oldest first by name. */

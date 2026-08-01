@@ -99,6 +99,24 @@ export interface JournalWriteEntry {
   promoted: boolean;
 }
 
+export type TransactionFatalReasonCode =
+  | 'ownership-unknown'
+  | 'content-changed-after-promotion'
+  | 'backup-missing'
+  | 'restore-hash-mismatch';
+
+export interface TransactionFatalReason {
+  path: string;
+  code: TransactionFatalReasonCode;
+}
+
+export interface TransactionFatal {
+  message: string;
+  unrestoredPaths: string[];
+  /** Per-path detail for why rollback could not resolve it, when known. */
+  reasons?: TransactionFatalReason[];
+}
+
 export interface TransactionJournal {
   schemaVersion: 1;
   transactionId: string;
@@ -113,7 +131,7 @@ export interface TransactionJournal {
    * this condition must not be treated as resolved by recovery; the write API
    * is expected to fall back to read-only until a human intervenes.
    */
-  fatal?: { message: string; unrestoredPaths: string[] };
+  fatal?: TransactionFatal;
 }
 
 export interface WriteLockPayload {

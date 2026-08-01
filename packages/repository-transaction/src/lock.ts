@@ -34,7 +34,9 @@ function decodeLock(bytes: Uint8Array): WriteLockPayload {
   return JSON.parse(new TextDecoder().decode(bytes)) as WriteLockPayload;
 }
 
-export type LockAcquisition = { acquired: true } | { acquired: false; reason: 'held' };
+export type LockAcquisition =
+  | { acquired: true }
+  | { acquired: false; reason: 'held' | 'blocked-by-unresolved-transaction' };
 
 /**
  * Acquires the repository write lock, taking over a stale one (dead process,
@@ -70,9 +72,25 @@ export function acquireWriteLock(
   }
 
   const staleTxDir = transactionDir(repoRoot, existing.transactionId);
-  const staleJournal = readJournal(fs, staleTxDir);
-  if (staleJournal && (staleJournal.state === 'promoting' || staleJournal.state === 'rolling-back')) {
-    rollbackTransaction(fs, repoRoot, staleTxDir, staleJournal);
+  const staleJournalResult = readJournal(fs, staleTxDir);
+  if (staleJournalResult.status === 'corrupt') {
+    // Cannot determine what the dead holder was doing to the repository;
+    // never steal the lock or touch anything on a guess.
+    return { acquired: false, reason: 'blocked-by-unresolved-transaction' };
+  }
+  if (staleJournalResult.status === 'valid') {
+    const staleJournal = staleJournalResult.journal;
+    if (staleJournal.fatal) {
+      // A previously fatal (unrestorable) transaction must not be bypassed
+      // by a new lock; it needs a human, not another writer racing past it.
+      return { acquired: false, reason: 'blocked-by-unresolved-transaction' };
+    }
+    if (staleJournal.state === 'promoting' || staleJournal.state === 'rolling-back') {
+      const resolved = rollbackTransaction(fs, repoRoot, staleTxDir, staleJournal);
+      if (resolved.fatal) {
+        return { acquired: false, reason: 'blocked-by-unresolved-transaction' };
+      }
+    }
   }
   fs.remove(lockPath);
   if (fs.createExclusive(lockPath, encodeLock(payload))) return { acquired: true };
