@@ -324,7 +324,15 @@ export async function runRepositoryTransaction(
     }
 
     // 15. Committed. Release the lock before the non-critical report write.
-    releaseWriteLock(fs, repoRoot, transactionId);
+    // Best-effort like the report write below: the commit already happened
+    // and is already durably journaled, so a failure releasing the lock must
+    // not turn a success into a reported failure.
+    try {
+      releaseWriteLock(fs, repoRoot, transactionId);
+    } catch {
+      // A leaked lock here is recoverable by the normal stale-lock path;
+      // silently failing the caller's successful commit is not recoverable.
+    }
 
     const written = writeEntries.map((entry) => entry.repositoryPath);
     // 16. Report failures must never undo a commit that already happened.
