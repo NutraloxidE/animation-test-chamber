@@ -194,6 +194,18 @@ are not the same outcome:
   could not be certified: the transaction directory and the write lock are both
   kept, and the repository is read-only until a human resolves it.
 
+`fatal` is enforced above the engine too. The API process keeps one mutable
+`RepositoryHealth`, seeded by startup recovery and flipped the instant a
+transaction returns `fatal`, and the read-only middleware reads it per request.
+So the write after a fatal transaction is refused with 503 in the *same*
+process, before a route runs and before a second transaction directory exists —
+not merely blocked by the lock after one has started, and not only after a
+restart. GET stays available. `tests/integration/api/repository-read-only.test.ts`
+drives that over the real save route: fatal response, health flipped, lock and
+journal preserved, next POST refused with no new transaction, every write method
+blocked, reads at 200, and a fresh process over the same checkout reaching the
+same verdict at startup.
+
 An earlier version of this section claimed nothing under `assets/` is ever
 touched "because the move step never ran". That was never true of a failure
 during promotion, and the paths that make it false are now covered by tests.

@@ -235,6 +235,103 @@ The fix is one line and no deployment configuration was touched. Whether the
 `-api` Vercel project should be building the web bundle at all is a separate
 question, external to this repository, and is left alone.
 
+## Follow-up — fatal same-process lockdown
+
+A second pass on branch `claude/new-session-taf91p`, after the work above had
+landed. The transaction engine's half of the fatal contract was already
+correct: an incomplete rollback returns `state: 'fatal'`, keeps its journal and
+does not release the write lock. What was not established is what the *running
+API* did with that.
+
+### What was still open
+
+```text
+transaction returns fatal
+  -> journal preserved, write lock preserved
+  -> but the API's read-only flag was `startupRecovery.readOnly`, a boot-time const
+  -> so the same process still believed it could write
+  -> and the next POST was refused only by the lock, one layer too late
+```
+
+The refusal by lock is real, but it happens *after* a second transaction has
+started, and it is reported as an ordinary 409 conflict — advice to retry, at
+the one moment retrying is wrong. Restarting the process was the only thing
+that produced an honest read-only API.
+
+### What it is now
+
+`apps/api/src/repository-health.ts` holds one mutable `RepositoryHealth` per
+process: `readOnly`, `reason`, `fatalTransactionId`. It is seeded from startup
+recovery and flipped by `markRepositoryFatal` the moment a transaction returns
+`fatal`. The flip is one-way — only a human resolving
+`.chamber-transactions/`, and the next startup recovery, can clear it.
+
+The marking lives in the transaction adapter (`apps/api/src/transaction.ts`),
+not in each route, so no write endpoint can return a fatal outcome without the
+process actually having gone read-only. `TransactionResult` now carries the
+engine's `state` through, and `transactionStatus` maps `fatal` to 503 rather
+than 409.
+
+The read-only middleware reads that object per request instead of a constant,
+so the write after a fatal transaction is refused before a route runs, before a
+plan is built, and before a second transaction directory exists. Its body names
+the fatal transaction and the reason; `GET /api/health` reports the same three
+fields. GET is untouched: a repository nobody can write to is exactly the one a
+human needs to be able to look at.
+
+Route construction moved from `server.ts` into `createApp` (`apps/api/src/app.ts`).
+`server.ts` binds a port as a side effect of import, which made the middleware
+untestable — and whether a process that just went fatal refuses the next write
+is not a claim worth making against a mock.
+
+### One defect found while testing
+
+`listTransactionIds` derived transaction ids from the first path segment of
+every file under `.chamber-transactions/`. `write.lock` lives directly in that
+root, so recovery saw it as a transaction directory with no journal, classified
+it as abandoned and removed it. **The next startup after a fatal transaction
+deleted the very lock that transaction was holding.** Only nested paths name a
+transaction now, and the restart test asserts the lock survives recovery.
+
+### Evidence
+
+| Claim | Where |
+| --- | --- |
+| fatal keeps the lock, pointed at the fatal transaction id | `tests/integration/repository-transaction/transaction.test.ts` — *fatal lockdown* |
+| a second transaction is refused with `write-lock-held` | same |
+| the stale-lock timeout does not steal a fatal lock | same |
+| committed / validation-refused / clean rollback all release the lock | same |
+| a fatal save answers 503 with `state: fatal` and a transaction id | `tests/integration/api/repository-read-only.test.ts` |
+| health flips read-only in the same process, no restart | same |
+| the next POST is 503, with no new transaction directory | same |
+| POST/PUT/PATCH/DELETE blocked across `/api/*` write routes | same |
+| GET health, project and resolved-project stay 200 | same |
+| a fresh process over the same checkout starts read-only, lock intact | same |
+| a clean save and a refused save leave the process writable | same |
+
+Fault shape: a second writer publishes its own *valid* version at a path the
+transaction has already promoted. Post-promotion verification catches the
+mismatch and rollback refuses to delete bytes that are not its own — the real
+route to `fatal`, not a thrown error standing in for one. The foreign document
+is valid on purpose, so "reads still work afterwards" is proven rather than
+sidestepped by a file that would break them anyway.
+
+### Follow-up files changed
+
+```text
+packages/repository-transaction/src/journal.ts   write.lock is not a transaction id
+apps/api/src/repository-health.ts                mutable per-process read-only state
+apps/api/src/runtime.ts                          repo root + health + transaction options
+apps/api/src/read-only-guard.ts                  refusal body carries transaction id and reason
+apps/api/src/app.ts                              routes as a value; live read-only middleware
+apps/api/src/server.ts                           process entry point only
+apps/api/src/transaction.ts                      state passthrough, fatal marking, 503 mapping
+apps/api/src/routes/animation-assets.ts          runtime-scoped, fatal-aware status
+apps/api/src/context.ts                          loaders accept a repository root
+tests/integration/repository-transaction/transaction.test.ts
+tests/integration/api/repository-read-only.test.ts
+```
+
 ## Known non-blocking limitations
 
 1. **The visual suite can rewrite canonical data.** Playwright starts the real
@@ -252,9 +349,12 @@ question, external to this repository, and is left alone.
 
 2. **A `fatal` transaction holds the write lock deliberately.** Nothing in the
    same process can write afterwards, by design: the repository is in a state
-   nobody can describe. Recovery at the next startup reports it and keeps the
-   API read-only. There is no in-process "clear the fatal state" path, and
-   adding one would mean deciding on a human's behalf that the files are fine.
+   nobody can describe. As of the follow-up pass this is enforced by the API
+   itself and not only by the lock — the process goes read-only immediately and
+   the next write is refused with 503 before a transaction starts. Recovery at
+   the next startup reaches the same verdict. There is no in-process "clear the
+   fatal state" path, and adding one would mean deciding on a human's behalf
+   that the files are fine.
 
 3. **`Simulation.rootLocked()`** still uses the global recovery default when a
    clip authors none, as recorded in the earlier report. Unchanged here.
