@@ -6,7 +6,12 @@
  * and current disk state, never from "how far the last recovery got."
  */
 import { createNodeFilesystem, type FilesystemOps } from './filesystem.ts';
-import { listTransactionIds, readJournal, transactionDir } from './journal.ts';
+import {
+  journalNextFilePath,
+  listTransactionIds,
+  readJournal,
+  transactionDir,
+} from './journal.ts';
 import { rollbackTransaction } from './rollback.ts';
 
 export interface RecoveryOptions {
@@ -35,13 +40,45 @@ export function recoverRepository(repoRoot: string, options: RecoveryOptions = {
 
   for (const transactionId of ids) {
     const txDir = transactionDir(repoRoot, transactionId);
-    const journal = readJournal(fs, txDir);
+    const read = readJournal(fs, txDir);
+    const nextPath = journalNextFilePath(txDir);
+    const hasOrphanNext = fs.exists(nextPath);
 
-    if (!journal) {
+    // Safety over convenience for every ambiguous journal state below: the
+    // cost of preserving a directory that turns out to be resolvable is a
+    // human reading one file. The cost of guessing wrong is a repository that
+    // silently disagrees with its own history.
+    if (read.status === 'corrupt') {
+      transactions.push({ transactionId, outcome: 'fatal', message: read.error });
+      readOnly = true;
+      continue;
+    }
+
+    if (read.status === 'missing') {
+      if (hasOrphanNext) {
+        // A complete `.next` with no primary cannot say whether the rename
+        // ever happened, and that is exactly the fact that decides whether
+        // these files are committed. Promoting it would be inventing it.
+        transactions.push({
+          transactionId,
+          outcome: 'fatal',
+          message:
+            'journal-incomplete: a journal.json.next exists with no journal.json, so this ' +
+            'transaction cannot be shown to have committed or to have not committed',
+        });
+        readOnly = true;
+        continue;
+      }
       fs.remove(txDir, { recursive: true });
       transactions.push({ transactionId, outcome: 'cleaned-up' });
       continue;
     }
+
+    const journal = read.journal;
+    // The primary is authoritative, so a leftover temp file is a write that
+    // never landed. Dropping it keeps the next pass from seeing an ambiguity
+    // that is not there.
+    if (hasOrphanNext) fs.remove(nextPath);
 
     if (journal.state === 'preparing' || journal.state === 'prepared') {
       // Promotion never began; the canonical repository was never touched.

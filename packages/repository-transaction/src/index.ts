@@ -9,6 +9,8 @@ export type {
   TransactionIssueSeverity,
   TransactionValidationResult,
   TransactionJournal,
+  TransactionFatal,
+  TransactionFatalCode,
   JournalWriteEntry,
   JournalState,
   WriteLockPayload,
@@ -32,12 +34,14 @@ export {
   preparedDir,
   backupsDir,
   journalFilePath,
+  journalNextFilePath,
   reportFilePath,
   sha256Hex,
   generateTransactionId,
   writeJournal,
   readJournal,
   listTransactionIds,
+  type JournalReadResult,
 } from './journal.ts';
 
 export { rollbackTransaction } from './rollback.ts';

@@ -8,6 +8,7 @@ import {
   recoverRepository,
   runRepositoryTransaction,
   sha256Hex,
+  TRANSACTION_ROOT,
   transactionRootDir,
   acquireWriteLock,
   releaseWriteLock,
@@ -215,10 +216,19 @@ describe('optimistic concurrency', () => {
 });
 
 describe('fault injection during promotion', () => {
+  /**
+   * Fails the Nth *promotion* rename. The journal is replaced by rename too,
+   * so counting every rename would make "the second promotion" mean whichever
+   * write happened to be second overall; renames into the transaction
+   * directory are not promotions and are not counted.
+   */
   function failOnRename(atCallIndex: number) {
+    let promotions = 0;
     return withFaultInjection(createNodeFilesystem(), (ctx) => {
-      if (ctx.op === 'rename' && ctx.callIndex === atCallIndex) {
-        throw new Error(`injected failure at rename #${atCallIndex}`);
+      if (ctx.op !== 'rename' || ctx.path.includes(TRANSACTION_ROOT)) return;
+      promotions += 1;
+      if (promotions === atCallIndex) {
+        throw new Error(`injected failure at promotion rename #${atCallIndex}`);
       }
     });
   }

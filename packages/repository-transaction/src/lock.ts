@@ -6,7 +6,13 @@
 import { hostname as osHostname } from 'node:os';
 import { join } from 'node:path';
 import type { FilesystemOps } from './filesystem.ts';
-import { WRITE_LOCK_FILE, readJournal, transactionDir, transactionRootDir } from './journal.ts';
+import {
+  WRITE_LOCK_FILE,
+  journalNextFilePath,
+  readJournal,
+  transactionDir,
+  transactionRootDir,
+} from './journal.ts';
 import { rollbackTransaction } from './rollback.ts';
 import type { WriteLockPayload } from './types.ts';
 
@@ -80,10 +86,26 @@ export function acquireWriteLock(
     return { acquired: false, reason: 'held' };
   }
 
+  // The lock is stale, but stealing it means writing over whatever its holder
+  // was in the middle of. That is only safe once its transaction has been
+  // resolved — and "resolved" has to include the case where it cannot be.
   const staleTxDir = transactionDir(repoRoot, existing.transactionId);
-  const staleJournal = readJournal(fs, staleTxDir);
-  if (staleJournal && (staleJournal.state === 'promoting' || staleJournal.state === 'rolling-back')) {
-    rollbackTransaction(fs, repoRoot, staleTxDir, staleJournal);
+  const staleRead = readJournal(fs, staleTxDir);
+  if (staleRead.status === 'corrupt') {
+    return { acquired: false, reason: 'unresolved-transaction' };
+  }
+  if (staleRead.status === 'missing' && fs.exists(journalNextFilePath(staleTxDir))) {
+    return { acquired: false, reason: 'unresolved-transaction' };
+  }
+  if (staleRead.status === 'valid') {
+    const staleJournal = staleRead.journal;
+    if (staleJournal.fatal) {
+      return { acquired: false, reason: 'unresolved-transaction' };
+    }
+    if (staleJournal.state === 'promoting' || staleJournal.state === 'rolling-back') {
+      const resolved = rollbackTransaction(fs, repoRoot, staleTxDir, staleJournal);
+      if (resolved.fatal) return { acquired: false, reason: 'unresolved-transaction' };
+    }
   }
   fs.remove(lockPath);
   if (fs.createExclusive(lockPath, encodeLock(payload))) return { acquired: true };
