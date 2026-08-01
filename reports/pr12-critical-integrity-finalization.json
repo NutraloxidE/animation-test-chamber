@@ -1,0 +1,126 @@
+{
+  "baseShaMain": "30f39724e6eb544520c7c39598acc7dbffd22104",
+  "startingHeadSha": "e0a64a9ccb1bfde2e2e572021bed7e270660c806",
+  "sessionStartHeadSha": "21cf0ff946a2e0fa062446a6e01a3c2bc6399e11",
+  "finalHeadSha": "ede232721927317eb8955014ca33c3712cb8ded0",
+  "branch": "claude/new-session-9h6hb7",
+  "wpMatrix": {
+    "WP-01": { "status": "done", "note": "reproduction tests folded into WP-02/03/04/05/06 fix commits; each independently confirmed to fail pre-fix via git stash" },
+    "WP-02": { "status": "done", "commit": "116a453" },
+    "WP-03": { "status": "done", "commit": "116a453" },
+    "WP-04": { "status": "done", "commit": "ee597d4" },
+    "WP-05": { "status": "done", "commit": "d394537" },
+    "WP-06": { "status": "done", "commit": "42dfae8" },
+    "WP-07": { "status": "done", "commit": "ede2327" }
+  },
+  "filesChanged": [
+    "apps/api/src/context.ts",
+    "apps/api/src/server.ts",
+    "apps/web/src/store.ts",
+    "packages/animation-asset-runtime/src/save.ts",
+    "packages/repository-transaction/src/filesystem.ts",
+    "packages/repository-transaction/src/index.ts",
+    "packages/repository-transaction/src/journal.ts",
+    "packages/repository-transaction/src/lock.ts",
+    "packages/repository-transaction/src/recovery.ts",
+    "packages/repository-transaction/src/rollback.ts",
+    "packages/repository-transaction/src/transaction.ts",
+    "packages/repository-transaction/src/types.ts",
+    "tests/integration/animation-assets/save-destination.test.ts",
+    "tests/integration/repository-transaction/journal.test.ts",
+    "tests/integration/repository-transaction/transaction.test.ts",
+    "tests/unit/animation-assets/save-classification.test.ts",
+    ".gitignore"
+  ],
+  "faultInjectionMatrix": [
+    { "scenario": "state=committed journal write throws after all files promoted", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "state=promoting journal write throws", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "per-entry promoted-journal write throws mid-promotion", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "foreign file created at a create target between prepare and promote", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "unpromoted create target occupied (crash-recovery path)", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "promoted create target modified after promotion (crash-recovery path)", "test": "transaction.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "torn journal.json", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": ".next orphaned (no matching primary)", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": ".next beside a corrupt primary", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "stale lock pointing at a corrupt/fatal transaction", "test": "journal.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "append patch staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "remove patch staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "mixed set + append staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "set to a non-existent path staged for a tuning profile", "test": "save-classification.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "mixed real save, final journal write throws (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "foreign file at a real new-clip-version path (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "corrupt journal at (simulated) API startup (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true },
+    { "scenario": "structural patch via a real tuning-profile save request (end to end)", "test": "save-destination.test.ts", "prefixFails": true, "postFixPasses": true }
+  ],
+  "results": {
+    "finalCommittedJournalFailure": {
+      "canonicalFilesAfterRollback": "absent",
+      "projectJsonByteIdentical": true,
+      "stateNeverValidationRefused": true,
+      "evidencePreserved": true
+    },
+    "foreignCreateCollision": {
+      "foreignBytesByteIdentical": true,
+      "resultOk": false,
+      "issueCode": "rollback-incomplete"
+    },
+    "corruptJournal": {
+      "recoverRepositoryThrows": false,
+      "readOnly": true,
+      "directoryPreserved": true,
+      "messageContains": "journal-corrupt"
+    },
+    "tuningRefusal": {
+      "planOk": false,
+      "status": 409,
+      "assetCreated": false,
+      "characterAssignmentChanged": false
+    }
+  },
+  "commandExitCodes": {
+    "pnpm typecheck": 0,
+    "pnpm lint": 0,
+    "pnpm schema:generate": 0,
+    "pnpm assets:animation:index": 0,
+    "pnpm unity:export": 0,
+    "pnpm harness:check": 0,
+    "pnpm harness:animation-assets": 0,
+    "pnpm harness:unit": 0,
+    "pnpm harness:integration": 0,
+    "pnpm harness:replay": 0,
+    "npx tsx harness/shadow-compare.ts": 0,
+    "pnpm harness:repo-guard": 0,
+    "pnpm build": 0,
+    "pnpm harness:visual (standalone)": 1,
+    "pnpm harness:one-shot (run 1)": 0,
+    "pnpm harness:one-shot (run 2)": "PENDING",
+    "git diff --check": 0
+  },
+  "testTotals": {
+    "unit": "252/252",
+    "integration": "87/87",
+    "replay": "91/91",
+    "shadowCompare": "9/9",
+    "repoGuard": "8/8",
+    "animationAssets": "7/7",
+    "visualOneShotRun1": "114/114",
+    "visualStandalone": "112/114 (2 flaky, see report)"
+  },
+  "oneShotRun1": {
+    "startedAt": "2026-08-01T06:27:48.788Z",
+    "durationSeconds": 1033.6,
+    "stagesPassed": "26/26"
+  },
+  "oneShotRun2": "PENDING",
+  "generatedDriftResult": "none — schema:generate/assets:animation:index/unity:export produced zero git diff after run 1",
+  "knownNonBlockingLimitations": [
+    "Two visual tests (chamber.spec.ts:232 mobile-landscape, animation-assets.spec.ts:37 narrow) are flaky under this container's load — failed in a standalone harness:visual run, passed in the very next run as part of a clean one-shot; neither test touches code this work package changed.",
+    "Some WP-specific tests share a commit with their fix rather than a strictly preceding red-test-only commit, where the test's fault-injection mechanism depends on the fix under test (WP-02's tests target the .next temp file WP-04 introduces); every test was independently confirmed to fail pre-fix via git stash before being confirmed to pass post-fix."
+  ],
+  "vercel": {
+    "status": "EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON",
+    "failingProject": "animation-test-chamber-api",
+    "deploymentId": "dpl_8JMDKbQZG4BHSup2FxFGb5QLkVvy",
+    "reason": "Root vercel.json only builds/deploys apps/web as a static bundle (confirmed passing locally). apps/api has no vercel.json, no build script, and no serverless-function adapter — it is a persistent @hono/node-server process, not deployable to Vercel as configured, and README.md documents this as intentional ('there is no Hono server behind the deployment'). The failing check targets a distinct Vercel project literally named animation-test-chamber-api, which appears to be a second project pointed at this repo without a compatible build configuration for apps/api. Not fixable from the repository without adding a serverless adapter, which would be a deployment-architecture redesign outside this work package's scope and contrary to the repository's documented design."
+  }
+}
