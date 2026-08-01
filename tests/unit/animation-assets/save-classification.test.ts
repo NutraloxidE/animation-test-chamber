@@ -174,6 +174,82 @@ describe('save: graph-only destinations (PLAN Part II §30)', () => {
   });
 });
 
+describe('save: tuning profile refuses unsupported patches (WP-01-D / WP-05)', () => {
+  const registry = demoRegistry();
+  const project = loadDemoProject();
+  const resolved = loadResolvedDemoProject(CHARACTER_ID);
+
+  function tuningRequest(patches: SaveAnimationChangesRequest['graph']['patches']): SaveAnimationChangesRequest {
+    return {
+      ...baseRequest(resolved),
+      graph: { patches, destination: { kind: 'tuning-profile' } },
+    };
+  }
+
+  it('an append patch is refused with 409, not silently dropped', () => {
+    const plan = planSaveAnimationChanges(
+      registry,
+      project,
+      tuningRequest([{ path: '/transitions', op: 'append', value: { id: 'sneaked-in' } }]),
+    );
+    expect(plan.ok).toBe(false);
+    if (plan.ok) return;
+    expect(plan.status).toBe(409);
+    expect(plan.issues?.some((issue) => issue.code === 'tuning-changes-structure')).toBe(true);
+  });
+
+  it('a remove patch is refused with 409, not silently dropped', () => {
+    const plan = planSaveAnimationChanges(
+      registry,
+      project,
+      tuningRequest([{ path: '/states/idle', op: 'remove' }]),
+    );
+    expect(plan.ok).toBe(false);
+    if (plan.ok) return;
+    expect(plan.status).toBe(409);
+    expect(plan.issues?.some((issue) => issue.code === 'tuning-changes-structure')).toBe(true);
+  });
+
+  it('a mixed set + append request is refused in its entirety, not partially applied', () => {
+    const plan = planSaveAnimationChanges(
+      registry,
+      project,
+      tuningRequest([
+        { path: '/transitions/idle-to-walk/blendDurationSec', op: 'set', value: 0.05 },
+        { path: '/transitions', op: 'append', value: { id: 'sneaked-in' } },
+      ]),
+    );
+    expect(plan.ok).toBe(false);
+    if (plan.ok) return;
+    expect(plan.status).toBe(409);
+  });
+
+  it('a set to a path the parent does not have is refused', () => {
+    const plan = planSaveAnimationChanges(
+      registry,
+      project,
+      tuningRequest([{ path: '/states/does-not-exist/speed', op: 'set', value: 2 }]),
+    );
+    expect(plan.ok).toBe(false);
+    if (plan.ok) return;
+    expect(plan.status).toBe(409);
+    expect(plan.issues?.some((issue) => issue.code === 'invalid-patch-path')).toBe(true);
+  });
+
+  it('a refused tuning save creates no asset and leaves the character assignment untouched', () => {
+    const plan = planSaveAnimationChanges(
+      registry,
+      project,
+      tuningRequest([{ path: '/transitions', op: 'append', value: { id: 'sneaked-in' } }]),
+    );
+    expect(plan.ok).toBe(false);
+    // A refusal shape carries no `assets`/`assignment` at all — there is
+    // nothing a caller could accidentally publish from it.
+    expect('assets' in plan).toBe(false);
+    expect('assignment' in plan).toBe(false);
+  });
+});
+
 describe('save: clip-only destinations (PLAN Part II §15.2, §30)', () => {
   const registry = demoRegistry();
   const project = loadDemoProject();

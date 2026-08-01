@@ -718,6 +718,14 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         (character) => character.animation.behavior.assetId === behaviorId,
       );
       const hasTuning = Boolean(project.character.animation.tuning);
+      // A tuning profile only stores value changes; the server refuses an
+      // append/remove patch outright, so the option is disabled here too
+      // rather than letting a human pick it and get a 409 back.
+      const repository = session.repositoryProject;
+      const preview = session.buildStagedDocument();
+      const hasStructuralGraphChange = diffToPatches(repository.graph, preview.graph, '').some(
+        (patch) => patch.op !== 'set',
+      );
       // A domain fact — is the active behaviour a variant — must never
       // depend on what the library's search box or type filter currently
       // shows (PLAN Part VI §25): asked directly of the registry, not of
@@ -740,8 +748,14 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           impact: hasTuning
             ? `Only "${project.character.displayName}", but reusable by other characters that adopt the profile.`
             : '',
-          available: hasTuning,
-          ...(hasTuning ? {} : { unavailableReason: 'this character has no tuning profile' }),
+          available: hasTuning && !hasStructuralGraphChange,
+          ...(hasTuning && !hasStructuralGraphChange
+            ? {}
+            : {
+                unavailableReason: hasStructuralGraphChange
+                  ? 'tuning profiles only store value changes; use a behavior variant for structural edits'
+                  : 'this character has no tuning profile',
+              }),
         },
         {
           kind: 'existing-behavior-variant' as const,

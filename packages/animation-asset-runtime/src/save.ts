@@ -30,7 +30,7 @@ import { bumpAssetVersion, referencesEqual } from '@atc/schema';
 import { addGraphPrefix } from './resolver.ts';
 import { applyPatches } from './patch.ts';
 import { computeContentHash, sealAsset } from './hashing.ts';
-import { createBehaviorVariant, isVariantAsset } from './variant.ts';
+import { createBehaviorVariant, isVariantAsset, resolveBehaviorAsset } from './variant.ts';
 import type { AnimationAssetRegistry } from './registry.ts';
 
 export interface SaveAnimationChangesPlan {
@@ -125,15 +125,38 @@ export function planSaveAnimationChanges(
       if (!character.animation.tuning) {
         return { ok: false, status: 409, error: 'this character has no tuning profile to extend' };
       }
+      // A tuning profile adjusts values only. Every staged patch is tried
+      // against the resolved behaviour graph before anything is published:
+      // an append/remove, or a `set` to a path the parent does not have, is
+      // refused for the whole request rather than silently dropped from an
+      // otherwise-successful save.
+      const behaviorGraph = resolveBehaviorAsset(registry, character.animation.behavior).graph;
+      const attempt = applyPatches(behaviorGraph, graphPatches, {
+        source: 'tuning-profile',
+        requireExistingPath: true,
+        valuesOnly: true,
+      });
+      if (attempt.rejected.length > 0) {
+        return {
+          ok: false,
+          status: 409,
+          error:
+            'This change cannot be saved to a tuning profile. Tuning profiles only store value ' +
+            'changes — choose a behavior variant for structural edits.',
+          issues: attempt.rejected.map((rejection) => ({
+            code: rejection.patch.op === 'set' ? 'invalid-patch-path' : 'tuning-changes-structure',
+            severity: 'error',
+            message: `${rejection.patch.op} ${rejection.patch.path}: ${rejection.reason}`,
+            path: rejection.patch.path,
+          })),
+        };
+      }
       const current = registry.getTuning(character.animation.tuning);
       const version = bumpAssetVersion(current.metadata.version, 'patch');
       const next = sealAsset<AnimationTuningProfileAsset>({
         ...current,
         metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-        // A tuning profile adjusts values only; a structural patch is
-        // refused by the resolver, and refusing it here too keeps the error
-        // close to the decision that caused it.
-        patches: [...current.patches, ...graphPatches.filter((patch) => patch.op === 'set')],
+        patches: [...current.patches, ...graphPatches],
       });
       assets.push(next);
       assignment = {
