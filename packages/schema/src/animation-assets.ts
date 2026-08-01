@@ -491,6 +491,8 @@ export type AssetIssueCode =
   | 'orphaned-asset'
   | 'invalid-patch-path'
   | 'tuning-changes-structure'
+  /** A save aimed at a tuning profile carries a patch a tuning profile cannot hold. */
+  | 'unsupported-tuning-patch'
   | 'schema-invalid'
   | 'missing-semantic-event'
   | 'duplicate-binding'

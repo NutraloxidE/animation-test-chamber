@@ -28,6 +28,7 @@ import type {
 } from '@atc/schema';
 import { bumpAssetVersion, referencesEqual } from '@atc/schema';
 import { addGraphPrefix } from './resolver.ts';
+import { resolveBehaviorAsset } from './variant.ts';
 import { applyPatches } from './patch.ts';
 import { computeContentHash, sealAsset } from './hashing.ts';
 import { createBehaviorVariant, isVariantAsset } from './variant.ts';
@@ -54,6 +55,82 @@ export interface PlanSaveOptions {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+const TUNING_REFUSAL =
+  'Structural graph changes cannot be saved to a tuning profile — it stores value changes only. ' +
+  'Choose a behaviour variant instead.';
+
+/**
+ * Refuses a tuning-profile save that carries anything a tuning profile cannot
+ * store, or returns `null` if every patch is storable.
+ *
+ * Both halves of "storable" are checked here rather than left to the resolver:
+ * the op must be `set`, and the path must already exist in the behaviour being
+ * tuned. The resolver does reject both, but it rejects them at load time, on
+ * an asset that has by then been published and pointed at — which turns a
+ * mistake a human could have corrected into a broken character.
+ */
+function refuseUnstorableTuningPatches(
+  registry: AnimationAssetRegistry,
+  behavior: AssetReference,
+  currentTuning: AnimationTuningProfileAsset,
+  patches: readonly CanonicalPatch[],
+): SaveAnimationChangesRefusal | null {
+  const structural = patches.filter((patch) => patch.op !== 'set');
+  if (structural.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      error: TUNING_REFUSAL,
+      issues: structural.map((patch) => ({
+        code: 'unsupported-tuning-patch',
+        severity: 'error',
+        message: `a tuning profile cannot ${patch.op} ${patch.path}; it stores value changes only`,
+        path: patch.path,
+      })),
+    };
+  }
+
+  const resolved = resolveBehaviorAsset(registry, behavior);
+  if (resolved.issues.some((issue) => issue.severity === 'error')) {
+    return {
+      ok: false,
+      status: 409,
+      error: 'the behaviour this tuning profile adjusts could not be resolved',
+      issues: resolved.issues,
+    };
+  }
+
+  // Applied on top of the patches this profile already carries, because that
+  // is the document the new patches will actually be resolved against.
+  const base = applyPatches(resolved.graph, currentTuning.patches, {
+    source: 'tuning-profile',
+    requireExistingPath: true,
+    valuesOnly: true,
+  });
+  const application = applyPatches(base.document, patches, {
+    source: 'tuning-profile',
+    requireExistingPath: true,
+    valuesOnly: true,
+  });
+  if (application.rejected.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      error:
+        'one or more values this save adjusts do not exist in the behaviour being tuned; ' +
+        'a tuning profile can only change values the behaviour already has',
+      issues: application.rejected.map((rejection) => ({
+        code: 'invalid-patch-path',
+        severity: 'error',
+        message: `tuning ${rejection.patch.op} ${rejection.patch.path}: ${rejection.reason}`,
+        path: rejection.patch.path,
+      })),
+    };
+  }
+
+  return null;
 }
 
 export function planSaveAnimationChanges(
@@ -126,14 +203,28 @@ export function planSaveAnimationChanges(
         return { ok: false, status: 409, error: 'this character has no tuning profile to extend' };
       }
       const current = registry.getTuning(character.animation.tuning);
+
+      /*
+       * A tuning profile stores value changes and nothing else. Patches it
+       * cannot hold used to be dropped by a `filter()` and the save reported
+       * as a success — the human was told their structural edit was saved
+       * when it was not, and would find out at the point where the missing
+       * change matters.
+       *
+       * Every patch in the request is checked before anything is built, and
+       * one that cannot be stored refuses the whole request. Publishing the
+       * subset that happens to be storable would be saving an edit nobody
+       * asked for: a graph whose blend times moved but whose new state never
+       * arrived is not "most of" the requested change.
+       */
+      const refusal = refuseUnstorableTuningPatches(registry, character.animation.behavior, current, graphPatches);
+      if (refusal) return refusal;
+
       const version = bumpAssetVersion(current.metadata.version, 'patch');
       const next = sealAsset<AnimationTuningProfileAsset>({
         ...current,
         metadata: { ...current.metadata, version, createdAt, createdBy, contentHash: '' },
-        // A tuning profile adjusts values only; a structural patch is
-        // refused by the resolver, and refusing it here too keeps the error
-        // close to the decision that caused it.
-        patches: [...current.patches, ...graphPatches.filter((patch) => patch.op === 'set')],
+        patches: [...current.patches, ...graphPatches],
       });
       assets.push(next);
       assignment = {

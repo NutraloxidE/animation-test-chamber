@@ -145,6 +145,12 @@ export interface StagedClipChangeSummary {
  */
 export interface StagedChangeSummary {
   graphPatchCount: number;
+  /**
+   * How many of those patches add or remove structure rather than change a
+   * value. A tuning profile cannot store one, so the dialog must not offer it
+   * as a destination for this edit.
+   */
+  graphStructuralPatchCount: number;
   clipChanges: StagedClipChangeSummary[];
   hasUnresolvedClipChanges: boolean;
 }
@@ -718,6 +724,11 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         (character) => character.animation.behavior.assetId === behaviorId,
       );
       const hasTuning = Boolean(project.character.animation.tuning);
+      // The server refuses a structural patch aimed at a tuning profile and is
+      // the authority on that; disabling the option here just means a human is
+      // told before they choose rather than after.
+      const hasStructuralGraphChange = get().stagedChangeSummary().graphStructuralPatchCount > 0;
+      const tuningAvailable = hasTuning && !hasStructuralGraphChange;
       // A domain fact — is the active behaviour a variant — must never
       // depend on what the library's search box or type filter currently
       // shows (PLAN Part VI §25): asked directly of the registry, not of
@@ -737,11 +748,17 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         {
           kind: 'tuning-profile' as const,
           label: 'New version of this character’s tuning profile',
-          impact: hasTuning
+          impact: tuningAvailable
             ? `Only "${project.character.displayName}", but reusable by other characters that adopt the profile.`
             : '',
-          available: hasTuning,
-          ...(hasTuning ? {} : { unavailableReason: 'this character has no tuning profile' }),
+          available: tuningAvailable,
+          ...(tuningAvailable
+            ? {}
+            : {
+                unavailableReason: hasTuning
+                  ? 'Tuning profiles only store value changes. Use a behaviour variant for structural edits.'
+                  : 'this character has no tuning profile',
+              }),
         },
         {
           kind: 'existing-behavior-variant' as const,
@@ -807,6 +824,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       }));
       return {
         graphPatchCount: graphPatches.length,
+        graphStructuralPatchCount: graphPatches.filter((patch) => patch.op !== 'set').length,
         clipChanges,
         hasUnresolvedClipChanges: clipChanges.some((change) => change.sourceClip === null),
       };
