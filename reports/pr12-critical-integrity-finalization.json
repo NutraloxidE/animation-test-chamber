@@ -234,7 +234,7 @@
     "Some WP-specific tests share a commit with their fix rather than a strictly preceding red-test-only commit, where the test's fault-injection mechanism depends on the fix under test (WP-02's tests target the .next temp file WP-04 introduces); every test was independently confirmed to fail pre-fix via git stash before being confirmed to pass post-fix."
   ],
   "vercel": {
-    "status": "fixed in this repository",
+    "status": "fixed in this repository; deployment confirmed green",
     "failingProject": "animation-test-chamber-api",
     "classification": "actual source/config failure introduced by this branch",
     "evidence": "PR #11 (c0f4067) deployed successfully on this same Vercel project; its configuration did not change between #11 and #12, so the failure arrived with this branch",
@@ -242,7 +242,8 @@
     "fix": ".vercelignore excludes generated/unity/ instead of generated/",
     "verification": "moving generated/ aside reproduces the exact ENOENT vite reports; building a copy of the tree pruned exactly as .vercelignore prunes it fails before the change and succeeds after",
     "supersedes": "an earlier revision of this report concluded EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON; that was wrong",
-    "note": "no Vercel-side configuration was changed and no serverless adapter was added to apps/api; not yet observed green on Vercel, which requires the push"
+    "confirmation": "commit status on ac8a40c: success (\"Deployment has completed\") on animation-test-chamber-api, the project that had been failing since the PR opened",
+    "note": "no Vercel-side configuration was changed and no serverless adapter was added to apps/api"
   },
   "finalDeclaration": {
     "prCriticalIntegrityFinalization": "PASS",
@@ -258,6 +259,6 @@
     "oneShotRun1": "PASS",
     "oneShotRun2": "PASS",
     "prEvidenceSynchronization": "PASS",
-    "vercel": "PASS - cause found in this repository and fixed; not yet observed green on Vercel, which requires the push"
+    "vercel": "PASS - fixed in this repository, deployment confirmed green"
   }
 }

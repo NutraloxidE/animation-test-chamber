@@ -310,8 +310,10 @@ was added to `apps/api`, and nothing outside this repository was changed —
 `apps/api` remains a persistent `@hono/node-server` process that Vercel does
 not deploy, exactly as `README.md` documents.
 
-**Vercel: fixed in the repository.** Not yet observed green on Vercel itself,
-which cannot happen until this branch is pushed and the deployment re-runs.
+**Vercel: fixed and confirmed green.** After this fix was pushed, the
+deployment re-ran and the commit status on `ac8a40c` came back **success**
+(`Deployment has completed`) on the same `animation-test-chamber-api` project
+that had been failing since the PR opened.
 
 
 ## Final declaration
@@ -331,5 +333,5 @@ Visual Harness: PASS
 One-shot Run 1: PASS
 One-shot Run 2: PASS
 PR Evidence Synchronization: PASS
-Vercel: PASS - cause found in this repository and fixed
+Vercel: PASS - fixed in this repository, deployment confirmed green
 ```
