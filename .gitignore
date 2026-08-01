@@ -15,6 +15,9 @@ reports/*.md
 !reports/animation-asset-published-baseline.json
 !reports/animation-asset-foundation-hardening-report.md
 !reports/animation-asset-foundation-hardening-report.json
+!reports/pr12-critical-finalization-baseline.md
+!reports/pr12-critical-integrity-finalization.md
+!reports/pr12-critical-integrity-finalization.json
 # Asset transaction staging. Created and deleted within a single request; a
 # directory surviving here means a transaction died mid-flight.
 .chamber-asset-transactions/

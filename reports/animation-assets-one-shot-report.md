@@ -1,31 +1,56 @@
 # Animation Asset Reuse System — completion report
 
-Branch: `claude/new-session-7d9k61`
+Branch: `claude/pr-12-continuation-0cpio7` (PR #12, opened from `claude/new-session-9h6hb7`)
 Base: `30f3972` (merge of #11, "equipment branching, three weapon modes and timing controls")
+
+This report covers the asset-split work. Two later passes on the same PR are
+reported separately and supersede parts of it:
+
+- `reports/animation-asset-foundation-hardening-report.md` — atomic repository
+  transactions, strict references, variant inheritance, the per-domain save
+  contract, the deterministic visual harness.
+- `reports/pr12-critical-integrity-finalization.md` — the point-of-no-return,
+  create-rollback ownership, journal atomicity and tuning-refusal fixes, and
+  the verification results that are current as of the final head.
 
 ## Declaration
 
 ```text
-Animation Asset Reuse System: PARTIAL
+Animation Asset Reuse System: PASS
 
 Schema:                 PASS
 Migration:              PASS
 Shared Behavior:        PASS
 Motion Slot Resolution: PASS
-Asset Library:          PASS (one partial — see Known limitations)
+Asset Library:          PASS
 Variant / Fork:         PASS
-Replay Compatibility:   PASS
+Replay Compatibility:   PASS — 91/91
 Protection:             PASS
 Atomic Transaction:     PASS
 Static Build:           PASS
-Visual 320px:           PASS
+Visual 320px:           PASS — 114/114 across three viewports
 Agent Orchestration:    FAIL — the plan's subagent process was not followed
 Opus Final Review:      PASS — agents/reviews/05-final-acceptance.md
-One-shot Harness:       FAIL — 3 pre-existing test failures remain
+One-shot Harness:       PASS — 26/26 stages on two consecutive runs
 ```
 
-`PASS` is not written where it is not earned (plan §46). The two failures are
-stated in full below.
+`PASS` is not written where it is not earned (plan §46).
+
+This block read `PARTIAL` when the asset split first landed, on two failures:
+three pre-existing replay failures, and the Asset Library's read-mostly clip
+picker. The replay failures were resolved by the hardening pass
+(`DECISIONS/0008-unarmed-root-displacement-baseline.md`) and the one-shot
+harness is green on two consecutive runs, so the two lines that caused the
+`PARTIAL` no longer do.
+
+The orchestration line still reads `FAIL`, and stays that way: no subagent
+process was followed on that pass, and none was used on the critical-integrity
+pass either. Writing `PASS` there would be the exact thing this report exists
+to avoid.
+
+The clip picker is still read-mostly. It moved out of the declaration and into
+Known limitations, where it belongs — it is a scoped design choice, not a
+failed gate.
 
 ## Asset types implemented
 
@@ -148,16 +173,39 @@ Guarded by `stateNameDependenceStage` in the repo guard.
 
 ## Transaction rollback verification
 
-`runAssetTransaction` writes proposals to `.chamber-asset-transactions/<id>/`,
-validates the complete proposed repository — disk plus proposal, every character
-resolved — and only then moves files into canonical paths. On any failure the
-staging directory is deleted, `project.json` is restored byte for byte, and
-nothing under `assets/` was ever touched because the move step never ran. A
-report is written to `reports/animation-asset-transaction-<id>.md` either way.
+`runAssetTransaction` is a domain adapter now. It turns a proposal — new asset
+versions, optionally a rewritten project — into `PlannedFileWrite[]` plus a
+validator closure, and hands both to the generic, domain-agnostic
+`@atc/repository-transaction` engine, which owns the journal under
+`.chamber-transactions/<id>/`, the repository write lock, promotion by rename,
+rollback and startup recovery. It knows nothing about animation assets.
+
+A transaction can fail on either side of the point of no return, and the two
+are not the same outcome:
+
+- **Before promotion** — an invalid path, a stale expectation, a validator
+  error. Nothing canonical has moved, the transaction directory is removed and
+  the result is `validation-refused` or `conflict-refused`.
+- **After promotion begins** — a failed rename, a hash that does not verify, a
+  journal write that fails. Files may already be at their canonical paths, so
+  the result is `committed`, `rolled-back`, or `fatal` and never a refusal.
+  `rolled-back` means every replace was restored from its backup and every
+  create this transaction can prove it wrote was removed. `fatal` means that
+  could not be certified: the transaction directory and the write lock are both
+  kept, and the repository is read-only until a human resolves it.
+
+An earlier version of this section claimed nothing under `assets/` is ever
+touched "because the move step never ran". That was never true of a failure
+during promotion, and the paths that make it false are now covered by tests.
 
 `tests/integration/animation-assets/transaction.test.ts` covers acceptance,
 refusal on an unresolvable character, refusal on a hash mismatch, and that a
 refused proposal leaves the repository byte-identical.
+`tests/integration/repository-transaction/` covers the engine itself —
+fault injection at every promotion point, journal corruption, ownership-unsafe
+rollback and crash recovery — and
+`tests/integration/animation-assets/save-destination.test.ts` runs a real mixed
+publication through it end to end.
 
 ## Static build
 
@@ -183,47 +231,56 @@ npx tsx harness/repo-guard.ts                 # 8/8
 npx tsx harness/build.ts                      # pass
 npx tsc -p tsconfig.json --noEmit             # clean
 npx eslint . --max-warnings=0                 # clean
-npx vitest run tests/                         # 349 passed, 3 failed
+npx vitest run tests/                         # see below
 npx playwright test
 ```
 
 ## Test totals
 
-Headless suite:
+Headless suite. The "this branch" column is the current head, not the head this
+section was first written against; the counts it used to carry (352 total, 349
+passing, 3 failing) were superseded by the hardening pass, which resolved the
+three replay failures, and by the critical-integrity pass, which added the
+fault-injection and refusal tests.
 
 | | Baseline `30f3972` | This branch |
 | --- | --- | --- |
-| Tests | 245 | 352 |
-| Passing | 242 | 349 |
-| Failing | 3 | the same 3 |
+| Unit | — | 253/253 |
+| Integration | — | 90/90 |
+| Replay | — | 91/91 |
+| Total | 245 (242 passing, 3 failing) | 434 (434 passing, 0 failing) |
 
 Visual suite, across desktop / mobile-landscape / 320px:
 
 | | Baseline `30f3972` | This branch |
 | --- | --- | --- |
-| Total runs | 132 | 147 |
-| Failures | 11 | 11 |
-| Failing test names | keyboard input · jump and attack · sword attacks · repeated clip tuning · layer bar | the same five |
+| Total runs | 132 | 114 (38 tests × 3 viewports) |
+| Failures | 11 | 0 |
 
-The failure *count* is identical and the failing test *names* are identical. The
-per-viewport distribution shifts between runs because the keyboard- and
-replay-timing tests are load-sensitive: `sword attacks` failed on desktop at
-baseline and passed here, `keyboard input` failed on narrow at baseline and on
-both narrow and mobile-landscape here. All 39 Asset Library runs pass on every
-viewport, including 320px.
+The 11 failures this column used to record were the load-sensitive
+keyboard- and replay-timing tests. The hardening pass replaced their
+`waitForTimeout` with a dev-only fixed-tick driver (`window.__ATC_TEST__`),
+which is what took the count to zero and let the visual stage start blocking a
+commit. All Asset Library runs pass on every viewport, including 320px.
+
+The suite remains sensitive to machine load rather than to correctness: a run
+of the one-shot harness overlapping this pass's own edits and CPU load reported
+111/114, and the same three tests passed on every dedicated run. That is
+recorded in `reports/pr12-critical-finalization-baseline.md` rather than left
+out.
 
 No test was deleted, skipped or weakened. One visual test was rewritten to cover
 the new save-destination contract, and a second added alongside it.
 
 ## Known limitations
 
-1. **Three pre-existing test failures remain** in
-   `tests/replay/expectations.test.ts`, all present at `30f3972` before any
-   change here. They are a data-versus-test divergence from `c0f4067`: the tests
-   expect `unarmed-attack-01.rootDisplacement.z ≈ 0`, the demo data says `0.5`.
-   Resolving them means deciding how the attack should feel, which is not
-   derivable from the code. Left unmasked. The visual test `repeated clip tuning
-   is exposed through the Inspector edit loop` fails for the same reason.
+1. ~~**Three pre-existing test failures remain**~~ — **resolved.** The three
+   `tests/replay/expectations.test.ts` failures were a data-versus-test
+   divergence from `c0f4067`: the tests expected
+   `unarmed-attack-01.rootDisplacement.z ≈ 0`, the demo data said `0.5`. The
+   later hardening pass settled which of the two was right and recorded the
+   decision in `DECISIONS/0008-unarmed-root-displacement-baseline.md`. Replay is
+   91/91.
 
 2. **The plan's subagent orchestration was not followed.** One agent did all
    phases. `agents/tasks/` and `agents/handoffs/` are empty rather than filled

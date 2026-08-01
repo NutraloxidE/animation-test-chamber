@@ -1,0 +1,216 @@
+{
+  "report": "pr12-critical-integrity-finalization",
+  "repository": "NutraloxidE/animation-test-chamber",
+  "pullRequest": 12,
+  "baseSha": "30f39724e6eb544520c7c39598acc7dbffd22104",
+  "startingHeadSha": "21cf0ff946a2e0fa062446a6e01a3c2bc6399e11",
+  "finalHeadSha": "PLACEHOLDER_FINAL_SHA",
+  "branch": "claude/pr-12-continuation-0cpio7",
+  "lastReviewedHeadInWorkPackage": "e0a64a9ccb1bfde2e2e572021bed7e270660c806",
+  "workPackages": [
+    { "id": "WP-01", "subject": "Reproduce remaining fatal paths", "result": "done" },
+    { "id": "WP-02", "subject": "Point-of-no-return transaction safety", "result": "done" },
+    { "id": "WP-03", "subject": "Ownership-safe create rollback", "result": "done" },
+    { "id": "WP-04", "subject": "Atomic and corruption-safe journal", "result": "done" },
+    { "id": "WP-05", "subject": "Explicit tuning patch refusal", "result": "done" },
+    { "id": "WP-06", "subject": "Integrated recovery and HTTP verification", "result": "done" },
+    { "id": "WP-07", "subject": "Harness, reports, PR synchronisation", "result": "done" }
+  ],
+  "commits": [
+    { "sha": "8cfdbb0", "subject": "test: reproduce remaining PR12 critical integrity failures" },
+    { "sha": "25e174b", "subject": "fix: make PR12 transaction point-of-no-return recoverable" },
+    { "sha": "428b3ab", "subject": "fix: make PR12 create rollback ownership-safe" },
+    { "sha": "5b70577", "subject": "fix: make PR12 transaction journals atomic and corruption-safe" },
+    { "sha": "2ca2c4a", "subject": "fix: refuse unsupported tuning patches in PR12 saves" },
+    { "sha": "42761c0", "subject": "test: verify PR12 critical integrity paths end to end" },
+    { "sha": "a8ab1e9", "subject": "fix: stop excluding the asset index the chamber build reads from the Vercel upload" },
+    { "sha": "PLACEHOLDER_DOCS_SHA", "subject": "docs: synchronize PR12 completion evidence" }
+  ],
+  "filesChanged": [
+    "packages/repository-transaction/src/transaction.ts",
+    "packages/repository-transaction/src/rollback.ts",
+    "packages/repository-transaction/src/journal.ts",
+    "packages/repository-transaction/src/recovery.ts",
+    "packages/repository-transaction/src/lock.ts",
+    "packages/repository-transaction/src/filesystem.ts",
+    "packages/repository-transaction/src/types.ts",
+    "packages/repository-transaction/src/index.ts",
+    "packages/animation-asset-runtime/src/save.ts",
+    "packages/schema/src/animation-assets.ts",
+    "apps/api/src/read-only-guard.ts",
+    "apps/api/src/server.ts",
+    "apps/web/src/store.ts",
+    ".vercelignore",
+    ".gitignore",
+    "tests/integration/repository-transaction/transaction.test.ts",
+    "tests/integration/repository-transaction/journal.test.ts",
+    "tests/integration/animation-assets/save-destination.test.ts",
+    "tests/unit/animation-assets/save-classification.test.ts",
+    "reports/animation-assets-one-shot-report.md",
+    "reports/pr12-critical-finalization-baseline.md",
+    "reports/pr12-critical-integrity-finalization.md",
+    "reports/pr12-critical-integrity-finalization.json"
+  ],
+  "faultInjectionMatrix": [
+    {
+      "injected": "journal write fails at state=promoting",
+      "point": "before any rename",
+      "expected": "not validation-refused; canonical repository unchanged",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "journal write fails recording the first promoted entry",
+      "point": "after 1 of 3 renames",
+      "expected": "the already-promoted file is rolled back",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "journal write fails at state=committed",
+      "point": "after every rename and hash verification",
+      "expected": "rolled-back; project byte-identical; new files absent",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "journal write fails and the backup is destroyed",
+      "point": "after promotion",
+      "expected": "transaction evidence preserved; not validation-refused",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "foreign process creates the create target",
+      "point": "between the prepare-time absence check and promotion",
+      "expected": "foreign bytes byte-identical and never removed; repository read-only",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "create target rewritten after we promoted it",
+      "point": "during rollback",
+      "expected": "not deleted; content-changed-after-promotion; repository read-only",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "canonical file corrupted before hash verification reads it",
+      "point": "post-promotion verification",
+      "expected": "replace restored byte-identical; create left in place; fatal",
+      "test": "tests/integration/repository-transaction/transaction.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "temp journal write fails",
+      "point": "any journal update",
+      "expected": "the previous primary journal is still valid",
+      "test": "tests/integration/repository-transaction/journal.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "torn journal.json ({\"schemaVersion\":1,\"transactionId\":)",
+      "point": "startup recovery",
+      "expected": "no throw; readOnly true; journal-corrupt reported; directory preserved",
+      "test": "tests/integration/repository-transaction/journal.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "orphan journal.json.next, three primary/temp combinations",
+      "point": "startup recovery",
+      "expected": "conservative in each case; nothing auto-promoted",
+      "test": "tests/integration/repository-transaction/journal.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "stale write lock over a corrupt transaction",
+      "point": "lock acquisition",
+      "expected": "lock not stolen; repository unchanged",
+      "test": "tests/integration/repository-transaction/journal.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "journal write fails at state=committed",
+      "point": "real mixed publication (behaviour + clip + motion set + project)",
+      "expected": "every new version file absent; project byte-identical; rolled-back",
+      "test": "tests/integration/animation-assets/save-destination.test.ts",
+      "result": "pass"
+    },
+    {
+      "injected": "foreign file at a planned new version path",
+      "point": "real mixed publication",
+      "expected": "foreign bytes survive; project unchanged; repository read-only",
+      "test": "tests/integration/animation-assets/save-destination.test.ts",
+      "result": "pass"
+    }
+  ],
+  "namedOutcomes": {
+    "finalJournalFailure": "rolled-back; project.json byte-identical; no new asset version files on disk; never validation-refused",
+    "foreignCreate": "foreign bytes byte-identical and never removed; transaction not successful; recoverRepository reports readOnly=true",
+    "corruptJournal": "recoverRepository does not throw; readOnly=true; outcome fatal with a journal-corrupt message; the transaction directory is preserved unmodified",
+    "tuningRefusal": "HTTP 409 with unsupported-tuning-patch issues; no asset created; no character assignment changed; no repository transaction started"
+  },
+  "commandExitCodes": {
+    "typecheck": 0,
+    "lint": 0,
+    "schema:generate": 0,
+    "assets:animation:index": 0,
+    "unity:export": 0,
+    "harness:check": 0,
+    "harness:animation-assets": 0,
+    "harness:transaction-recovery": 0,
+    "harness:unit": 0,
+    "harness:integration": 0,
+    "harness:replay": 0,
+    "shadow-compare": 0,
+    "harness:repo-guard": 0,
+    "build": 0,
+    "harness:visual": 0,
+    "harness:one-shot-run-1": 0,
+    "harness:one-shot-run-2": 0,
+    "git-diff-check": 0
+  },
+  "testTotals": {
+    "unit": "253/253",
+    "integration": "90/90",
+    "replay": "91/91",
+    "visual": "114/114",
+    "headlessTotal": "434/434"
+  },
+  "oneShotRun1": { "exitCode": 0, "stages": "26/26", "durationSeconds": 782.0, "workingTreeAfter": "only this pass's uncommitted documentation edits" },
+  "oneShotRun2": { "exitCode": 0, "stages": "26/26", "durationSeconds": 763.6, "workingTreeAfter": "only this pass's uncommitted documentation edits" },
+  "generatedDrift": "none — pnpm schema:generate, harness/generate-animation-asset-index.ts and pnpm unity:export leave the working tree clean on a second pass",
+  "vercel": {
+    "status": "fixed in this pass",
+    "failingProject": "animation-test-chamber-api",
+    "failingSha": "21cf0ff946a2e0fa062446a6e01a3c2bc6399e11",
+    "classification": "actual source/config failure introduced by this branch",
+    "evidence": "PR #11 (c0f4067) deployed successfully on the same Vercel project; the failure appeared with this branch",
+    "cause": "the chamber imports generated/animation-assets/library-index.json as @chamber/animation-assets, and .vercelignore excluded generated/ wholesale, so the deploy upload was missing a build input",
+    "fix": ".vercelignore excludes generated/unity/ instead of generated/",
+    "verification": "building a copy of the tree pruned exactly as .vercelignore prunes it fails before the change with the same ENOENT vite reports and succeeds after",
+    "note": "no Vercel-side configuration was changed; whether the -api project should build the web bundle at all is external to this repository"
+  },
+  "knownNonBlockingLimitations": [
+    "The visual suite starts the real API server and its commit test can rewrite projects/demo-character/project.json; observed once in this pass, restored, and not reproduced on two later runs. git status --short cannot be assumed clean after pnpm harness:visual.",
+    "A fatal transaction deliberately keeps the write lock, so nothing in the same process can write afterwards; there is no in-process path to clear a fatal state.",
+    "Simulation.rootLocked() still uses the global recovery default when a clip authors none, as recorded in the earlier report.",
+    "The plan's subagent orchestration was not followed on the original pass and was not used here either."
+  ],
+  "declaration": {
+    "overall": "PASS",
+    "pointOfNoReturnSafety": "PASS",
+    "ownershipSafeCreateRollback": "PASS",
+    "atomicJournal": "PASS",
+    "corruptionSafeRecovery": "PASS",
+    "noSilentTuningPatchLoss": "PASS",
+    "integratedFatalPathVerification": "PASS",
+    "schemaAndGeneratedArtifacts": "PASS",
+    "replayCompatibility": "PASS",
+    "visualHarness": "PASS",
+    "oneShotRun1": "PASS",
+    "oneShotRun2": "PASS",
+    "prEvidenceSynchronization": "PASS",
+    "vercel": "PASS — cause found in this repository and fixed; not yet observed green on Vercel, which requires the push"
+  }
+}
