@@ -93,7 +93,7 @@
     "pnpm build": 0,
     "pnpm harness:visual (standalone)": 1,
     "pnpm harness:one-shot (run 1)": 0,
-    "pnpm harness:one-shot (run 2)": "PENDING",
+    "pnpm harness:one-shot (run 2)": 0,
     "git diff --check": 0
   },
   "testTotals": {
@@ -104,6 +104,7 @@
     "repoGuard": "8/8",
     "animationAssets": "7/7",
     "visualOneShotRun1": "114/114",
+    "visualOneShotRun2": "114/114",
     "visualStandalone": "112/114 (2 flaky, see report)"
   },
   "oneShotRun1": {
@@ -111,8 +112,12 @@
     "durationSeconds": 1033.6,
     "stagesPassed": "26/26"
   },
-  "oneShotRun2": "PENDING",
-  "generatedDriftResult": "none — schema:generate/assets:animation:index/unity:export produced zero git diff after run 1",
+  "oneShotRun2": {
+    "startedAt": "2026-08-01T06:45:18.162Z",
+    "durationSeconds": 990.5,
+    "stagesPassed": "26/26"
+  },
+  "generatedDriftResult": "none — schema:generate/assets:animation:index/unity:export produced zero git diff after run 1; git status clean after run 2 as well",
   "knownNonBlockingLimitations": [
     "Two visual tests (chamber.spec.ts:232 mobile-landscape, animation-assets.spec.ts:37 narrow) are flaky under this container's load — failed in a standalone harness:visual run, passed in the very next run as part of a clean one-shot; neither test touches code this work package changed.",
     "Some WP-specific tests share a commit with their fix rather than a strictly preceding red-test-only commit, where the test's fault-injection mechanism depends on the fix under test (WP-02's tests target the .next temp file WP-04 introduces); every test was independently confirmed to fail pre-fix via git stash before being confirmed to pass post-fix."
@@ -122,5 +127,21 @@
     "failingProject": "animation-test-chamber-api",
     "deploymentId": "dpl_8JMDKbQZG4BHSup2FxFGb5QLkVvy",
     "reason": "Root vercel.json only builds/deploys apps/web as a static bundle (confirmed passing locally). apps/api has no vercel.json, no build script, and no serverless-function adapter — it is a persistent @hono/node-server process, not deployable to Vercel as configured, and README.md documents this as intentional ('there is no Hono server behind the deployment'). The failing check targets a distinct Vercel project literally named animation-test-chamber-api, which appears to be a second project pointed at this repo without a compatible build configuration for apps/api. Not fixable from the repository without adding a serverless adapter, which would be a deployment-architecture redesign outside this work package's scope and contrary to the repository's documented design."
+  },
+  "finalDeclaration": {
+    "prCriticalIntegrityFinalization": "PASS",
+    "pointOfNoReturnSafety": "PASS",
+    "ownershipSafeCreateRollback": "PASS",
+    "atomicJournal": "PASS",
+    "corruptionSafeRecovery": "PASS",
+    "noSilentTuningPatchLoss": "PASS",
+    "integratedFatalPathVerification": "PASS",
+    "schemaGeneratedArtifacts": "PASS",
+    "replayCompatibility": "PASS",
+    "visualHarness": "PASS",
+    "oneShotRun1": "PASS",
+    "oneShotRun2": "PASS",
+    "prEvidenceSynchronization": "PASS",
+    "vercel": "EXTERNALLY_BLOCKED_WITH_DOCUMENTED_REASON"
   }
 }

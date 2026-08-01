@@ -203,7 +203,7 @@ and re-running), passes with it.
 | `pnpm build` | 0 | pass |
 | `pnpm harness:visual` (standalone, see note) | 1 | 112/114 |
 | `pnpm harness:one-shot` (run 1) | 0 | 26/26 stages, including visual 114/114 |
-| `pnpm harness:one-shot` (run 2) | see below |
+| `pnpm harness:one-shot` (run 2) | 0 | 26/26 stages, including visual 114/114 |
 | `git diff --check` | 0 | clean |
 | `git status --short` | — | clean except intended report/PR-evidence files |
 
@@ -230,13 +230,13 @@ stages passed**, including `visual (playwright)` 114/114 in 984.6s. Report:
 
 ## One-shot run 2
 
-**PENDING at this commit.** Run 1 above passed cleanly (26/26 stages); a
-second, immediately-following run was started in the background to satisfy
-the "two consecutive one-shot runs must pass" requirement before this work
-is declared complete. This section, and the Final Declaration below, will
-be updated with the result — and this notice removed — in a follow-up
-commit on this same branch once that run finishes (~15-20 minutes for the
-visual/Playwright stage). No PASS is claimed here until it does.
+Started 2026-08-01T06:45:18.162Z, duration 990.5s (~16.5 min), **26/26
+stages passed**, including `visual (playwright)` 114/114 in 948.8s.
+`git status --short` after this run: clean — no drift from either run.
+
+Two consecutive clean one-shot runs, both 26/26 stages, both 114/114
+visual. The 2/114 visual failures noted in the standalone pre-run did not
+reproduce in either one-shot run.
 
 ## Generated-artifact drift check
 
@@ -248,8 +248,9 @@ export files.
 ## Known non-blocking limitations
 
 1. **Two visual tests are flaky under this container's load**, per the note
-   above — pass in the one-shot run recorded here, failed in a standalone
-   run minutes earlier under otherwise-identical code. Not caused by this
+   above — passed in both one-shot runs recorded here (114/114 twice),
+   failed in a standalone run minutes earlier under otherwise-identical
+   code. Not caused by this
    work package (neither touches `packages/repository-transaction`,
    `packages/animation-asset-runtime/src/save.ts`, or the tuning-profile UI
    guard). Consistent with the foundation-hardening report's own note on
@@ -315,8 +316,20 @@ change for either option.
 
 ## Final declaration
 
-**PENDING** — withheld until one-shot run 2 (above) completes and confirms
-a second consecutive clean pass. Every other section in this report reflects
-real, already-completed command runs (nothing here is fabricated ahead of
-its evidence); only the final declaration line waits on run 2. See the
-follow-up commit on this branch for the completed declaration.
+```
+PR #12 Critical Integrity Finalization: PASS
+
+Point-of-No-Return Safety: PASS
+Ownership-safe Create Rollback: PASS
+Atomic Journal: PASS
+Corruption-safe Recovery: PASS
+No Silent Tuning Patch Loss: PASS
+Integrated Fatal-path Verification: PASS
+Schema / Generated Artifacts: PASS
+Replay Compatibility: PASS
+Visual Harness: PASS
+One-shot Run 1: PASS
+One-shot Run 2: PASS
+PR Evidence Synchronization: PASS
+Vercel: EXTERNALLY BLOCKED WITH DOCUMENTED REASON
+```
