@@ -341,6 +341,59 @@
       "startupRecoveryStaysReadOnlyAfterRestart": "yes",
       "writeLockSurvivesStartupRecovery": "yes",
       "cleanAndRefusedSavesLeaveProcessWritable": "yes"
+    },
+    "commandExitCodes": {
+      "pnpm typecheck": 0,
+      "pnpm lint": 0,
+      "pnpm harness:check": 0,
+      "pnpm harness:animation-assets": 0,
+      "pnpm harness:unit": 0,
+      "pnpm harness:integration": 0,
+      "pnpm harness:replay": 0,
+      "npx tsx harness/shadow-compare.ts": 0,
+      "pnpm harness:repo-guard": 0,
+      "pnpm build": 0,
+      "pnpm harness:visual": 0,
+      "pnpm harness:one-shot (run 1)": 0,
+      "pnpm harness:one-shot (run 2)": 0,
+      "git diff --check": 0
+    },
+    "testTotals": {
+      "unit": 253,
+      "integration": 98,
+      "replay": 91,
+      "integrationBefore": 90,
+      "integrationAdded": 8,
+      "deletedOrWeakened": 0
+    },
+    "visual": "114/114 in 15.6m",
+    "oneShotRun1": "26/26 stages in 1013.0s",
+    "oneShotRun2": "26/26 stages in 1060.1s",
+    "visualAttemptsNotCounted": [
+      "first attempt killed by a 900s cap this pass applied; operator error, not a result",
+      "second attempt exited 1: 24 passed, remainder ERR_CONNECTION_REFUSED against the Vite dev server on 127.0.0.1:5173, i.e. the harness server died mid-run; the API server was then confirmed to boot and listen standalone after the createApp refactor"
+    ],
+    "declaration": {
+      "overall": "PASS",
+      "explicitFatalState": "PASS",
+      "fatalLockPreservation": "PASS",
+      "runtimeReadOnlyTransition": "PASS",
+      "sameProcessWriteRejection": "PASS",
+      "startupRecoveryRejection": "PASS",
+      "readApiAvailability": "PASS",
+      "fatalPathIntegrationTest": "PASS",
+      "visualHarness": "PASS",
+      "oneShotRun1": "PASS",
+      "oneShotRun2": "PASS",
+      "prEvidenceSynchronization": "PASS",
+      "vercelLatestHead": "NOT VERIFIED - no deployment has run against this branch"
+    },
+    "branchDivergence": {
+      "workedOn": "claude/new-session-taf91p",
+      "basedOn": "a235603",
+      "pr12Head": "claude/new-session-9h6hb7 at ce98520",
+      "relationship": "diverged parallel lines, 13 commits against 10, differing implementations of the earlier work package",
+      "consequence": "this branch is not PR #12's head; PR #12's body was not edited and nothing was pushed to 9h6hb7"
     }
   }
 }

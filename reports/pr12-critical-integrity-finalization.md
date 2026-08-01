@@ -316,6 +316,43 @@ route to `fatal`, not a thrown error standing in for one. The foreign document
 is valid on purpose, so "reads still work afterwards" is proven rather than
 sidestepped by a file that would break them anyway.
 
+### Follow-up verification
+
+Every command run on `3cb9512` + the follow-up head, with its exit code.
+
+| Command | Exit | Result |
+| --- | --- | --- |
+| `pnpm typecheck` | 0 | clean |
+| `pnpm lint` | 0 | clean |
+| `pnpm harness:check` | 0 | 5/5 |
+| `pnpm harness:animation-assets` | 0 | 7/7 |
+| `pnpm harness:unit` | 0 | **253/253**, 12 files |
+| `pnpm harness:integration` | 0 | **98/98**, 7 files |
+| `pnpm harness:replay` | 0 | **91/91**, 3 files |
+| `npx tsx harness/shadow-compare.ts` | 0 | 9 replays identical to the legacy runtime |
+| `pnpm harness:repo-guard` | 0 | 8/8 |
+| `pnpm build` | 0 | `apps/web/dist` written |
+| `pnpm harness:visual` | 0 | **114/114** in 15.6m |
+| `pnpm harness:one-shot` (run 1) | 0 | **26/26 stages** in 1013.0s |
+| `pnpm harness:one-shot` (run 2) | 0 | **26/26 stages** in 1060.1s |
+| `git diff --check` | 0 | clean |
+| `git status --short` | — | clean after every run above |
+
+Integration goes from 90 to 98: eight tests added, none deleted, skipped or
+weakened. Three cover the lock contract at the package level and five the
+same-process API lockdown.
+
+Two earlier visual attempts are recorded rather than dropped. The first was
+killed by a 900-second cap this pass put on it — the suite takes longer than
+that on this machine, so that was an operator error, not a result. The second
+exited 1 with 24 passed and the remainder failing `ERR_CONNECTION_REFUSED`
+against the Vite dev server on `127.0.0.1:5173`: the harness's own server died
+partway through the run. Before re-running, `npx tsx apps/api/src/server.ts` was
+started on its own and confirmed to boot and listen after the `createApp`
+refactor, so the dead server was not this change. The third run, uncapped, was
+114/114, and both one-shot runs — each of which runs the visual suite again —
+passed 26/26.
+
 ### Follow-up files changed
 
 ```text
@@ -397,3 +434,42 @@ entry in this repository, and the fix is verified by building a tree pruned
 exactly as the deploy upload is pruned. It has not yet been observed green on
 Vercel itself, which cannot happen until this branch is pushed and the
 deployment re-runs.
+
+## Follow-up declaration
+
+```text
+PR #12 Fatal-state Lockdown: PASS
+
+Explicit Fatal State:            PASS — pre-existing on this branch, now covered by tests
+Fatal Lock Preservation:         PASS
+Runtime Read-only Transition:    PASS
+Same-process Write Rejection:    PASS
+Startup Recovery Rejection:      PASS
+Read API Availability:           PASS
+Fatal-path Integration Test:     PASS
+Typecheck / Lint:                PASS
+Unit / Integration / Replay:     PASS — 253 / 98 / 91
+Shadow / Repo Guard / Build:     PASS
+Visual Harness:                  PASS — 114/114
+One-shot Run 1:                  PASS — 26/26
+One-shot Run 2:                  PASS — 26/26
+PR Evidence Synchronization:     PASS — these reports
+Vercel Latest Head:              NOT VERIFIED
+```
+
+`PASS` is written only where the command was run and passed on this head.
+
+Two lines are deliberately not `PASS`:
+
+**Vercel latest head.** No deployment has run against this branch, so there is
+nothing to observe. It is not reported green on the strength of the previous
+pass's fix.
+
+**Branch.** This work is on `claude/new-session-taf91p`, branched from
+`a235603`. PR #12's head is `claude/new-session-9h6hb7` at `ce98520`, a
+*different* line: the two have diverged (13 commits against 10) and implement
+the earlier work package differently, so this branch is not PR #12's head and
+PR #12's body was not edited to describe code that is not on it. The work
+package asked for a push to `9h6hb7`; that was not done, because pushing to a
+branch other than the designated one is not something this pass may decide on
+its own.
