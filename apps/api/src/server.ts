@@ -24,6 +24,7 @@ import {
 } from '@atc/acquisition-core';
 import {
   createContext,
+  isWriteBlockedByReadOnly,
   loadProject,
   loadResolvedProject,
   saveProject,
@@ -62,7 +63,7 @@ if (repositoryReadOnly) {
 app.use('/api/*', cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
 
 app.use('/api/*', async (c, next) => {
-  if (repositoryReadOnly && c.req.method !== 'GET') {
+  if (isWriteBlockedByReadOnly(c.req.method, repositoryReadOnly)) {
     return c.json(
       {
         error:

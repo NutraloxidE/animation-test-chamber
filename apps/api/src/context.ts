@@ -143,6 +143,17 @@ export function saveProject(project: ProjectDefinition): void {
   );
 }
 
+/**
+ * The repository-transaction write-lockout rule, pulled out as a pure
+ * function so it can be unit-tested without booting the real server (which
+ * binds a live port as a side effect of import). Read access always stays up
+ * — the library and chamber can still open — only a write is refused while a
+ * prior transaction remains unresolved.
+ */
+export function isWriteBlockedByReadOnly(method: string, repositoryReadOnly: boolean): boolean {
+  return repositoryReadOnly && method !== 'GET';
+}
+
 export function createContext(env: NodeJS.ProcessEnv = process.env): ServerContext {
   const githubConfig = env.GIT_ADAPTER === 'github' ? readGitHubConfigFromEnv(env) : null;
 
