@@ -30,7 +30,7 @@ import {
   PROJECT_PATH,
   REPO_ROOT,
 } from './context.ts';
-import { recoverRepository } from '@atc/repository-transaction';
+import { READ_ONLY_MESSAGE, refusesWrite, runStartupRecovery } from './read-only-guard.ts';
 import { animationAssetRoutes } from './routes/animation-assets.ts';
 
 const context = createContext();
@@ -42,7 +42,7 @@ const app = new Hono();
  * transaction could not be fully rolled back, writes are refused rather than
  * risking a second one landing on top of an already-inconsistent repository.
  */
-const startupRecovery = recoverRepository(REPO_ROOT);
+const startupRecovery = runStartupRecovery(REPO_ROOT);
 if (startupRecovery.transactions.length > 0) {
   console.log(
     `[repository-transaction] startup recovery resolved ${startupRecovery.transactions.length} ` +
@@ -62,15 +62,8 @@ if (repositoryReadOnly) {
 app.use('/api/*', cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
 
 app.use('/api/*', async (c, next) => {
-  if (repositoryReadOnly && c.req.method !== 'GET') {
-    return c.json(
-      {
-        error:
-          'the repository is in read-only mode: a prior transaction could not be fully rolled back ' +
-          'and needs manual resolution under .chamber-transactions/',
-      },
-      503,
-    );
+  if (refusesWrite(repositoryReadOnly, c.req.method)) {
+    return c.json({ error: READ_ONLY_MESSAGE }, 503);
   }
   await next();
 });
