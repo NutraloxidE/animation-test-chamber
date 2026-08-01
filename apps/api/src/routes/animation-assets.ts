@@ -27,6 +27,7 @@ import {
   validateAgainst,
 } from '@atc/schema';
 import {
+  AnimationAssetRegistry,
   buildLibraryIndex,
   checkDeletePolicy,
   checkMotionSetCompatibility,
@@ -42,8 +43,12 @@ import {
   usedBy,
 } from '@atc/animation-asset-runtime';
 import { candidateToClip } from '@atc/acquisition-core';
-import { loadAssetRegistry, loadProject } from '../context.ts';
-import { runAssetTransaction } from '../transaction.ts';
+import {
+  loadAssetRegistry as loadAssetRegistryFrom,
+  loadProject as loadProjectFrom,
+} from '../context.ts';
+import { runAssetTransaction, transactionStatus } from '../transaction.ts';
+import { createRepositoryRuntime, type RepositoryRuntime } from '../runtime.ts';
 import { migrateProjectToAssets, type LegacyProject } from '@atc/animation-asset-runtime';
 
 function message(error: unknown): string {
@@ -53,6 +58,7 @@ function message(error: unknown): string {
 /** A reference from loose request fields, hash filled in from the registry. */
 function referenceFrom(
   body: { assetType?: string; assetId?: string; version?: string },
+  registry: AnimationAssetRegistry,
 ): AssetReference {
   if (!body.assetType || !body.assetId || !body.version) {
     throw new Error('assetType, assetId and version are required');
@@ -62,7 +68,6 @@ function referenceFrom(
       `"${body.assetType}" is not an animation asset type (expected one of ${ANIMATION_ASSET_TYPES.join(', ')})`,
     );
   }
-  const registry = loadAssetRegistry();
   return registry.referenceTo(
     body.assetType as AssetReference['assetType'],
     body.assetId,
@@ -70,8 +75,18 @@ function referenceFrom(
   );
 }
 
-export function animationAssetRoutes(): Hono {
+/**
+ * Every write route in here goes through `runtime`: it names the checkout being
+ * written to and carries the one read-only flag this process has. Defaulted so
+ * production wiring is unchanged, parameterised so a test can stand a second
+ * server over a temporary repository — including one that has just gone fatal.
+ */
+export function animationAssetRoutes(
+  runtime: RepositoryRuntime = createRepositoryRuntime(),
+): Hono {
   const app = new Hono();
+  const loadAssetRegistry = (): AnimationAssetRegistry => loadAssetRegistryFrom(runtime.repoRoot);
+  const loadProject = (): ProjectDefinition => loadProjectFrom(runtime.repoRoot);
 
   app.get('/api/animation-assets', (c) => {
     try {
@@ -154,7 +169,7 @@ export function animationAssetRoutes(): Hono {
     }>();
     try {
       const registry = loadAssetRegistry();
-      const parent = referenceFrom(body.parent);
+      const parent = referenceFrom(body.parent, registry);
       const asset = createBehaviorVariant(registry, parent, body.patches ?? [], {
         newAssetId: body.newAssetId,
         displayName: body.displayName,
@@ -164,8 +179,8 @@ export function animationAssetRoutes(): Hono {
       const result = await runAssetTransaction({
         intent: `create variant ${body.newAssetId} of ${referenceKey(parent)}`,
         assets: [asset],
-      });
-      return c.json({ asset, ...result }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ asset, ...result }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -182,7 +197,7 @@ export function animationAssetRoutes(): Hono {
     }>();
     try {
       const registry = loadAssetRegistry();
-      const parent = referenceFrom(body.parent);
+      const parent = referenceFrom(body.parent, registry);
       const { asset, issues } = createBehaviorFork(registry, parent, body.forkIntent, {
         newAssetId: body.newAssetId,
         displayName: body.displayName,
@@ -195,8 +210,8 @@ export function animationAssetRoutes(): Hono {
       const result = await runAssetTransaction({
         intent: `fork ${referenceKey(parent)} as ${body.newAssetId}: ${body.forkIntent}`,
         assets: [asset],
-      });
-      return c.json({ asset, ...result }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ asset, ...result }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -212,7 +227,7 @@ export function animationAssetRoutes(): Hono {
     }>();
     try {
       const registry = loadAssetRegistry();
-      const source = referenceFrom(body.source);
+      const source = referenceFrom(body.source, registry);
       const { asset, issues } = duplicateBehavior(registry, source, {
         newAssetId: body.newAssetId,
         displayName: body.displayName,
@@ -225,8 +240,8 @@ export function animationAssetRoutes(): Hono {
       const result = await runAssetTransaction({
         intent: `duplicate ${referenceKey(source)} as ${body.newAssetId}`,
         assets: [asset],
-      });
-      return c.json({ asset, ...result }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ asset, ...result }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -263,8 +278,8 @@ export function animationAssetRoutes(): Hono {
         intent: `publish ${asset.metadata.id}@${version}`,
         assets: [asset],
         ...(body.project ? { project: body.project } : {}),
-      });
-      return c.json({ asset, version, ...result }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ asset, version, ...result }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -303,7 +318,7 @@ export function animationAssetRoutes(): Hono {
         intent: `apply animation assets to character "${body.characterId}"`,
         assets: body.assets ?? [],
         project: nextProject,
-      });
+      }, runtime);
 
       // Report the compatibility summary the UI shows, from the same registry
       // the transaction validated against.
@@ -322,7 +337,7 @@ export function animationAssetRoutes(): Hono {
       }
 
       return c.json({ ...result, compatibility, project: result.ok ? nextProject : project },
-        result.ok ? 200 : 409);
+        transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -429,8 +444,8 @@ export function animationAssetRoutes(): Hono {
       const result = await runAssetTransaction({
         intent: `promote candidate "${candidate.id}" to clip asset "${assetId}"`,
         assets,
-      });
-      return c.json({ assets, ...result }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ assets, ...result }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -457,8 +472,8 @@ export function animationAssetRoutes(): Hono {
         intent: 'migrate a schema v1 project to animation assets',
         assets: migration.assets.map((asset) => asset.document),
         project: migration.project,
-      });
-      return c.json({ ...result, notes: migration.notes }, result.ok ? 200 : 409);
+      }, runtime);
+      return c.json({ ...result, notes: migration.notes }, transactionStatus(result));
     } catch (error) {
       return c.json({ error: message(error) }, 400);
     }
@@ -520,10 +535,13 @@ export function animationAssetRoutes(): Hono {
         ),
       };
 
-      const result = await runAssetTransaction({ intent: plan.intent, assets: plan.assets, project: nextProject });
+      const result = await runAssetTransaction(
+        { intent: plan.intent, assets: plan.assets, project: nextProject },
+        runtime,
+      );
       return c.json(
         { ...result, assignment: plan.assignment, project: result.ok ? nextProject : project },
-        result.ok ? 200 : 409,
+        transactionStatus(result),
       );
     } catch (error) {
       return c.json({ error: message(error) }, 400);

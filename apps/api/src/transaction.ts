@@ -26,10 +26,13 @@ import {
   sha256Hex,
   type PlannedFileWrite,
   type PreparedRepositoryView,
+  type RepositoryTransactionState,
   type TransactionIssue,
   type TransactionValidationResult,
 } from '@atc/repository-transaction';
 import { PROJECT_PATH, REPO_ROOT, loadProject, loadStoredAssets } from './context.ts';
+import { markRepositoryFatal } from './repository-health.ts';
+import type { RepositoryRuntime } from './runtime.ts';
 
 export interface ProposedAsset {
   asset: AnimationAsset;
@@ -47,10 +50,29 @@ export interface TransactionRequest {
 export interface TransactionResult {
   ok: boolean;
   transactionId: string;
+  /**
+   * The generic engine's own verdict, passed through unchanged. Callers need it
+   * to tell a refusal that left the repository untouched apart from a `fatal`
+   * one that did not — collapsing both into `ok: false` would make a repository
+   * nobody can describe look like an ordinary conflict.
+   */
+  state: RepositoryTransactionState;
   /** Repository-relative paths that were written, on success. */
   written: string[];
   issues: AssetIssue[];
   reportPath: string;
+}
+
+/**
+ * The HTTP status for a transaction outcome.
+ *
+ * `fatal` is 503, not 409: a conflict says "try again with fresher input", and
+ * that advice is wrong here — nothing the caller changes about its request will
+ * make this repository writable again before a human looks at it.
+ */
+export function transactionStatus(result: TransactionResult): 200 | 409 | 503 {
+  if (result.ok) return 200;
+  return result.state === 'fatal' ? 503 : 409;
 }
 
 function assetTypeOf(asset: AnimationAsset): StoredAsset['assetType'] {
@@ -84,6 +106,7 @@ function assetContent(asset: AnimationAsset): string {
 export function validateProposedRepository(
   assets: readonly AnimationAsset[],
   project: ProjectDefinition,
+  root: string = REPO_ROOT,
 ): AssetIssue[] {
   const issues: AssetIssue[] = [];
 
@@ -98,7 +121,7 @@ export function validateProposedRepository(
   }
 
   const registry = new AnimationAssetRegistry([
-    ...loadStoredAssets(),
+    ...loadStoredAssets(root),
     ...assets.map(storedOf),
   ]);
 
@@ -137,8 +160,12 @@ function toGenericIssue(issue: AssetIssue): TransactionIssue {
  * involves no blocking I/O primitives that would justify staying sync).
  * Every route calling this already runs inside an `async` handler.
  */
-export async function runAssetTransaction(request: TransactionRequest): Promise<TransactionResult> {
-  const project = request.project ?? loadProject();
+export async function runAssetTransaction(
+  request: TransactionRequest,
+  runtime: RepositoryRuntime,
+): Promise<TransactionResult> {
+  const repoRoot = runtime.repoRoot;
+  const project = request.project ?? loadProject(repoRoot);
 
   const writes: PlannedFileWrite[] = request.assets.map((asset) => ({
     repositoryPath: assetFilePath(assetTypeOf(asset), asset.metadata.id, asset.metadata.version),
@@ -154,7 +181,7 @@ export async function runAssetTransaction(request: TransactionRequest): Promise<
   // before the lock — the generic engine re-checks it fresh, after. Read
   // straight from disk rather than `project`, which for a rewritten proposal
   // is already the *new* revision, not the one being superseded.
-  const currentProjectBytes = readFileSync(resolve(REPO_ROOT, PROJECT_PATH));
+  const currentProjectBytes = readFileSync(resolve(repoRoot, PROJECT_PATH));
   const expectedProjectHash = sha256Hex(new Uint8Array(currentProjectBytes));
   const currentProjectRevisionId = (JSON.parse(currentProjectBytes.toString('utf8')) as ProjectDefinition)
     .revisionId;
@@ -165,7 +192,7 @@ export async function runAssetTransaction(request: TransactionRequest): Promise<
   let richIssues: AssetIssue[] = [];
 
   const result = await runRepositoryTransaction(
-    REPO_ROOT,
+    repoRoot,
     {
       intent: request.intent,
       expected: {
@@ -174,33 +201,62 @@ export async function runAssetTransaction(request: TransactionRequest): Promise<
       },
       writes,
       validatePreparedView(_view: PreparedRepositoryView): TransactionValidationResult {
-        richIssues = validateProposedRepository(request.assets, project);
+        richIssues = validateProposedRepository(request.assets, project, repoRoot);
         return { issues: richIssues.map(toGenericIssue) };
       },
     },
+    runtime.transactionOptions,
   );
 
   const reportPath = `reports/animation-asset-transaction-${result.transactionId}.md`;
 
   if (result.ok) {
-    return { ok: true, transactionId: result.transactionId, written: result.written, issues: [], reportPath };
+    return {
+      ok: true,
+      transactionId: result.transactionId,
+      state: result.state,
+      written: result.written,
+      issues: [],
+      reportPath,
+    };
+  }
+
+  // The one place a runtime fatal is recorded, so no route can publish a
+  // 503 without the process actually having gone read-only — or, worse, stay
+  // writable because the route that saw the fatal forgot to say so.
+  if (result.state === 'fatal') {
+    markRepositoryFatal(
+      runtime.health,
+      result.transactionId,
+      result.issues.map((issue) => issue.message).join('; '),
+    );
   }
 
   // Prefer the rich domain issues captured during validation; for refusals
   // that never reached the validator (path errors, lock/optimistic-concurrency
   // conflicts), fall back to the generic engine's own issues, recast as
   // AssetIssue so the response shape stays stable for existing callers.
+  //
+  // A fatal outcome is the exception: its validator passed, so `richIssues`
+  // describes a repository that no longer exists. What the human needs is the
+  // engine's account of which paths are in doubt.
+  const genericIssues: AssetIssue[] = result.issues.map((issue) => ({
+    code: issue.code as AssetIssueCode,
+    severity: issue.severity,
+    message: issue.message,
+    ...(issue.path ? { path: issue.path } : {}),
+  }));
   const issues: AssetIssue[] =
-    richIssues.length > 0
-      ? richIssues
-      : result.issues.map((issue) => ({
-          code: issue.code as AssetIssueCode,
-          severity: issue.severity,
-          message: issue.message,
-          ...(issue.path ? { path: issue.path } : {}),
-        }));
+    result.state !== 'fatal' && richIssues.length > 0 ? richIssues : genericIssues;
 
-  return { ok: false, transactionId: result.transactionId, written: [], issues, reportPath };
+  return {
+    ok: false,
+    transactionId: result.transactionId,
+    state: result.state,
+    written: [],
+    issues,
+    reportPath,
+  };
 }
 
 /** Seals every asset in a proposal so callers cannot forget to hash one. */

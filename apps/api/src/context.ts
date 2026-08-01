@@ -86,10 +86,13 @@ export function loadAssetRegistry(root: string = REPO_ROOT): AnimationAssetRegis
  * clip list goes through here, so there is one place that decides what
  * "resolved" means on the server.
  */
-export function loadResolvedProject(options: { characterId?: string } = {}): ResolvedProject {
+export function loadResolvedProject(
+  options: { characterId?: string; root?: string } = {},
+): ResolvedProject {
+  const root = options.root ?? REPO_ROOT;
   const result = resolveCharacterAnimation({
-    registry: loadAssetRegistry(),
-    project: loadProject(),
+    registry: loadAssetRegistry(root),
+    project: loadProject(root),
     ...(options.characterId ? { characterId: options.characterId } : {}),
   });
   const errors = result.issues.filter((issue) => issue.severity === 'error');
@@ -110,8 +113,8 @@ export interface ServerContext {
   aiConfigured: boolean;
 }
 
-export function loadProject(): ProjectDefinition {
-  const path = resolve(REPO_ROOT, PROJECT_PATH);
+export function loadProject(root: string = REPO_ROOT): ProjectDefinition {
+  const path = resolve(root, PROJECT_PATH);
   if (!existsSync(path)) {
     throw new Error(
       `canonical project not found at ${path}. Run \`pnpm seed:demo\` to create the demo project.`,
@@ -135,23 +138,26 @@ export function loadProject(): ProjectDefinition {
  * Writes the canonical project back to disk. Only called after the Git adapter
  * has accepted the commit, so disk never runs ahead of the recorded history.
  */
-export function saveProject(project: ProjectDefinition): void {
+export function saveProject(project: ProjectDefinition, root: string = REPO_ROOT): void {
   writeFileSync(
-    resolve(REPO_ROOT, PROJECT_PATH),
+    resolve(root, PROJECT_PATH),
     `${JSON.stringify(project, null, 2)}\n`,
     'utf8',
   );
 }
 
-export function createContext(env: NodeJS.ProcessEnv = process.env): ServerContext {
+export function createContext(
+  env: NodeJS.ProcessEnv = process.env,
+  root: string = REPO_ROOT,
+): ServerContext {
   const githubConfig = env.GIT_ADAPTER === 'github' ? readGitHubConfigFromEnv(env) : null;
 
   const git: GitAdapter = githubConfig
     ? new GitHubAppAdapter(githubConfig)
     : new FakeGitAdapter(
         env.GITHUB_PROTECTED_BRANCH || 'main',
-        resolve(REPO_ROOT, '.chamber-fake-git'),
-        { [PROJECT_PATH]: readFileSync(resolve(REPO_ROOT, PROJECT_PATH), 'utf8') },
+        resolve(root, '.chamber-fake-git'),
+        { [PROJECT_PATH]: readFileSync(resolve(root, PROJECT_PATH), 'utf8') },
       );
 
   const ai = createAiProvider(env);

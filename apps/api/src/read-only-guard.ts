@@ -7,6 +7,7 @@
  * the thing that must not be assumed.
  */
 import { recoverRepository, type RecoveryResult } from '@atc/repository-transaction';
+import type { RepositoryHealth } from './repository-health.ts';
 
 export const READ_ONLY_MESSAGE =
   'the repository is in read-only mode: a prior transaction could not be fully rolled back ' +
@@ -26,4 +27,23 @@ export function runStartupRecovery(repoRoot: string): RecoveryResult {
  */
 export function refusesWrite(readOnly: boolean, method: string): boolean {
   return readOnly && method !== 'GET';
+}
+
+/**
+ * The body of that refusal. It carries the transaction id and the reason so the
+ * human reading a 503 knows which directory under `.chamber-transactions/` to
+ * open, rather than being told only that something, somewhere, went wrong.
+ */
+export function readOnlyRefusal(health: RepositoryHealth): {
+  error: string;
+  state: 'fatal';
+  transactionId: string | null;
+  reason: string | null;
+} {
+  return {
+    error: READ_ONLY_MESSAGE,
+    state: 'fatal',
+    transactionId: health.fatalTransactionId,
+    reason: health.reason,
+  };
 }
