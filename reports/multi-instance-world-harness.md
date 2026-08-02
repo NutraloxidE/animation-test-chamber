@@ -6,7 +6,8 @@
 | --- | --- |
 | Base SHA | `c684dafb1ceadc252ab9621674c32e32d117bcf7` |
 | Branch | `claude/multi-instance-world-harness` |
-| Head SHA | recorded in `multi-instance-world-harness.json` at the final push |
+| Last implementation SHA | `2be00d1` |
+| Branch tip | the docs commit containing this file; a commit cannot record its own SHA |
 | Executing agent | `main-opus-world-harness`, model `claude-opus-5` |
 
 ## Agent / task matrix — orchestration NOT FOLLOWED

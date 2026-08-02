@@ -1,7 +1,6 @@
 {
   "workPackage": "Multi-Instance World and Operability Harness",
   "baseSha": "c684dafb1ceadc252ab9621674c32e32d117bcf7",
-  "headShaAtReport": "1297f7e390034b532c1cdc4a99d62d60489526c1",
   "branch": "claude/multi-instance-world-harness",
   "executingAgent": {
     "id": "main-opus-world-harness",
@@ -87,5 +86,7 @@
     "Unity gains DTOs and an IChamberWorld seam, not spawning behaviour",
     "Vercel state for the pushed head is not verified"
   ],
-  "declaration": "PASS with agent orchestration evidence recorded as FAIL"
+  "declaration": "PASS with agent orchestration evidence recorded as FAIL",
+  "lastImplementationSha": "2be00d1",
+  "note": "the branch tip is a docs-only commit after this report; the tip SHA cannot be recorded inside the commit that contains it"
 }
