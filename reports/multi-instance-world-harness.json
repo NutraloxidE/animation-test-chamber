@@ -1,0 +1,91 @@
+{
+  "workPackage": "Multi-Instance World and Operability Harness",
+  "baseSha": "c684dafb1ceadc252ab9621674c32e32d117bcf7",
+  "headShaAtReport": "1297f7e390034b532c1cdc4a99d62d60489526c1",
+  "branch": "claude/multi-instance-world-harness",
+  "executingAgent": {
+    "id": "main-opus-world-harness",
+    "model": "claude-opus-5"
+  },
+  "orchestration": {
+    "followed": false,
+    "reason": "the tiered subagent models named in the work package are not addressable as separate agents in this environment, and the schema/runtime/intent/capability contracts are too coupled to split across worktrees",
+    "subagentsRun": 0,
+    "handoffsFabricated": 0,
+    "gateReviewsAreSelfReviews": true
+  },
+  "testCounts": {
+    "before": {
+      "vitestFiles": 22,
+      "vitestTests": 452,
+      "playwrightTests": 114
+    },
+    "after": {
+      "vitestFiles": 28,
+      "vitestTests": 509,
+      "playwrightTests": 141
+    },
+    "deletedOrWeakened": 0
+  },
+  "oneShot": [
+    {
+      "run": 1,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 743.7,
+      "exitCode": 0
+    },
+    {
+      "run": 2,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 765.1,
+      "exitCode": 0
+    }
+  ],
+  "generatedDrift": {
+    "secondGenerationClean": true
+  },
+  "gates": {
+    "A_architecture": "PASS",
+    "B_worldContract": "PASS (self-reviewed)",
+    "C_determinism": "PASS (self-reviewed; world-level render-cadence test not written)",
+    "D_authoringBoundary": "PASS (self-reviewed)",
+    "E_aiOperability": "PASS (self-reviewed)"
+  },
+  "acceptance": {
+    "canonicalWorldContract": "PASS",
+    "legacySingleInstanceCompatibility": "PASS",
+    "sharedDefinitionReuse": "PASS",
+    "independentRuntimeState": "PASS",
+    "perInstanceIntentRouting": "PASS",
+    "scriptedIntentDeterminism": "PASS",
+    "worldReplayAndTrace": "PASS",
+    "instanceQualifiedObservation": "PASS",
+    "humanAuthoringWorkflow": "PASS",
+    "aiCommandWorkflow": "PASS",
+    "capabilityCompletenessHarness": "PASS",
+    "protectionAndTransactionSafety": "PASS",
+    "unityContractExport": "PASS",
+    "generatedArtifactStability": "PASS",
+    "unitIntegrationReplay": "PASS",
+    "visualHarness": "PASS",
+    "oneShotRun1": "PASS",
+    "oneShotRun2": "PASS",
+    "agentOrchestrationEvidence": "FAIL",
+    "latestHeadVercel": "NOT VERIFIED"
+  },
+  "knownLimitations": [
+    "orchestration not followed; gate reviews are self-reviews",
+    "no world-level 30/60/120 render-cadence test",
+    "RuntimeInstanceOverrides.moveSpeedScale is declared and validated but unread",
+    "setFocusedInstance/setCameraTargetInstance bypass the command registry",
+    "world viewport renders the procedural character on a flat plane only",
+    "only local-input player index 0 is wired in the browser",
+    "no performance ceiling established for instance count",
+    "world.preview advances the attached runtime rather than being idempotent",
+    "Unity gains DTOs and an IChamberWorld seam, not spawning behaviour",
+    "Vercel state for the pushed head is not verified"
+  ],
+  "declaration": "PASS with agent orchestration evidence recorded as FAIL"
+}
