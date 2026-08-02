@@ -23,6 +23,7 @@
       "@atc/schema": ["packages/schema/src/index.ts"],
       "@atc/runtime-core": ["packages/runtime-core/src/index.ts"],
       "@atc/animation-runtime": ["packages/animation-runtime/src/index.ts"],
+      "@atc/animation-asset-runtime": ["packages/animation-asset-runtime/src/index.ts"],
       "@atc/input-runtime": ["packages/input-runtime/src/index.ts"],
       "@atc/terrain-runtime": ["packages/terrain-runtime/src/index.ts"],
       "@atc/haptics-runtime": ["packages/haptics-runtime/src/index.ts"],
@@ -31,7 +32,8 @@
       "@atc/git-adapter": ["packages/git-adapter/src/index.ts"],
       "@atc/ai-adapter": ["packages/ai-adapter/src/index.ts"],
       "@atc/acquisition-core": ["packages/acquisition-core/src/index.ts"],
-      "@atc/unity-export": ["packages/unity-export/src/index.ts"]
+      "@atc/unity-export": ["packages/unity-export/src/index.ts"],
+      "@atc/repository-transaction": ["packages/repository-transaction/src/index.ts"]
     }
   }
 }

@@ -29,10 +29,11 @@ validation rules — is not duplicated here on purpose (see DECISIONS/0001).
          ┌───────────────┴──────────────────────────────┐
          │ apps/api — Hono (holds every secret)         │
          │  re-validates · re-runs diff policy ·        │
+         │  runs atomic asset transactions ·            │
          │  mints GitHub tokens · commits               │
          └───────────────┬──────────────────────────────┘
                          │
-              projects/*.json  →  Git branch  →  PR
+     projects/*.json + assets/animation/**  →  Git branch  →  PR
 ```
 
 ## Boundaries and why they are there
@@ -70,6 +71,115 @@ simulation reads the wall clock or `Math.random`; randomness comes from a seeded
 PRNG carried in the replay. This is the property the entire regression system
 rests on, and it is tested directly.
 
+### A character references its animation; it does not own it
+
+`projects/demo-character/project.json` used to hold the graph and all 35 clips
+inline. It now holds four asset references per character:
+
+```text
+assets/animation/
+  behaviors/humanoid-third-person-base/1.0.0.json    the state machine
+  motion-sets/demo-humanoid-motion-set/1.0.0.json    slot -> clip, per character
+  clips/<clip-id>/1.0.0.json                         one piece of motion
+  rigs/demo-humanoid-rig/1.0.0.json                  the skeleton
+  tuning/demo-default-tuning/1.0.0.json              numeric adjustments
+```
+
+The behaviour names **motion slots** (`locomotion.idle`, `action.primary.01`),
+never clip ids. The motion set binds those slots to a particular character's
+clips. That single indirection is what lets two characters run one state machine
+and still move differently — the demo project ships two of them, and the harness
+fails if their state sequences ever diverge or their clips ever coincide.
+
+Every reference carries a content hash, and `AssetReference.contentHash` cannot
+be empty — that check has no bypass. A published version edited in place is
+refused at load rather than discovered as a behaviour change later, and the repo
+guard fails on any modification to a version file that already existed.
+
+### A variant is its parent plus a patch, never a snapshot
+
+`AnimationBehaviorAsset` is a discriminated union on `derivation.mode`: `base`
+and `fork` carry a full `payload` (parameters, motion slots, semantic events,
+graph, replay fixtures); `variant` carries only `{ parent, patches }` and is
+not allowed a payload at all — the schema makes the wrong shape
+unrepresentable rather than trusting callers not to populate both.
+`resolveBehaviorAsset` reconstructs a variant by resolving its parent (which
+may itself be a variant) and applying `patches` to the whole resolved payload,
+so a contract the parent gains later — a new optional motion slot, a new
+replay fixture id — reaches every existing variant automatically, with no
+migration and no touched file. The alternative (a variant that snapshots its
+parent's payload at creation time) is a fork wearing a variant's name: it
+looks derived but silently stops inheriting the moment it is created.
+
+### Every write to the repository is one atomic file-set transaction
+
+`packages/repository-transaction` is a generic, Animation-agnostic package
+(it does not import `@atc/schema` or anything animation-specific): a
+caller describes a set of file writes plus an optimistic-concurrency
+expectation and a validator over the *prepared* view of the repository, and
+the package writes everything to a staging area, validates, backs up
+replace-targets, promotes every file by same-filesystem rename, and only then
+commits. A failure at any point rolls back every promoted file from its
+backup and leaves an unpromoted `create` simply absent — there is no
+in-between state where three of five new asset versions exist and the fourth
+does not. The state machine is durable (`.chamber-transactions/<id>/journal.json`),
+so a process that dies mid-promotion is resolved by the *same* rollback logic
+at the next server startup, before the write API accepts a request — recovery
+is not a special case of the live path, it is the live path re-entered.
+`apps/api/src/transaction.ts` is the only place that turns
+`AnimationAsset[]` into `PlannedFileWrite[]`; the generic package never sees
+an animation type.
+
+### Fine-tuning is classified before it is saved, never silently split
+
+A staged chamber edit is Behaviour/Graph, Clip Asset, or a Character-only
+override, and a save names a destination for each domain separately —
+there is no default. `SaveAnimationChangesRequest` carries `graph.destination`
+and `clips.destination` as their own discriminated choices (character
+override, tuning profile, a new or existing behaviour variant, a new clip
+version + motion-set version, or explicitly `none`); a clip patch aimed at a
+destination that cannot hold clip data (a tuning profile, a behaviour
+variant) is refused with a 409 rather than folded in. A mixed graph-and-clip
+edit still lands in one repository transaction, so a partial save is not a
+possible outcome, and `ResolvedProject.clipAssetSources` gives the save path
+(and the Inspector) the same answer for "which asset supplied this clip"
+without a second, potentially-drifting resolution pass.
+
+### A static host still gets a real save, not a silent no-op
+
+A character-override save needs no repository write at all — it is a preview
+overlay over `instanceOverrides`, computed the same way whether or not an API
+server exists. On a static deployment (or the dev server offline) it is
+applied in-memory and persisted to `localStorage`, keyed by project, revision
+and character, and it says so: *"Saved as a browser-only character draft. No
+repository files were changed."* A draft is never applied silently across a
+revision change — a stale draft surfaces as a dismissible banner instead,
+because a canonical value moving on and a browser cache disagreeing about the
+current value is exactly the kind of drift this system exists to prevent.
+
+### `ResolvedProject` is derived, and deliberately unvalidatable
+
+The runtime, the panels, the diff engine and the Unity exporter all reasonably
+want a graph and a clip list. Rather than have each of them walk the asset
+registry, resolution happens once — `resolveCharacterAnimation` — and produces a
+`ResolvedProject`: the canonical project plus the graph, clips and slot bindings
+for one character.
+
+It has no TypeBox schema on purpose. Validating a derived document as if it were
+canonical is exactly the mistake the type exists to prevent, so there is nothing
+to validate it with; `validateResolvedProject` checks it in three parts against
+the schemas that own each piece.
+
+### Behaviour lives in fields, not in names
+
+The runtime used to read `stateId.startsWith('attack-')` and
+`actionState.endsWith('-recovery')`. Those were real, wanted behaviours — an
+attack holds its final frame; a recovery clip hands movement back immediately —
+selected by spelling, which meant a second character could only inherit them by
+choosing the same names. They are now `completionPolicy`, `recoveryPolicy` and
+`movementAuthorityPolicy` on the state, and the repo guard fails if a name-based
+branch reappears in a runtime package.
+
 ### Canonical paths, not indices
 
 Values are addressed as `/graph/transitions/run-to-attack-01/blendDurationSec`.
@@ -100,6 +210,17 @@ from being useless:
 The AI adapter never gets the final say on protection: whatever a model returns,
 every path is re-checked locally before anything is applied.
 
+### Domain decisions never read UI state
+
+Whether an asset is a variant is `registry.getBehavior(reference).derivation.mode
+=== 'variant'` — nothing else. `librarySummaries()`, the asset browser's search
+box, its type filter and its current selection exist to decide what a human
+*sees*; none of them may decide what a save *does*. The two were briefly
+coupled (a save-destination option was computed from the filtered library
+list), which meant typing into an unrelated search box could change which
+destinations a save offered — the same class of bug as a protection check
+that reads a display label instead of the field it labels.
+
 ## Regression policy
 
 A replay difference is never automatically the new truth. `compareTraces`
@@ -107,6 +228,20 @@ reports differences across both layers' state sequences, positions, event
 timing and foot metrics; the decision to accept is a human's. Golden screenshots
 are not used as the primary signal — the trace is, because it says *what*
 changed rather than that something looks different.
+
+## Visual tests are tick-driven, not wall-clock-driven
+
+`window.__ATC_TEST__` (installed only when `import.meta.env.DEV` is true, so
+it never reaches a production bundle) lets a Playwright test call
+`advanceTicks(n)` to step the simulation a deterministic number of fixed
+steps, instead of calling `waitForTimeout` and hoping this particular
+machine renders fast enough for real time to cover it. `enable()` also stops
+the normal `requestAnimationFrame` loop from advancing the simulation from
+wall-clock deltas for that page, so the two sources of ticks never race.
+Tests that still need to observe something as it happens (a replay's
+progress, a jump's landing) poll DOM state between small tick batches rather
+than waiting on a fixed real-time budget — the same reasoning `expect.poll`
+usually encodes, just driven by simulated ticks instead of real ones.
 
 ## Known limitations
 

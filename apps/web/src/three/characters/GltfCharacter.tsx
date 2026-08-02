@@ -173,18 +173,21 @@ export function GltfCharacter({
     group.position.set(state.position.x, state.position.y, state.position.z);
     group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
 
-    const actionState = engine.currentProject.graph.states.find(
-      (entry) => entry.id === record?.actionState,
+    const project = engine.currentProject;
+    const actionState = project.graph.states.find((entry) => entry.id === record?.actionState);
+    const locomotionState = project.graph.states.find(
+      (entry) => entry.id === record?.locomotionState,
     );
-    const actionClip = engine.currentProject.clips.find(
-      (entry) => entry.id === actionState?.clipId,
+    // The state names a slot; the character's motion set says which clip that is.
+    const actionClip = project.clips.find(
+      (entry) => entry.id === (actionState ? project.motionBindings[actionState.motionSlot] : ''),
     );
     const dodgeRecovery =
       record !== null &&
       isDodgeRecoveryTransition(
-        record.actionState,
+        actionState,
         record.actionNormalizedTime,
-        record.locomotionState,
+        locomotionState,
         actionClip?.recoveryTransitionStartNormalized,
       );
     const actionActive =
@@ -200,8 +203,7 @@ export function GltfCharacter({
       const clip = animations.find((animation) => animation.name === clipName);
       if (clip) {
         const loop =
-          engine.currentProject.graph.states.find((state) => state.id === stateId)
-            ?.loop ?? true;
+          project.graph.states.find((state) => state.id === stateId)?.loop ?? true;
         const nextAction = mixer
           .clipAction(clip, model)
           .reset()
@@ -213,7 +215,7 @@ export function GltfCharacter({
           nextAction,
           dodgeRecovery
             ? DODGE_RECOVERY_BLEND_SEC
-            : engine.graphLayers[layer].blendDurationSec,
+            : (engine.graphLayers[layer]?.blendDurationSec ?? 0),
           false,
         );
         currentAction.current = nextAction;

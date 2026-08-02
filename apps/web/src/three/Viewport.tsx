@@ -15,7 +15,10 @@ function ChamberLoop({ engine }: { engine: ChamberEngine }) {
   const smoothed = useRef(new THREE.Vector3(0, 3, -6));
 
   useFrame((_, delta) => {
-    engine.advance(delta);
+    // While a test driver owns simulation advancement (window.__ATC_TEST__),
+    // wall-clock deltas must not also advance it — that would race the
+    // deterministic ticks the test is asserting against.
+    if (!engine.testDriven) engine.advance(delta);
 
     const profile = engine.currentProject.camera;
     const state = engine.simulationState;

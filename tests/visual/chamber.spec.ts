@@ -24,6 +24,53 @@ async function openPanel(page: Page, id: string): Promise<void> {
   await page.getByTestId(`tab-${id}`).click();
 }
 
+/**
+ * The Hierarchy dock (character/weapon/equipment) only defaults open above
+ * the 900px breakpoint — below it, it would otherwise overlay and block the
+ * rest of the narrow layout (PLAN Part VI, the same overlay-by-default bug
+ * fixed for the bottom sheet).
+ */
+async function openHierarchy(page: Page): Promise<void> {
+  if (!(await page.getByTestId('character-select').isVisible())) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+/**
+ * On a narrow viewport the Hierarchy dock is a full-height overlay (unlike
+ * desktop, where it is a reserved column) — closing it once done frees the
+ * area other overlays (the bottom sheet, its buttons) also need.
+ */
+async function closeHierarchy(page: Page): Promise<void> {
+  if (await page.getByTestId('character-select').isVisible()) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+/**
+ * Fixed-tick waiting (PLAN Part VII §27): pumps the simulation forward in
+ * exact steps instead of waiting on the wall clock, so how fast this
+ * particular machine happens to be rendering frames can never make a test
+ * flake. Requires `window.__ATC_TEST__.enable()` to already have been called.
+ */
+async function advanceTicksUntil(
+  page: Page,
+  isDone: () => Promise<boolean>,
+  maxTicks: number,
+  step = 10,
+): Promise<void> {
+  for (let advanced = 0; advanced < maxTicks; advanced += step) {
+    // One round trip per step: advancing and flushing separately doubles the
+    // Playwright <-> browser IPC overhead for no benefit, and that overhead
+    // (not simulation cost) is what dominates a many-iteration wait.
+    await page.evaluate(async (n) => {
+      window.__ATC_TEST__!.advanceTicks(n);
+      await window.__ATC_TEST__!.flushReact();
+    }, step);
+    if (await isDone()) return;
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('hud')).toBeVisible();
@@ -43,7 +90,10 @@ test('the character responds to keyboard input', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await expect(hud).toContainText('idle');
 
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // No canvas click: the input sampler listens on `window`, not the canvas,
+  // so keyboard input works with no explicit focus step at all — which also
+  // sidesteps whatever happens to overlay the canvas at a given viewport
+  // size (the mobile pad, an open panel, the viewport-controls panel).
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(700);
   await expect(hud).toContainText(/walk|run/);
@@ -63,6 +113,7 @@ test('camera control switches between mouse movement and click-drag', async ({ p
 });
 
 test('character and weapon presets can be selected', async ({ page }) => {
+  await openHierarchy(page);
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   const swordAsset = page.waitForResponse((response) =>
@@ -71,6 +122,7 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
+  await closeHierarchy(page);
   await page.getByTestId('grip-editor-select').selectOption('rotate');
   await expect(page.getByTestId('reset-grip')).toBeVisible();
   await expect(page.getByTestId('mobile-pad')).toBeHidden();
@@ -81,41 +133,73 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  await expect(page.getByTestId('character-select')).toBeHidden();
+  // Character, weapon and equipment moved into the Hierarchy dock; only
+  // viewport-controls' own body (e.g. the grip editor) collapses with it.
+  await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
   const hud = page.getByTestId('hud');
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // No canvas click: the input sampler listens on `window`, not the canvas,
+  // so keyboard input needs no explicit focus step — see the keyboard-input
+  // test above for why.
+  // Fixed-tick driver (PLAN Part VII §27): the jump's air time is physics-
+  // derived, not a fixed duration, so waiting on it with a wall-clock timeout
+  // either guesses too short (flaky) or too long (slow). Ticking forward
+  // until the HUD itself reports landed sidesteps the guess entirely.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
 
   await page.keyboard.press('Space');
-  // The HUD samples on an interval, so the airborne window can be missed on a
-  // slow run. `land` is equally proof that the jump fired, and is not transient.
+  await advanceTicksUntil(
+    page,
+    async () => /jump|fall|land/.test((await hud.textContent()) ?? ''),
+    20,
+    2,
+  );
   await expect(hud).toContainText(/jump|fall|land/);
 
-  await page.waitForTimeout(1200);
+  await advanceTicksUntil(page, async () => (await hud.textContent())?.includes('idle') ?? false, 240);
+  await expect(hud).toContainText('idle');
+
   await page.keyboard.press('KeyJ');
-  await page.waitForTimeout(200);
+  await advanceTicksUntil(page, async () => (await hud.textContent())?.includes('attack-01') ?? false, 40);
   await expect(hud).toContainText('attack-01');
 });
 
 test('sword attacks play their matching recovery clips', async ({ page }) => {
+  // Deterministic now, not slow — just several dozen tick-and-check round
+  // trips to the browser, which the default 45s budget can be tight on.
+  test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
+  await openHierarchy(page);
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await page.getByTestId('weapon-mode-select').selectOption('sword');
+  await closeHierarchy(page);
+  // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
+  // of scripted replay, so ticking forward deterministically replaces waiting
+  // on however fast this machine renders frames.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
+
+  const includesText = (locator: ReturnType<Page['getByTestId']>, text: string) => async () =>
+    (await locator.textContent())?.includes(text) ?? false;
 
   await openPanel(page, 'replay');
   const replaySelect = page.getByTestId('replay-panel').locator('select').first();
   await replaySelect.selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
-  await expect(hud).toContainText('attack-01-recovery', { timeout: 2500 });
-  await expect(hud).toContainText('action-none', { timeout: 2500 });
+  await advanceTicksUntil(page, includesText(hud, 'attack-01-recovery'), 200);
+  await expect(hud).toContainText('attack-01-recovery');
+  await advanceTicksUntil(page, includesText(hud, 'action-none'), 100);
+  await expect(hud).toContainText('action-none');
 
   await page.getByTestId('replay-panel').locator('select').first().selectOption('attack-01-to-attack-02');
   await page.getByTestId('play-replay').click();
-  await expect(hud).toContainText('attack-02', { timeout: 1500 });
-  await expect(hud).toContainText('attack-02-recovery', { timeout: 2500 });
-  await expect(hud).toContainText('action-none', { timeout: 2500 });
+  await advanceTicksUntil(page, includesText(hud, 'attack-02'), 100);
+  await expect(hud).toContainText('attack-02');
+  await advanceTicksUntil(page, includesText(hud, 'attack-02-recovery'), 100);
+  await expect(hud).toContainText('attack-02-recovery');
+  await advanceTicksUntil(page, includesText(hud, 'action-none'), 150);
+  await expect(hud).toContainText('action-none');
 
   await openPanel(page, 'inspector');
   await page.getByTestId('blend-list').click();
@@ -169,15 +253,25 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText(
     'Forward displacement adjustment',
   );
-  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText('+0.00 m');
-  await expect(page.getByTestId('field-/clips/unarmed-attack-01/inputAcceptanceStartNormalized')).toContainText('20%');
+  // Canonical value is 0.5, a deliberate human tuning (DECISIONS/0008).
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText('+0.50 m');
+  await expect(page.getByTestId('field-/clips/unarmed-attack-01/inputAcceptanceStartNormalized')).toContainText('62%');
   await page.getByTestId('action-input-list').click();
   await expect(page.getByTestId('action-input-unarmed-attack-01')).toBeVisible();
-  await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('85%');
+  await expect(page.getByTestId('action-input-unarmed-attack-01-recovery')).toContainText('0%');
 
+  // Fixed-tick driver (PLAN Part VII §27): the replay's progress only moves
+  // when something advances it, and how much real time that needs depends
+  // on however fast this machine happens to render — ticking forward
+  // deterministically replaces waiting on however fast the replay plays.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
   await openPanel(page, 'replay');
   await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
+  await page.evaluate(async () => {
+    window.__ATC_TEST__!.advanceTicks(75);
+    await window.__ATC_TEST__!.flushReact();
+  });
   await openPanel(page, 'inspector');
   await page.getByTestId('clip-select').selectOption('unarmed-attack-01');
   await page.getByTestId('action-input-list').click();
@@ -185,13 +279,13 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(liveAttack).toHaveClass(/blend-row--live/);
   await expect(liveAttack).toContainText('PLAYING');
   await expect(page.getByTestId('selected-action-playback')).toContainText('PLAYING');
-  await expect.poll(async () => Number(await liveAttack.getAttribute('data-progress'))).toBeGreaterThan(0);
+  expect(Number(await liveAttack.getAttribute('data-progress'))).toBeGreaterThan(0);
   await page.getByTestId('clip-select').selectOption('dodge');
 
   const distance = page.getByTestId('field-/clips/dodge/rootDisplacement/z');
   await expect(distance).toBeVisible();
-  await expect(distance).toContainText('5.5 m');
-  await expect(page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized')).toContainText('0.720');
+  await expect(distance).toContainText('10.0 m');
+  await expect(page.getByTestId('field-/clips/dodge/recoveryTransitionStartNormalized')).toContainText('0.620');
   await distance.locator('input[type=range]').fill('6.2');
   await expect(distance).toContainText('human preview');
   await distance.getByRole('button', { name: 'stage', exact: true }).click();
@@ -247,10 +341,13 @@ test.describe('committing', () => {
   });
 
   test('the full stage, validate and commit loop works with the fake Git adapter', async ({ page }) => {
-    await openPanel(page, 'inspector');
-
-    await page.getByTestId('clip-select').selectOption('dodge');
-    await page.getByTestId('field-/clips/dodge/rootDisplacement/z').locator('input[type=range]').fill('6.2');
+    // A project-owned value: terrain belongs to the project file, not to an
+    // animation asset, so it commits straight through.
+    await openPanel(page, 'terrain');
+    await page
+      .getByTestId('field-/terrain/groundSnapStrength')
+      .locator('input[type=range]')
+      .fill('0.42');
 
     await openPanel(page, 'diff');
     await page.getByTestId('stage-all').click();
@@ -264,9 +361,157 @@ test.describe('committing', () => {
     });
 
     const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
-      clips: { id: string; rootDisplacement: { z: number } }[];
+      terrain: { groundSnapStrength: number };
     };
-    expect(saved.clips.find((clip) => clip.id === 'dodge')?.rootDisplacement.z).toBe(6.2);
+    expect(saved.terrain.groundSnapStrength).toBe(0.42);
+  });
+
+  /**
+   * An animation value cannot be committed into project.json any more: it
+   * belongs to an asset, and which asset is a decision only a human can make.
+   * The commit stops and asks rather than picking one (PLAN 12.5, 28).
+   */
+  test('an animation edit stops the commit and asks where it should live', async ({ page }) => {
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await page
+      .getByTestId('field-/clips/dodge/rootDisplacement/z')
+      .locator('input[type=range]')
+      .fill('6.2');
+
+    await openPanel(page, 'diff');
+    await page.getByTestId('stage-all').click();
+    await page.getByTestId('commit-button').click();
+
+    const dialog = page.getByTestId('save-destination-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId('status-bar')).toContainText('belong to an animation asset');
+    await expect(page.getByTestId('save-destination-changes')).toContainText('/clips/dodge');
+
+    // A clip-only edit: no graph section, only the clip section.
+    await expect(page.getByTestId('save-destination-graph-section')).toHaveCount(0);
+    await expect(page.getByTestId('save-destination-clip-section')).toBeVisible();
+
+    // Nothing is preselected, so nothing can be saved until a human chooses.
+    await expect(page.getByTestId('save-destination-submit')).toBeDisabled();
+
+    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
+    await expect(page.getByTestId('save-destination-submit')).toBeEnabled();
+    await page.getByTestId('save-destination-submit').click();
+
+    await expect(page.getByTestId('status-bar')).toContainText(/Saved\. Report:/, {
+      timeout: 15_000,
+    });
+
+    // The value landed on the character, not in the shared clip asset.
+    const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
+      characters: {
+        animation: { instanceOverrides: { path: string; value: unknown }[] };
+      }[];
+    };
+    const override = saved.characters[0]!.animation.instanceOverrides.find((entry) =>
+      entry.path.includes('/clips/dodge/rootDisplacement/z'),
+    );
+    expect(override?.value).toBe(6.2);
+  });
+});
+
+test.describe('static character drafts', () => {
+  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
+
+  /**
+   * A character-override save never publishes an asset, so it is the one
+   * save the chamber must complete with no API server at all (PLAN Part V
+   * §24) — exactly the shape a static host is. Blocking /api/health before
+   * the app's own startup probe runs makes `backendAvailable()` resolve
+   * false for the rest of the page's life, the same as a real static
+   * deployment.
+   */
+  test('an offline character-override save persists as a browser-only draft and survives reload', async ({
+    page,
+    context,
+  }) => {
+    await context.route('**/api/health', (route) => route.abort());
+    await page.goto('/');
+    await expect(page.getByTestId('hud')).toBeVisible();
+
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await page
+      .getByTestId('field-/clips/dodge/rootDisplacement/z')
+      .locator('input[type=range]')
+      .fill('6.2');
+
+    await openPanel(page, 'diff');
+    await page.getByTestId('stage-all').click();
+    await page.getByTestId('commit-button').click();
+
+    const dialog = page.getByTestId('save-destination-dialog');
+    await expect(dialog).toBeVisible();
+    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
+    await page.getByTestId('save-destination-submit').click();
+
+    await expect(page.getByTestId('status-bar')).toContainText(
+      'Saved as a browser-only character draft. No repository files were changed.',
+    );
+
+    // No repository file was touched — this is the whole point.
+    const untouched = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
+      characters: { animation: { instanceOverrides: unknown[] } }[];
+    };
+    expect(
+      untouched.characters.some((character) =>
+        character.animation.instanceOverrides.some(
+          (entry) => JSON.stringify(entry).includes('dodge') && JSON.stringify(entry).includes('6.2'),
+        ),
+      ),
+    ).toBe(false);
+
+    // Survives a reload: still offline, still applied, from localStorage.
+    await page.reload();
+    await expect(page.getByTestId('hud')).toBeVisible();
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText('6.2 m');
+  });
+
+  /**
+   * A draft made against a repository revision that has since moved on must
+   * never be silently reapplied (PLAN Part V §24) — only ever offered as
+   * something to discard.
+   */
+  test('a stale-revision character draft is not applied and can be discarded', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
+        JSON.stringify({
+          revisionId: 'rev-not-current',
+          characterId: 'demo-humanoid',
+          instanceOverrides: [{ path: '/clips/dodge/rootDisplacement/z', op: 'set', value: 9.9 }],
+        }),
+      );
+    });
+    await page.goto('/');
+    await expect(page.getByTestId('hud')).toBeVisible();
+
+    const banner = page.getByTestId('stale-character-draft-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('demo-humanoid');
+
+    // Not applied: the field shows the repository value, not the stale draft's.
+    await openPanel(page, 'inspector');
+    await page.getByTestId('clip-select').selectOption('dodge');
+    await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).not.toContainText('9.9 m');
+
+    await page.getByTestId('stale-character-draft-discard-demo-humanoid').click();
+    await expect(banner).toHaveCount(0);
+    expect(
+      await page.evaluate(() =>
+        window.localStorage.getItem(
+          'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
+        ),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -313,10 +558,20 @@ test('the layer bar colours action-to-action blends', async ({ page }) => {
     .fill('0.5');
 
   await openPanel(page, 'graph');
-  await page.locator('canvas').click({ position: { x: 200, y: 200 } });
+  // No canvas click here: the input sampler listens on `window`, not the
+  // canvas, and on a narrow viewport the open graph panel visually covers
+  // the canvas — a forced click would actually land on the panel's own
+  // content underneath instead, which is not what focusing input is for.
+  // Fixed-tick driver (PLAN Part VII §27): the combo window opens at 62% of
+  // unarmed-attack-01's 45-tick duration. Advancing exact ticks instead of
+  // waiting on the wall clock means the second press always lands inside
+  // that window, on every machine, instead of racing it.
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
   await page.keyboard.press('KeyJ');
-  await page.waitForTimeout(350);
+  await page.evaluate(() => window.__ATC_TEST__!.advanceTicks(31));
   await page.keyboard.press('KeyJ');
+  await page.evaluate(() => window.__ATC_TEST__!.advanceTicks(2));
+  await page.evaluate(() => window.__ATC_TEST__!.flushReact());
 
   const gauge = page.getByTestId('layer-mix');
   await expect(page.getByTestId('graph-live-action')).toContainText('attack-02');

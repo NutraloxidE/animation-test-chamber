@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-unarmed-attack-01",
+    "version": "1.0.0",
+    "displayName": "alt unarmed attack 01",
+    "description": "Migrated from the embedded clip \"unarmed-attack-01\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "b17f57be0194724ac3f860fff367c5f008f5713f4488a57dc1fd9c9f5cd46a33",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-unarmed-attack-01",
+    "assetPath": null,
+    "proceduralGenerator": "attack-01",
+    "durationSec": 0.75,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.62,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.5
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [
+      {
+        "id": "a1-windup",
+        "kind": "AttackWindup",
+        "at": 0.15
+      },
+      {
+        "id": "a1-hit",
+        "kind": "AttackHit",
+        "at": 0.42,
+        "protection": {
+          "level": "approval-required",
+          "reason": "hit timing confirmed by hand"
+        }
+      },
+      {
+        "id": "a1-recoil",
+        "kind": "AttackRecoil",
+        "at": 0.7
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.6
+        }
+      ],
+      "right": [
+        {
+          "start": 0.2,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0.42,
+      "y1": 0,
+      "x2": 0.58,
+      "y2": 1
+    },
+    "provenance": {
+      "source": "human-adjustment"
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

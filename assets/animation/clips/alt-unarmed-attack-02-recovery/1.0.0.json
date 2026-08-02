@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-unarmed-attack-02-recovery",
+    "version": "1.0.0",
+    "displayName": "alt unarmed attack 02 recovery",
+    "description": "Migrated from the embedded clip \"unarmed-attack-02-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "a94ff4b35ec41d7d006c2ee3d7480ffd58f7cf33286604b0657acb8f1a30313c",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-unarmed-attack-02-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-02-recovery",
+    "durationSec": 1.0333333,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.55
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

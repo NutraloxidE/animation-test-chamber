@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "sword-attack-01-recovery",
+    "version": "1.0.0",
+    "displayName": "sword attack 01 recovery",
+    "description": "Migrated from the embedded clip \"sword-attack-01-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "fc556a85b62cd0952892142f6c41f1fc89d4aed8645927fc40d304ae229ec828",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "sword-attack-01-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-01-recovery",
+    "durationSec": 0.9666666,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.6
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    },
+    "timeCurve": {
+      "x1": 0.15683372667100695,
+      "y1": 0.43474999999999997,
+      "x2": 0.75,
+      "y2": 0.75
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

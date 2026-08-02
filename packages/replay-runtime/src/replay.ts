@@ -1,5 +1,5 @@
 import type {
-  ProjectDefinition,
+  ResolvedProject,
   ReplayDefinition,
   ReplayFrame,
   ReplayTolerance,
@@ -63,7 +63,7 @@ export function frameAt(replay: ReplayDefinition, tick: number): ActionSample {
  * the project revision and the replay file.
  */
 export function runReplay(
-  project: ProjectDefinition,
+  project: ResolvedProject,
   replay: ReplayDefinition,
   terrain?: TerrainPreset,
 ): ReplayTrace {

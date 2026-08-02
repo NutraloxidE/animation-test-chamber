@@ -8,6 +8,8 @@
  * commit, and what to do next.
  */
 import { staticStages } from './check-static.ts';
+import { animationAssetStages } from './check-animation-assets.ts';
+import { transactionRecoveryStage } from './check-transaction-recovery.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
@@ -48,7 +50,7 @@ function playwrightStage(): StageResult {
     'visual (playwright)',
     {
       reproduce: 'npx playwright test',
-      blocksCommit: false,
+      blocksCommit: true,
       suggestion: 'run `npx playwright test --ui` to inspect the failing view',
     },
     () => {
@@ -134,6 +136,19 @@ async function main(): Promise<void> {
     printStage(result);
     results.push(result);
   }
+
+  // Asset integrity before the tests: a stale index or an unresolvable
+  // reference makes every later failure a symptom rather than a cause.
+  for (const result of animationAssetStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  // Also before the tests: an unresolved transaction from a prior crash
+  // would make the write API read-only, which every later write-path test
+  // would then fail for a reason that has nothing to do with what they test.
+  results.push(transactionRecoveryStage());
+  printStage(results.at(-1)!);
 
   results.push(vitestStage('unit', 'tests/unit', 'fix the implementation, not the assertion'));
   printStage(results.at(-1)!);

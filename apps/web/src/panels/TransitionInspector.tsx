@@ -1,3 +1,10 @@
+import {
+  ACTION_LAYER,
+  LOCOMOTION_LAYER,
+  clipForState,
+  clipIdForState,
+  layerStateOf,
+} from '@atc/animation-runtime';
 import { useEffect, useState } from 'react';
 import type { TransitionDefinition } from '@atc/schema';
 import { useChamber, useWeaponProject } from '../store.ts';
@@ -96,7 +103,7 @@ export function TransitionInspector() {
   const actionClips = project.graph.states
     .filter((state) => state.layer === 'action' && state.id !== 'action-none')
     .flatMap((state) => {
-      const clip = project.clips.find((entry) => entry.id === state.clipId);
+      const clip = clipForState(project, state.id);
       return clip ? [clip] : [];
     })
     .filter((clip, index, clips) => clips.indexOf(clip) === index);
@@ -110,22 +117,23 @@ export function TransitionInspector() {
    */
   const [liveIds, setLiveIds] = useState<(string | null)[]>([]);
   const [liveAction, setLiveAction] = useState(() => {
-    const action = engine.graphLayers.action;
+    const action = layerStateOf(engine.graphLayers, ACTION_LAYER);
     return { stateId: action.stateId, progress: Math.round(action.normalizedTime * 100) };
   });
   useEffect(
     () =>
       engine.subscribe(() => {
-        const layers = engine.graphLayers;
+        const action = layerStateOf(engine.graphLayers, ACTION_LAYER);
+        const locomotion = layerStateOf(engine.graphLayers, LOCOMOTION_LAYER);
         setLiveIds((previous) =>
-          previous[0] === layers.action.lastTransitionId &&
-          previous[1] === layers.locomotion.lastTransitionId
+          previous[0] === action.lastTransitionId &&
+          previous[1] === locomotion.lastTransitionId
             ? previous
-            : [layers.action.lastTransitionId, layers.locomotion.lastTransitionId],
+            : [action.lastTransitionId, locomotion.lastTransitionId],
         );
         const nextAction = {
-          stateId: layers.action.stateId,
-          progress: Math.round(layers.action.normalizedTime * 100),
+          stateId: action.stateId,
+          progress: Math.round(action.normalizedTime * 100),
         };
         setLiveAction((previous) =>
           previous.stateId === nextAction.stateId && previous.progress === nextAction.progress
@@ -237,7 +245,7 @@ export function TransitionInspector() {
         <summary>All action input starts ({actionClips.length})</summary>
         {actionClips.map((clip) => {
           const isLive = project.graph.states.some(
-            (state) => state.id === liveAction.stateId && state.clipId === clip.id,
+            (state) => state.id === liveAction.stateId && clipIdForState(project, state.id) === clip.id,
           );
           const inputStart = clip.inputAcceptanceStartNormalized ?? 0;
           return (
@@ -301,7 +309,8 @@ export function TransitionInspector() {
               className={
                 project.graph.states.some(
                   (state) =>
-                    state.id === liveAction.stateId && state.clipId === selectedClip.id,
+                    state.id === liveAction.stateId &&
+                    clipIdForState(project, state.id) === selectedClip.id,
                 )
                   ? 'action-input-detail blend-row--live'
                   : 'action-input-detail'
@@ -310,7 +319,8 @@ export function TransitionInspector() {
               <ActionPlayback
                 isLive={project.graph.states.some(
                   (state) =>
-                    state.id === liveAction.stateId && state.clipId === selectedClip.id,
+                    state.id === liveAction.stateId &&
+                    clipIdForState(project, state.id) === selectedClip.id,
                 )}
                 progress={liveAction.progress}
                 inputStart={selectedClip.inputAcceptanceStartNormalized}

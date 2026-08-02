@@ -7,40 +7,67 @@ import type {
   TransitionDefinition,
 } from '@atc/schema';
 import { FIXED_DT, clamp01 } from '@atc/runtime-core';
-import { eventsInRange, findClip, isClipFinished, normalizedTimeOf } from './clip.ts';
+import { eventsInRange, isClipFinished, normalizedTimeOf } from './clip.ts';
+import { slotForState, type AnimationContext, type MotionResolver } from './motion-resolver.ts';
 
-export type LayerId = 'locomotion' | 'action';
+/**
+ * Layers are named by the behaviour asset, not by this union. The MVP still
+ * ships exactly `locomotion` and `action`; what changed is that a behaviour
+ * wanting a third no longer has to edit the runtime to get it.
+ */
+export type LayerId = string;
 
+export const LOCOMOTION_LAYER = 'locomotion';
+export const ACTION_LAYER = 'action';
+
+/**
+ * Fallback recovery point for an action clip that authored none. It is the old
+ * dodge default, kept as a last resort behind the state's `recoveryPolicy`.
+ */
 export const DEFAULT_DODGE_RECOVERY_START_NORMALIZED = 0.78;
 export const DODGE_RECOVERY_BLEND_SEC = 0.28;
 
 /**
- * A dedicated `*-recovery` clip is recovery from its first frame; anything else
- * (dodge) hands authority back at its authored recovery point.
+ * When this action hands the root back.
+ *
+ * This used to read `actionState.endsWith('-recovery') ? 0 : 0.78`. The rule
+ * was right and the way it was selected was wrong: a character whose recovery
+ * state happened to be called something else got the dodge default silently.
+ * Precedence is unchanged — an authored clip value still wins over the state's
+ * policy, which still wins over the global default.
  */
-function recoveryStartFor(actionState: string, authored: number | undefined): number {
+export function recoveryStartFor(
+  state: StateDefinition | undefined,
+  authored: number | undefined,
+): number {
   if (authored !== undefined) return authored;
-  return actionState.endsWith('-recovery') ? 0 : DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
+  return state?.recoveryPolicy?.authorityReturnAtNormalized ?? DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
 }
 
+/**
+ * True while an action is handing movement authority back to locomotion.
+ *
+ * Both halves were name checks: the action had to be `dodge` or `*-recovery`,
+ * and locomotion had to be `walk` or `run`. Both are now declared.
+ */
 export function isDodgeRecoveryTransition(
-  actionState: string,
+  actionState: StateDefinition | undefined,
   actionNormalizedTime: number,
-  locomotionState: string,
+  locomotionState: StateDefinition | undefined,
   recoveryStartNormalized?: number,
 ): boolean {
   return (
-    (actionState === 'dodge' || actionState.endsWith('-recovery')) &&
+    actionState?.movementAuthorityPolicy.returnsAuthorityOnRecovery === true &&
     actionNormalizedTime >= recoveryStartFor(actionState, recoveryStartNormalized) &&
-    (locomotionState === 'walk' || locomotionState === 'run')
+    locomotionState?.movementAuthorityPolicy.providesLocomotionAuthority === true
   );
 }
 
 export function dodgeRecoveryBlendWeight(
-  actionState: string,
+  actionState: StateDefinition | undefined,
   actionNormalizedTime: number,
   actionDurationSec: number,
-  locomotionState: string,
+  locomotionState: StateDefinition | undefined,
   recoveryStartNormalized?: number,
 ): number {
   if (
@@ -55,9 +82,9 @@ export function dodgeRecoveryBlendWeight(
     return 0;
   }
   const start = recoveryStartFor(actionState, recoveryStartNormalized);
-  return clamp01(
-    ((actionNormalizedTime - start) * actionDurationSec) / DODGE_RECOVERY_BLEND_SEC,
-  );
+  const blendSec = actionState?.recoveryPolicy?.blendDurationSec ?? DODGE_RECOVERY_BLEND_SEC;
+  if (blendSec <= 0) return 1;
+  return clamp01(((actionNormalizedTime - start) * actionDurationSec) / blendSec);
 }
 
 /** Values transition conditions are evaluated against. */
@@ -85,6 +112,36 @@ export interface LayerRuntimeState {
   lastTransitionId: string | null;
   /** Extra speed multiplier contributed by the transition that entered this state. */
   playbackSpeed: number;
+  /** Ticks spent sitting on the final frame under a `hold-final-frame` policy. */
+  holdTicks: number;
+}
+
+/**
+ * A layer that is not present in the behaviour's `layers` list.
+ *
+ * Returned instead of `undefined` so a panel written against locomotion/action
+ * still renders when a behaviour names its layers differently, rather than
+ * crashing the whole chamber over a missing key.
+ */
+export const EMPTY_LAYER_STATE: LayerRuntimeState = Object.freeze({
+  stateId: '',
+  timeSec: 0,
+  normalizedTime: 0,
+  previousStateId: null,
+  previousNormalizedTime: 0,
+  blendElapsedSec: 0,
+  blendDurationSec: 0,
+  blendWeight: 1,
+  lastTransitionId: null,
+  playbackSpeed: 1,
+  holdTicks: 0,
+});
+
+export function layerStateOf(
+  snapshot: Record<LayerId, LayerRuntimeState>,
+  layerId: LayerId,
+): LayerRuntimeState {
+  return snapshot[layerId] ?? EMPTY_LAYER_STATE;
 }
 
 export interface FiredEvent {
@@ -129,7 +186,8 @@ export class AnimationGraphRuntime {
 
   constructor(
     private graph: AnimationGraphDefinition,
-    private clips: AnimationClipDefinition[],
+    private motion: MotionResolver,
+    private context: AnimationContext = {},
   ) {
     this.rebuildIndex();
     this.reset();
@@ -139,9 +197,14 @@ export class AnimationGraphRuntime {
    * Swaps in edited canonical data without restarting the simulation, so a
    * slider drag is reflected in the live preview on the next tick.
    */
-  updateGraph(graph: AnimationGraphDefinition, clips: AnimationClipDefinition[]): void {
+  updateGraph(
+    graph: AnimationGraphDefinition,
+    motion: MotionResolver,
+    context: AnimationContext = this.context,
+  ): void {
     this.graph = graph;
-    this.clips = clips;
+    this.motion = motion;
+    this.context = context;
     this.rebuildIndex();
     // Keep playing whatever is active; fall back to the default if a state vanished.
     for (const layer of this.graph.layers) {
@@ -168,7 +231,9 @@ export class AnimationGraphRuntime {
   private rebuildIndex(): void {
     this.states = new Map(this.graph.states.map((state) => [state.id, state]));
     this.transitionsByLayer = new Map();
-    for (const layerId of ['locomotion', 'action'] as LayerId[]) {
+    // Layer ids come from the behaviour asset. Iterating a hard-coded pair here
+    // would have quietly dropped every transition on any third layer.
+    for (const layerId of this.graph.layers.map((layer) => layer.id)) {
       const forLayer = this.graph.transitions.filter((transition) => {
         const target = this.states.get(transition.to);
         return target?.layer === layerId;
@@ -221,9 +286,20 @@ export class AnimationGraphRuntime {
     return this.states.get(stateId);
   }
 
+  /**
+   * The clip this state plays right now. The graph knows a slot; the motion
+   * resolver knows which of the character's clips fills it.
+   */
   getClipFor(stateId: string): AnimationClipDefinition | undefined {
     const state = this.states.get(stateId);
-    return state ? findClip(this.clips, state.clipId) : undefined;
+    if (!state) return undefined;
+    return this.motion.resolve(slotForState(state, this.context), this.context);
+  }
+
+  /** The slot a state plays, for diagnostics and the library's slot table. */
+  motionSlotFor(stateId: string): string | undefined {
+    const state = this.states.get(stateId);
+    return state ? slotForState(state, this.context) : undefined;
   }
 
   /** True when the action layer is doing something other than its default state. */
@@ -256,6 +332,7 @@ export class AnimationGraphRuntime {
       blendWeight: blendDurationSec > 0 ? 0 : 1,
       lastTransitionId: transition ? transition.id : null,
       playbackSpeed,
+      holdTicks: 0,
     });
   }
 
@@ -403,13 +480,26 @@ export class AnimationGraphRuntime {
 
     // State timeout and clip completion both fall through to the fallback state.
     const timedOut = state.timeoutSec > 0 && layer.timeSec >= state.timeoutSec;
-    // An attack falls through one tick late, so its final frame is rendered
-    // rather than swallowed by the fallback. Keyed on the state, like every
-    // other naming rule here: the clip belongs to whichever weapon is equipped
-    // and its id says so, the state is the stable structure.
-    const finished = layer.stateId.startsWith('attack-')
-      ? finishedBeforeAdvance
-      : isClipFinished(clip, layer.timeSec);
+    /*
+     * `hold-final-frame` falls through one tick late, so the last frame of a
+     * swing is rendered rather than swallowed by the fallback. This used to be
+     * `stateId.startsWith('attack-')`, which meant the behaviour was a property
+     * of the spelling: a second character whose combo states were named
+     * differently lost its final frames with nothing to point at.
+     *
+     * `wait-for-transition` never falls through at all — only an authored
+     * transition may leave it.
+     */
+    const policy = state.completionPolicy;
+    const finished =
+      policy.mode === 'wait-for-transition'
+        ? false
+        : policy.mode === 'hold-final-frame'
+          ? finishedBeforeAdvance && layer.holdTicks >= policy.holdTicks
+          : isClipFinished(clip, layer.timeSec);
+    if (policy.mode === 'hold-final-frame' && finishedBeforeAdvance) {
+      layer.holdTicks += 1;
+    }
     const fallbackState = state.fallbackState;
     if (
       (timedOut || finished) &&
@@ -431,9 +521,8 @@ export class AnimationGraphRuntime {
 
   /** Compact per-layer snapshot used by traces and the UI. */
   snapshot(): Record<LayerId, LayerRuntimeState> {
-    return {
-      locomotion: { ...this.getLayer('locomotion') },
-      action: { ...this.getLayer('action') },
-    };
+    return Object.fromEntries(
+      this.graph.layers.map((layer) => [layer.id, { ...this.getLayer(layer.id) }]),
+    );
   }
 }

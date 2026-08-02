@@ -24,10 +24,10 @@ namespace AnimationTestChamber
 
         public const float FixedDeltaTime = 1f / 60f;
 
-        private readonly ProjectDefinition _project;
+        private readonly ResolvedProject _project;
         private readonly Dictionary<string, LayerState> _layers = new Dictionary<string, LayerState>();
 
-        public ChamberStateMachine(ProjectDefinition project)
+        public ChamberStateMachine(ResolvedProject project)
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             Reset();

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_PRESETS, findTerrainPreset, resolveTerrain, sampleGround, slopeAngle } from '@atc/terrain-runtime';
 import { validateAgainst } from '@atc/schema';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 const profile = project.terrain;
 
 function query(overrides: Partial<Parameters<typeof resolveTerrain>[2]> = {}) {

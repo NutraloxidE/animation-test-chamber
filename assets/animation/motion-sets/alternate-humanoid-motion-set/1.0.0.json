@@ -1,0 +1,415 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-motion-set",
+    "id": "alternate-humanoid-motion-set",
+    "version": "1.0.0",
+    "displayName": "Alternate humanoid motion set",
+    "description": "A second character’s clips bound to the same behaviour’s slots.",
+    "tags": [
+      "humanoid"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "796f61d6c797150a14eb510ba6a766c4df41dda261cefc51203f79e325233545",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "compatibleBehaviorIds": [
+    "humanoid-third-person-base"
+  ],
+  "rig": {
+    "assetType": "humanoid-rig",
+    "assetId": "demo-humanoid-rig",
+    "version": "1.0.0",
+    "contentHash": "2f8c7909d85613f6872337d287261ea1f4ef5a43649be0c5a270736bb6d91f6d"
+  },
+  "bindings": [
+    {
+      "motionSlot": "locomotion.idle",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-idle",
+        "version": "1.0.0",
+        "contentHash": "9127e941db1c659518591cdf8de486da3747e7bf38bd24e8cd8d57331c34ca97"
+      }
+    },
+    {
+      "motionSlot": "locomotion.walk",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-walk",
+        "version": "1.0.0",
+        "contentHash": "33c7115ff1718f4ae84f3405039678be369ccfb3b92e9223a3ca1266c9a01b23"
+      }
+    },
+    {
+      "motionSlot": "locomotion.run",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-run",
+        "version": "1.0.0",
+        "contentHash": "635fed30ef0bd29285dd8f1ffea5a471a056a8e70bca9c9431a793bb526ec7ca"
+      }
+    },
+    {
+      "motionSlot": "airborne.jump",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-jump",
+        "version": "1.0.0",
+        "contentHash": "ecb09abec73c5969c44927652e4f0ac204576f0ea070b20e7cc14cfac8f40a58"
+      }
+    },
+    {
+      "motionSlot": "airborne.fall",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-fall",
+        "version": "1.0.0",
+        "contentHash": "f05ad9a7a8217d708181338dd189b48cdc77f2a8aee79dca6a8a5e0b1806593b"
+      }
+    },
+    {
+      "motionSlot": "airborne.land",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-land",
+        "version": "1.0.0",
+        "contentHash": "fc254442a5a32cce27eca9ed0976bbdbf54882e89f9b9818f592a9641079d57c"
+      }
+    },
+    {
+      "motionSlot": "state.slide",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-slide",
+        "version": "1.0.0",
+        "contentHash": "c5da692d0d2fc7e78dcca86f0a8552fcc50c5b94072426139a79eda746957bcf"
+      }
+    },
+    {
+      "motionSlot": "state.action-none",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-action-none",
+        "version": "1.0.0",
+        "contentHash": "73a7b56ced81ad6d9c587df2b0aaf45fc5631fff9b0cf03c800eaa72430181c3"
+      }
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-01",
+        "version": "1.0.0",
+        "contentHash": "b17f57be0194724ac3f860fff367c5f008f5713f4488a57dc1fd9c9f5cd46a33"
+      }
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-magic-attack-01",
+        "version": "1.0.0",
+        "contentHash": "12ff2d1e04b541d60f1e8403abcfd640559b12e33584bbee77d74fa9aaf74f47"
+      },
+      "contextualKey": "magic"
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-pistol-attack-01",
+        "version": "1.0.0",
+        "contentHash": "88f3d40c16532c012b0173bad8693aa1007bce6cacbe6db0e68ac904acdf2741"
+      },
+      "contextualKey": "pistol"
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-shield-attack-01",
+        "version": "1.0.0",
+        "contentHash": "104dd126ec01fa5e3b7d45cb611cc40928310c2b34af30a893422f161e99bac7"
+      },
+      "contextualKey": "shield"
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-sword-attack-01",
+        "version": "1.0.0",
+        "contentHash": "5ccc73a45a4e8af09eeaf8e394a91acd203fb91ba9b3aae430ef861537663294"
+      },
+      "contextualKey": "sword"
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-throw-attack-01",
+        "version": "1.0.0",
+        "contentHash": "009cc50b1a084be63a8699e7a0e4c528d4dee45e95559925ad47173ab6a075c0"
+      },
+      "contextualKey": "throw"
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-01",
+        "version": "1.0.0",
+        "contentHash": "b17f57be0194724ac3f860fff367c5f008f5713f4488a57dc1fd9c9f5cd46a33"
+      },
+      "contextualKey": "unarmed"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "90e8006f5c1297f5609a873e208194efe8d2c6b3a235ecfb42f110e1cd12c598"
+      }
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-magic-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "d156d47d2d975d3974c8021ab82ce618c6b1fe94296b92a2abb04489db223724"
+      },
+      "contextualKey": "magic"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-pistol-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "ae3e111fe55ccda96be9efe705087d5d54f27c185a690d0ded2e38b756e26496"
+      },
+      "contextualKey": "pistol"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-shield-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "6f7c983cb5941070ec8334cf6b6c11562fcecbe8684bb0f57baf58ee6758ff74"
+      },
+      "contextualKey": "shield"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-sword-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "ecdf306876cb8ab27634750778b27221e01674ab39fc6747f5d132e660356d7b"
+      },
+      "contextualKey": "sword"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-throw-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "be2f2b23d818539f1deb9b4fe475a8e38bfb85dca103d28331fad68401eeec64"
+      },
+      "contextualKey": "throw"
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "90e8006f5c1297f5609a873e208194efe8d2c6b3a235ecfb42f110e1cd12c598"
+      },
+      "contextualKey": "unarmed"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-02",
+        "version": "1.0.0",
+        "contentHash": "7117936953413bf1656050b1649c3527ca3caa61279b04cdc1c94a90e159ecdc"
+      }
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-magic-attack-02",
+        "version": "1.0.0",
+        "contentHash": "2a0d374a9a1b128613e1d684627a61255d3d5ef1937b7b26e5914e2a7332c148"
+      },
+      "contextualKey": "magic"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-pistol-attack-02",
+        "version": "1.0.0",
+        "contentHash": "6b76d631ef082a814f03c4e5bcc48f9fcadb3f5fb7db42f05c60a5368343ada0"
+      },
+      "contextualKey": "pistol"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-shield-attack-02",
+        "version": "1.0.0",
+        "contentHash": "52d35b424db47588fac8853c1c67d76d51c437d54dfcf681129615eb519dc51d"
+      },
+      "contextualKey": "shield"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-sword-attack-02",
+        "version": "1.0.0",
+        "contentHash": "dbfbf72f6a3e7b6f3ef260c408497c1641e3c18999062859ba35e3b34edc822e"
+      },
+      "contextualKey": "sword"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-throw-attack-02",
+        "version": "1.0.0",
+        "contentHash": "37226e6de3e7cafff746ec95f86f20306a03ee7ef8abd186f70463e0da566396"
+      },
+      "contextualKey": "throw"
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-02",
+        "version": "1.0.0",
+        "contentHash": "7117936953413bf1656050b1649c3527ca3caa61279b04cdc1c94a90e159ecdc"
+      },
+      "contextualKey": "unarmed"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "a94ff4b35ec41d7d006c2ee3d7480ffd58f7cf33286604b0657acb8f1a30313c"
+      }
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-magic-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "ba8b06147affde3125a01043fa62a7f6fe1b8b7467377a99bf896854a2335187"
+      },
+      "contextualKey": "magic"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-pistol-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "969657486e936ee44ef3b8bbdbf47410a63c4cf29caa35f8c25956a61d4dea6c"
+      },
+      "contextualKey": "pistol"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-shield-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "aef091ad0a16715d6a40e8d6b41949f10ec8baa267f881fa722f11e16c158808"
+      },
+      "contextualKey": "shield"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-sword-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "498fc6fa9891e345a35bfc3e5ee1dc55d0f42a5c86239bf010436ca909f730a4"
+      },
+      "contextualKey": "sword"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-throw-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "987e3d3f3aefc1242280f6cb9c1a3137f6bdc62798137ee1f19f73fa10674316"
+      },
+      "contextualKey": "throw"
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-unarmed-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "a94ff4b35ec41d7d006c2ee3d7480ffd58f7cf33286604b0657acb8f1a30313c"
+      },
+      "contextualKey": "unarmed"
+    },
+    {
+      "motionSlot": "mobility.dodge",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-dodge",
+        "version": "1.0.0",
+        "contentHash": "562e51e7e2367f73152b6625e746d550c7950f780197cb21d7bc18be993f4a33"
+      }
+    },
+    {
+      "motionSlot": "state.guard",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-guard",
+        "version": "1.0.0",
+        "contentHash": "a2eef4be2a1a8860999af181ea9d94168a24c4c369baf6c45b0c0d6bb835c0f0"
+      }
+    },
+    {
+      "motionSlot": "state.guard-shield",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-guard",
+        "version": "1.0.0",
+        "contentHash": "a2eef4be2a1a8860999af181ea9d94168a24c4c369baf6c45b0c0d6bb835c0f0"
+      }
+    },
+    {
+      "motionSlot": "state.hit",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "alt-hit",
+        "version": "1.0.0",
+        "contentHash": "7b2b11d459fa4cf184c9f677554fb44274b5643629b53dd65be0f2c55b333352"
+      }
+    }
+  ],
+  "fallbackBindings": []
+}

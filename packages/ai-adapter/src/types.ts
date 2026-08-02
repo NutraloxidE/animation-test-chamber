@@ -1,4 +1,4 @@
-import type { ProjectDefinition } from '@atc/schema';
+import type { ResolvedProject } from '@atc/schema';
 import type { CanonicalPath, DiffReport } from '@atc/runtime-core';
 
 /** The three variants a proposal set always offers (PLAN 14.2). */
@@ -27,7 +27,7 @@ export interface AdjustmentProposal {
 }
 
 export interface ProposalContext {
-  project: ProjectDefinition;
+  project: ResolvedProject;
   /** Natural-language request from the human, in any language. */
   request: string;
   /** Path of the object being tuned, e.g. /graph/transitions/run-to-attack-01 */

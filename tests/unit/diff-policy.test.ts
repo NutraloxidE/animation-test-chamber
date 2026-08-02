@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeDiff, diffDocuments, outOfScopeChanges, setAtPath } from '@atc/runtime-core';
-import { validateProject, validateProjectReferences } from '@atc/schema';
-import { loadDemoProject } from '../fixtures/project.ts';
+import {
+  validateProject,
+  validateProjectReferences,
+  validateResolvedProject,
+  validateResolvedProjectReferences,
+} from '@atc/schema';
+import { loadDemoProject, loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
+const canonicalProject = loadDemoProject();
 
 describe('diffing', () => {
   it('reports nothing for an unchanged document', () => {
@@ -142,29 +148,38 @@ describe('diff policy', () => {
 
 describe('canonical project validation', () => {
   it('validates the committed demo project against the schema', () => {
-    const result = validateProject(project);
-    expect(result.issues).toEqual([]);
+    // The canonical file and the document the runtime sees are two different
+    // shapes now, and both have to hold up.
+    expect(validateProject(canonicalProject).issues).toEqual([]);
+    expect(validateResolvedProject(project).issues).toEqual([]);
   });
 
   it('has no dangling references or unreachable states', () => {
-    const result = validateProjectReferences(project);
-    expect(result.issues).toEqual([]);
+    expect(validateProjectReferences(canonicalProject).issues).toEqual([]);
+    expect(validateResolvedProjectReferences(project).issues).toEqual([]);
   });
 
   it('rejects a transition pointing at a state that does not exist', () => {
     const broken = setAtPath(project, '/graph/transitions/idle-to-walk/to', 'nonexistent');
-    const result = validateProjectReferences(broken);
+    const result = validateResolvedProjectReferences(broken);
     expect(result.valid).toBe(false);
     expect(result.issues.some((issue) => issue.keyword === 'reference')).toBe(true);
   });
 
+  it('rejects a state whose motion slot nothing binds', () => {
+    const broken = setAtPath(project, '/graph/states/idle/motionSlot', 'locomotion.nothing');
+    const result = validateResolvedProjectReferences(broken);
+    expect(result.valid).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes('not bound'))).toBe(true);
+  });
+
   it('rejects an out-of-range value', () => {
     const broken = setAtPath(project, '/graph/transitions/idle-to-walk/blendDurationSec', 99);
-    expect(validateProject(broken).valid).toBe(false);
+    expect(validateResolvedProject(broken).valid).toBe(false);
   });
 
   it('rejects an unknown extra property', () => {
-    const broken = setAtPath(project, '/camera/somethingNew', 1);
+    const broken = setAtPath(canonicalProject, '/camera/somethingNew', 1);
     expect(validateProject(broken).valid).toBe(false);
   });
 });

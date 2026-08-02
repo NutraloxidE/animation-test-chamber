@@ -4,18 +4,12 @@
  * Everything under generated/ is a build artifact: regenerable, never canonical,
  * and never edited by hand. The repo guard enforces that.
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import type { ProjectDefinition } from '@atc/schema';
 import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { buildUnityBundle } from '@atc/unity-export';
-import { REPO_ROOT, writeRepoFile } from './lib.ts';
+import { writeRepoFile } from './lib.ts';
+import { loadResolvedProject } from './animation-assets.ts';
 
-export function loadCanonicalProject(): ProjectDefinition {
-  return JSON.parse(
-    readFileSync(resolve(REPO_ROOT, 'projects/demo-character/project.json'), 'utf8'),
-  ) as ProjectDefinition;
-}
+export { loadCanonicalProject } from './animation-assets.ts';
 
 /**
  * The generated timestamp is pinned to the project revision rather than the
@@ -23,7 +17,9 @@ export function loadCanonicalProject(): ProjectDefinition {
  * identical bundle and the drift check stays meaningful.
  */
 export function buildBundleFiles(): { path: string; content: string }[] {
-  const project = loadCanonicalProject();
+  // The exporter wants a graph and a clip list, so it gets the active
+  // character's resolved document rather than the reference-only canonical one.
+  const project = loadResolvedProject();
   return buildUnityBundle(project, REPLAY_FIXTURES, `revision:${project.revisionId}`);
 }
 

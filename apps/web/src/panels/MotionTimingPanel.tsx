@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
-import { applyClipTimeCurve } from '@atc/animation-runtime';
+import { applyClipTimeCurve, clipForState, clipIdForState } from '@atc/animation-runtime';
 import { useChamber, useWeaponProject } from '../store.ts';
 import { WEAPON_MODES } from '../three/catalog.ts';
 import { Field } from './Field.tsx';
@@ -165,7 +165,17 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
   useChamber((state) => state.revision);
 
   const state = rawProject.graph.states.find((entry) => entry.id === stateId);
-  if (!state?.weaponClips) {
+  // A per-weapon clip is a contextual binding in the motion set now, so the
+  // question "does this state vary by weapon" is asked of the bindings rather
+  // than of a map on the state.
+  const variesByWeapon =
+    state !== undefined &&
+    WEAPON_MODES.some(
+      (mode) =>
+        clipIdForState(rawProject, state.id, mode.id) !==
+        clipIdForState(rawProject, state.id),
+    );
+  if (!state || !variesByWeapon) {
     return (
       <p className="muted weapon-curves__shared" data-testid="weapon-curves-shared">
         Shared by every weapon mode — this state has no per-weapon clip.
@@ -176,7 +186,7 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
   return (
     <div className="weapon-curves" data-testid="weapon-curves">
       {WEAPON_MODES.map((mode) => {
-        const clipId = state.weaponClips![mode.id] ?? state.clipId;
+        const clipId = clipIdForState(rawProject, state.id, mode.id) ?? '';
         const field = session.fieldView(`/clips/${clipId}/timeCurve`);
         const edited =
           JSON.stringify(field.previewValue) !== JSON.stringify(field.repositoryValue);
@@ -214,7 +224,7 @@ export function MotionTimingPanel() {
   const [playhead, setPlayhead] = useState(0);
 
   const state = project.graph.states.find((entry) => entry.id === selectedStateId) ?? project.graph.states[0]!;
-  const clip = project.clips.find((entry) => entry.id === state.clipId)!;
+  const clip = clipForState(project, state.id)!;
   const path = `/clips/${clip.id}/timeCurve`;
   const curve = clip.timeCurve ?? LINEAR;
   const field = session.fieldView(path);

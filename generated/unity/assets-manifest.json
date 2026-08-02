@@ -1,7 +1,7 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "revision:rev-0006",
+  "_generatedAt": "revision:rev-0008",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "character": {
     "id": "demo-humanoid",
@@ -9,6 +9,51 @@
     "skeletonId": "canonical-humanoid"
   },
   "clips": [
+    {
+      "id": "action-none",
+      "assetPath": null,
+      "proceduralGenerator": "action-none",
+      "durationSec": 0.5,
+      "rootMotionMode": "InPlace",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "dodge",
+      "assetPath": null,
+      "proceduralGenerator": "dodge",
+      "durationSec": 1.4666667,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "FastInSlowOut",
+      "recoveryTransitionStartNormalized": 0.62
+    },
+    {
+      "id": "fall",
+      "assetPath": null,
+      "proceduralGenerator": "fall",
+      "durationSec": 0.8,
+      "rootMotionMode": "InPlace",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "guard",
+      "assetPath": null,
+      "proceduralGenerator": "guard",
+      "durationSec": 0.6,
+      "rootMotionMode": "InPlace",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "hit",
+      "assetPath": null,
+      "proceduralGenerator": "hit",
+      "durationSec": 0.45,
+      "rootMotionMode": "InPlace",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
     {
       "id": "idle",
       "assetPath": null,
@@ -19,37 +64,10 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "walk",
-      "assetPath": null,
-      "proceduralGenerator": "walk",
-      "durationSec": 1,
-      "rootMotionMode": "Hybrid",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "run",
-      "assetPath": null,
-      "proceduralGenerator": "run",
-      "durationSec": 0.7,
-      "rootMotionMode": "Hybrid",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
       "id": "jump",
       "assetPath": null,
       "proceduralGenerator": "jump",
       "durationSec": 0.5,
-      "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "fall",
-      "assetPath": null,
-      "proceduralGenerator": "fall",
-      "durationSec": 0.8,
       "rootMotionMode": "InPlace",
       "rootMotionCurve": "Linear",
       "recoveryTransitionStartNormalized": null
@@ -64,29 +82,128 @@
       "recoveryTransitionStartNormalized": null
     },
     {
+      "id": "magic-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "magic-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "pistol-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "pistol-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "pistol-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "pistol-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "run",
+      "assetPath": null,
+      "proceduralGenerator": "run",
+      "durationSec": 0.7,
+      "rootMotionMode": "Hybrid",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "shield-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "shield-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "shield-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "shield-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
       "id": "slide",
       "assetPath": null,
       "proceduralGenerator": "slide",
       "durationSec": 0.6,
       "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "action-none",
-      "assetPath": null,
-      "proceduralGenerator": "action-none",
-      "durationSec": 0.5,
-      "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "unarmed-attack-01",
-      "assetPath": null,
-      "proceduralGenerator": "attack-01",
-      "durationSec": 0.75,
-      "rootMotionMode": "RootMotion",
       "rootMotionCurve": "Linear",
       "recoveryTransitionStartNormalized": null
     },
@@ -100,7 +217,70 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "magic-attack-01",
+      "id": "sword-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "sword-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "sword-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "throw-attack-01",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01",
+      "durationSec": 0.75,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "throw-attack-01-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-01-recovery",
+      "durationSec": 0.9666666,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "throw-attack-02",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02",
+      "durationSec": 0.85,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "throw-attack-02-recovery",
+      "assetPath": null,
+      "proceduralGenerator": "attack-02-recovery",
+      "durationSec": 1.0333333,
+      "rootMotionMode": "RootMotion",
+      "rootMotionCurve": "Linear",
+      "recoveryTransitionStartNormalized": null
+    },
+    {
+      "id": "unarmed-attack-01",
       "assetPath": null,
       "proceduralGenerator": "attack-01",
       "durationSec": 0.75,
@@ -118,43 +298,7 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "sword-attack-01-recovery",
-      "assetPath": null,
-      "proceduralGenerator": "attack-01-recovery",
-      "durationSec": 0.9666666,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "magic-attack-01-recovery",
-      "assetPath": null,
-      "proceduralGenerator": "attack-01-recovery",
-      "durationSec": 0.9666666,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
       "id": "unarmed-attack-02",
-      "assetPath": null,
-      "proceduralGenerator": "attack-02",
-      "durationSec": 0.85,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "sword-attack-02",
-      "assetPath": null,
-      "proceduralGenerator": "attack-02",
-      "durationSec": 0.85,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "magic-attack-02",
       "assetPath": null,
       "proceduralGenerator": "attack-02",
       "durationSec": 0.85,
@@ -172,47 +316,11 @@
       "recoveryTransitionStartNormalized": null
     },
     {
-      "id": "sword-attack-02-recovery",
+      "id": "walk",
       "assetPath": null,
-      "proceduralGenerator": "attack-02-recovery",
-      "durationSec": 1.0333333,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "magic-attack-02-recovery",
-      "assetPath": null,
-      "proceduralGenerator": "attack-02-recovery",
-      "durationSec": 1.0333333,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "dodge",
-      "assetPath": null,
-      "proceduralGenerator": "dodge",
-      "durationSec": 1.4666667,
-      "rootMotionMode": "RootMotion",
-      "rootMotionCurve": "FastInSlowOut",
-      "recoveryTransitionStartNormalized": 0.62
-    },
-    {
-      "id": "guard",
-      "assetPath": null,
-      "proceduralGenerator": "guard",
-      "durationSec": 0.6,
-      "rootMotionMode": "InPlace",
-      "rootMotionCurve": "Linear",
-      "recoveryTransitionStartNormalized": null
-    },
-    {
-      "id": "hit",
-      "assetPath": null,
-      "proceduralGenerator": "hit",
-      "durationSec": 0.45,
-      "rootMotionMode": "InPlace",
+      "proceduralGenerator": "walk",
+      "durationSec": 1,
+      "rootMotionMode": "Hybrid",
       "rootMotionCurve": "Linear",
       "recoveryTransitionStartNormalized": null
     }

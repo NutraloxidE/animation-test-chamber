@@ -1,3 +1,4 @@
+import { clipForState } from '@atc/animation-runtime';
 import { useEffect, useState } from 'react';
 import { HapticPlayer } from '@atc/haptics-runtime';
 import { useChamber, useWeaponProject } from '../store.ts';
@@ -55,7 +56,7 @@ export function Timeline() {
   }, [engine, project, selectedStateId]);
 
   const state = project.graph.states.find((entry) => entry.id === selectedStateId);
-  const clip = project.clips.find((entry) => entry.id === state?.clipId);
+  const clip = state ? clipForState(project, state.id) : undefined;
   const transition = project.graph.transitions.find((entry) => entry.id === selectedTransitionId);
 
   if (!clip) return <div className="panel">Select a state to see its timeline.</div>;

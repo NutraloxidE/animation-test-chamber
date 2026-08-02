@@ -1,3 +1,4 @@
+import { ACTION_LAYER, clipForState, layerStateOf } from '@atc/animation-runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { dodgeRecoveryBlendWeight } from '@atc/animation-runtime';
 import { useChamber, useWeaponProject } from '../store.ts';
@@ -22,16 +23,21 @@ export function StateGraph() {
 
   useEffect(() => engine.subscribe(() => setSnapshot(engine.snapshot())), [engine]);
 
-  const actionRuntime = snapshot.stateMachine.action;
+  // Layers are named by the behaviour asset, so a missing one is possible and
+  // renders as an empty action layer rather than crashing the panel.
+  const actionRuntime = layerStateOf(snapshot.stateMachine, ACTION_LAYER);
   const actionDefault =
-    project.graph.layers.find((layer) => layer.id === 'action')?.defaultState ?? 'action-none';
+    project.graph.layers.find((layer) => layer.id === ACTION_LAYER)?.defaultState ?? 'action-none';
   const actionState = project.graph.states.find((state) => state.id === actionRuntime.stateId);
-  const actionClip = project.clips.find((clip) => clip.id === actionState?.clipId);
+  const locomotionState = project.graph.states.find(
+    (state) => state.id === snapshot.locomotionState,
+  );
+  const actionClip = actionState ? clipForState(project, actionState.id) : undefined;
   const recoveryWeight = dodgeRecoveryBlendWeight(
-    actionRuntime.stateId,
+    actionState,
     actionRuntime.normalizedTime,
     actionClip?.durationSec ?? 0,
-    snapshot.locomotionState,
+    locomotionState,
     actionClip?.recoveryTransitionStartNormalized,
   );
   const actionWeight =
@@ -155,7 +161,7 @@ export function StateGraph() {
       {project.graph.layers.map((layer) => (
         <section key={layer.id} className="graph-layer">
           {(() => {
-            const runtime = snapshot.stateMachine[layer.id];
+            const runtime = layerStateOf(snapshot.stateMachine, layer.id);
             const transitioning = runtime.previousStateId !== null;
             return (
               <div className="graph-live" data-testid={`graph-live-${layer.id}`}>
@@ -223,7 +229,7 @@ export function StateGraph() {
               .filter((transition) => {
                 const target = project.graph.states.find((s) => s.id === transition.to);
                 if (target?.layer !== layer.id) return false;
-                const runtime = snapshot.stateMachine[layer.id];
+                const runtime = layerStateOf(snapshot.stateMachine, layer.id);
                 return (
                   transition.from === selectedStateId ||
                   transition.to === selectedStateId ||
@@ -237,7 +243,8 @@ export function StateGraph() {
                 <li
                   key={transition.id}
                   className={
-                    snapshot.stateMachine[layer.id].lastTransitionId === transition.id
+                    layerStateOf(snapshot.stateMachine, layer.id).lastTransitionId ===
+                    transition.id
                       ? 'is-live'
                       : ''
                   }

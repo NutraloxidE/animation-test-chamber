@@ -9,9 +9,9 @@ import {
   setAtPath,
   strictest,
 } from '@atc/runtime-core';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 const APPROVAL_PATH = '/graph/transitions/run-to-attack-01/blendDurationSec';
 const LOCKED_FIELD_PATH = '/graph/transitions/run-to-attack-01/momentumRetention';

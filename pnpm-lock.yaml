@@ -56,6 +56,9 @@ importers:
       '@atc/ai-adapter':
         specifier: workspace:*
         version: link:../../packages/ai-adapter
+      '@atc/animation-asset-runtime':
+        specifier: workspace:*
+        version: link:../../packages/animation-asset-runtime
       '@atc/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
@@ -93,6 +96,9 @@ importers:
       '@atc/ai-adapter':
         specifier: workspace:*
         version: link:../../packages/ai-adapter
+      '@atc/animation-asset-runtime':
+        specifier: workspace:*
+        version: link:../../packages/animation-asset-runtime
       '@atc/animation-runtime':
         specifier: workspace:*
         version: link:../../packages/animation-runtime
@@ -156,6 +162,15 @@ importers:
         version: link:../schema
 
   packages/ai-adapter:
+    dependencies:
+      '@atc/runtime-core':
+        specifier: workspace:*
+        version: link:../runtime-core
+      '@atc/schema':
+        specifier: workspace:*
+        version: link:../schema
+
+  packages/animation-asset-runtime:
     dependencies:
       '@atc/runtime-core':
         specifier: workspace:*
@@ -235,6 +250,8 @@ importers:
       '@atc/terrain-runtime':
         specifier: workspace:*
         version: link:../terrain-runtime
+
+  packages/repository-transaction: {}
 
   packages/runtime-core:
     dependencies:

@@ -20,6 +20,25 @@ AI proposes several adjustments
 
 No step where a human has to re-describe, in prose, what they changed.
 
+Animation is **reused**, not re-implemented. A character does not own its state
+machine; it references one:
+
+```text
+pick a Behavior asset
+  → equip a Motion Set (this character's clips, bound to the behaviour's slots)
+  → check rig compatibility
+  → feel it in the chamber
+  → adjust only this character's values
+  → choose where that adjustment lives: the character, its tuning profile,
+    a behaviour variant, or a new version of the shared behaviour
+```
+
+The demo project ships two characters on one behaviour asset. The harness fails
+if their state sequences ever diverge, or if any motion slot ever resolves to the
+same clip for both — the first would mean the behaviour is not really shared, the
+second that the second character is not really a second character. Browse it all
+in the **Asset Library** workspace.
+
 ## Quick start
 
 ```bash
@@ -80,6 +99,9 @@ The app probes `/api/health` once on load and adapts:
 | AI proposals | Works — the rule-based provider runs in the browser |
 | Anthropic-backed AI | Unavailable (needs a server to hold the key) |
 | Commit / pull request | Unavailable — buttons disabled |
+| Asset Library: browse, search, detail, dependencies, version diff | Works — the generated index carries whole assets |
+| Applying an asset set to a character for preview | Works — preview only, nothing is written |
+| Publishing an asset, creating a variant or fork | Unavailable — needs a server to write files |
 | Unity export, animation import | Unavailable — both write to disk |
 
 The disabled features say why, rather than failing with a network error. Run

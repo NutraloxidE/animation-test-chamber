@@ -1,5 +1,12 @@
 /**
- * Seeds projects/demo-character/project.json.
+ * Seeds the schema v1 demo document, then migrates it into assets.
+ *
+ * Since the asset split (PLAN 34) this writes the *legacy* document to
+ * tests/fixtures/animation-assets/legacy-demo-project.v1.json and hands it to
+ * the migration, which produces `assets/animation/**` and the v2
+ * `projects/demo-character/project.json`. Keeping the seed authored in v1 is
+ * what gives the shadow comparison an oracle: the same input still describes
+ * the behaviour the chamber shipped before assets existed.
  *
  * This is a deliberate, explicitly-invoked seed tool, NOT a generator: the
  * project file is canonical data that humans and AI edit through the chamber
@@ -10,11 +17,21 @@
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AnimationClipDefinition, ProjectDefinition, StateDefinition, TransitionDefinition } from '@atc/schema';
+import type { AnimationClipDefinition, TransitionDefinition } from '@atc/schema';
 import { validateProject, validateProjectReferences } from '@atc/schema';
+import type { LegacyProject, LegacyState } from '@atc/animation-asset-runtime';
+import { migrateProjectToAssets } from '@atc/animation-asset-runtime';
+import { writeMigration } from './migrate-animation-assets.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outputPath = resolve(here, '../projects/demo-character/project.json');
+const legacyPath = resolve(
+  here,
+  '../tests/fixtures/animation-assets/legacy-demo-project.v1.json',
+);
+
+/** The seed authors schema v1; `StateDefinition` is now the v2 shape. */
+type SeedState = LegacyState;
 
 const clip = (id: string, durationSec: number, loop: boolean, overrides: Partial<AnimationClipDefinition> = {}): AnimationClipDefinition => ({
   schemaVersion: 1,
@@ -127,7 +144,7 @@ const clips: AnimationClipDefinition[] = [
   }),
 ];
 
-const state = (id: string, clipId: string, layer: 'locomotion' | 'action', overrides: Partial<StateDefinition> = {}): StateDefinition => ({
+const state = (id: string, clipId: string, layer: 'locomotion' | 'action', overrides: Partial<SeedState> = {}): SeedState => ({
   schemaVersion: 1,
   id,
   clipId,
@@ -141,7 +158,7 @@ const state = (id: string, clipId: string, layer: 'locomotion' | 'action', overr
   ...overrides,
 });
 
-const states: StateDefinition[] = [
+const states: SeedState[] = [
   state('idle', 'idle', 'locomotion'),
   state('walk', 'walk', 'locomotion'),
   state('run', 'run', 'locomotion'),
@@ -339,7 +356,7 @@ const transitions: TransitionDefinition[] = [
   }),
 ];
 
-const project: ProjectDefinition = {
+const project: LegacyProject = {
   schemaVersion: 1,
   id: 'demo-character',
   displayName: 'Demo Character',
@@ -712,16 +729,22 @@ if (existsSync(outputPath) && !force) {
   process.exit(1);
 }
 
-const schemaResult = validateProject(project);
-const referenceResult = validateProjectReferences(project);
+mkdirSync(dirname(legacyPath), { recursive: true });
+writeFileSync(legacyPath, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+console.log(`wrote ${legacyPath}`);
+
+// The v1 document is only an input now: what the chamber loads is the migrated
+// v2 project, validated here so a bad seed cannot reach the repository.
+const migration = migrateProjectToAssets(project);
+const schemaResult = validateProject(migration.project);
+const referenceResult = validateProjectReferences(migration.project);
 if (!schemaResult.valid || !referenceResult.valid) {
-  console.error('seed project failed validation:');
+  console.error('migrated seed project failed validation:');
   for (const issue of [...schemaResult.issues, ...referenceResult.issues]) {
     console.error(`  ${issue.path}: ${issue.message}`);
   }
   process.exit(1);
 }
 
-mkdirSync(dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
-console.log(`wrote ${outputPath}`);
+const written = writeMigration(migration);
+console.log(`wrote ${written.length} migrated file(s), including ${outputPath}`);

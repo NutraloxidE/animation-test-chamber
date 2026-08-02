@@ -10,9 +10,9 @@ import {
 import { frameAt } from '@atc/replay-runtime';
 import { emptyButtons } from '@atc/input-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
-import { loadDemoProject } from '../fixtures/project.ts';
+import { loadResolvedDemoProject } from '../fixtures/project.ts';
 
-const project = loadDemoProject();
+const project = loadResolvedDemoProject();
 
 describe('replay determinism', () => {
   it.each(REPLAY_FIXTURES.map((replay) => replay.id))(

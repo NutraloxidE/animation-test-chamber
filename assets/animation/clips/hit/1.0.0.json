@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "hit",
+    "version": "1.0.0",
+    "displayName": "hit",
+    "description": "Migrated from the embedded clip \"hit\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "689ecbf55213fb4f989f56ec60309e4c3e6021f82549eda130bc3b98e595769f",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "hit",
+    "assetPath": null,
+    "proceduralGenerator": "hit",
+    "durationSec": 0.45,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.9,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "hit-damage",
+        "kind": "DamageReceived",
+        "at": 0.05
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

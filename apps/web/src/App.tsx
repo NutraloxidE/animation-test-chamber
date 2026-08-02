@@ -13,13 +13,11 @@ import { CapabilityPanel } from './panels/CapabilityPanel.tsx';
 import { TerrainPanel } from './panels/TerrainPanel.tsx';
 import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
+import { Hierarchy } from './panels/Hierarchy.tsx';
+import { AssetLibrary } from './asset-library/AssetLibrary.tsx';
+import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
-import {
-  CHARACTER_PRESETS,
-  WEAPON_MODES,
-  characterPreset,
-  weaponMode,
-} from './three/catalog.ts';
+import { characterPreset, weaponMode } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
@@ -31,7 +29,9 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'ai', label: 'AI' },
   { id: 'diff', label: 'Diff' },
   { id: 'capability', label: 'Haptics' },
-  { id: 'acquisition', label: 'Assets' },
+  // Renamed from "Assets" (PLAN 29): the Asset Library is where assets live
+  // now, and this panel does one specific thing — bring new motion in.
+  { id: 'acquisition', label: 'Import' },
 ];
 
 function PanelBody({ id }: { id: PanelId }) {
@@ -117,11 +117,66 @@ function Hud() {
   );
 }
 
+/**
+ * Unity-style dock bar: which docks are visible, plus the workspace switch.
+ *
+ * The Asset Library stopped being a separate screen — it is the bottom dock
+ * now, the way Unity's Project window is — so "Asset Library" here means
+ * "show the bottom dock" and shares the same workspaceMode state (and test
+ * ids) it always had.
+ */
+function DockBar({
+  showHierarchy,
+  setShowHierarchy,
+  showInspector,
+  setShowInspector,
+}: {
+  showHierarchy: boolean;
+  setShowHierarchy: (next: boolean) => void;
+  showInspector: boolean;
+  setShowInspector: (next: boolean) => void;
+}) {
+  const mode = useChamber((state) => state.workspaceMode);
+  const setMode = useChamber((state) => state.setWorkspaceMode);
+  const showLibrary = mode === 'asset-library';
+  return (
+    <nav className="workspace-switch" data-testid="workspace-switch">
+      <span className="workspace-switch__title">Animation Test Chamber</span>
+      <button
+        type="button"
+        className={showHierarchy ? 'is-active' : ''}
+        onClick={() => setShowHierarchy(!showHierarchy)}
+        data-testid="toggle-hierarchy"
+      >
+        Hierarchy
+      </button>
+      <button
+        type="button"
+        className={showInspector ? 'is-active' : ''}
+        onClick={() => setShowInspector(!showInspector)}
+        data-testid="toggle-inspector"
+      >
+        Inspector
+      </button>
+      <button
+        type="button"
+        className={showLibrary ? 'is-active' : ''}
+        onClick={() => setMode(showLibrary ? 'chamber' : 'asset-library')}
+        data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'}
+      >
+        Project (Assets)
+      </button>
+    </nav>
+  );
+}
+
 export function App() {
   const engine = useChamber((state) => state.engine);
   const activePanel = useChamber((state) => state.activePanel);
   const setPanel = useChamber((state) => state.setPanel);
   const statusMessage = useChamber((state) => state.statusMessage);
+  const staleCharacterDrafts = useChamber((state) => state.staleCharacterDrafts);
+  const discardStaleCharacterDraft = useChamber((state) => state.discardStaleCharacterDraft);
   const showMobilePad = useChamber((state) => state.showMobilePad);
   const toggleMobilePad = useChamber((state) => state.toggleMobilePad);
   const hideUi = useChamber((state) => state.hideUiForRecording);
@@ -132,17 +187,22 @@ export function App() {
   const project = useChamber((state) => state.project);
   const characterPresetId = useChamber((state) => state.characterPresetId);
   const weaponModeId = useChamber((state) => state.weaponModeId);
-  const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
-  const setWeaponMode = useChamber((state) => state.setWeaponMode);
-  const equipped = useChamber((state) => state.equipped);
-  const setEquipped = useChamber((state) => state.setEquipped);
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
   const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
   const detectBackend = useChamber((state) => state.detectBackend);
   const backendOnline = useChamber((state) => state.backendOnline);
 
+  const workspaceMode = useChamber((state) => state.workspaceMode);
+  const libraryDialog = useChamber((state) => state.libraryDialog);
+
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
+  // (styles.css) rather than a reserved grid column, so leaving it open by
+  // default there would cover the sheet handle and every other narrow-width
+  // control before the user ever asked for it.
+  const [showHierarchy, setShowHierarchy] = useState(() => window.matchMedia('(min-width: 901px)').matches);
+  const [showInspector, setShowInspector] = useState(true);
   const [padAuto] = useState(() => detectTouchDevice());
   const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
   const [paused, setPaused] = useState(() => engine.isPaused);
@@ -182,8 +242,28 @@ export function App() {
       (project.inputMap.mobilePad.visibility === 'auto' && padAuto) ||
       showMobilePad);
 
+  const libraryOpen = workspaceMode === 'asset-library';
+  const layout = hideUi
+    ? ' app--clean'
+    : `${showHierarchy ? ' app--hierarchy' : ''}${showInspector ? ' app--inspector' : ''}${
+        libraryOpen ? ' app--library-dock' : ''
+      }`;
+
   return (
-    <div className={`app${hideUi ? ' app--clean' : ''}`}>
+    <div className={`app${layout}`}>
+      {!hideUi && (
+        <DockBar
+          showHierarchy={showHierarchy}
+          setShowHierarchy={setShowHierarchy}
+          showInspector={showInspector}
+          setShowInspector={setShowInspector}
+        />
+      )}
+      {!hideUi && showHierarchy && (
+        <aside className="app__hierarchy">
+          <Hierarchy />
+        </aside>
+      )}
       <div className="app__viewport">
         <Viewport />
         {!hideUi && <Hud />}
@@ -193,31 +273,8 @@ export function App() {
           <details className="viewport-controls" data-testid="viewport-controls" open>
             <summary>Controls</summary>
             <div className="viewport-controls__body">
-              <label className="viewport-select">
-                Character
-                <select value={characterPresetId} onChange={(event) => setCharacterPreset(event.target.value)} data-testid="character-select">
-                  {CHARACTER_PRESETS.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
-                </select>
-              </label>
-              <label className="viewport-select">
-                Weapon
-                <select value={weaponModeId} onChange={(event) => setWeaponMode(event.target.value)} data-testid="weapon-mode-select">
-                  {WEAPON_MODES.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
-                </select>
-              </label>
-              {/* One toggle per declared slot: adding equipment to the document
-                  grows this row without touching App. */}
-              {project.equipment.map((slot) => (
-                <label className="viewport-toggle" key={slot.id}>
-                  <input
-                    type="checkbox"
-                    checked={equipped[slot.id] ?? slot.defaultEquipped}
-                    onChange={(event) => setEquipped(slot.id, event.target.checked)}
-                    data-testid={`equip-${slot.id}`}
-                  />
-                  {slot.label}
-                </label>
-              ))}
+              {/* Character, weapon and equipment live in the Hierarchy now —
+                  they are scene objects, not scene-view controls. */}
               <label className="viewport-select">
                 Grip
                 <select
@@ -309,33 +366,71 @@ export function App() {
 
       {!hideUi && (
         <>
-          <button
-            type="button"
-            className="sheet-handle"
-            onClick={() => setSheetOpen((open) => !open)}
-            data-testid="sheet-handle"
-          >
-            {sheetOpen ? 'Close panels ▾' : 'Open panels ▴'}
-          </button>
+          {showInspector && (
+            <button
+              type="button"
+              className="sheet-handle"
+              onClick={() => setSheetOpen((open) => !open)}
+              data-testid="sheet-handle"
+            >
+              {sheetOpen ? 'Close panels ▾' : 'Open panels ▴'}
+            </button>
+          )}
 
-          <aside className={`app__panels${sheetOpen ? ' is-open' : ''}`}>
-            <nav className="tabs">
-              {PANELS.map((panel) => (
-                <button
-                  type="button"
-                  key={panel.id}
-                  className={activePanel === panel.id ? 'is-active' : ''}
-                  onClick={() => setPanel(panel.id)}
-                  data-testid={`tab-${panel.id}`}
-                >
-                  {panel.label}
-                </button>
+          {showInspector && (
+            <aside className={`app__panels${sheetOpen ? ' is-open' : ''}`}>
+              <nav className="tabs">
+                {PANELS.map((panel) => (
+                  <button
+                    type="button"
+                    key={panel.id}
+                    className={activePanel === panel.id ? 'is-active' : ''}
+                    onClick={() => setPanel(panel.id)}
+                    data-testid={`tab-${panel.id}`}
+                  >
+                    {panel.label}
+                  </button>
+                ))}
+              </nav>
+              <div className="app__panel-body">
+                <PanelBody id={activePanel} />
+              </div>
+            </aside>
+          )}
+
+          {/* Unity's Project window: the asset library docked along the bottom
+              rather than a screen you leave the running simulation to visit. */}
+          {libraryOpen && (
+            <section className="app__library-dock">
+              <AssetLibrary />
+            </section>
+          )}
+
+          {/* The dialog belongs to the Chamber too: a commit that turns out to
+              hold animation edits opens it here rather than sending the reader
+              to another workspace to find out why the commit stopped. */}
+          {libraryDialog === 'save-destination' && <SaveDestinationDialog />}
+
+          {/* A draft made against a repository revision that has since moved
+              on is never reapplied silently (PLAN Part V §24) — it is only
+              ever offered here, for a human to discard. */}
+          {staleCharacterDrafts.length > 0 && (
+            <div className="app__stale-draft-banner" data-testid="stale-character-draft-banner">
+              {staleCharacterDrafts.map((draft) => (
+                <p key={`${draft.characterId}:${draft.revisionId}`}>
+                  A browser-only draft for “{draft.characterId}” was made against an older
+                  repository revision and was not applied.
+                  <button
+                    type="button"
+                    onClick={() => discardStaleCharacterDraft(draft.characterId, draft.revisionId)}
+                    data-testid={`stale-character-draft-discard-${draft.characterId}`}
+                  >
+                    Discard
+                  </button>
+                </p>
               ))}
-            </nav>
-            <div className="app__panel-body">
-              <PanelBody id={activePanel} />
             </div>
-          </aside>
+          )}
 
           <footer className="status" data-testid="status-bar">
             {statusMessage}

@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-tuning",
+    "id": "alternate-humanoid-tuning",
+    "version": "1.0.0",
+    "displayName": "Alternate humanoid tuning",
+    "description": "Character-specific feel. Adjusts steering authority only, so the shared state machine is provably unchanged.",
+    "tags": [
+      "alternate"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "1fe0d91cbb0ca1f8879b9e20c9ff07010da7d0e62300b6cb16679355c4156588",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "compatibleBehavior": {
+    "assetType": "animation-behavior",
+    "assetId": "humanoid-third-person-base",
+    "version": "1.0.0",
+    "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+  },
+  "patches": [
+    {
+      "path": "/transitions/run-to-attack-01/rotationAuthority",
+      "op": "set",
+      "value": 0.45,
+      "reason": "this character turns into its swing harder than the demo character"
+    }
+  ]
+}

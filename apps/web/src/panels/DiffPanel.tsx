@@ -27,6 +27,11 @@ export function DiffPanel() {
   const validation = session.validate();
   const staged = session.stagedPaths;
   const needsSave = session.needsSavePaths;
+  // A save whose staged changes are entirely asset-owned never touches git —
+  // it is redirected to the Save Destination dialog below, and a
+  // character-override destination there can complete with no API server at
+  // all (PLAN Part V §24). Only a project-file commit genuinely needs one.
+  const assetChangesOnly = staged.length > 0 && session.stagedProjectChanges.length === 0;
 
   const findings = [...diff.findings].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
 
@@ -117,7 +122,7 @@ export function DiffPanel() {
         <div className="button-row">
           <button
             type="button"
-            disabled={offline || staged.length === 0 || !validation.valid || !diff.commitAllowed}
+            disabled={(offline && !assetChangesOnly) || staged.length === 0 || !validation.valid || !diff.commitAllowed}
             onClick={() => commit(intent)}
             data-testid="commit-button"
           >

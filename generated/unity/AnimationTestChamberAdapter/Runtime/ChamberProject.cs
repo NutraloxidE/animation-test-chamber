@@ -13,10 +13,10 @@ namespace AnimationTestChamber
         [Serializable]
         private class ProjectEnvelope
         {
-            public ProjectDefinition project;
+            public ResolvedProject project;
         }
 
-        public static ProjectDefinition LoadFromJson(string json)
+        public static ResolvedProject LoadFromJson(string json)
         {
             if (string.IsNullOrEmpty(json))
             {
@@ -32,7 +32,7 @@ namespace AnimationTestChamber
             return envelope.project;
         }
 
-        public static ProjectDefinition LoadFromFile(string path)
+        public static ResolvedProject LoadFromFile(string path)
         {
             return LoadFromJson(File.ReadAllText(path));
         }

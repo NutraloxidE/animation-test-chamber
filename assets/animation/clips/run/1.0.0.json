@@ -1,0 +1,63 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "run",
+    "version": "1.0.0",
+    "displayName": "run",
+    "description": "Migrated from the embedded clip \"run\".",
+    "tags": [
+      "migrated",
+      "loop"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "f31b0fdd646b7cdcfd080c8ad7e1e27a0a7d372a9029c131652350a57d571f32",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "run",
+    "assetPath": null,
+    "proceduralGenerator": "run",
+    "durationSec": 0.7,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 4.2
+    },
+    "rootMotionMode": "Hybrid",
+    "events": [
+      {
+        "id": "run-foot-l",
+        "kind": "FootContactLeft",
+        "at": 0.05
+      },
+      {
+        "id": "run-foot-r",
+        "kind": "FootContactRight",
+        "at": 0.55
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.3
+        }
+      ],
+      "right": [
+        {
+          "start": 0.5,
+          "end": 0.8
+        }
+      ]
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-dodge",
+    "version": "1.0.0",
+    "displayName": "alt dodge",
+    "description": "Migrated from the embedded clip \"dodge\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "562e51e7e2367f73152b6625e746d550c7950f780197cb21d7bc18be993f4a33",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-dodge",
+    "assetPath": null,
+    "proceduralGenerator": "dodge",
+    "durationSec": 1.4666667,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.3,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 10
+    },
+    "rootMotionMode": "RootMotion",
+    "rootMotionCurve": "FastInSlowOut",
+    "recoveryTransitionStartNormalized": 0.62,
+    "events": [
+      {
+        "id": "dodge-start",
+        "kind": "DodgeStart",
+        "at": 0.05
+      },
+      {
+        "id": "dodge-end",
+        "kind": "DodgeEnd",
+        "at": 0.85
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ]
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "replayId": "run-to-attack-forward",
+      "terrainPresetId": "flat",
+      "intent": "Adjust motion timing"
+    },
+    "timeCurve": {
+      "x1": 0.2406111111111111,
+      "y1": 0.3670833333333333,
+      "x2": 0.4887222222222222,
+      "y2": 0.6860833333333334
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

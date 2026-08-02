@@ -38,16 +38,9 @@
         ],
         "properties": {
           "id": {
-            "anyOf": [
-              {
-                "const": "locomotion",
-                "type": "string"
-              },
-              {
-                "const": "action",
-                "type": "string"
-              }
-            ]
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
           },
           "order": {
             "minimum": 0,
@@ -94,11 +87,13 @@
         "required": [
           "schemaVersion",
           "id",
-          "clipId",
+          "motionSlot",
           "layer",
           "loop",
           "speed",
           "timeoutSec",
+          "completionPolicy",
+          "movementAuthorityPolicy",
           "allowReEntry",
           "interruptible"
         ],
@@ -113,34 +108,23 @@
             "maxLength": 96,
             "type": "string"
           },
-          "clipId": {
-            "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "motionSlot": {
             "minLength": 1,
-            "maxLength": 96,
+            "maxLength": 128,
             "type": "string"
           },
-          "weaponClips": {
+          "contextualMotionSlots": {
             "type": "object",
             "patternProperties": {
               "^(.*)$": {
-                "pattern": "^[a-z0-9][a-z0-9-]*$",
-                "minLength": 1,
-                "maxLength": 96,
                 "type": "string"
               }
             }
           },
           "layer": {
-            "anyOf": [
-              {
-                "const": "locomotion",
-                "type": "string"
-              },
-              {
-                "const": "action",
-                "type": "string"
-              }
-            ]
+            "minLength": 1,
+            "maxLength": 64,
+            "type": "string"
           },
           "loop": {
             "type": "boolean"
@@ -160,6 +144,101 @@
             "minLength": 1,
             "maxLength": 96,
             "type": "string"
+          },
+          "completionPolicy": {
+            "$id": "StateCompletionPolicy",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "mode",
+              "holdTicks"
+            ],
+            "properties": {
+              "mode": {
+                "anyOf": [
+                  {
+                    "const": "loop",
+                    "type": "string"
+                  },
+                  {
+                    "const": "immediate-fallback",
+                    "type": "string"
+                  },
+                  {
+                    "const": "hold-final-frame",
+                    "type": "string"
+                  },
+                  {
+                    "const": "wait-for-transition",
+                    "type": "string"
+                  }
+                ]
+              },
+              "holdTicks": {
+                "minimum": 0,
+                "maximum": 240,
+                "type": "integer"
+              }
+            }
+          },
+          "recoveryPolicy": {
+            "$id": "StateRecoveryPolicy",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "authorityReturnAtNormalized",
+              "blendDurationSec"
+            ],
+            "properties": {
+              "authorityReturnAtNormalized": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "blendDurationSec": {
+                "minimum": 0,
+                "maximum": 2,
+                "type": "number"
+              }
+            }
+          },
+          "movementAuthorityPolicy": {
+            "$id": "MovementAuthorityPolicy",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "locksMovementUntilRecovery",
+              "returnsAuthorityOnRecovery",
+              "providesLocomotionAuthority",
+              "locomotionSpeedReference"
+            ],
+            "properties": {
+              "locksMovementUntilRecovery": {
+                "type": "boolean"
+              },
+              "returnsAuthorityOnRecovery": {
+                "type": "boolean"
+              },
+              "providesLocomotionAuthority": {
+                "type": "boolean"
+              },
+              "locomotionSpeedReference": {
+                "anyOf": [
+                  {
+                    "const": "none",
+                    "type": "string"
+                  },
+                  {
+                    "const": "walk",
+                    "type": "string"
+                  },
+                  {
+                    "const": "run",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
           },
           "allowReEntry": {
             "type": "boolean"

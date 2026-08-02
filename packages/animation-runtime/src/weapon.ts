@@ -1,25 +1,36 @@
-import type { AnimationGraphDefinition, ProjectDefinition } from '@atc/schema';
+import type { AnimationGraphDefinition, ResolvedProject } from '@atc/schema';
 
 /**
- * Resolves the document for one weapon mode.
+ * The document as one weapon mode sees it.
  *
- * Each state picks its weapon's clip, each transition takes that weapon's timing
- * overrides, and the clips belonging to the other weapons are dropped. Past this
- * point nothing — runtime, panels, diffing — has to know weapons exist: it sees
- * one ordinary project whose attacks happen to be this weapon's.
+ * The mechanism underneath changed: a weapon is now a contextual key on a
+ * motion set binding, so *every* character gets per-weapon clips through the
+ * same path instead of through a map living on the state. What this function
+ * still does is collapse that choice for one mode — its bindings, its
+ * transition timing, and none of the other weapons' clips — so that past this
+ * point nothing has to know weapons exist.
  *
- * The graph itself is deliberately not per weapon. Combo structure and cancel
- * routes are the character's, not the sword's.
+ * The graph itself is deliberately still not per weapon. Combo structure and
+ * cancel routes are the character's, not the sword's.
  */
 export function resolveWeaponMode(
-  project: ProjectDefinition,
+  project: ResolvedProject,
   weaponModeId: string,
-): ProjectDefinition {
+): ResolvedProject {
   const graph = resolveGraph(project.graph, weaponModeId);
-  const used = new Set(graph.states.map((state) => state.clipId));
+  const motionBindings: Record<string, string> = {
+    ...project.motionBindings,
+    ...(project.contextualMotionBindings[weaponModeId] ?? {}),
+  };
+  const used = new Set(
+    graph.states
+      .map((state) => motionBindings[state.contextualMotionSlots?.[weaponModeId] ?? state.motionSlot])
+      .filter((clipId): clipId is string => clipId !== undefined),
+  );
   return {
     ...project,
     graph,
+    motionBindings,
     clips: project.clips.filter((clip) => used.has(clip.id)),
   };
 }
@@ -30,10 +41,6 @@ function resolveGraph(
 ): AnimationGraphDefinition {
   return {
     ...graph,
-    states: graph.states.map(({ weaponClips, ...state }) => ({
-      ...state,
-      clipId: weaponClips?.[weaponModeId] ?? state.clipId,
-    })),
     transitions: graph.transitions.map(({ weaponOverrides, ...transition }) =>
       weaponOverrides?.[weaponModeId]
         ? { ...transition, ...weaponOverrides[weaponModeId] }

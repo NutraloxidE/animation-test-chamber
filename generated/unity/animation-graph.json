@@ -1,11 +1,11 @@
 {
   "_generated": true,
   "_source": "Animation Test Chamber browser runtime",
-  "_generatedAt": "revision:rev-0006",
+  "_generatedAt": "revision:rev-0008",
   "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
   "graph": {
-    "schemaVersion": 1,
-    "id": "demo-graph",
+    "schemaVersion": 2,
+    "id": "humanoid-third-person-base",
     "layers": [
       {
         "id": "locomotion",
@@ -24,211 +24,403 @@
     ],
     "states": [
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "idle",
-        "clipId": "idle",
+        "motionSlot": "locomotion.idle",
         "layer": "locomotion",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "walk",
-        "clipId": "walk",
+        "motionSlot": "locomotion.walk",
         "layer": "locomotion",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": true,
+          "locomotionSpeedReference": "walk"
+        },
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "run",
-        "clipId": "run",
+        "motionSlot": "locomotion.run",
         "layer": "locomotion",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": true,
+          "locomotionSpeedReference": "run"
+        },
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "jump",
-        "clipId": "jump",
+        "motionSlot": "airborne.jump",
         "layer": "locomotion",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "immediate-fallback",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "fall",
-        "clipId": "fall",
+        "motionSlot": "airborne.fall",
         "layer": "locomotion",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "land",
-        "clipId": "land",
+        "motionSlot": "airborne.land",
         "layer": "locomotion",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "immediate-fallback",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
-        "bodyMask": "full",
-        "fallbackState": "idle"
+        "fallbackState": "idle",
+        "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "slide",
-        "clipId": "slide",
+        "motionSlot": "state.slide",
         "layer": "locomotion",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
         "bodyMask": "full"
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "action-none",
-        "clipId": "action-none",
+        "motionSlot": "state.action-none",
         "layer": "action",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
-        "bodyMask": "upper"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
+        }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "attack-01",
-        "clipId": "unarmed-attack-01",
+        "motionSlot": "action.primary.01",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "hold-final-frame",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": true,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
-        "bodyMask": "upper",
         "fallbackState": "action-none",
-        "weaponClips": {
-          "unarmed": "unarmed-attack-01",
-          "sword": "sword-attack-01",
-          "magic": "magic-attack-01"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
         }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "attack-01-recovery",
-        "clipId": "unarmed-attack-01-recovery",
+        "motionSlot": "state.attack-01-recovery",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "hold-final-frame",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": true,
+          "returnsAuthorityOnRecovery": true,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
-        "bodyMask": "upper",
         "fallbackState": "action-none",
-        "weaponClips": {
-          "unarmed": "unarmed-attack-01-recovery",
-          "sword": "sword-attack-01-recovery",
-          "magic": "magic-attack-01-recovery"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0,
+          "blendDurationSec": 0.28
         }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "attack-02",
-        "clipId": "unarmed-attack-02",
+        "motionSlot": "action.primary.02",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "hold-final-frame",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": true,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
-        "bodyMask": "upper",
         "fallbackState": "action-none",
-        "weaponClips": {
-          "unarmed": "unarmed-attack-02",
-          "sword": "sword-attack-02",
-          "magic": "magic-attack-02"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
         }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "attack-02-recovery",
-        "clipId": "unarmed-attack-02-recovery",
+        "motionSlot": "state.attack-02-recovery",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "hold-final-frame",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": true,
+          "returnsAuthorityOnRecovery": true,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
-        "bodyMask": "upper",
         "fallbackState": "action-none",
-        "weaponClips": {
-          "unarmed": "unarmed-attack-02-recovery",
-          "sword": "sword-attack-02-recovery",
-          "magic": "magic-attack-02-recovery"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0,
+          "blendDurationSec": 0.28
         }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "dodge",
-        "clipId": "dodge",
+        "motionSlot": "mobility.dodge",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "immediate-fallback",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": true,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": false,
+        "fallbackState": "action-none",
         "bodyMask": "full",
-        "fallbackState": "action-none"
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
+        }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "id": "guard",
-        "clipId": "guard",
+        "motionSlot": "state.guard",
         "layer": "action",
         "loop": true,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
-        "bodyMask": "upper"
+        "bodyMask": "upper",
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
+        }
       },
       {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
+        "id": "guard-shield",
+        "motionSlot": "state.guard-shield",
+        "layer": "action",
+        "loop": true,
+        "speed": 0.44,
+        "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "loop",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
+        "allowReEntry": false,
+        "interruptible": true,
+        "bodyMask": "upper",
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.44
+        },
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
+        }
+      },
+      {
+        "schemaVersion": 2,
         "id": "hit",
-        "clipId": "hit",
+        "motionSlot": "state.hit",
         "layer": "action",
         "loop": false,
         "speed": 1,
         "timeoutSec": 0,
+        "completionPolicy": {
+          "mode": "immediate-fallback",
+          "holdTicks": 0
+        },
+        "movementAuthorityPolicy": {
+          "locksMovementUntilRecovery": false,
+          "returnsAuthorityOnRecovery": false,
+          "providesLocomotionAuthority": false,
+          "locomotionSpeedReference": "none"
+        },
         "allowReEntry": false,
         "interruptible": true,
+        "fallbackState": "action-none",
         "bodyMask": "full",
-        "fallbackState": "action-none"
+        "recoveryPolicy": {
+          "authorityReturnAtNormalized": 0.78,
+          "blendDurationSec": 0.28
+        }
       }
     ],
     "transitions": [
@@ -704,6 +896,37 @@
             "parameter": "guardHeld",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 90
+      },
+      {
+        "schemaVersion": 1,
+        "id": "idle-to-guard-shield",
+        "from": "action-none",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": true
           }
         ],
         "blendDurationSec": 0.07,
@@ -719,6 +942,27 @@
         "schemaVersion": 1,
         "id": "guard-to-none",
         "from": "guard",
+        "to": "action-none",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.08,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 150,
+        "priority": 50
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-none-shield",
+        "from": "guard-shield",
         "to": "action-none",
         "conditions": [
           {
@@ -785,7 +1029,7 @@
             "value": 200
           }
         ],
-        "blendDurationSec": 0.05,
+        "blendDurationSec": 0.255,
         "startOffsetNormalized": 0,
         "playbackSpeed": 1,
         "momentumRetention": 1,
@@ -796,6 +1040,12 @@
         "cancelWindow": {
           "start": 0.4,
           "end": 0.85
+        },
+        "provenance": {
+          "source": "human-adjustment",
+          "humanFinal": 0.255,
+          "replayId": "run-to-attack-forward",
+          "terrainPresetId": "flat"
         }
       },
       {
@@ -833,6 +1083,41 @@
             "parameter": "guardHeld",
             "operator": "equals",
             "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-01-to-guard-shield",
+        "from": "attack-01",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": true
           }
         ],
         "blendDurationSec": 0.07,
@@ -856,6 +1141,41 @@
         "conditions": [
           {
             "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
+            "operator": "equals",
+            "value": false
+          }
+        ],
+        "blendDurationSec": 0.07,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 95,
+        "cancelWindow": {
+          "start": 0.7,
+          "end": 1
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "id": "attack-02-to-guard-shield",
+        "from": "attack-02",
+        "to": "guard-shield",
+        "conditions": [
+          {
+            "parameter": "guardHeld",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "parameter": "equippedShield",
             "operator": "equals",
             "value": true
           }
@@ -896,8 +1216,50 @@
       },
       {
         "schemaVersion": 1,
+        "id": "guard-to-attack-01-shield",
+        "from": "guard-shield",
+        "to": "attack-01",
+        "conditions": [
+          {
+            "parameter": "PrimaryAction",
+            "operator": "buffered",
+            "value": 160
+          }
+        ],
+        "blendDurationSec": 0.06,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 160,
+        "priority": 115
+      },
+      {
+        "schemaVersion": 1,
         "id": "guard-to-dodge",
         "from": "guard",
+        "to": "dodge",
+        "conditions": [
+          {
+            "parameter": "Dodge",
+            "operator": "buffered",
+            "value": 180
+          }
+        ],
+        "blendDurationSec": 0.05,
+        "startOffsetNormalized": 0,
+        "playbackSpeed": 1,
+        "momentumRetention": 1,
+        "rotationAuthority": 1,
+        "interruptible": true,
+        "inputBufferMs": 180,
+        "priority": 175
+      },
+      {
+        "schemaVersion": 1,
+        "id": "guard-to-dodge-shield",
+        "from": "guard-shield",
         "to": "dodge",
         "conditions": [
           {
@@ -1122,6 +1484,7 @@
       "hit",
       "dodge",
       "guard",
+      "guard-shield",
       "attack-02",
       "attack-01",
       "jump",

@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CharacterAnimationAssignment",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "behavior",
+    "motionSet",
+    "rig",
+    "instanceOverrides"
+  ],
+  "properties": {
+    "behavior": {
+      "$id": "AssetReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "AnimationAssetType",
+          "anyOf": [
+            {
+              "const": "animation-behavior",
+              "type": "string"
+            },
+            {
+              "const": "animation-motion-set",
+              "type": "string"
+            },
+            {
+              "const": "animation-clip",
+              "type": "string"
+            },
+            {
+              "const": "humanoid-rig",
+              "type": "string"
+            },
+            {
+              "const": "animation-tuning",
+              "type": "string"
+            }
+          ]
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "motionSet": {
+      "$id": "AssetReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "AnimationAssetType",
+          "anyOf": [
+            {
+              "const": "animation-behavior",
+              "type": "string"
+            },
+            {
+              "const": "animation-motion-set",
+              "type": "string"
+            },
+            {
+              "const": "animation-clip",
+              "type": "string"
+            },
+            {
+              "const": "humanoid-rig",
+              "type": "string"
+            },
+            {
+              "const": "animation-tuning",
+              "type": "string"
+            }
+          ]
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "rig": {
+      "$id": "AssetReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "AnimationAssetType",
+          "anyOf": [
+            {
+              "const": "animation-behavior",
+              "type": "string"
+            },
+            {
+              "const": "animation-motion-set",
+              "type": "string"
+            },
+            {
+              "const": "animation-clip",
+              "type": "string"
+            },
+            {
+              "const": "humanoid-rig",
+              "type": "string"
+            },
+            {
+              "const": "animation-tuning",
+              "type": "string"
+            }
+          ]
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "tuning": {
+      "$id": "AssetReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "AnimationAssetType",
+          "anyOf": [
+            {
+              "const": "animation-behavior",
+              "type": "string"
+            },
+            {
+              "const": "animation-motion-set",
+              "type": "string"
+            },
+            {
+              "const": "animation-clip",
+              "type": "string"
+            },
+            {
+              "const": "humanoid-rig",
+              "type": "string"
+            },
+            {
+              "const": "animation-tuning",
+              "type": "string"
+            }
+          ]
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "instanceOverrides": {
+      "type": "array",
+      "items": {
+        "$id": "CanonicalPatch",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "op"
+        ],
+        "properties": {
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "op": {
+            "anyOf": [
+              {
+                "const": "set",
+                "type": "string"
+              },
+              {
+                "const": "append",
+                "type": "string"
+              },
+              {
+                "const": "remove",
+                "type": "string"
+              }
+            ]
+          },
+          "value": {},
+          "reason": {
+            "type": "string"
+          },
+          "provenance": {
+            "$id": "ValueProvenance",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "const": "repository",
+                    "type": "string"
+                  },
+                  {
+                    "const": "human-adjustment",
+                    "type": "string"
+                  },
+                  {
+                    "const": "ai-proposal",
+                    "type": "string"
+                  },
+                  {
+                    "const": "import",
+                    "type": "string"
+                  },
+                  {
+                    "const": "default",
+                    "type": "string"
+                  }
+                ]
+              },
+              "basedOnAiProposal": {
+                "type": "number"
+              },
+              "humanFinal": {
+                "type": "number"
+              },
+              "replayId": {
+                "type": "string"
+              },
+              "terrainPresetId": {
+                "type": "string"
+              },
+              "intent": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

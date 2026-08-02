@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "alt-magic-attack-01-recovery",
+    "version": "1.0.0",
+    "displayName": "alt magic attack 01 recovery",
+    "description": "Migrated from the embedded clip \"magic-attack-01-recovery\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "d156d47d2d975d3974c8021ab82ce618c6b1fe94296b92a2abb04489db223724",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "alt-magic-attack-01-recovery",
+    "assetPath": null,
+    "proceduralGenerator": "attack-01-recovery",
+    "durationSec": 0.9666666,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "provenance": {
+      "source": "human-adjustment",
+      "humanFinal": 0
+    },
+    "timeCurve": {
+      "x1": 0.15683372667100695,
+      "y1": 0.43474999999999997,
+      "x2": 0.75,
+      "y2": 0.75
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}

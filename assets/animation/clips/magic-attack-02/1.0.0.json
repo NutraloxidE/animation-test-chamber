@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "magic-attack-02",
+    "version": "1.0.0",
+    "displayName": "magic attack 02",
+    "description": "Migrated from the embedded clip \"magic-attack-02\".",
+    "tags": [
+      "migrated",
+      "oneshot"
+    ],
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "createdBy": "animation-asset-migration",
+    "contentHash": "3d038e7eda14e450c326517ddb4118d989c629aba328c45016346ef9a4302533",
+    "assetProvenance": {
+      "migratedFromSchemaVersion": 1
+    }
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "magic-attack-02",
+    "assetPath": null,
+    "proceduralGenerator": "attack-02",
+    "durationSec": 0.85,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.2,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [
+      {
+        "id": "a2-windup",
+        "kind": "AttackWindup",
+        "at": 0.2
+      },
+      {
+        "id": "a2-hit",
+        "kind": "AttackHit",
+        "at": 0.5
+      },
+      {
+        "id": "a2-recoil",
+        "kind": "AttackRecoil",
+        "at": 0.78
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.5
+        }
+      ],
+      "right": [
+        {
+          "start": 0.3,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 0.58,
+      "y2": 1
+    },
+    "provenance": {
+      "source": "human-adjustment"
+    }
+  },
+  "compatibleRigIds": [
+    "demo-humanoid-rig"
+  ]
+}
