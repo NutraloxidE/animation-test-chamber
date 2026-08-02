@@ -14,6 +14,8 @@ export default defineConfig({
       '@atc/terrain-runtime': pkg('terrain-runtime'),
       '@atc/haptics-runtime': pkg('haptics-runtime'),
       '@atc/replay-runtime': pkg('replay-runtime'),
+      '@atc/world-runtime': pkg('world-runtime'),
+      '@atc/capability-runtime': pkg('capability-runtime'),
       '@atc/editor-core': pkg('editor-core'),
       '@atc/git-adapter': pkg('git-adapter'),
       '@atc/ai-adapter': pkg('ai-adapter'),

@@ -188,6 +188,24 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/capability-runtime:
+    dependencies:
+      '@atc/animation-asset-runtime':
+        specifier: workspace:*
+        version: link:../animation-asset-runtime
+      '@atc/runtime-core':
+        specifier: workspace:*
+        version: link:../runtime-core
+      '@atc/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@atc/world-runtime':
+        specifier: workspace:*
+        version: link:../world-runtime
+      '@sinclair/typebox':
+        specifier: ^0.34.9
+        version: 0.34.52
+
   packages/editor-core:
     dependencies:
       '@atc/animation-runtime':
@@ -294,6 +312,30 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.9
         version: 0.34.52
+
+  packages/world-runtime:
+    dependencies:
+      '@atc/animation-asset-runtime':
+        specifier: workspace:*
+        version: link:../animation-asset-runtime
+      '@atc/animation-runtime':
+        specifier: workspace:*
+        version: link:../animation-runtime
+      '@atc/input-runtime':
+        specifier: workspace:*
+        version: link:../input-runtime
+      '@atc/replay-runtime':
+        specifier: workspace:*
+        version: link:../replay-runtime
+      '@atc/runtime-core':
+        specifier: workspace:*
+        version: link:../runtime-core
+      '@atc/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@atc/terrain-runtime':
+        specifier: workspace:*
+        version: link:../terrain-runtime
 
 packages:
 
