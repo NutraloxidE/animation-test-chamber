@@ -24,11 +24,12 @@ import type {
 import { CURRENT_SCHEMA_VERSION, validateWorldReferences } from '@atc/schema';
 import { evaluateEdit } from '@atc/runtime-core';
 import {
+  MAX_SIMULATED_TICKS,
+  MAX_TRACED_TICKS,
   flattenObservations,
   observeInstance,
   observeWorld,
-  recordWorldTrace,
-  hashWorldTrace,
+  simulateWorld,
 } from '@atc/world-runtime';
 import type { CommandContext, CommandDeclaration, CommandResult } from './manifest.ts';
 
@@ -210,7 +211,7 @@ const inspectInstance: CommandDeclaration = {
 const readObservations: CommandDeclaration = {
   id: 'world.read_observations',
   description:
-    'Reads instance-qualified observations as flat `/world/instances/<id>/...` paths.',
+    'Reads instance-qualified observations from the runtime attached to *this* command context. In-process only: it observes the current runtime and never a runtime from an earlier request. Over HTTP, use world.simulate, which returns its observations in the same response.',
   mutating: false,
   inputSchema: Type.Object(
     { instanceId: Type.Optional(InstanceId) },
@@ -229,7 +230,7 @@ const readObservations: CommandDeclaration = {
     const input = rawInput as { instanceId?: string };
 
     if (!context.runtime) {
-      return refuse('/', 'no runtime is attached; call world.preview first', 'state');
+      return refuse('/', 'no runtime is attached to this context; use world.simulate', 'state');
     }
     const observation = observeWorld(context.runtime);
     const flat = flattenObservations(observation);
@@ -241,13 +242,18 @@ const readObservations: CommandDeclaration = {
   },
 };
 
-const preview: CommandDeclaration = {
-  id: 'world.preview',
+const simulate: CommandDeclaration = {
+  id: 'world.simulate',
   description:
-    'Advances the attached runtime by a fixed number of ticks and returns the world hash. Read-only with respect to the repository.',
+    'Stateless: advances a fresh runtime by a fixed number of ticks and returns the final observation and a deterministic world hash in the same response. It keeps no server state, so nothing needs to be read back in a later request. Read-only with respect to the repository.',
   mutating: false,
   inputSchema: Type.Object(
-    { ticks: Type.Integer({ minimum: 1, maximum: 10_000 }) },
+    {
+      ticks: Type.Integer({ minimum: 1, maximum: MAX_SIMULATED_TICKS }),
+      includeFlatObservations: Type.Optional(Type.Boolean()),
+      includeTrace: Type.Optional(Type.Boolean()),
+      cameraYawRad: Type.Optional(Type.Number({ minimum: -1000, maximum: 1000 })),
+    },
     { additionalProperties: false },
   ),
   outputSchema: Type.Object(
@@ -255,21 +261,54 @@ const preview: CommandDeclaration = {
       tick: Type.Number(),
       worldHash: Type.String(),
       instanceOrder: Type.Array(Type.String()),
+      observation: Type.Unknown(),
+      flatObservations: Type.Optional(Type.Unknown()),
+      trace: Type.Optional(Type.Unknown()),
     },
     { additionalProperties: false },
   ),
   execute: (rawInput: unknown, context: CommandContext) => {
-    const input = rawInput as { ticks: number };
-
-    if (!context.runtime) {
-      return refuse('/', 'no runtime is attached', 'state');
+    const input = rawInput as {
+      ticks: number;
+      includeFlatObservations?: boolean;
+      includeTrace?: boolean;
+      cameraYawRad?: number;
+    };
+    if (!context.registry) {
+      return refuse('/', 'no asset registry is attached to this command context', 'state');
     }
-    const trace = recordWorldTrace(context.runtime, input.ticks);
-    return ok({
-      tick: context.runtime.tick,
-      worldHash: hashWorldTrace(trace),
-      instanceOrder: trace.instanceOrder,
-    });
+    /*
+     * The trace is capped rather than the run. A caller can simulate ten
+     * thousand ticks and get a hash; asking for every record of that run is how
+     * one extra zero becomes a response nobody wanted to receive.
+     */
+    if (input.includeTrace && input.ticks > MAX_TRACED_TICKS) {
+      return refuse(
+        '/includeTrace',
+        `a trace is limited to ${MAX_TRACED_TICKS} ticks; ${input.ticks} were requested`,
+        'maximum',
+      );
+    }
+
+    const worldIssues = validateStaged(context.project, context.world);
+    if (worldIssues.length > 0) return { ok: false, issues: worldIssues };
+
+    try {
+      const result = simulateWorld({
+        registry: context.registry,
+        project: context.project,
+        world: context.world,
+        ticks: input.ticks,
+        ...(input.includeFlatObservations === undefined
+          ? {}
+          : { includeFlatObservations: input.includeFlatObservations }),
+        ...(input.includeTrace === undefined ? {} : { includeTrace: input.includeTrace }),
+        ...(input.cameraYawRad === undefined ? {} : { cameraYawRad: input.cameraYawRad }),
+      });
+      return ok(result);
+    } catch (error) {
+      return refuse('/', error instanceof Error ? error.message : String(error), 'runtime');
+    }
   },
 };
 
@@ -564,7 +603,7 @@ export const WORLD_COMMANDS: CommandDeclaration[] = [
   listInstances,
   inspectInstance,
   readObservations,
-  preview,
+  simulate,
   createInstance,
   duplicateInstance,
   removeInstance,

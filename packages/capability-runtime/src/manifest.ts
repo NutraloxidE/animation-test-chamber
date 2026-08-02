@@ -108,8 +108,16 @@ export interface CommandContext {
   project: import('@atc/schema').ProjectDefinition;
   /** The world as it currently stands — explicit or synthesized. */
   world: import('@atc/schema').WorldDefinition;
-  /** Present for preview and observation commands; absent for pure staging. */
+  /**
+   * A runtime the caller already owns. Present for in-process observation (the
+   * browser, a test); absent over HTTP, where every request is standalone.
+   */
   runtime?: import('@atc/world-runtime').WorldRuntime;
+  /**
+   * The asset registry, so a stateless command can build its own runtime rather
+   * than reading one somebody else advanced.
+   */
+  registry?: import('@atc/animation-asset-runtime').AnimationAssetRegistry;
   /** How the caller identifies itself, for protection decisions. */
   actor?: 'human' | 'ai';
 }

@@ -71,9 +71,36 @@ wrong about.
 Discovery and observation are GET and stay available when the repository has
 gone read-only — those are the tools an operator reaches for *because*
 something is wrong. Command execution is POST, and the read-only middleware
-exempts commands the registry reports as non-mutating: `world.preview` runs a
-simulation in memory and writes nothing. Mutating commands stay refused with the
+exempts commands the registry reports as non-mutating: `world.simulate` runs a
+world in memory and writes nothing. Mutating commands stay refused with the
 existing 503.
+
+## Stateless by construction
+
+`world.simulate` builds a runtime, advances it by the requested ticks, returns
+the final observation and a deterministic hash, and discards the runtime. It is
+a pure function of (project, world, ticks), so an identical request against a
+fresh process returns an identical response.
+
+The first version of this surface got that wrong. `world.preview` advanced a
+runtime and `world.read_observations` read "the" runtime — which worked
+in-process, where one `CommandContext` holds one runtime, and was false over
+HTTP, where each request built and discarded its own. A caller following the
+advertised `preview → read` sequence read a runtime at tick zero and was told
+nothing had happened.
+
+The fix was not a session store. A session would have made the API require
+sticky routing to answer a question that was already pure. `world.preview` was
+replaced outright rather than kept as an alias: the name invites exactly the
+reading that was wrong. `world.read_observations` remains registered for
+in-process callers (the browser, tests) and is **refused over HTTP** with a
+structured issue naming `world.simulate` — an HTTP request has no runtime of its
+own to observe, and returning a tick-zero reading with a 200 on it would be a
+lie the caller could not detect.
+
+Trace output is bounded: a run may be up to 10,000 ticks, but `includeTrace` is
+capped at 600, because an unbounded per-tick trace is a response body a caller
+can request by accident with one extra zero.
 
 ## Consequences
 

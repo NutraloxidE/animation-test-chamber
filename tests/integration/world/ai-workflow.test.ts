@@ -23,6 +23,7 @@ function contextFor(project: ProjectDefinition, world: WorldDefinition): Command
   return {
     project,
     world,
+    registry: demoRegistry(),
     runtime: new WorldRuntime({ registry: demoRegistry(), project, world }),
     actor: 'ai',
   };
@@ -99,33 +100,34 @@ describe('AI command workflow', () => {
     expect(bound.ok).toBe(true);
     world = bound.stagedWorld!;
 
-    // 8: preview fixed ticks.
+    // 8-9: simulate fixed ticks and read the instance-qualified observations
+    // that same call returned. One command, one response — no second request
+    // reading a runtime that no longer exists.
     const context = contextFor(project, world);
-    const previewed = registry.execute('world.preview', { ticks: 120 }, context);
-    expect(previewed.ok).toBe(true);
-    const previewOutput = previewed.output as { worldHash: string; instanceOrder: string[] };
-    expect(previewOutput.instanceOrder).toEqual([CONTROLLED, SCRIPTED, 'comparison-humanoid']);
-
-    // 9: read instance-qualified observations.
-    const observed = registry.execute(
-      'world.read_observations',
-      { instanceId: 'comparison-humanoid' },
+    const simulated = registry.execute(
+      'world.simulate',
+      { ticks: 120, includeFlatObservations: true },
       context,
     );
-    expect(observed.ok).toBe(true);
-    const paths = (observed.output as { observations: { path: string }[] }).observations.map(
-      (entry) => entry.path,
-    );
-    expect(paths).toContain('/world/instances/comparison-humanoid/transform/position/x');
-    expect(paths.every((path) => path.startsWith('/world/instances/comparison-humanoid/'))).toBe(
-      true,
-    );
+    expect(simulated.ok).toBe(true);
+    const simulateOutput = simulated.output as {
+      tick: number;
+      worldHash: string;
+      instanceOrder: string[];
+      flatObservations: { path: string; value: unknown }[];
+    };
+    expect(simulateOutput.tick).toBe(120);
+    expect(simulateOutput.instanceOrder).toEqual([CONTROLLED, SCRIPTED, 'comparison-humanoid']);
 
-    // 10: compare. The duplicate follows the same track as the scripted one and
-    // ends somewhere the idle controlled instance does not.
-    const readAll = registry.execute('world.read_observations', {}, context);
-    const all = (readAll.output as { observations: { path: string; value: unknown }[] })
-      .observations;
+    const paths = simulateOutput.flatObservations
+      .filter((entry) => entry.path.startsWith('/world/instances/comparison-humanoid/'))
+      .map((entry) => entry.path);
+    expect(paths).toContain('/world/instances/comparison-humanoid/transform/position/x');
+
+    // 10: compare, from the same response. The duplicate follows the same track
+    // as the scripted one and ends somewhere the idle controlled instance does
+    // not.
+    const all = simulateOutput.flatObservations;
     const positionOf = (id: string) =>
       all.find((entry) => entry.path === `/world/instances/${id}/transform/position/z`)!.value;
     expect(positionOf('comparison-humanoid')).not.toBe(positionOf(CONTROLLED));

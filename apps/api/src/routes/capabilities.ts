@@ -13,13 +13,22 @@
  */
 import { Hono } from 'hono';
 import type { ProjectDefinition, WorldDefinition } from '@atc/schema';
-import { WorldRuntime, worldOf } from '@atc/world-runtime';
+import { worldOf } from '@atc/world-runtime';
 import { createDefaultRegistry, type CommandContext } from '@atc/capability-runtime';
 import {
   loadAssetRegistry as loadAssetRegistryFrom,
   loadProject as loadProjectFrom,
 } from '../context.ts';
 import { createRepositoryRuntime, type RepositoryRuntime } from '../runtime.ts';
+
+/**
+ * Commands that read a runtime the caller already holds.
+ *
+ * They stay registered — the browser and the in-process tests use them — but
+ * they are not reachable over HTTP, because an HTTP request has no runtime to
+ * observe and returning a tick-zero reading would be a lie with a 200 on it.
+ */
+const IN_PROCESS_ONLY_COMMANDS = new Set(['world.read_observations']);
 
 /** The JSON view of a command. `execute` is not serializable and never leaves. */
 function describeCommand(command: {
@@ -57,11 +66,11 @@ function describeCapability(capability: ReturnType<ReturnType<typeof createDefau
  * Whether a request path names a command that only reads.
  *
  * The read-only middleware refuses every non-GET request, which is right for
- * publication and wrong for `world.preview`: previewing runs a simulation in
- * memory and writes nothing, and a repository that has gone read-only is
- * exactly when an operator most needs to be able to look. Command inputs are
- * JSON objects, so these cannot reasonably be GETs; the exemption is narrowed
- * to commands the registry itself reports as non-mutating.
+ * publication and wrong for `world.simulate`: simulating runs a world in memory
+ * and writes nothing, and a repository that has gone read-only is exactly when
+ * an operator most needs to be able to look. Command inputs are JSON objects, so
+ * these cannot reasonably be GETs; the exemption is narrowed to commands the
+ * registry itself reports as non-mutating.
  */
 export function isReadOnlyCommandRequest(method: string, path: string): boolean {
   const match = /^\/api\/capabilities\/commands\/([^/]+)$/.exec(path);
@@ -121,6 +130,22 @@ export function capabilityRoutes(
     const command = registry.command(commandId);
     if (!command) return c.json({ error: 'unknown command' }, 404);
 
+    if (IN_PROCESS_ONLY_COMMANDS.has(commandId)) {
+      return c.json(
+        {
+          ok: false,
+          issues: [
+            {
+              path: '/',
+              message: `"${commandId}" observes a runtime the caller already owns, which an HTTP request does not have. Use world.simulate, which returns its observations in the same response.`,
+              keyword: 'stateless',
+            },
+          ],
+        },
+        400,
+      );
+    }
+
     let body: { input?: unknown; world?: WorldDefinition; ticks?: number };
     try {
       body = (await c.req.json()) as typeof body;
@@ -131,35 +156,20 @@ export function capabilityRoutes(
     const project = loadProject();
     const world = body.world ?? worldOf(project);
 
-    let context: CommandContext;
-    try {
-      context = {
-        project,
-        world,
-        runtime: new WorldRuntime({
-          registry: loadAssetRegistryFrom(runtime.repoRoot),
-          project,
-          world,
-        }),
-        // The API is not authenticated, so a caller reaching it is treated as
-        // the actor with the fewest privileges rather than the most.
-        actor: 'ai',
-      };
-    } catch (error) {
-      return c.json(
-        {
-          ok: false,
-          issues: [
-            {
-              path: '/world',
-              message: error instanceof Error ? error.message : String(error),
-              keyword: 'runtime',
-            },
-          ],
-        },
-        400,
-      );
-    }
+    /*
+     * No `runtime` is attached. Each HTTP request is standalone: there is no
+     * previous request whose runtime this one could observe, and pretending
+     * otherwise is exactly the bug `world.simulate` replaced. Commands that
+     * need to run a world build one from `registry` and discard it.
+     */
+    const context: CommandContext = {
+      project,
+      world,
+      registry: loadAssetRegistryFrom(runtime.repoRoot),
+      // The API is not authenticated, so a caller reaching it is treated as the
+      // actor with the fewest privileges rather than the most.
+      actor: 'ai',
+    };
 
     const result = registry.execute(commandId, body.input ?? {}, context);
     return c.json(result, result.ok ? 200 : 422);

@@ -109,7 +109,7 @@ describe('capability registry', () => {
         'world.set_instance_enabled',
         'world.set_instance_transform',
         'world.bind_intent_source',
-        'world.preview',
+        'world.simulate',
         'world.read_observations',
       ]),
     );

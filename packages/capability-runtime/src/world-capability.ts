@@ -104,6 +104,12 @@ export const WORLD_CAPABILITY: CapabilityManifest = {
       pathExample: '/world/instances/scripted-humanoid/intent/Move',
     },
     {
+      id: 'world.simulationResult',
+      description:
+        'The final observation and deterministic world hash returned by one stateless world.simulate call.',
+      pathExample: '/world/instances/scripted-humanoid/transform/position/z',
+    },
+    {
       id: 'world.instance.events',
       description: 'Semantic events an instance emitted this tick.',
       pathExample: '/world/instances/controlled-humanoid/events',
