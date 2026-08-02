@@ -10,7 +10,8 @@
  */
 import type { ButtonAction, IntentSourceDefinition, IntentTrackDefinition } from '@atc/schema';
 import { BUTTON_ACTIONS } from '@atc/schema';
-import { emptySample, frameToSample, type ActionSample } from '@atc/input-runtime';
+import { emptySample, type ActionSample } from '@atc/input-runtime';
+import { frameAt } from '@atc/replay-runtime';
 import type { ReplayDefinition } from '@atc/schema';
 
 /**
@@ -166,8 +167,11 @@ export class ReplayIntentSource implements IntentSource {
     const local = tick - this.startTick;
     this.lastTick = local;
     if (local < 0) return neutralIntent();
-    const frame = this.replay.frames.find((entry) => entry.tick === local);
-    return frame ? frameToSample(frame) : neutralIntent();
+    // Frames are sparse — one is stored only when the input changed — so the
+    // correct sample is the most recent frame at or before this tick. An exact
+    // match would feed neutral input on every unrecorded tick, which is how a
+    // replayed run would silently disagree with the run that recorded it.
+    return frameAt(this.replay, local);
   }
 
   cursor(): number {

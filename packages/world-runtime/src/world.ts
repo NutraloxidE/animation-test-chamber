@@ -40,6 +40,12 @@ export interface WorldRuntimeOptions {
   /** Recorded inputs available to `{ kind: 'replay' }` instances. */
   replays?: readonly ReplayDefinition[];
   terrain?: TerrainPreset;
+  /**
+   * Camera yaw, in radians. World-global rather than per-instance: movement is
+   * camera-relative and there is one camera, so a per-instance value would let
+   * two instances disagree about which way "forward" is while sharing a view.
+   */
+  cameraYawRad?: number;
 }
 
 /**
@@ -121,7 +127,7 @@ export class WorldRuntime {
       seed: overrides.seed ?? seedOf(definition.id),
       initialPosition: { ...definition.transform.position },
       initialYawRad: definition.transform.yawRad,
-      cameraYawRad: 0,
+      cameraYawRad: this.options.cameraYawRad ?? 0,
       ...(overrides.weaponModeId ? { weaponModeId: overrides.weaponModeId } : {}),
       equipped: { ...defaultEquipped(resolved), ...(overrides.equipped ?? {}) },
     });
@@ -202,6 +208,11 @@ export class WorldRuntime {
     const records: WorldTickRecord[] = [];
     for (let i = 0; i < ticks; i += 1) records.push(this.step());
     return records;
+  }
+
+  /** Re-aims every instance's camera-relative movement. */
+  setCameraYaw(yawRad: number): void {
+    for (const id of this.order) this.states.get(id)!.simulation.setCameraYaw(yawRad);
   }
 
   setEnabled(instanceId: string, enabled: boolean): void {
