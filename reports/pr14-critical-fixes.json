@@ -111,5 +111,7 @@
     "latest-head Vercel not verified"
   ],
   "mergeRecommendation": "HOLD",
-  "mergeRecommendationReason": "all three critical issues and every required regression pass; the work package allows MERGE only when latest-head Vercel is PASS, and this environment cannot verify the deployment"
+  "mergeRecommendationReason": "all three critical issues and every required regression pass; the work package allows MERGE only when latest-head Vercel is PASS, and this environment cannot verify the deployment",
+  "supersededBy": "reports/pr14-replay-lifecycle.json",
+  "note": "two follow-up replay-lifecycle defects were found after this report; the findings here still hold, but current counts and one-shot results are in the later report"
 }

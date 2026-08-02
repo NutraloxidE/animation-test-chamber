@@ -293,6 +293,14 @@ and `generated files not hand-modified` stages.
 8. **Unity gains no world behaviour** — DTOs and the `IChamberWorld` seam only.
 9. **Latest-head Vercel: not verified.** Reported below as such.
 
+## Superseded by the replay lifecycle pass
+
+Two follow-up defects were found in the replay lifecycle after this report was
+written — `reset()` dropping its control source, and the recorder capturing the
+previous tick's yaw — and are fixed in `reports/pr14-replay-lifecycle.md`. The
+findings in this report are unchanged and still hold; the branch's current test
+counts and one-shot results are the later report's.
+
 ## Declaration
 
 ```text

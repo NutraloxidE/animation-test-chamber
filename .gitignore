@@ -24,6 +24,8 @@ reports/*.md
 !reports/pr14-critical-fixes-baseline.md
 !reports/pr14-critical-fixes.md
 !reports/pr14-critical-fixes.json
+!reports/pr14-replay-lifecycle.md
+!reports/pr14-replay-lifecycle.json
 # Asset transaction staging. Created and deleted within a single request; a
 # directory surviving here means a transaction died mid-flight.
 .chamber-asset-transactions/
