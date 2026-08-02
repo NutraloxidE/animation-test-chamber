@@ -217,12 +217,25 @@ would keep working by accident, which is exactly why the loop does not read it.
 Sorting by id was rejected: renaming an instance would silently reorder the
 world.
 
-### Resolution is cached by asset reference, never by id
+### Resolution shares a bundle, never a resolved project
 
-`resolutionKey` is built from a character's asset references, not its id. Keying
-on the id would be correct until two resolutions of one id differed — a single
-preview override is enough — and the cache would then hand one instance the
-other's graph with nothing able to notice.
+Resolution splits in two. `ResolvedAnimationBundle` is the character-independent
+half — graph, clips, motion bindings, skeleton, provenance — and *is* shared by
+reference between every instance whose animation inputs agree. The
+`ResolvedProject` wrapper around it is built fresh per instance and is never
+shared, because it carries the character's own id, display name,
+`modelAssetPath` and capsule dimensions.
+
+The first version of this cached the whole `ResolvedProject`, which meant two
+*different* characters referencing one animation set received each other's body
+— invisibly, in a fixture where both characters look the same.
+
+`animationResolutionKey` includes every input that can change a bundle: the four
+asset references, the character's animation `instanceOverrides`, and the preview
+overrides in force. It includes nothing that only changes the wrapper, so
+renaming a character or giving it a different model does not cost it the cache.
+Patch values are serialized with sorted keys at every depth, so two semantically
+identical patches read from differently ordered JSON hash the same.
 
 ### Intent sources
 
@@ -236,6 +249,18 @@ receive input according to when it happened to tick.
 Tracks are keyed by simulation tick and sample with **hold** semantics — every
 field keeps the latest keyframe at or before the tick. A track sampled from
 wall-clock time would mean something different on every machine.
+
+### World-global control, and why replay records it
+
+Camera yaw is a simulation input, not a presentation detail: movement is
+camera-relative, so the same normalized "forward" produces a different
+world-space direction depending on where the camera points. `WorldRuntime`
+samples a bound `WorldControlSource` *before* each tick — applying it afterwards
+would apply it one tick late — and a world replay carries a tick-keyed,
+change-only camera-yaw track with the same hold semantics intent tracks use.
+
+Playback binds that track itself. A replay whose correctness depended on the
+caller remembering to re-drive the camera would be wrong by default.
 
 ### Instance-qualified observation
 
@@ -284,6 +309,19 @@ exposes. The human path and the machine path therefore cannot drift: there is
 no second way to move an instance. Scope badges make the distinction the whole
 contract is about visible: an instance-scoped edit moves one instance, a
 shared-definition edit reaches every instance referencing it.
+
+**Statelessness.** `world.simulate` builds a runtime, advances it by the
+requested ticks, returns the final observation and a deterministic hash in the
+same response, and discards the runtime. It is a pure function of
+(project, world, ticks), so an identical request against a fresh process returns
+an identical answer — no session, no sticky routing, no server affinity.
+
+The first version got this wrong: `world.preview` advanced a runtime and
+`world.read_observations` read "the" runtime, which worked in-process and was
+false over HTTP, where each request built and discarded its own.
+`world.read_observations` is still registered for in-process callers and is
+refused over HTTP with a structured issue naming `world.simulate`. Trace output
+is capped at 600 ticks; runs are capped at 10,000.
 
 **Read-only mode.** Discovery and observation stay available when the repository
 has gone read-only; those are the tools an operator reaches for *because*
