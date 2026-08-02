@@ -263,6 +263,60 @@ export function worldContractStage(): StageResult {
         );
       }
 
+      /*
+       * Replay lifecycle. Both of these failures only appear on the *second*
+       * use of a recording — a reset that dropped its control source, and a
+       * re-record that shifted the camera track one tick — so a single
+       * record-then-replay check would pass while both were broken.
+       */
+      const resetPlayback = createReplayRuntime({
+        registry,
+        project,
+        world,
+        replay: recording,
+      }).reset();
+      const resetTrace = recordWorldTrace(resetPlayback, 90);
+      if (hashWorldTrace(resetTrace) !== hashWorldTrace(playback)) {
+        issues.push(
+          issue(
+            'a reset replay runtime diverged from a fresh one',
+            hashWorldTrace(playback),
+            hashWorldTrace(resetTrace),
+          ),
+        );
+      }
+
+      const rerecorder = new WorldReplayRecorder(
+        createReplayRuntime({ registry, project, world, replay: recording }),
+      );
+      rerecorder.run(90);
+      const rerecorded = rerecorder.finish();
+      if (
+        JSON.stringify(rerecorded.controls.cameraYaw) !==
+        JSON.stringify(recording.controls.cameraYaw)
+      ) {
+        issues.push(
+          issue(
+            're-recording a replay shifted its camera keyframes',
+            JSON.stringify(recording.controls.cameraYaw),
+            JSON.stringify(rerecorded.controls.cameraYaw),
+          ),
+        );
+      }
+      const rerecordedTrace = recordWorldTrace(
+        createReplayRuntime({ registry, project, world, replay: rerecorded }),
+        90,
+      );
+      if (hashWorldTrace(rerecordedTrace) !== hashWorldTrace(playback)) {
+        issues.push(
+          issue(
+            'record to replay to record did not round-trip',
+            hashWorldTrace(playback),
+            hashWorldTrace(rerecordedTrace),
+          ),
+        );
+      }
+
       // The fixture and the demo project must not drift: the project is what a
       // human opens, the fixture is what the manifest and the tests name.
       const fixtureJson = JSON.stringify(world);

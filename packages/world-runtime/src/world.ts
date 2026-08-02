@@ -31,7 +31,7 @@ import {
   type NormalizedIntent,
 } from './intent.ts';
 import { resolveWorld, worldOf, type ResolvedInstance } from './resolve.ts';
-import type { WorldControlSource } from './world-control.ts';
+import type { WorldControlSource, WorldControlState } from './world-control.ts';
 
 export interface WorldRuntimeOptions {
   registry: AnimationAssetRegistry;
@@ -47,6 +47,17 @@ export interface WorldRuntimeOptions {
    * two instances disagree about which way "forward" is while sharing a view.
    */
   cameraYawRad?: number;
+  /**
+   * World-global control input, sampled before every tick.
+   *
+   * Part of the *constructor* options rather than something attached
+   * afterwards, because `reset()` rebuilds from these options and a control
+   * source attached post-construction would silently disappear on reset —
+   * turning "replay this again" into "replay this with the camera nailed to
+   * zero". Sources must be stateless with respect to the tick so one can be
+   * shared by a runtime and its reset without either advancing the other.
+   */
+  controlSource?: WorldControlSource;
 }
 
 /**
@@ -74,6 +85,16 @@ export interface RuntimeInstanceState {
 /** A world tick, as the trace and the observation layer see it. */
 export interface WorldTickRecord {
   tick: number;
+  /**
+   * The world-global control this tick actually consumed.
+   *
+   * Reported rather than inferred: a recorder that read the runtime's yaw
+   * *before* calling `step` would capture the previous tick's value whenever
+   * the value comes from a control source, which is sampled inside the step.
+   * That is a one-tick shift that only appears on a re-record, which is the
+   * least likely place anyone looks.
+   */
+  controls: WorldControlState;
   /** Instance id -> that instance's record. Disabled instances are absent. */
   instances: Record<string, TickRecord>;
 }
@@ -97,6 +118,7 @@ export class WorldRuntime {
     this.terrain =
       options.terrain ?? findTerrainPreset(options.project.defaultTerrainPresetId);
     this.cameraYaw = options.cameraYawRad ?? 0;
+    this.controls = options.controlSource ?? null;
 
     const tracks = new Map<string, IntentTrackDefinition>(
       this.definition.intentTracks.map((track) => [track.id, track]),
@@ -193,11 +215,18 @@ export class WorldRuntime {
    * accident, which is precisely why it is not what the loop reads.
    */
   step(): WorldTickRecord {
-    // World-global controls first: camera yaw decides what "forward" means for
-    // this tick, so applying it afterwards would apply it one tick late.
-    if (this.controls) {
-      this.setCameraYaw(this.controls.sample(this.tickIndex).cameraYawRad);
-    }
+    /*
+     * World-global controls first, and validated before anything moves. Camera
+     * yaw decides what "forward" means for this tick, so applying it afterwards
+     * would apply it one tick late — and a source that returns NaN must fail
+     * the whole tick rather than leave the first two instances advanced and the
+     * third not. `setCameraYaw` throws on a non-finite value, which is why it
+     * is called before the loop and not inside it.
+     */
+    const controls: WorldControlState = this.controls
+      ? this.controls.sample(this.tickIndex)
+      : { cameraYawRad: this.cameraYaw };
+    if (this.controls) this.setCameraYaw(controls.cameraYawRad);
 
     const instances: Record<string, TickRecord> = {};
     for (const id of this.order) {
@@ -209,7 +238,7 @@ export class WorldRuntime {
       state.lastRecord = record;
       instances[id] = record;
     }
-    const record: WorldTickRecord = { tick: this.tickIndex, instances };
+    const record: WorldTickRecord = { tick: this.tickIndex, controls, instances };
     this.tickIndex += 1;
     return record;
   }
@@ -247,11 +276,12 @@ export class WorldRuntime {
   }
 
   /**
-   * Binds a world-global control source, sampled before every tick.
+   * Binds a world-global control source for the *rest of this runtime's life*.
    *
-   * This is how replay restores camera motion without the caller having to
-   * replay it by hand — a requirement that would make every correct playback
-   * depend on the caller remembering to do it.
+   * `reset()` rebuilds from the constructor options, so a source assigned here
+   * does **not** survive it — pass `controlSource` to the constructor for that.
+   * Replay does exactly that; this setter exists for a host that wants to hand
+   * over control mid-run and is expected to re-establish it itself.
    */
   setControlSource(source: WorldControlSource | null): void {
     this.controls = source;

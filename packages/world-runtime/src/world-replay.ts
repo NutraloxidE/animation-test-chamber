@@ -90,13 +90,16 @@ export class WorldReplayRecorder {
   /**
    * Steps the world and records what the tick actually ran with.
    *
-   * Camera yaw is captured *before* the step, from the runtime rather than from
-   * the caller, so the recording holds the value the tick used rather than the
-   * value someone believes they set.
+   * The camera yaw comes from the *returned tick record*, not from the runtime
+   * before or after the step. Reading it beforehand was correct only for a
+   * host-driven run, where the host sets the yaw first; for a runtime driven by
+   * a control source — every replay — the source is sampled inside `step`, so
+   * the pre-step value is the previous tick's and every re-record shifted the
+   * camera track one tick later.
    */
   step(): void {
-    this.controls.record(this.ticks, this.runtime.cameraYawRad);
-    this.runtime.step();
+    const record = this.runtime.step();
+    this.controls.record(record.tick, record.controls.cameraYawRad);
     for (const [id, recorder] of this.recorders) {
       const state = this.runtime.instance(id)!;
       recorder.record(state.lastIntent);
@@ -165,10 +168,13 @@ export function createReplayRuntime(options: {
     project: options.project,
     world,
     replays: Object.values(options.replay.instances),
+    /*
+     * Constructor configuration, not a post-construction attachment. `reset()`
+     * rebuilds from these options, so a source bound afterwards would vanish on
+     * reset and the replayed camera would silently flatten to zero — a failure
+     * that only shows up on the second run of the same recording.
+     */
+    controlSource: new RecordedControlSource(cameraYaw),
   };
-  const runtime = new WorldRuntime(runtimeOptions);
-  // Bound here, not by the caller: a playback whose correctness depended on the
-  // caller remembering to replay camera motion would be wrong by default.
-  runtime.setControlSource(new RecordedControlSource(cameraYaw));
-  return runtime;
+  return new WorldRuntime(runtimeOptions);
 }

@@ -18,9 +18,20 @@ export interface WorldControlKeyframe {
   cameraYawRad: number;
 }
 
-/** Sampled by the world before each tick. */
+/** The world-global control values one tick runs with. */
+export interface WorldControlState {
+  cameraYawRad: number;
+}
+
+/**
+ * Sampled by the world before each tick.
+ *
+ * `sample` must be a pure function of the tick: no cursor, no advancement, no
+ * memory of the last call. That is what lets a runtime and its `reset()` share
+ * one source object without either one dragging the other's position along.
+ */
 export interface WorldControlSource {
-  sample(tick: number): { cameraYawRad: number };
+  sample(tick: number): WorldControlState;
 }
 
 /**
@@ -38,7 +49,7 @@ export class RecordedControlSource implements WorldControlSource {
     this.frames = [...keyframes].sort((a, b) => a.tick - b.tick);
   }
 
-  sample(tick: number): { cameraYawRad: number } {
+  sample(tick: number): WorldControlState {
     let held = 0;
     for (const frame of this.frames) {
       if (frame.tick > tick) break;
