@@ -61,9 +61,10 @@ export interface RuntimeInstanceState {
   readonly intentSource: IntentSource;
   /** The instance's declaration, including its authored spawn transform. */
   readonly definition: ResolvedInstance['definition'];
-  /** Shared with every instance resolving the same assets. Read-only by contract. */
+  /** This instance's own wrapper. Never shared with another instance. */
   readonly resolved: ResolvedProject;
-  readonly resolutionKey: string;
+  /** Identity of the shared animation bundle behind `resolved`. */
+  readonly animationResolutionKey: string;
   enabled: boolean;
   lastRecord: TickRecord | null;
   lastIntent: NormalizedIntent;
@@ -138,7 +139,7 @@ export class WorldRuntime {
       intentSource: buildIntentSource(definition.intentSource, tracks, replays),
       definition,
       resolved,
-      resolutionKey: instance.resolutionKey,
+      animationResolutionKey: instance.animationResolutionKey,
       enabled: definition.enabled,
       lastRecord: null,
       lastIntent: neutralIntent(),

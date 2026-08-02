@@ -45,8 +45,10 @@ test.describe('multi-instance world authoring', () => {
     const observation = await observe(page);
     const characters = observation.instances.map((entry) => entry.characterId);
     expect(new Set(characters).size).toBe(1);
-    // Sharing the definition means sharing the resolution key too.
-    expect(new Set(observation.instances.map((entry) => entry.resolutionKey)).size).toBe(1);
+    // Sharing the definition means sharing the animation bundle identity too.
+    expect(new Set(observation.instances.map((entry) => entry.animationResolutionKey)).size).toBe(
+      1,
+    );
   });
 
   test('selecting an instance changes the inspector and not the simulation', async ({ page }) => {
@@ -121,8 +123,8 @@ test.describe('multi-instance world authoring', () => {
     const copy = observation.instances.find((e) => e.instanceId === 'controlled-humanoid-2')!;
     const source = observation.instances.find((e) => e.instanceId === 'controlled-humanoid')!;
     expect(copy.characterId).toBe(source.characterId);
-    // Shared definition, not a copied one.
-    expect(copy.resolutionKey).toBe(source.resolutionKey);
+    // Shared animation bundle, not a copied one.
+    expect(copy.animationResolutionKey).toBe(source.animationResolutionKey);
   });
 
   test('a transform edit moves only the selected instance', async ({ page }) => {

@@ -27,7 +27,8 @@ export interface InstanceObservation {
   intentSourceKind: string;
   /** Track id / replay id / player index, whichever the source binds. */
   intentSourceBinding: string;
-  resolutionKey: string;
+  /** Identity of the shared animation bundle, so two instances can be seen to share one. */
+  animationResolutionKey: string;
   transform: { position: { x: number; y: number; z: number }; yawRad: number };
   layers: Record<string, { stateId: string; normalizedTime: number; clipId: string | undefined }>;
   intent: Record<string, number | boolean>;
@@ -99,7 +100,7 @@ export function observeInstance(
     characterId: definition.source.characterId,
     intentSourceKind: definition.intentSource.kind,
     intentSourceBinding: intentBindingOf(definition.intentSource),
-    resolutionKey: state.resolutionKey,
+    animationResolutionKey: state.animationResolutionKey,
     transform: {
       position: record ? { ...record.position } : { ...definition.transform.position },
       yawRad: record ? record.yawRad : definition.transform.yawRad,

@@ -23,8 +23,14 @@ import {
   activeCharacter,
   referenceKey,
 } from '@atc/schema';
-import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
-import { resolveCharacterAnimation } from '@atc/animation-asset-runtime';
+import type {
+  AnimationAssetRegistry,
+  ResolvedAnimationBundle,
+} from '@atc/animation-asset-runtime';
+import {
+  materializeResolvedProject,
+  resolveCharacterAnimationBundle,
+} from '@atc/animation-asset-runtime';
 
 /**
  * The world a legacy project runs as.
@@ -95,34 +101,72 @@ export function migrateProjectToExplicitWorld(project: ProjectDefinition): Proje
 export interface ResolvedInstance {
   definition: RuntimeInstanceDefinition;
   /**
-   * The resolved document this instance runs. Shared by reference with every
-   * other instance resolving to the same assets — see `resolutionKey`.
+   * This instance's resolved document. **Never shared** between instances, even
+   * when they resolve to the same assets: it carries the character's own id,
+   * display name, model path and capsule dimensions, and two different
+   * characters on one animation set must not receive each other's body.
    */
   resolved: ResolvedProject;
-  /** Key the resolved document was cached under; instance-independent. */
-  resolutionKey: string;
+  /**
+   * The character-independent half, which *is* shared by reference with every
+   * instance whose animation inputs hash to the same key.
+   */
+  bundle: ResolvedAnimationBundle;
+  /** Key the *bundle* was cached under. Carries no character identity. */
+  animationResolutionKey: string;
   issues: AssetIssue[];
 }
 
 /**
- * Cache key for a resolved document.
+ * Cache key for a resolved *animation bundle*.
  *
- * Built from the *asset references*, never from the character id. Keying on the
- * character would be right until the day two characters resolved differently
- * from the same id — a preview override is enough — and the cache would then
- * hand one instance the other's graph with nothing to notice it.
+ * Every input that can change the bundle participates: the four asset
+ * references, the character's animation `instanceOverrides`, and the preview
+ * overrides in force for this resolution. Nothing that only changes the
+ * character wrapper does — id, display name, model path and capsule dimensions
+ * are deliberately absent, because two characters that differ only in those
+ * ways genuinely can share a bundle.
+ *
+ * Keying on the character id was the original mistake and would be wrong in
+ * both directions: it under-shares between two characters with one animation
+ * set, and over-shares the moment one id resolves two ways.
  */
-export function resolutionKey(character: CharacterDefinition): string {
+export function animationResolutionKey(
+  character: CharacterDefinition,
+  previewOverrides: readonly CanonicalPatch[] = [],
+): string {
   const references: (AssetReference | undefined)[] = [
     character.animation.behavior,
     character.animation.motionSet,
     character.animation.rig,
     character.animation.tuning,
   ];
-  const overrides = character.animation.instanceOverrides
-    .map((patch) => `${patch.path}=${JSON.stringify(patch.value)}`)
-    .join('|');
-  return `${references.map((r) => (r ? referenceKey(r) : '-')).join('+')}#${overrides}`;
+  return [
+    references.map((r) => (r ? referenceKey(r) : '-')).join('+'),
+    canonicalPatchKey(character.animation.instanceOverrides),
+    canonicalPatchKey(previewOverrides),
+  ].join('#');
+}
+
+/**
+ * Deterministic serialization of a patch list.
+ *
+ * `JSON.stringify` of a patch value follows the key insertion order of whatever
+ * JSON was parsed, so two semantically identical patches read from differently
+ * ordered files would hash differently and silently miss the cache. Sorting
+ * object keys at every depth removes that.
+ */
+export function canonicalPatchKey(patches: readonly CanonicalPatch[]): string {
+  return patches.map((patch) => `${patch.op}:${patch.path}=${stableJson(patch.value)}`).join('|');
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'undefined';
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`).join(',')}}`;
 }
 
 export interface ResolveWorldRequest {
@@ -149,7 +193,9 @@ export interface ResolveWorldResult {
  */
 export function resolveWorld(request: ResolveWorldRequest): ResolveWorldResult {
   const world = request.world ?? worldOf(request.project);
-  const cache = new Map<string, { resolved: ResolvedProject; issues: AssetIssue[] }>();
+  // Bundles, never resolved projects. The value type here is the fix for the
+  // character-contamination bug, and `harness:world` asserts it structurally.
+  const cache = new Map<string, { bundle: ResolvedAnimationBundle; issues: AssetIssue[] }>();
   const instances: ResolvedInstance[] = [];
   const issues: AssetIssue[] = [];
 
@@ -167,24 +213,29 @@ export function resolveWorld(request: ResolveWorldRequest): ResolveWorldResult {
       continue;
     }
 
-    const key = resolutionKey(character);
+    const key = animationResolutionKey(character, request.previewOverrides ?? []);
     let entry = cache.get(key);
     if (!entry) {
-      const result = resolveCharacterAnimation({
+      entry = resolveCharacterAnimationBundle({
         registry: request.registry,
         project: request.project,
         characterId: character.id,
         ...(request.previewOverrides ? { previewOverrides: request.previewOverrides } : {}),
       });
-      entry = { resolved: result.project, issues: result.issues };
       cache.set(key, entry);
     }
 
     issues.push(...entry.issues);
     instances.push({
       definition,
-      resolved: entry.resolved,
-      resolutionKey: key,
+      // A fresh wrapper per instance, around a shared bundle.
+      resolved: materializeResolvedProject({
+        project: request.project,
+        character,
+        bundle: entry.bundle,
+      }),
+      bundle: entry.bundle,
+      animationResolutionKey: key,
       issues: entry.issues,
     });
   }

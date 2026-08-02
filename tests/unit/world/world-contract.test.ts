@@ -13,7 +13,7 @@ import {
   observeWorld,
   flattenObservations,
   recordWorldTrace,
-  resolutionKey,
+  animationResolutionKey,
   synthesizeLegacyWorld,
   worldOf,
   WorldRuntime,
@@ -40,19 +40,33 @@ describe('world contract', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('shares one resolved document between instances of the same character', () => {
+  /*
+   * This test used to assert `controlled.resolved === scripted.resolved`.
+   * That assertion encoded a bug: a `ResolvedProject` carries the character's
+   * own id, display name, model path and capsule dimensions, so sharing the
+   * whole object means two *different* characters on one animation set receive
+   * each other's body. The corrected invariant is narrower and is the one that
+   * was actually intended — share the immutable animation bundle, never the
+   * character wrapper. See reports/pr14-critical-fixes.md.
+   */
+  it('shares immutable animation bundle members without sharing resolved project wrappers', () => {
     const runtime = createWorldRuntime();
     const controlled = runtime.instance(CONTROLLED)!;
     const scripted = runtime.instance(SCRIPTED)!;
 
     expect(controlled.definition.source.characterId).toBe(scripted.definition.source.characterId);
-    expect(controlled.resolutionKey).toBe(scripted.resolutionKey);
-    // The same object, not an equal one: sharing by value would mean two copies
-    // of every clip, which is the thing the asset references replaced.
-    expect(controlled.resolved).toBe(scripted.resolved);
-    expect(controlled.resolved.character.animation.behavior).toBe(
-      scripted.resolved.character.animation.behavior,
-    );
+    expect(controlled.animationResolutionKey).toBe(scripted.animationResolutionKey);
+
+    // Distinct wrappers, distinct characters.
+    expect(controlled.resolved).not.toBe(scripted.resolved);
+    expect(controlled.resolved.character).not.toBe(scripted.resolved.character);
+
+    // The same objects, not merely equal ones: sharing by value would mean two
+    // copies of every clip, which is what the asset references replaced.
+    expect(controlled.resolved.graph).toBe(scripted.resolved.graph);
+    expect(controlled.resolved.clips).toBe(scripted.resolved.clips);
+    expect(controlled.resolved.character.skeleton).toBe(scripted.resolved.character.skeleton);
+    expect(controlled.resolved.motionBindings).toBe(scripted.resolved.motionBindings);
   });
 
   it('gives each instance its own mutable simulation', () => {
@@ -208,12 +222,12 @@ describe('legacy compatibility', () => {
   it('keys resolution on asset references rather than on the character id', () => {
     const project = loadDemoProject();
     const [first, second] = project.characters;
-    expect(resolutionKey(first!)).not.toBe(resolutionKey(second!));
-    expect(resolutionKey(first!)).toContain(first!.animation.behavior.assetId);
+    expect(animationResolutionKey(first!)).not.toBe(animationResolutionKey(second!));
+    expect(animationResolutionKey(first!)).toContain(first!.animation.behavior.assetId);
     // Renaming a character must not change what it resolves to. If the key were
     // built from the id, a duplicated character would miss the cache and get a
     // second copy of a document it is supposed to share.
     const renamed = { ...first!, id: 'renamed-character' };
-    expect(resolutionKey(renamed)).toBe(resolutionKey(first!));
+    expect(animationResolutionKey(renamed)).toBe(animationResolutionKey(first!));
   });
 });
