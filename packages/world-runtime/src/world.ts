@@ -31,6 +31,7 @@ import {
   type NormalizedIntent,
 } from './intent.ts';
 import { resolveWorld, worldOf, type ResolvedInstance } from './resolve.ts';
+import type { WorldControlSource } from './world-control.ts';
 
 export interface WorldRuntimeOptions {
   registry: AnimationAssetRegistry;
@@ -83,6 +84,8 @@ export class WorldRuntime {
   private readonly definition: WorldDefinition;
   private readonly terrain: TerrainPreset;
   private tickIndex = 0;
+  private cameraYaw = 0;
+  private controls: WorldControlSource | null = null;
 
   constructor(private readonly options: WorldRuntimeOptions) {
     const resolution = resolveWorld({
@@ -93,6 +96,7 @@ export class WorldRuntime {
     this.definition = resolution.world;
     this.terrain =
       options.terrain ?? findTerrainPreset(options.project.defaultTerrainPresetId);
+    this.cameraYaw = options.cameraYawRad ?? 0;
 
     const tracks = new Map<string, IntentTrackDefinition>(
       this.definition.intentTracks.map((track) => [track.id, track]),
@@ -128,7 +132,7 @@ export class WorldRuntime {
       seed: overrides.seed ?? seedOf(definition.id),
       initialPosition: { ...definition.transform.position },
       initialYawRad: definition.transform.yawRad,
-      cameraYawRad: this.options.cameraYawRad ?? 0,
+      cameraYawRad: this.cameraYaw,
       ...(overrides.weaponModeId ? { weaponModeId: overrides.weaponModeId } : {}),
       equipped: { ...defaultEquipped(resolved), ...(overrides.equipped ?? {}) },
     });
@@ -189,6 +193,12 @@ export class WorldRuntime {
    * accident, which is precisely why it is not what the loop reads.
    */
   step(): WorldTickRecord {
+    // World-global controls first: camera yaw decides what "forward" means for
+    // this tick, so applying it afterwards would apply it one tick late.
+    if (this.controls) {
+      this.setCameraYaw(this.controls.sample(this.tickIndex).cameraYawRad);
+    }
+
     const instances: Record<string, TickRecord> = {};
     for (const id of this.order) {
       const state = this.states.get(id)!;
@@ -211,9 +221,40 @@ export class WorldRuntime {
     return records;
   }
 
-  /** Re-aims every instance's camera-relative movement. */
+  /**
+   * World-global camera yaw, in radians.
+   *
+   * Exposed so a recorder can capture the value the tick actually ran with,
+   * rather than the value the host believes it set.
+   */
+  get cameraYawRad(): number {
+    return this.cameraYaw;
+  }
+
+  /**
+   * Re-aims every instance's camera-relative movement.
+   *
+   * A non-finite yaw is refused rather than propagated: it would turn every
+   * instance's position into NaN one tick later, with nothing left to say where
+   * it came from.
+   */
   setCameraYaw(yawRad: number): void {
+    if (!Number.isFinite(yawRad)) {
+      throw new Error(`camera yaw must be finite, received ${yawRad}`);
+    }
+    this.cameraYaw = yawRad;
     for (const id of this.order) this.states.get(id)!.simulation.setCameraYaw(yawRad);
+  }
+
+  /**
+   * Binds a world-global control source, sampled before every tick.
+   *
+   * This is how replay restores camera motion without the caller having to
+   * replay it by hand — a requirement that would make every correct playback
+   * depend on the caller remembering to do it.
+   */
+  setControlSource(source: WorldControlSource | null): void {
+    this.controls = source;
   }
 
   setEnabled(instanceId: string, enabled: boolean): void {

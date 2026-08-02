@@ -13,6 +13,7 @@ import { CURRENT_SCHEMA_VERSION } from '@atc/schema';
 import { REPLAY_FIXTURES, compareTraces, findReplayFixture, runReplay } from '@atc/replay-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
 import {
+  RecordedControlSource,
   WorldReplayRecorder,
   WorldRuntime,
   createReplayRuntime,
@@ -180,5 +181,170 @@ describe('world replay', () => {
       ),
     );
     expect(second).toBe(first);
+  });
+});
+
+describe('camera-faithful world replay', () => {
+  const registry = demoRegistry();
+
+  /**
+   * Records a run with a deterministic camera-yaw schedule, then replays it
+   * with no external camera updates at all. The replay must reproduce the run
+   * from the recording alone — that is the whole claim.
+   */
+  function recordAndReplay(yawAt: (tick: number) => number, ticks: number) {
+    const project = loadDemoProject();
+    const world = loadWorldFixture();
+
+    const live = new WorldRuntime({ registry, project, world });
+    const recorder = new WorldReplayRecorder(live);
+    const recorded: Record<string, unknown>[] = [];
+    for (let tick = 0; tick < ticks; tick += 1) {
+      live.setCameraYaw(yawAt(tick));
+      live.injectLocalIntent(0, { ...neutralIntent(), moveY: 1 });
+      recorder.step();
+      recorded.push(
+        Object.fromEntries(
+          live.instanceIds.map((id) => [id, live.instance(id)!.lastRecord]),
+        ) as Record<string, unknown>,
+      );
+    }
+    const replay = recorder.finish();
+
+    const playback = createReplayRuntime({ registry, project, world, replay });
+    const playbackTrace = recordWorldTrace(playback, ticks);
+
+    return { replay, recorded, playbackTrace, world, project };
+  }
+
+  it('replays a constant non-zero camera yaw exactly', () => {
+    const { recorded, playbackTrace } = recordAndReplay(() => Math.PI / 2, 120);
+
+    for (const instanceId of [CONTROLLED, SCRIPTED]) {
+      const replayed = playbackTrace.instances[instanceId]!.ticks;
+      const expected = recorded.map((entry) => entry[instanceId]);
+      expect(JSON.stringify(replayed)).toBe(JSON.stringify(expected));
+    }
+    // A yaw of pi/2 turns "forward" into +x. If playback had used the old
+    // hardcoded zero, the controlled instance would have moved along z instead.
+    const last = playbackTrace.instances[CONTROLLED]!.ticks.at(-1)!;
+    expect(Math.abs(last.position.x)).toBeGreaterThan(Math.abs(last.position.z));
+  });
+
+  it('replays changing camera yaw on the exact recorded tick', () => {
+    const schedule = (tick: number): number => {
+      if (tick < 30) return 0;
+      if (tick < 60) return Math.PI / 4;
+      if (tick < 90) return Math.PI / 2;
+      return -Math.PI / 3;
+    };
+    const { recorded, playbackTrace, replay } = recordAndReplay(schedule, 120);
+
+    for (const instanceId of [CONTROLLED, SCRIPTED]) {
+      const replayed = playbackTrace.instances[instanceId]!.ticks;
+      const expected = recorded.map((entry) => entry[instanceId]);
+      expect(JSON.stringify(replayed)).toBe(JSON.stringify(expected));
+    }
+
+    // Change-only keyframes, one per distinct value in the schedule.
+    expect(replay.controls.cameraYaw.map((frame) => frame.tick)).toEqual([0, 30, 60, 90]);
+    expect(replay.controls.cameraYaw.map((frame) => frame.cameraYawRad)).toEqual([
+      0,
+      Math.PI / 4,
+      Math.PI / 2,
+      -Math.PI / 3,
+    ]);
+  });
+
+  it('applies a yaw change on its own tick and not the one before', () => {
+    const source = new RecordedControlSource([
+      { tick: 0, cameraYawRad: 0 },
+      { tick: 30, cameraYawRad: Math.PI / 2 },
+    ]);
+    expect(source.sample(29).cameraYawRad).toBe(0);
+    expect(source.sample(30).cameraYawRad).toBe(Math.PI / 2);
+    expect(source.sample(31).cameraYawRad).toBe(Math.PI / 2);
+
+    // And end to end: the runtime must have the new yaw while ticking 30, not
+    // after it. An off-by-one here is invisible in a constant-yaw recording.
+    const project = loadDemoProject();
+    const world = loadWorldFixture();
+    const runtime = new WorldRuntime({ registry, project, world });
+    runtime.setControlSource(source);
+    // Ticks 0..29 each run with the old yaw; the value is sampled at the start
+    // of a step, so after step N the runtime holds the yaw step N used.
+    for (let tick = 0; tick < 30; tick += 1) {
+      runtime.step();
+      expect(runtime.cameraYawRad).toBe(0);
+    }
+    runtime.step();
+    expect(runtime.cameraYawRad).toBe(Math.PI / 2);
+  });
+
+  it('replays two instances on different intent sources under one global camera', () => {
+    const { playbackTrace } = recordAndReplay((tick) => (tick < 60 ? 0 : Math.PI / 2), 120);
+    // Both instances were driven by the same world-global yaw, but by different
+    // intent sources: the traces must differ from each other and each must be
+    // reproducible.
+    expect(playbackTrace.instances[CONTROLLED]!.ticks.at(-1)!.position).not.toEqual(
+      playbackTrace.instances[SCRIPTED]!.ticks.at(-1)!.position,
+    );
+    expect(playbackTrace.instances[CONTROLLED]!.ticks).toHaveLength(120);
+    expect(playbackTrace.instances[SCRIPTED]!.ticks).toHaveLength(120);
+  });
+
+  it('produces the same result from two fresh replay runtimes', () => {
+    const { replay, world, project } = recordAndReplay((tick) => (tick < 40 ? 0 : 1.1), 90);
+    const first = createReplayRuntime({ registry, project, world, replay });
+    const second = createReplayRuntime({ registry, project, world, replay });
+    const a = recordWorldTrace(first, 90);
+    const b = recordWorldTrace(second, 90);
+    expect(hashWorldTrace(b)).toBe(hashWorldTrace(a));
+    expect(JSON.stringify(b.instances)).toBe(JSON.stringify(a.instances));
+  });
+
+  it('reads a v1 recording as constant zero yaw rather than guessing', () => {
+    const { replay, world, project } = recordAndReplay(() => 0, 30);
+    const legacy = { ...replay, worldReplayVersion: 1 };
+    const runtime = createReplayRuntime({ registry, project, world, replay: legacy });
+    expect(runtime.cameraYawRad).toBe(0);
+  });
+
+  it('refuses an unsupported world replay version', () => {
+    const { replay, world, project } = recordAndReplay(() => 0, 30);
+    expect(() =>
+      createReplayRuntime({
+        registry,
+        project,
+        world,
+        replay: { ...replay, worldReplayVersion: 99 },
+      }),
+    ).toThrow(/unsupported worldReplayVersion 99/);
+  });
+
+  it('refuses malformed replay control data', () => {
+    const { replay, world, project } = recordAndReplay(() => 0, 30);
+    const broken: { cameraYaw: { tick: number; cameraYawRad: number }[] }[] = [
+      { cameraYaw: [{ tick: 0, cameraYawRad: Number.NaN }] },
+      { cameraYaw: [{ tick: -1, cameraYawRad: 0 }] },
+      { cameraYaw: [{ tick: 5, cameraYawRad: 0 }, { tick: 2, cameraYawRad: 1 }] },
+      { cameraYaw: [{ tick: 999, cameraYawRad: 0 }] },
+    ];
+    for (const controls of broken) {
+      expect(() =>
+        createReplayRuntime({ registry, project, world, replay: { ...replay, controls } }),
+      ).toThrow(/invalid world replay controls/);
+    }
+  });
+
+  it('refuses a non-finite camera yaw at the runtime boundary', () => {
+    const runtime = new WorldRuntime({
+      registry,
+      project: loadDemoProject(),
+      world: loadWorldFixture(),
+    });
+    expect(() => runtime.setCameraYaw(Number.NaN)).toThrow(/must be finite/);
+    expect(() => runtime.setCameraYaw(Number.POSITIVE_INFINITY)).toThrow(/must be finite/);
+    expect(runtime.cameraYawRad).toBe(0);
   });
 });

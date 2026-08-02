@@ -17,8 +17,26 @@ import { FIXED_TIMESTEP_VERSION } from '@atc/schema';
 import { ReplayRecorder } from '@atc/replay-runtime';
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import { WorldRuntime, seedOf, type WorldRuntimeOptions } from './world.ts';
+import {
+  ControlTrackRecorder,
+  RecordedControlSource,
+  validateControlTrack,
+  type WorldControlKeyframe,
+} from './world-control.ts';
 
-export const WORLD_REPLAY_VERSION = 1;
+/**
+ * 1 -> 2: a recording carries a world-global camera-yaw track.
+ *
+ * Version 1 recorded per-instance intent only and wrote camera yaw as a
+ * constant zero, so a run recorded while the camera turned replayed as if it
+ * had not. A v1 recording is still readable — it is *interpreted* as constant
+ * yaw zero, which is exactly what it meant — and any other version is refused
+ * rather than guessed at.
+ */
+export const WORLD_REPLAY_VERSION = 2;
+
+/** Versions `createReplayRuntime` knows how to interpret. */
+export const SUPPORTED_WORLD_REPLAY_VERSIONS = [1, WORLD_REPLAY_VERSION] as const;
 
 export interface WorldReplay {
   worldReplayVersion: number;
@@ -29,6 +47,13 @@ export interface WorldReplay {
   instances: Record<string, ReplayDefinition>;
   /** Declaration order at record time, so playback ticks in the same order. */
   instanceOrder: string[];
+  /**
+   * World-global control input. Camera yaw belongs here rather than in a
+   * per-instance stream because movement is camera-relative and there is one
+   * camera: recording it per instance would let two instances replay with
+   * different ideas of forward.
+   */
+  controls: { cameraYaw: WorldControlKeyframe[] };
 }
 
 /**
@@ -40,6 +65,7 @@ export interface WorldReplay {
  */
 export class WorldReplayRecorder {
   private readonly recorders = new Map<string, ReplayRecorder>();
+  private readonly controls = new ControlTrackRecorder();
   private ticks = 0;
 
   constructor(private readonly runtime: WorldRuntime) {
@@ -61,8 +87,15 @@ export class WorldReplayRecorder {
     }
   }
 
-  /** Steps the world and records the intent each instance actually received. */
+  /**
+   * Steps the world and records what the tick actually ran with.
+   *
+   * Camera yaw is captured *before* the step, from the runtime rather than from
+   * the caller, so the recording holds the value the tick used rather than the
+   * value someone believes they set.
+   */
   step(): void {
+    this.controls.record(this.ticks, this.runtime.cameraYawRad);
     this.runtime.step();
     for (const [id, recorder] of this.recorders) {
       const state = this.runtime.instance(id)!;
@@ -85,6 +118,7 @@ export class WorldReplayRecorder {
       tickCount: Math.max(1, this.ticks),
       instances,
       instanceOrder: [...this.runtime.instanceIds],
+      controls: { cameraYaw: this.controls.finish() },
     };
   }
 }
@@ -103,6 +137,21 @@ export function createReplayRuntime(options: {
   world: WorldDefinition;
   replay: WorldReplay;
 }): WorldRuntime {
+  const version = options.replay.worldReplayVersion;
+  if (!SUPPORTED_WORLD_REPLAY_VERSIONS.includes(version as 1 | 2)) {
+    throw new Error(
+      `unsupported worldReplayVersion ${version}; this build reads ${SUPPORTED_WORLD_REPLAY_VERSIONS.join(', ')}`,
+    );
+  }
+  // A v1 recording predates the control track and meant constant yaw zero.
+  const cameraYaw = version === WORLD_REPLAY_VERSION ? (options.replay.controls?.cameraYaw ?? []) : [];
+  const controlIssues = validateControlTrack(cameraYaw, options.replay.tickCount);
+  if (controlIssues.length > 0) {
+    throw new Error(
+      `invalid world replay controls: ${controlIssues.map((issue) => `${issue.path}: ${issue.message}`).join('; ')}`,
+    );
+  }
+
   const world: WorldDefinition = {
     ...options.world,
     instances: options.world.instances.map((instance) =>
@@ -117,5 +166,9 @@ export function createReplayRuntime(options: {
     world,
     replays: Object.values(options.replay.instances),
   };
-  return new WorldRuntime(runtimeOptions);
+  const runtime = new WorldRuntime(runtimeOptions);
+  // Bound here, not by the caller: a playback whose correctness depended on the
+  // caller remembering to replay camera motion would be wrong by default.
+  runtime.setControlSource(new RecordedControlSource(cameraYaw));
+  return runtime;
 }

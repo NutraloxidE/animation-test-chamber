@@ -18,6 +18,14 @@ import {
 } from '@atc/world-runtime';
 import type { CharacterPose } from '../three/characters/ProceduralCharacter.tsx';
 
+/** Per-tick callbacks for `advance`. */
+export interface AdvanceHooks {
+  /** The normalized intent for the coming tick. Defaults to a device poll. */
+  sample?: () => ActionSample;
+  beforeTick?: (tick: number) => void;
+  afterTick?: (tick: number) => void;
+}
+
 export interface WorldEngineOptions {
   registry: AnimationAssetRegistry;
   project: ProjectDefinition;
@@ -79,10 +87,27 @@ export class WorldChamberEngine {
     return { yaw: this.cameraYaw };
   }
 
-  /** Advances by whole fixed steps from a render delta. */
-  advance(deltaSec: number): void {
+  /**
+   * Advances by whole fixed steps from a render delta.
+   *
+   * The hooks exist so a test can supply per-*tick* inputs rather than
+   * per-frame ones. Cadence independence is the claim that identical per-tick
+   * inputs produce identical results; a test that could only set an input once
+   * per frame would be comparing three different input streams and calling the
+   * difference a cadence bug.
+   */
+  advance(deltaSec: number, hooks: AdvanceHooks = {}): void {
     const steps = this.accumulator.advance(deltaSec);
-    for (let i = 0; i < steps; i += 1) this.stepOnce();
+    for (let i = 0; i < steps; i += 1) {
+      hooks.beforeTick?.(this.runtime.tick);
+      this.stepOnce(hooks.sample?.());
+      hooks.afterTick?.(this.runtime.tick - 1);
+    }
+  }
+
+  /** One instance's live runtime state, for pose reading and tests. */
+  instance(instanceId: string) {
+    return this.runtime.instance(instanceId);
   }
 
   /** Exactly one fixed step. The test driver calls this directly. */

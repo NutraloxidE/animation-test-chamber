@@ -15,14 +15,20 @@ import { resolve } from 'node:path';
 import type { WorldDefinition } from '@atc/schema';
 import { validateAgainst, validateProjectReferences } from '@atc/schema';
 import {
+  WorldReplayRecorder,
   WorldRuntime,
+  createReplayRuntime,
+  flattenObservations,
   hashWorldTrace,
   neutralIntent,
   observeWorld,
-  flattenObservations,
+  animationResolutionKey,
   recordWorldTrace,
+  resolveWorld,
+  simulateWorld,
   worldOf,
 } from '@atc/world-runtime';
+import { createDefaultRegistry } from '@atc/capability-runtime';
 import { loadAssetRegistry, loadCanonicalProject } from './animation-assets.ts';
 import { REPO_ROOT, printStage, stage, type StageIssue, type StageResult } from './lib.ts';
 
@@ -71,12 +77,14 @@ export function worldContractStage(): StageResult {
         const first = runtime.instance(firstId)!;
         const second = runtime.instance(secondId)!;
         if (first.definition.source.characterId === second.definition.source.characterId) {
-          if (first.resolved !== second.resolved) {
+          // Bundle identity, not wrapper identity — see the resolution checks
+          // below and reports/pr14-critical-fixes.md.
+          if (first.animationResolutionKey !== second.animationResolutionKey) {
             issues.push(
               issue(
-                'two instances of one character resolved to different documents',
-                'one shared resolved document',
-                'two documents',
+                'two instances of one character resolved to different animation bundles',
+                'one shared bundle identity',
+                'two identities',
               ),
             );
           }
@@ -128,6 +136,131 @@ export function worldContractStage(): StageResult {
         if (/\/instances\/\d+\//.test(path)) {
           issues.push(issue(`observation path uses an array index: ${path}`, 'stable instance ids', path));
         }
+      }
+
+      /*
+       * Character-safe resolution. The cache must share the immutable animation
+       * bundle and nothing else: sharing the whole `ResolvedProject` hands one
+       * character another's model path and capsule dimensions. Checked
+       * structurally, by identity, rather than by scanning source text.
+       */
+      const resolution = resolveWorld({ registry, project, world });
+      const [firstResolved, secondResolved] = resolution.instances;
+      if (firstResolved && secondResolved) {
+        if (firstResolved.resolved === secondResolved.resolved) {
+          issues.push(
+            issue(
+              'two instances share one ResolvedProject wrapper',
+              'a distinct wrapper per instance',
+              'one shared wrapper',
+            ),
+          );
+        }
+        if (firstResolved.bundle !== secondResolved.bundle) {
+          issues.push(
+            issue(
+              'two instances of one character resolved to different animation bundles',
+              'one shared immutable bundle',
+              'two bundles',
+            ),
+          );
+        }
+        /*
+         * Rename-invariance rather than a substring scan: an asset id may
+         * legitimately contain the character's name, so "the key does not
+         * mention the character" is not a property the key can have. What it
+         * must have is that renaming a character does not change it.
+         */
+        const character = project.characters.find(
+          (entry) => entry.id === firstResolved.definition.source.characterId,
+        );
+        if (
+          character &&
+          animationResolutionKey({ ...character, id: 'renamed-for-the-harness' }) !==
+            animationResolutionKey(character)
+        ) {
+          issues.push(
+            issue(
+              'renaming a character changed its animation resolution key',
+              'a key built only from animation inputs',
+              'the key moved',
+            ),
+          );
+        }
+      }
+
+      /*
+       * Stateless simulation. Two independent calls must agree, because the
+       * HTTP surface builds a fresh runtime per request and has no other way to
+       * be correct.
+       */
+      const simulateArgs = { registry, project, world, ticks: 90 } as const;
+      const simulatedA = simulateWorld(simulateArgs);
+      const simulatedB = simulateWorld(simulateArgs);
+      if (simulatedA.worldHash !== simulatedB.worldHash) {
+        issues.push(
+          issue(
+            'two identical simulate calls disagreed',
+            simulatedA.worldHash,
+            simulatedB.worldHash,
+          ),
+        );
+      }
+      if (simulatedA.tick !== 90 || simulatedA.observation.tick !== 90) {
+        issues.push(
+          issue(
+            'a simulate response did not carry its own final observation',
+            'tick 90 in the same response',
+            `${simulatedA.tick} / ${simulatedA.observation.tick}`,
+          ),
+        );
+      }
+      if (!createDefaultRegistry().command('world.simulate')) {
+        issues.push(
+          issue(
+            'the multi-instance capability does not declare world.simulate',
+            'world.simulate registered',
+            'absent',
+          ),
+        );
+      }
+
+      /*
+       * Camera-faithful replay. Movement is camera-relative, so a recording
+       * that drops camera yaw replays a different run with matching input bytes.
+       */
+      const live = new WorldRuntime({ registry, project, world });
+      const recorder = new WorldReplayRecorder(live);
+      const liveTicks: unknown[] = [];
+      for (let tick = 0; tick < 90; tick += 1) {
+        live.setCameraYaw(tick < 45 ? 0 : Math.PI / 2);
+        live.injectLocalIntent(0, { ...neutralIntent(), moveY: 1 });
+        recorder.step();
+        liveTicks.push(live.instance(live.instanceIds[0]!)!.lastRecord);
+      }
+      const recording = recorder.finish();
+      if (recording.controls.cameraYaw.length < 2) {
+        issues.push(
+          issue(
+            'a recording with a camera turn captured no yaw change',
+            'at least two camera keyframes',
+            String(recording.controls.cameraYaw.length),
+          ),
+        );
+      }
+      const playback = recordWorldTrace(
+        createReplayRuntime({ registry, project, world, replay: recording }),
+        90,
+      );
+      const replayedTicks = playback.instances[playback.instanceOrder[0]!]!.ticks;
+      if (JSON.stringify(replayedTicks) !== JSON.stringify(liveTicks)) {
+        issues.push(
+          issue(
+            'a replayed run diverged from the run that recorded it',
+            'byte-identical tick records',
+            'they differ',
+          ),
+        );
       }
 
       // The fixture and the demo project must not drift: the project is what a
