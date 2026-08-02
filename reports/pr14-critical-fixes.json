@@ -1,0 +1,115 @@
+{
+  "workPackage": "PR #14 critical fixes \u2014 resolution isolation, stateless simulation, camera-faithful replay",
+  "originalReviewedHead": "4521873b4943935f73480b995e40f05c3e477040",
+  "lastImplementationSha": "68d5036",
+  "branch": "claude/multi-instance-world-harness",
+  "pullRequest": 14,
+  "executingAgent": {
+    "id": "main-opus-pr14-critical-fixes",
+    "model": "claude-opus-5"
+  },
+  "orchestration": {
+    "followed": false,
+    "reason": "the tiered subagent models named in the work package are not addressable as separate agents in this environment",
+    "subagentsRun": 0,
+    "handoffsFabricated": 0,
+    "gateReviewsAreSelfReviews": true
+  },
+  "issues": {
+    "A": {
+      "before": "resolveWorld cached the whole ResolvedProject, so two characters sharing one animation set shared one modelAssetPath, capsule and identity",
+      "after": "resolution splits into a shared ResolvedAnimationBundle and a per-character ResolvedProject wrapper; the cache holds bundles",
+      "removedAssertion": "expect(controlled.resolved).toBe(scripted.resolved)",
+      "replacementTest": "shares immutable animation bundle members without sharing resolved project wrappers",
+      "regressionTests": 10
+    },
+    "B": {
+      "before": "world.preview advanced a per-request runtime and world.read_observations read a fresh one at tick zero; the advertised sequence was false over HTTP",
+      "after": "world.simulate is stateless and returns the final observation and deterministic hash in the same response; world.preview removed; world.read_observations refused over HTTP",
+      "bounds": {
+        "maxSimulatedTicks": 10000,
+        "maxTracedTicks": 600
+      },
+      "regressionTests": 7
+    },
+    "C": {
+      "before": "WorldReplayRecorder wrote cameraYawRad 0 and playback bound no control source, so a recording made while the camera turned replayed a different path",
+      "after": "tick-keyed change-only camera-yaw control track sampled before each tick; createReplayRuntime binds it automatically",
+      "worldReplayVersion": 2,
+      "versionPolicy": "v1 read explicitly as constant zero yaw; every other version refused by name",
+      "regressionTests": 11
+    }
+  },
+  "testCounts": {
+    "atPr14": {
+      "vitestFiles": 28,
+      "vitestTests": 509,
+      "playwrightTests": 141
+    },
+    "afterFixes": {
+      "vitestFiles": 30,
+      "vitestTests": 537,
+      "playwrightTests": 141
+    },
+    "deleted": 0,
+    "skipped": 0,
+    "weakened": 0,
+    "assertionsReplaced": 1
+  },
+  "legacyReplay": "byte-identical on all four committed fixtures; no baseline regenerated",
+  "renderCadence": "identical world trace and hash at 30, 60 and 120 Hz",
+  "oneShot": [
+    {
+      "run": 1,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 1285.4,
+      "exitCode": 0
+    },
+    {
+      "run": 2,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 1243.6,
+      "exitCode": 0
+    }
+  ],
+  "generatedDrift": {
+    "secondGenerationClean": true,
+    "schemasChanged": false
+  },
+  "repositoryByteIntegrity": "projects/demo-character/project.json, schemas/** and generated/** unchanged by this pass",
+  "gates": {
+    "A_criticalFixAudit": "PASS",
+    "B_resolutionBoundary": "PASS (self-reviewed)",
+    "C_statelessApi": "PASS (self-reviewed)",
+    "D_replayFidelity": "PASS (self-reviewed)"
+  },
+  "acceptance": {
+    "issueA": "PASS",
+    "issueB": "PASS",
+    "issueC": "PASS",
+    "typecheckLint": "PASS",
+    "unitIntegrationReplay": "PASS",
+    "repoGuard": "PASS",
+    "buildVisual": "PASS",
+    "generatedArtifactStability": "PASS",
+    "oneShotRun1": "PASS",
+    "oneShotRun2": "PASS",
+    "agentOrchestrationEvidence": "FAIL",
+    "latestHeadVercel": "NOT VERIFIED"
+  },
+  "knownLimitations": [
+    "orchestration not followed; gate reviews are self-reviews",
+    "the browser samples camera yaw once per frame, so two ticks share a yaw at 30Hz; inherent to frame-sampled continuous input",
+    "RuntimeInstanceOverrides.moveSpeedScale still declared and unread (out of scope)",
+    "setFocusedInstance/setCameraTargetInstance still bypass the command registry (out of scope)",
+    "world viewport still renders the procedural character on a flat plane",
+    "only local-input player index 0 is wired in the browser",
+    "no performance ceiling established for instance count",
+    "Unity gains DTOs and a seam, not world behaviour",
+    "latest-head Vercel not verified"
+  ],
+  "mergeRecommendation": "HOLD",
+  "mergeRecommendationReason": "all three critical issues and every required regression pass; the work package allows MERGE only when latest-head Vercel is PASS, and this environment cannot verify the deployment"
+}

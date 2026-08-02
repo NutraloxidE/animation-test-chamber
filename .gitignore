@@ -21,6 +21,9 @@ reports/*.md
 !reports/multi-instance-world-baseline.md
 !reports/multi-instance-world-harness.md
 !reports/multi-instance-world-harness.json
+!reports/pr14-critical-fixes-baseline.md
+!reports/pr14-critical-fixes.md
+!reports/pr14-critical-fixes.json
 # Asset transaction staging. Created and deleted within a single request; a
 # directory surviving here means a transaction died mid-flight.
 .chamber-asset-transactions/
