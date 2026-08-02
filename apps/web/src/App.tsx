@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { detectTouchDevice } from '@atc/input-runtime';
 import { useChamber, type PanelId } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
+import { WorldViewport } from './components/world/WorldViewport.tsx';
+import { WorldPanel } from './components/world/WorldPanel.tsx';
 import { TransitionInspector } from './panels/TransitionInspector.tsx';
 import { StateGraph } from './panels/StateGraph.tsx';
 import { Timeline } from './panels/Timeline.tsx';
@@ -21,6 +23,7 @@ import { characterPreset, weaponMode } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
+  { id: 'world', label: 'World' },
   { id: 'graph', label: 'Graph' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'timing', label: 'Timing' },
@@ -38,6 +41,8 @@ function PanelBody({ id }: { id: PanelId }) {
   switch (id) {
     case 'inspector':
       return <TransitionInspector />;
+    case 'world':
+      return <WorldPanel />;
     case 'graph':
       return <StateGraph />;
     case 'timeline':
@@ -138,6 +143,9 @@ function DockBar({
 }) {
   const mode = useChamber((state) => state.workspaceMode);
   const setMode = useChamber((state) => state.setWorkspaceMode);
+  const worldMode = useChamber((state) => state.worldMode);
+  const setWorldMode = useChamber((state) => state.setWorldMode);
+  const setPanel = useChamber((state) => state.setPanel);
   const showLibrary = mode === 'asset-library';
   return (
     <nav className="workspace-switch" data-testid="workspace-switch">
@@ -157,6 +165,17 @@ function DockBar({
         data-testid="toggle-inspector"
       >
         Inspector
+      </button>
+      <button
+        type="button"
+        className={worldMode === 'world' ? 'is-active' : ''}
+        onClick={() => {
+          setWorldMode(worldMode === 'world' ? 'focused' : 'world');
+          setPanel('world');
+        }}
+        data-testid="toggle-world-mode"
+      >
+        {worldMode === 'world' ? 'World view' : 'Focused view'}
       </button>
       <button
         type="button"
@@ -195,6 +214,7 @@ export function App() {
 
   const workspaceMode = useChamber((state) => state.workspaceMode);
   const libraryDialog = useChamber((state) => state.libraryDialog);
+  const worldMode = useChamber((state) => state.worldMode);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
@@ -265,7 +285,7 @@ export function App() {
         </aside>
       )}
       <div className="app__viewport">
-        <Viewport />
+        {worldMode === 'world' ? <WorldViewport /> : <Viewport />}
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 

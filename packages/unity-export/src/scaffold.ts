@@ -28,6 +28,23 @@ Then use **Tools > Animation Test Chamber > Import Chamber Project**.
 - A runtime state machine with the same transition ordering, cancel windows,
   exit times and input buffering semantics as the web runtime
 - Adapter interfaces for input, haptics and terrain
+- The canonical **world** contract: multiple runtime instances of shared
+  character definitions, their transforms, their bound intent sources and the
+  deterministic intent tracks scripted instances sample
+  (\`IChamberWorld.cs\`)
+
+## Multi-instance worlds
+
+\`ProjectDefinition.world\` carries a list of \`RuntimeInstanceDefinition\`.
+Each instance names a character by id; it does **not** carry a copy of that
+character's behaviour, motion set, rig or clips. Two instances of one character
+therefore appear in the bundle as two small objects and one set of asset
+references, which is the property \`IChamberWorld\` is shaped to preserve:
+spawn many, resolve once.
+
+A project exported before this contract existed has no \`world\` field. Treat
+that as a single instance of \`activeCharacterId\` — that is exactly what the
+web runtime does.
 
 ## LIMITATIONS
 
@@ -46,6 +63,17 @@ These are real, and listed so nobody discovers them the hard way:
    implementation; wire it to your platform's gamepad API.
 6. **Float precision differs.** Do not expect the web replay traces to match
    bit-for-bit; use them as behavioural references, not golden values.
+7. **No instance spawning is implemented.** \`IChamberWorld\` defines the seam —
+   spawn, bind intent, own a state machine per instance, report observations —
+   and nothing behind it. Instantiating GameObjects, parenting them and
+   choosing a camera target are project decisions, not adapter decisions.
+8. **Intent sources are declarations, not drivers.** \`local-input\` and
+   \`replay\` name a source the adapter must supply; only \`scripted-track\`
+   and \`none\` can be evaluated from the bundle alone.
+9. **World traces are not compared.** The web harness hashes a world run and
+   asserts it is reproducible. Nothing here does, and given (6) a cross-engine
+   hash comparison would fail for reasons that have nothing to do with
+   behaviour.
 `,
   },
   {
@@ -352,6 +380,94 @@ namespace AnimationTestChamber
         public void Play(string semanticEvent, float lowFrequency, float highFrequency, float durationMs)
         {
             // Intentionally empty: unsupported haptics must never block gameplay.
+        }
+    }
+}
+`,
+  },
+  {
+    path: 'Runtime/IChamberWorld.cs',
+    content: `using System.Collections.Generic;
+
+namespace AnimationTestChamber
+{
+    /// <summary>
+    /// One instance's observable state, mirroring the web runtime's
+    /// instance-qualified observations. Reported *by* instance id, never by
+    /// list position: the canonical world is ordered, but a position is not an
+    /// identity, and a reordered world would silently relabel every reading.
+    /// </summary>
+    public struct ChamberInstanceObservation
+    {
+        public string instanceId;
+        public string characterId;
+        public bool enabled;
+        public UnityEngine.Vector3 position;
+        public float yawRad;
+        public string locomotionStateId;
+        public string actionStateId;
+    }
+
+    /// <summary>
+    /// The seam between the canonical world contract and a Unity scene.
+    /// <para>
+    /// Deliberately not implemented here. Spawning, parenting, camera choice
+    /// and prefab selection are project decisions; an adapter that guessed at
+    /// them would be a framework, and replacing a framework is harder than
+    /// implementing four methods.
+    /// </para>
+    /// <para>
+    /// The one contract an implementation must honour is the one the web
+    /// runtime honours: instances of the same character share resolved
+    /// definition data and share no mutable state. Caching a state machine by
+    /// character id is the specific mistake this interface exists to warn about.
+    /// </para>
+    /// </summary>
+    public interface IChamberWorld
+    {
+        /// <summary>Creates a runtime instance from its canonical definition.</summary>
+        void SpawnInstance(RuntimeInstanceDefinition definition);
+
+        /// <summary>
+        /// Binds an intent source to an already-spawned instance. The adapter
+        /// supplies local-input and replay sources; scripted tracks come from
+        /// the bundle.
+        /// </summary>
+        void BindIntentSource(string instanceId, IntentSourceDefinition source);
+
+        /// <summary>
+        /// The state machine owned by one instance. Must return a distinct
+        /// object per instance id.
+        /// </summary>
+        ChamberStateMachine StateMachineFor(string instanceId);
+
+        /// <summary>Current observations, one per spawned instance.</summary>
+        IReadOnlyList<ChamberInstanceObservation> Observe();
+    }
+
+    /// <summary>
+    /// Samples an intent track with the same hold semantics as the web runtime:
+    /// every field keeps the value of the latest keyframe at or before the tick.
+    /// Interpolating here would make the same track mean two different things in
+    /// the two engines.
+    /// </summary>
+    public static class ChamberIntentTrack
+    {
+        public static IntentTrackKeyframe SampleAt(IntentTrackDefinition track, int tick)
+        {
+            var local = track.loop ? tick % track.durationTicks : UnityEngine.Mathf.Min(tick, track.durationTicks - 1);
+            IntentTrackKeyframe held = default;
+            var found = false;
+            foreach (var keyframe in track.keyframes)
+            {
+                if (keyframe.tick > local) continue;
+                if (!found || keyframe.tick >= held.tick)
+                {
+                    held = keyframe;
+                    found = true;
+                }
+            }
+            return held;
         }
     }
 }

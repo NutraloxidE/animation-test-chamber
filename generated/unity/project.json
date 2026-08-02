@@ -559,6 +559,103 @@
       }
     ],
     "activeCharacterId": "demo-humanoid",
+    "world": {
+      "schemaVersion": 2,
+      "id": "two-humanoids-shared-animation",
+      "displayName": "Two humanoids, shared animation",
+      "instances": [
+        {
+          "schemaVersion": 2,
+          "id": "controlled-humanoid",
+          "displayName": "Controlled humanoid",
+          "source": {
+            "kind": "character",
+            "characterId": "demo-humanoid"
+          },
+          "transform": {
+            "position": {
+              "x": -1.5,
+              "y": 2,
+              "z": 0
+            },
+            "yawRad": 0
+          },
+          "intentSource": {
+            "kind": "local-input",
+            "playerIndex": 0
+          },
+          "enabled": true
+        },
+        {
+          "schemaVersion": 2,
+          "id": "scripted-humanoid",
+          "displayName": "Scripted humanoid",
+          "source": {
+            "kind": "character",
+            "characterId": "demo-humanoid"
+          },
+          "transform": {
+            "position": {
+              "x": 1.5,
+              "y": 2,
+              "z": 0
+            },
+            "yawRad": 0
+          },
+          "intentSource": {
+            "kind": "scripted-track",
+            "trackId": "scripted-locomotion-cycle"
+          },
+          "enabled": true
+        }
+      ],
+      "intentTracks": [
+        {
+          "schemaVersion": 2,
+          "id": "scripted-locomotion-cycle",
+          "displayName": "Idle, forward, stop, dodge, idle",
+          "loop": true,
+          "durationTicks": 240,
+          "keyframes": [
+            {
+              "tick": 0,
+              "move": {
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "tick": 30,
+              "move": {
+                "x": 0,
+                "y": 1
+              }
+            },
+            {
+              "tick": 120,
+              "move": {
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "tick": 150,
+              "buttons": {
+                "Dodge": true
+              }
+            },
+            {
+              "tick": 152,
+              "buttons": {
+                "Dodge": false
+              }
+            }
+          ]
+        }
+      ],
+      "focusedInstanceId": "controlled-humanoid",
+      "cameraTargetInstanceId": "controlled-humanoid"
+    },
     "character": {
       "schemaVersion": 2,
       "id": "demo-humanoid",

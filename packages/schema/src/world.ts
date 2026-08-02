@@ -13,7 +13,7 @@
  * before and after a million ticks.
  */
 import { Type, type Static } from '@sinclair/typebox';
-import { Id, ProtectionMetadata, SchemaVersion, Vec3 } from './common.ts';
+import { Id, ProtectionMetadata, SchemaVersion } from './common.ts';
 import { BUTTON_ACTIONS } from './input.ts';
 
 /** Bounds keep a transform finite *and* inside a space a camera can find. */
@@ -21,7 +21,15 @@ const WORLD_COORD = Type.Number({ minimum: -10000, maximum: 10000 });
 
 export const TransformDefinition = Type.Object(
   {
-    position: Vec3,
+    /*
+     * Bounded rather than a bare `Vec3`. An unbounded position is finite right
+     * up until something writes 1e300 into it, and by the time the camera flies
+     * off nobody can tell which edit did it.
+     */
+    position: Type.Object(
+      { x: WORLD_COORD, y: WORLD_COORD, z: WORLD_COORD },
+      { additionalProperties: false },
+    ),
     /** Radians. Pitch and roll are deliberately absent: the runtime is yaw-only. */
     yawRad: Type.Number({ minimum: -1000, maximum: 1000 }),
   },

@@ -130,8 +130,22 @@ export function worldContractStage(): StageResult {
         }
       }
 
+      // The fixture and the demo project must not drift: the project is what a
+      // human opens, the fixture is what the manifest and the tests name.
+      const fixtureJson = JSON.stringify(world);
+      if (JSON.stringify(project.world ?? null) !== fixtureJson) {
+        issues.push(
+          issue(
+            'projects/demo-character/project.json does not carry the acceptance world',
+            'the project world to equal the fixture',
+            'they differ',
+          ),
+        );
+      }
+
       // Legacy: a project with no explicit world still runs, as one instance.
-      const legacy = worldOf(project);
+      const { world: _explicit, ...legacyProject } = project;
+      const legacy = worldOf(legacyProject);
       if (legacy.instances.length !== 1) {
         issues.push(
           issue(
@@ -141,7 +155,7 @@ export function worldContractStage(): StageResult {
           ),
         );
       }
-      if (legacy.instances[0]?.source.characterId !== project.activeCharacterId) {
+      if (legacy.instances[0]?.source.characterId !== legacyProject.activeCharacterId) {
         issues.push(
           issue(
             'the synthesized instance does not follow activeCharacterId',

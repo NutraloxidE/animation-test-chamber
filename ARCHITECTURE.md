@@ -10,15 +10,15 @@ validation rules — is not duplicated here on purpose (see DECISIONS/0001).
 ```text
          ┌──────────────────────────────────────────────┐
          │ apps/web — the chamber UI                    │
-         │  Viewport (R3F) · Inspector · Graph ·        │
-         │  Timeline · Replay · Diff · AI · Capability  │
+         │  Viewport (R3F) · World · Inspector ·        │
+         │  Graph · Timeline · Replay · Diff · AI       │
          └───────────────┬──────────────────────────────┘
                          │ EditSession (preview → staged)
-                         │ ChamberEngine (fixed-step simulation)
+                         │ ChamberEngine · WorldChamberEngine
          ┌───────────────┴──────────────────────────────┐
          │ packages/*-runtime — engine-agnostic logic   │
-         │  animation · input · terrain · haptics ·     │
-         │  replay · runtime-core                       │
+         │  world · capability · animation · input ·    │
+         │  terrain · haptics · replay · runtime-core   │
          └───────────────┬──────────────────────────────┘
                          │ reads and writes
          ┌───────────────┴──────────────────────────────┐
@@ -188,6 +188,107 @@ path survives reordering. Protection metadata, diffs, staging, provenance and
 Git conflict reporting are all keyed on these paths — which is why they must be
 stable.
 
+
+## Definitions and runtime instances
+
+A `CharacterDefinition` is a **definition**: reusable, shared, and never itself
+a running thing. A `RuntimeInstanceDefinition` is a **use** of one — an
+identity, a placement, a bound intent source and explicitly scoped overrides. A
+`WorldDefinition` holds instances plus the intent tracks scripted instances
+sample.
+
+Two instances may name the same character, and therefore the same behaviour,
+motion set, rig, tuning and clips. They share the resolved document by
+reference; they share no mutable state at all. Each owns its own `Simulation`,
+and with it its own state-machine state, clip time, transition progress, input
+buffer, root-motion accumulation and transform.
+
+`ProjectDefinition.world` is optional. A project without one resolves through
+`synthesizeLegacyWorld` into a one-instance world built from
+`activeCharacterId`, and nothing rewrites the file on load. The focused chamber
+is a *view over a one-instance world*, not a second runtime — so a bug in the
+world path is a bug in the focused path too. See DECISION 0009.
+
+### Stable tick order
+
+Instances tick in canonical **declaration order**, over a `string[]` captured at
+construction rather than over a `Map`. Map iteration is insertion-ordered and
+would keep working by accident, which is exactly why the loop does not read it.
+Sorting by id was rejected: renaming an instance would silently reorder the
+world.
+
+### Resolution is cached by asset reference, never by id
+
+`resolutionKey` is built from a character's asset references, not its id. Keying
+on the id would be correct until two resolutions of one id differed — a single
+preview override is enough — and the cache would then hand one instance the
+other's graph with nothing able to notice.
+
+### Intent sources
+
+An instance is fed by exactly one of `local-input`, `scripted-track`, `replay`
+or `none`. These are *sources*, not behaviours: `scripted-track` samples
+authored keyframes and decides nothing. The device is polled **once** per frame
+by the host, which then hands the normalized intent to the runtime; instances
+never touch a device, because an instance that reached for the keyboard would
+receive input according to when it happened to tick.
+
+Tracks are keyed by simulation tick and sample with **hold** semantics — every
+field keeps the latest keyframe at or before the tick. A track sampled from
+wall-clock time would mean something different on every machine.
+
+### Instance-qualified observation
+
+Observation is an output of the world, not a debugging afterthought: an agent
+that can command an instance but cannot read one back has no way to know whether
+it worked. Paths name instances by id:
+
+```text
+/world/instances/controlled-humanoid/transform/position/x
+/world/instances/scripted-humanoid/animation/layers/locomotion/stateId
+/world/instances/scripted-humanoid/intent/Move
+```
+
+Never `/world/instances/0/...`. An index means a different instance the moment
+someone reorders the array, and a path that quietly changes meaning is worse
+than no path at all. The repo guard fails a build that introduces one.
+
+### World traces and replays
+
+The legacy single-character `ReplayTrace` and `ReplayDefinition` are unchanged.
+`WorldTrace` and `WorldReplay` are separate versioned containers keyed by
+instance id, and `projectInstanceTrace` projects a one-instance world back onto
+the legacy shape — asserted **byte-identical** against `runReplay` on every
+committed fixture. See DECISION 0010.
+
+## Capabilities: machine, human, observation, verification
+
+A capability declares itself in a `CapabilityManifest` and
+`harness:capabilities` fails when the declaration is incomplete:
+
+> A new runtime capability is incomplete if it has no machine path, no human
+> authoring path, no observation path, or no deterministic verification path.
+
+**The machine path.** Typed commands with declared input and output schemas,
+validated by the registry before running, returning structured issues rather
+than throwing. Mutating commands return a *proposed* `WorldDefinition` and the
+paths it touches; publishing stays on the existing validated save/transaction
+path, and no command is handed a filesystem. There is deliberately no
+`apply_patch(path, value)`: one such hole would make protection, validation and
+the definition/instance boundary unenforceable, with nothing able to tell.
+
+**The human path.** The world panel's instance controls are rendered *from* the
+authoring surface declaration — labels, ranges, step sizes and the backing
+`commandId` all come from the manifest — and dispatch the same commands the API
+exposes. The human path and the machine path therefore cannot drift: there is
+no second way to move an instance. Scope badges make the distinction the whole
+contract is about visible: an instance-scoped edit moves one instance, a
+shared-definition edit reaches every instance referencing it.
+
+**Read-only mode.** Discovery and observation stay available when the repository
+has gone read-only; those are the tools an operator reaches for *because*
+something is wrong. Mutating commands stay refused. See DECISION 0011.
+
 ## Protection: the four gates
 
 Protecting human-confirmed values is a primary requirement, not a feature. It is
@@ -261,6 +362,11 @@ Stated plainly, because the alternative is someone discovering them later.
 - Rule-based AI proposals: three deterministic, protection-aware variants
 - GLB import, candidate lifecycle, licence policy
 - Unity bundle and C# DTO generation from the same schemas
+- Multi-instance worlds: shared definitions, independent runtime state,
+  per-instance intent routing, deterministic tick order, instance-qualified
+  observations and traces, world replay, and a byte-identical projection onto
+  the legacy single-character trace
+- Typed capability commands with harness-enforced completeness
 
 **Implemented with a fallback**
 
@@ -291,6 +397,12 @@ Stated plainly, because the alternative is someone discovering them later.
 - A general-purpose node editor, a full game engine, retargeting from arbitrary
   skeletons, crowd/enemy AI, multiplayer, or identical haptics across every
   browser and OS.
+- A behaviour system. `scripted-track` is a deterministic composition and test
+  primitive; nothing in the world runtime *decides* what an instance should do.
+- A general ECS. Instances hold a `Simulation` each, not a component store.
+- A universal property editor. The authoring surface declaration drives the
+  world panel's instance section and nothing else; the existing Inspector is
+  not generated from it.
 - Unofficial API automation for services like Mixamo. Acquisition automates
   everything from *import* onward; obtaining the file is the human's step.
 
@@ -304,3 +416,13 @@ Stated plainly, because the alternative is someone discovering them later.
   heuristic that holds for the authored presets.
 - `frameAt` scans a replay's frames linearly; fine at MVP replay lengths, worth
   a binary search if replays get long.
+- The world viewport renders the procedural character only, on a flat plane. It
+  shares `ProceduralCharacter` with the focused viewport through a pose closure
+  rather than duplicating it, but terrain meshes, GLB characters, debug overlays
+  and the ghost trace are focused-view features that the world view does not
+  show yet.
+- Only `local-input` player index 0 is wired in the browser. The schema allows
+  0–7 and the runtime routes by index; nothing polls a second gamepad.
+- The Unity adapter gains world DTOs and an `IChamberWorld` seam. It does not
+  spawn instances, and `local-input`/`replay` sources are declarations the
+  adapter must supply rather than things the bundle can evaluate.

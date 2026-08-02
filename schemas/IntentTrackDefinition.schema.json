@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "IntentTrackDefinition",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "displayName",
+    "loop",
+    "durationTicks",
+    "keyframes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "loop": {
+      "type": "boolean"
+    },
+    "durationTicks": {
+      "minimum": 1,
+      "maximum": 1000000,
+      "type": "integer"
+    },
+    "keyframes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$id": "IntentTrackKeyframe",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tick"
+        ],
+        "properties": {
+          "tick": {
+            "minimum": 0,
+            "maximum": 1000000,
+            "type": "integer"
+          },
+          "move": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "minimum": -1,
+                "maximum": 1,
+                "type": "number"
+              },
+              "y": {
+                "minimum": -1,
+                "maximum": 1,
+                "type": "number"
+              }
+            }
+          },
+          "look": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "minimum": -1,
+                "maximum": 1,
+                "type": "number"
+              },
+              "y": {
+                "minimum": -1,
+                "maximum": 1,
+                "type": "number"
+              }
+            }
+          },
+          "buttons": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "Jump": {
+                "type": "boolean"
+              },
+              "PrimaryAction": {
+                "type": "boolean"
+              },
+              "SecondaryAction": {
+                "type": "boolean"
+              },
+              "Dodge": {
+                "type": "boolean"
+              },
+              "Guard": {
+                "type": "boolean"
+              },
+              "LockOn": {
+                "type": "boolean"
+              },
+              "Interact": {
+                "type": "boolean"
+              },
+              "Pause": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "RuntimeInstanceDefinition",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "displayName",
+    "source",
+    "transform",
+    "intentSource",
+    "enabled"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "source": {
+      "$id": "RuntimeInstanceSource",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "characterId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "character",
+          "type": "string"
+        },
+        "characterId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        }
+      }
+    },
+    "transform": {
+      "$id": "TransformDefinition",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "position",
+        "yawRad"
+      ],
+      "properties": {
+        "position": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "x",
+            "y",
+            "z"
+          ],
+          "properties": {
+            "x": {
+              "minimum": -10000,
+              "maximum": 10000,
+              "type": "number"
+            },
+            "y": {
+              "minimum": -10000,
+              "maximum": 10000,
+              "type": "number"
+            },
+            "z": {
+              "minimum": -10000,
+              "maximum": 10000,
+              "type": "number"
+            }
+          }
+        },
+        "yawRad": {
+          "minimum": -1000,
+          "maximum": 1000,
+          "type": "number"
+        }
+      }
+    },
+    "intentSource": {
+      "$id": "IntentSourceDefinition",
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind",
+            "playerIndex"
+          ],
+          "properties": {
+            "kind": {
+              "const": "local-input",
+              "type": "string"
+            },
+            "playerIndex": {
+              "minimum": 0,
+              "maximum": 7,
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind",
+            "trackId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "scripted-track",
+              "type": "string"
+            },
+            "trackId": {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "minLength": 1,
+              "maxLength": 96,
+              "type": "string"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind",
+            "replayId"
+          ],
+          "properties": {
+            "kind": {
+              "const": "replay",
+              "type": "string"
+            },
+            "replayId": {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "minLength": 1,
+              "maxLength": 96,
+              "type": "string"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "none",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "overrides": {
+      "$id": "RuntimeInstanceOverrides",
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "moveSpeedScale": {
+          "minimum": 0,
+          "maximum": 4,
+          "type": "number"
+        },
+        "seed": {
+          "minimum": 0,
+          "maximum": 2147483647,
+          "type": "integer"
+        },
+        "weaponModeId": {
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "equipped": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "protection": {
+      "$id": "ProtectionMetadata",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "level"
+      ],
+      "properties": {
+        "level": {
+          "$id": "ProtectionLevel",
+          "anyOf": [
+            {
+              "const": "editable",
+              "type": "string"
+            },
+            {
+              "const": "approval-required",
+              "type": "string"
+            },
+            {
+              "const": "locked",
+              "type": "string"
+            },
+            {
+              "const": "invariant",
+              "type": "string"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "setBy": {
+          "type": "string"
+        },
+        "setAt": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "patternProperties": {
+            "^(.*)$": {
+              "$id": "ProtectionLevel",
+              "anyOf": [
+                {
+                  "const": "editable",
+                  "type": "string"
+                },
+                {
+                  "const": "approval-required",
+                  "type": "string"
+                },
+                {
+                  "const": "locked",
+                  "type": "string"
+                },
+                {
+                  "const": "invariant",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

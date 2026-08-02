@@ -32,5 +32,18 @@ export function createWorldRuntime(world?: WorldDefinition): WorldRuntime {
   });
 }
 
+/**
+ * The demo project as it was before it carried a world.
+ *
+ * The demo project now ships the acceptance world so a human opening the
+ * chamber sees two instances. Legacy compatibility is therefore no longer the
+ * default path, which is exactly why it needs a fixture of its own rather than
+ * being assumed.
+ */
+export function legacyDemoProject(): ProjectDefinition {
+  const { world: _world, ...rest } = loadDemoProject();
+  return rest as ProjectDefinition;
+}
+
 export const CONTROLLED = 'controlled-humanoid';
 export const SCRIPTED = 'scripted-humanoid';

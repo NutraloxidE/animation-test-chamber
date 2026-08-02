@@ -482,6 +482,166 @@ export function stateNameDependenceStage(): StageResult {
   );
 }
 
+/**
+ * The world contract's own erosion checks.
+ *
+ * Each pattern here is a specific way the multi-instance guarantees could be
+ * quietly undone by a plausible-looking edit: a game concept becoming canonical
+ * schema, mutable runtime state written into a canonical document, an
+ * observation path falling back to an array index, the world runtime reaching
+ * for a browser API, or per-instance state cached under a shared id.
+ *
+ * The checks are scoped to canonical and runtime source. A global word ban
+ * would reject this repository's own documentation of its non-goals, which is
+ * the opposite of useful.
+ */
+export function worldContractGuardStage(): StageResult {
+  return stage(
+    'world contract not eroded',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'keep game concepts out of canonical schema, keep mutable state out of canonical documents, and key per-instance state by instance id',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      const schemaFiles = ['packages/schema/src/world.ts'];
+      const worldRuntimeFiles = [
+        ...listFiles('packages/world-runtime/src'),
+        ...listFiles('packages/capability-runtime/src'),
+      ].filter((file) => file.endsWith('.ts'));
+
+      /*
+       * Names from the example use case. The world contract is generic; the
+       * moment "enemy" or "health" is a canonical field, every later world has
+       * to carry a concept it does not have.
+       */
+      const gameTerms = /\b(enemy|player|attack|combat|soulslike|health|damage|hitbox|hurtbox)\b/i;
+      for (const file of schemaFiles) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        for (const match of content.matchAll(/^\s*([a-zA-Z][a-zA-Z0-9]*)\s*:/gm)) {
+          const field = match[1] ?? '';
+          if (gameTerms.test(field)) {
+            issues.push({
+              files: [file],
+              expected: 'generic canonical field names',
+              actual: `a field named "${field}"`,
+              message: `${file} declares a game-specific canonical field "${field}"`,
+            });
+          }
+        }
+      }
+
+      /*
+       * Mutable runtime state must never reach a canonical document.
+       *
+       * Scoped to the instance declarations: an intent track legitimately
+       * carries a `tick` on every keyframe, and that is authored data — the
+       * tick an author wrote down, not a clock the runtime advanced.
+       */
+      const projectRaw = readRepoFile(PROJECT_PATH);
+      if (projectRaw) {
+        const world = (JSON.parse(projectRaw) as {
+          world?: { instances?: Record<string, unknown>[] };
+        }).world;
+        const forbidden = [
+          'tick',
+          'elapsedSec',
+          'velocity',
+          'inputBuffer',
+          'activeState',
+          'clipTime',
+          'transitionProgress',
+        ];
+        for (const instance of world?.instances ?? []) {
+          const serialized = JSON.stringify(instance);
+          for (const key of forbidden) {
+            if (new RegExp(`"${key}"\\s*:`).test(serialized)) {
+              issues.push({
+                files: [PROJECT_PATH],
+                expected: 'an instance declaration holding only definitions',
+                actual: `it carries a "${key}" field`,
+                message: `${PROJECT_PATH} stores mutable runtime state ("${key}") in canonical data`,
+              });
+            }
+          }
+        }
+      }
+
+      for (const file of worldRuntimeFiles) {
+        const content = readRepoFile(file);
+        if (!content) continue;
+        const code = content
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .split('\n')
+          .filter((line) => !line.trim().startsWith('//'))
+          .join('\n');
+
+        // Engine-agnostic means engine-agnostic.
+        for (const pattern of [
+          { test: /\bfrom\s+['"]react/, label: 'react' },
+          { test: /\bfrom\s+['"]three/, label: 'three' },
+          { test: /\bfrom\s+['"]hono/, label: 'hono' },
+          { test: /\bfrom\s+['"]node:fs/, label: 'node:fs' },
+          { test: /\b(document|window)\./, label: 'a DOM global' },
+          { test: /apps\/(web|api)/, label: 'an app import' },
+        ]) {
+          if (pattern.test.test(code)) {
+            issues.push({
+              files: [file],
+              expected: 'the world and capability runtimes to stay engine-agnostic',
+              actual: `it reaches for ${pattern.label}`,
+              message: `${file} depends on ${pattern.label}`,
+            });
+          }
+        }
+
+        // Observation paths must name instances.
+        if (/instances\/\$\{(index|i)\b/.test(code)) {
+          issues.push({
+            files: [file],
+            expected: 'instance-qualified observation paths',
+            actual: 'a path built from an array index',
+            message: `${file} builds an observation path from an array index`,
+          });
+        }
+
+        // Per-instance mutable state keyed by something instances share.
+        if (/new Map<string, (RuntimeInstanceState|Simulation)>[\s\S]{0,200}characterId/.test(code)) {
+          issues.push({
+            files: [file],
+            expected: 'per-instance state keyed by instance id',
+            actual: 'it is keyed by character id',
+            message: `${file} caches per-instance runtime state under a shared definition id`,
+          });
+        }
+      }
+
+      // Devices are polled in one place. An instance that polled for itself
+      // would receive input according to when it happened to tick.
+      for (const file of worldRuntimeFiles) {
+        const content = readRepoFile(file);
+        if (content && /getGamepads|addEventListener\(\s*['"]key/.test(content)) {
+          issues.push({
+            files: [file],
+            expected: 'device polling to live in the input adapter',
+            actual: 'the world runtime polls a device directly',
+            message: `${file} polls an input device outside the input adapter`,
+          });
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${worldRuntimeFiles.length} world/capability file(s) checked`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     protectedValuesStage(),
@@ -492,6 +652,7 @@ export function repoGuardStages(): StageResult[] {
     restrictedAssetStage(),
     publishedAssetImmutabilityStage(),
     stateNameDependenceStage(),
+    worldContractGuardStage(),
   ];
 }
 

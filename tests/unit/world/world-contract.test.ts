@@ -24,6 +24,7 @@ import {
   CONTROLLED,
   SCRIPTED,
   createWorldRuntime,
+  legacyDemoProject,
   loadWorldFixture,
   projectWithWorldFixture,
 } from '../../fixtures/world.ts';
@@ -181,7 +182,7 @@ describe('scripted intent tracks', () => {
 
 describe('legacy compatibility', () => {
   it('synthesizes one instance from activeCharacterId', () => {
-    const project = loadDemoProject();
+    const project = legacyDemoProject();
     expect(project.world).toBeUndefined();
     const world = worldOf(project);
     expect(world.instances).toHaveLength(1);
@@ -191,7 +192,7 @@ describe('legacy compatibility', () => {
   });
 
   it('runs a legacy project without an explicit world', () => {
-    const project = loadDemoProject();
+    const project = legacyDemoProject();
     const runtime = new WorldRuntime({ registry: demoRegistry(), project });
     runtime.run(30);
     expect(runtime.instanceIds).toHaveLength(1);
@@ -199,7 +200,7 @@ describe('legacy compatibility', () => {
   });
 
   it('does not rewrite the project on load', () => {
-    const project = loadDemoProject();
+    const project = legacyDemoProject();
     synthesizeLegacyWorld(project);
     expect(project.world).toBeUndefined();
   });

@@ -5,8 +5,28 @@ import type { ChamberEngine } from '../../engine.ts';
 import type { CharacterPreset, WeaponMode } from '../catalog.ts';
 import { HeldSword } from './HeldSword.tsx';
 
+/**
+ * Everything the procedural rig needs in order to strike a pose.
+ *
+ * Extracted so the same meshes can be driven by a world instance as by the
+ * focused engine. The alternative — a second procedural character for the
+ * multi-instance viewport — would have meant two rigs drifting apart while both
+ * claimed to show the same state machine.
+ */
+export interface CharacterPose {
+  position: { x: number; y: number; z: number };
+  yawRad: number;
+  locomotionState: string;
+  actionState: string;
+  locomotionNormalizedTime: number;
+  actionNormalizedTime: number;
+  pelvisOffset: number;
+}
+
 interface ProceduralCharacterProps {
-  engine: ChamberEngine;
+  engine?: ChamberEngine;
+  /** Per-frame pose. When present, the engine is not read at all. */
+  pose?: () => CharacterPose | null;
   /** Ghost characters are translucent and driven by a stored trace. */
   ghost?: boolean;
   color?: string;
@@ -24,6 +44,7 @@ interface ProceduralCharacterProps {
  */
 export function ProceduralCharacter({
   engine,
+  pose,
   ghost = false,
   color,
   character,
@@ -46,30 +67,47 @@ export function ProceduralCharacter({
     let normalized: number;
     let stateId: string;
     let actionState: string;
+    let actionNormalized: number;
     let pelvisOffset: number;
 
-    if (ghost) {
-      const trace = engine.ghostTrace;
+    if (pose) {
+      const current = pose();
+      if (!current) {
+        group.visible = false;
+        return;
+      }
+      group.visible = true;
+      position = current.position;
+      yaw = current.yawRad;
+      normalized = current.locomotionNormalizedTime;
+      stateId = current.locomotionState;
+      actionState = current.actionState;
+      actionNormalized = current.actionNormalizedTime;
+      pelvisOffset = current.pelvisOffset;
+    } else if (ghost) {
+      const trace = engine!.ghostTrace;
       if (!trace || trace.ticks.length === 0) {
         group.visible = false;
         return;
       }
       group.visible = true;
-      const record = trace.ticks[engine.ghostTick % trace.ticks.length]!;
+      const record = trace.ticks[engine!.ghostTick % trace.ticks.length]!;
       position = record.position;
       yaw = record.yawRad;
       normalized = record.locomotionNormalizedTime;
       stateId = record.locomotionState;
       actionState = record.actionState;
+      actionNormalized = record.actionNormalizedTime;
       pelvisOffset = record.pelvisOffset;
     } else {
-      const state = engine.simulationState;
-      const record = engine.lastRecord;
+      const state = engine!.simulationState;
+      const record = engine!.lastRecord;
       position = state.position;
       yaw = state.yawRad;
       normalized = record?.locomotionNormalizedTime ?? 0;
       stateId = record?.locomotionState ?? 'idle';
       actionState = record?.actionState ?? 'action-none';
+      actionNormalized = record?.actionNormalizedTime ?? 0;
       pelvisOffset = record?.pelvisOffset ?? 0;
     }
 
@@ -95,8 +133,7 @@ export function ProceduralCharacter({
     if (armL.current && armR.current) {
       // The action layer owns the arms: attacks and guard override the swing.
       if (actionState === 'attack-01' || actionState === 'attack-02') {
-        const t = engine.lastRecord?.actionNormalizedTime ?? 0;
-        const strike = Math.sin(Math.min(t, 1) * Math.PI);
+        const strike = Math.sin(Math.min(actionNormalized, 1) * Math.PI);
         armR.current.rotation.x = -2.2 * strike;
         armL.current.rotation.x = 0.6 * strike;
       } else if (actionState === 'guard') {
