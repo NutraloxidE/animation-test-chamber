@@ -11,6 +11,7 @@ import type { ProjectDefinition, WorldDefinition } from '@atc/schema';
 import { FIXED_DT, FixedStepAccumulator } from '@atc/runtime-core';
 import { BrowserInputSampler, type ActionSample } from '@atc/input-runtime';
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
+import type { RootMotionTrack } from '@atc/replay-runtime';
 import {
   WorldRuntime,
   observeWorld,
@@ -64,6 +65,10 @@ export class WorldChamberEngine {
   private readonly sampler: BrowserInputSampler;
   private cameraYaw = 0;
   private preview: PreviewOverride | null = null;
+  private readonly actionRootMotion = new Map<
+    string,
+    { enabled: boolean; tracks: Record<string, RootMotionTrack> }
+  >();
 
   /**
    * True while a test driver owns tick advancement.
@@ -103,6 +108,7 @@ export class WorldChamberEngine {
   setWorld(world: WorldDefinition): void {
     this.options = { ...this.options, world };
     this.runtime = new WorldRuntime(this.options);
+    this.applyActionRootMotion();
   }
 
   /**
@@ -117,7 +123,34 @@ export class WorldChamberEngine {
   setProject(project: ProjectDefinition): void {
     this.options = { ...this.options, project };
     this.runtime = new WorldRuntime(this.options);
+    this.applyActionRootMotion();
     this.sampler.setInputMap(project.inputMap);
+  }
+
+  /**
+   * Per-instance root motion tuning, the same values Isolate pushes into
+   * `ChamberEngine`.
+   *
+   * Kept on the engine rather than handed straight to the simulation, because
+   * `setWorld`/`setProject` rebuild the runtime: a value written only into the
+   * live `Simulation` would vanish on the next tuning edit, which is exactly
+   * when the human is watching for it.
+   */
+  setActionRootMotion(
+    instanceId: string,
+    config: { enabled: boolean; tracks: Record<string, RootMotionTrack> },
+  ): void {
+    this.actionRootMotion.set(instanceId, config);
+    this.applyActionRootMotion();
+  }
+
+  private applyActionRootMotion(): void {
+    for (const [instanceId, config] of this.actionRootMotion) {
+      const simulation = this.runtime.instance(instanceId)?.simulation;
+      if (!simulation) continue;
+      simulation.setUpperBodyActionRootMotionEnabled(config.enabled);
+      simulation.setActionRootMotionTracks(config.tracks);
+    }
   }
 
   setCameraYaw(yawRad: number): void {

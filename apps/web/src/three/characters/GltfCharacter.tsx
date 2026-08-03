@@ -10,6 +10,7 @@ import type { ResolvedProject } from '@atc/schema';
 import * as THREE from 'three';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { ChamberEngine } from '../../engine.ts';
+import type { WorldChamberEngine } from '../../world/world-engine.ts';
 import type { CharacterPreset, WeaponGrip, WeaponMode } from '../catalog.ts';
 import type { CharacterPose } from './ProceduralCharacter.tsx';
 import { HeldSword } from './HeldSword.tsx';
@@ -36,6 +37,8 @@ const POSE_MODE_BLEND_SEC = 0.12;
 
 export function GltfCharacter({
   engine,
+  worldEngine,
+  instanceId,
   pose,
   poseProject,
   character,
@@ -46,6 +49,9 @@ export function GltfCharacter({
 }: {
   /** Isolate view: the model reads the focused engine directly. */
   engine?: ChamberEngine;
+  /** World view: where this instance's root motion tuning is pushed. */
+  worldEngine?: WorldChamberEngine;
+  instanceId?: string;
   /** World view: a per-frame pose closure, one per instance. */
   pose?: () => CharacterPose | null;
   /**
@@ -165,10 +171,26 @@ export function GltfCharacter({
     weaponCompatible,
   ]);
   useEffect(() => {
-    if (!engine) return;
-    engine.setActionRootMotionTracks(actionRootMotionTracks);
-    return () => engine.setActionRootMotionTracks({});
-  }, [actionRootMotionTracks, engine]);
+    if (engine) {
+      engine.setActionRootMotionTracks(actionRootMotionTracks);
+      return () => engine.setActionRootMotionTracks({});
+    }
+    // The tracks are read out of the GLTF here, so this is the only place that
+    // can hand them to the world's per-instance simulation. Without it the
+    // world runs attacks with no displacement while Isolate shows the tuned
+    // one, and the difference reads as "the world ignores my tuning".
+    if (!worldEngine || !instanceId) return;
+    const enabled = weaponCompatible && weapon.usesAttackRootMotion === true;
+    worldEngine.setActionRootMotion(instanceId, { enabled, tracks: actionRootMotionTracks });
+    return () => worldEngine.setActionRootMotion(instanceId, { enabled: false, tracks: {} });
+  }, [
+    actionRootMotionTracks,
+    engine,
+    instanceId,
+    weapon.usesAttackRootMotion,
+    weaponCompatible,
+    worldEngine,
+  ]);
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const currentClip = useRef('');
   const currentAction = useRef<THREE.AnimationAction | null>(null);

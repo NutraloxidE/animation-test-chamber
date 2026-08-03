@@ -20,6 +20,11 @@ import { GltfCharacter } from '../../three/characters/GltfCharacter.tsx';
 import { characterPreset, weaponMode } from '../../three/catalog.ts';
 import { selectedInstanceId } from '../../selection/scene-selection.ts';
 
+/** [x, z, size] of the static boxes scattered around the spawn area. */
+const LANDMARKS: Array<[number, number, number]> = [
+  [-6, 4, 1], [7, 2, 1.6], [-3, -8, 2.2], [5, -6, 1], [10, 9, 3], [-11, -3, 1.4], [0, 12, 2],
+];
+
 /** Advances the world and keeps the camera behind the camera-target instance. */
 function WorldLoop({ engine, cameraTargetId }: { engine: WorldChamberEngine; cameraTargetId: string }) {
   const { camera } = useThree();
@@ -105,6 +110,16 @@ export function WorldViewport() {
         <meshStandardMaterial color="#1e293b" />
       </mesh>
 
+      {/* Landmarks. An empty plane reads as static no matter how fast the world
+          runs, so the ground carries a grid and a few boxes to move against. */}
+      <gridHelper args={[80, 80, '#334155', '#233043']} />
+      {LANDMARKS.map(([x, z, size], index) => (
+        <mesh key={index} position={[x, size / 2, z]} castShadow receiveShadow>
+          <boxGeometry args={[size, size, size]} />
+          <meshStandardMaterial color="#475569" />
+        </mesh>
+      ))}
+
       <WorldLoop engine={engine} cameraTargetId={cameraTargetId} />
 
       {world.instances
@@ -130,6 +145,8 @@ export function WorldViewport() {
               // hold different weapons, and the viewport has to be able to
               // show that or the isolation guarantee is invisible.
               <GltfCharacter
+                worldEngine={engine}
+                instanceId={instance.id}
                 pose={engine.poseOf(instance.id)}
                 // Per instance, not the world's raw document: each instance
                 // resolves its own character's motion set.
