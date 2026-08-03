@@ -2025,22 +2025,28 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     /**
      * The document the Graph workspace edits, under the inspected binding
-     * context. Null when the target cannot be resolved at all.
+     * context.
+     *
+     * Deliberately the **edit session's preview document**, not the target's
+     * resolved runtime document. This started out reading
+     * `resolvedAnimationTarget().resolvedProject` — which is the snapshot
+     * `WorldRuntime` built when it constructed the world, and therefore does
+     * not contain unsaved edits. Editing a time curve wrote to the session and
+     * the panel kept rendering the runtime's copy, so every edit was invisible
+     * and the staging flow looked broken.
+     *
+     * Graph and Timing are *authoring* surfaces. An authoring surface has to
+     * read the document it writes to; reading a runtime snapshot is how an
+     * editor shows you something other than what you are editing.
+     *
+     * The target still decides the *binding context* — that is what
+     * `motionBindingContext` carries, seeded from the target's effective
+     * loadout — and the header still names the Behavior the target resolves
+     * to. What the target does not get to do is substitute a document the
+     * session cannot write through.
      */
     graphProject() {
       const state = get();
-      if (state.graphTarget.kind === 'follow-animation-target') {
-        const resolved = state.resolvedAnimationTarget();
-        if (resolved?.ok) {
-          return resolveWeaponMode(
-            resolved.target.resolvedProject,
-            state.motionBindingContext.weaponModeId,
-          );
-        }
-      }
-      // No animation target (or an explicitly pinned asset): fall back to the
-      // globally resolved document so the graph is still editable. The header
-      // says which behaviour that is, which is the part that was missing.
       return resolveWeaponMode(state.project, state.motionBindingContext.weaponModeId);
     },
 

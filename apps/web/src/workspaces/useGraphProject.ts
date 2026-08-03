@@ -17,18 +17,11 @@ import type { ResolvedProject } from '@atc/schema';
 import { useChamber } from '../store.ts';
 
 export function useGraphProject(): ResolvedProject {
-  const graphTarget = useChamber((state) => state.graphTarget);
   const weaponModeId = useChamber((state) => state.motionBindingContext.weaponModeId);
-  const selection = useChamber((state) => state.sceneSelection);
-  const targetMode = useChamber((state) => state.animationTargetMode);
-  // Bumped whenever the preview document changes, which is what makes an edited
-  // transition or clip curve reach the panel.
-  const revision = useChamber((state) => state.revision);
+  // The preview document itself. Subscribing to it — rather than only to
+  // `revision` — is what makes an edit reach the panel that made it on the
+  // very next render, with no second signal to keep in step.
+  const project = useChamber((state) => state.project);
 
-  return useMemo(
-    () => useChamber.getState().graphProject(),
-    // Every input the derivation reads. `revision` covers edits to the
-    // documents behind an otherwise unchanged target.
-    [graphTarget, weaponModeId, selection, targetMode, revision],
-  );
+  return useMemo(() => useChamber.getState().graphProject(), [project, weaponModeId]);
 }

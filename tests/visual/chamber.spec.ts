@@ -219,6 +219,15 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await openPanel(page, 'project');
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  /*
+   * The skinned character and its weapon animations are the Rig
+   * presentation's renderer. World and Isolate are one shared procedural
+   * path now — which is what makes Clip Preview visible in both — so the
+   * GLB fetch this asserts happens where that renderer actually lives.
+   */
+  while ((await page.getByTestId('toggle-world-mode').textContent()) !== 'View: Rig') {
+    await page.getByTestId('toggle-world-mode').click();
+  }
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );
