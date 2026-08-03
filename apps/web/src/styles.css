@@ -1334,6 +1334,12 @@ textarea {
     background: var(--panel-2);
     font-size: 12px;
     padding: 8px;
+    /* The handle both opens and closes the sheet, so it has to outrank it:
+       at z-index 20 the open sheet covered its own close button, leaving the
+       Inspector with no way out on a short viewport. Below the dock's 22,
+       because while the dock owns the screen the handle is withdrawn. */
+    position: relative;
+    z-index: 21;
   }
 
   /* Narrow viewports give the bottom of the screen to one overlay at a time.
