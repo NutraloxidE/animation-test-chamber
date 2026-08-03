@@ -24,7 +24,10 @@ async function openWorld(page: Page): Promise<void> {
   await page.evaluate(() => window.__ATC_TEST__!.enableWorld());
   await page.getByTestId('toggle-world-mode').click();
   await openHierarchy(page);
-  await openInspector(page);
+  // Not the inspector too: on narrow the hierarchy overlay covers the sheet
+  // handle, so opening both here would fail before any test ran. Each test
+  // reaches the inspector through selectInstance, which takes turns properly.
+  if (!isNarrow(page)) await openInspector(page);
 }
 
 /** Below the 900px breakpoint the docks are overlays rather than columns. */

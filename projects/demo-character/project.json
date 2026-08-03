@@ -514,13 +514,7 @@
           "version": "1.0.0",
           "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
         },
-        "instanceOverrides": [
-          {
-            "path": "/clips/dodge/rootDisplacement/z",
-            "op": "set",
-            "value": 6.2
-          }
-        ]
+        "instanceOverrides": []
       }
     },
     {
