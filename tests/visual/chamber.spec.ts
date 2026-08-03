@@ -29,7 +29,7 @@ async function openPanel(page: Page, id: string): Promise<void> {
     // On narrow viewports the hierarchy is a full-height overlay, so leaving
     // it open would cover the Inspector it just routed to. The selection
     // survives the dock closing — that is the point of the selection model.
-    if (await page.getByTestId('sheet-handle').isVisible()) await closeHierarchyDock(page);
+    if (isNarrow(page)) await closeHierarchyDock(page);
     await openInspectorSheet(page);
     return;
   }
@@ -123,7 +123,7 @@ async function closeInspectorSheet(page: Page): Promise<void> {
 async function openFocusedLoadout(page: Page): Promise<void> {
   await openHierarchyDock(page);
   await page.getByTestId('scene-node-instance-controlled-humanoid').click();
-  if (await page.getByTestId('sheet-handle').isVisible()) await closeHierarchyDock(page);
+  if (isNarrow(page)) await closeHierarchyDock(page);
   await openInspectorSheet(page);
   await expect(page.getByTestId('inspector-loadout')).toBeVisible();
 }

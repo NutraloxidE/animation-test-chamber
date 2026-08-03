@@ -25,7 +25,11 @@ async function openWorld(page: Page): Promise<void> {
   await page.getByTestId('toggle-world-mode').click();
   await openHierarchy(page);
   await openInspector(page);
-  await expect(page.getByTestId('hierarchy')).toBeVisible();
+}
+
+/** Below the 900px breakpoint the docks are overlays rather than columns. */
+function isNarrow(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 0) < 901;
 }
 
 /** The hierarchy dock only defaults open above the 900px breakpoint. */
@@ -33,6 +37,7 @@ async function openHierarchy(page: Page): Promise<void> {
   if (!(await page.getByTestId('hierarchy').isVisible())) {
     await page.getByTestId('toggle-hierarchy').click();
   }
+  await expect(page.getByTestId('hierarchy')).toBeVisible();
 }
 
 /** On narrow viewports the inspector lives in a bottom sheet. */
@@ -44,6 +49,29 @@ async function openInspector(page: Page): Promise<void> {
       await handle.click();
     }
   }
+}
+
+/**
+ * Selects an instance and brings its inspector forward.
+ *
+ * On a narrow viewport the hierarchy is a full-height overlay covering the
+ * Inspector, so the two take turns — which is the sequence a person performs
+ * there. The selection survives the hierarchy closing, which is the whole
+ * point of having one selection model rather than a per-dock one.
+ */
+async function selectInstance(page: Page, instanceId: string): Promise<void> {
+  await openHierarchy(page);
+  await page.getByTestId(`scene-node-instance-${instanceId}`).click();
+  if (isNarrow(page)) await page.getByTestId('toggle-hierarchy').click();
+  await openInspector(page);
+}
+
+/** Selects the world root, where world-level actions live. */
+async function selectWorldRoot(page: Page): Promise<void> {
+  await openHierarchy(page);
+  await page.getByTestId('scene-node-world').click();
+  if (isNarrow(page)) await page.getByTestId('toggle-hierarchy').click();
+  await openInspector(page);
 }
 
 async function advanceWorld(page: Page, ticks: number): Promise<void> {
@@ -75,7 +103,7 @@ test.describe('multi-instance world authoring', () => {
     await advanceWorld(page, 60);
     const before = await observe(page);
 
-    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
+    await selectInstance(page, 'scripted-humanoid');
     await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
 
     // Selection is presentation: the world must be exactly where it was.
@@ -85,7 +113,7 @@ test.describe('multi-instance world authoring', () => {
       before.instances.map((entry) => entry.transform.position),
     );
 
-    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await selectInstance(page, 'controlled-humanoid');
     await expect(page.getByTestId('world-inspector-id')).toHaveText('controlled-humanoid');
   });
 
@@ -134,9 +162,11 @@ test.describe('multi-instance world authoring', () => {
 
   test('duplicating stages a new instance that shares the source reference', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await selectInstance(page, 'controlled-humanoid');
     await page.getByTestId('world-duplicate').click();
 
+    // The tree is where a new instance shows up, so look at it.
+    await openHierarchy(page);
     await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toBeVisible();
     const observation = await observe(page);
     const copy = observation.instances.find((e) => e.instanceId === 'controlled-humanoid-2')!;
@@ -148,7 +178,7 @@ test.describe('multi-instance world authoring', () => {
 
   test('a transform edit moves only the selected instance', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await selectInstance(page, 'controlled-humanoid');
 
     const before = await observe(page);
     const scriptedBefore = before.instances.find((e) => e.instanceId === 'scripted-humanoid')!;
@@ -166,7 +196,7 @@ test.describe('multi-instance world authoring', () => {
 
   test('rebinding the intent source changes one instance only', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
+    await selectInstance(page, 'scripted-humanoid');
     await page.getByTestId('world-field-instance.intentSource-input').selectOption('none');
     await advanceWorld(page, 60);
 
@@ -179,14 +209,16 @@ test.describe('multi-instance world authoring', () => {
 
   test('staged world changes can be reverted', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await selectInstance(page, 'controlled-humanoid');
     await page.getByTestId('world-duplicate').click();
+    await openHierarchy(page);
     await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toBeVisible();
 
     // Reverting is a world-level action, so it lives on the world root's
     // inspector rather than on whichever instance happened to be selected.
-    await page.getByTestId('scene-node-world').click();
+    await selectWorldRoot(page);
     await page.getByTestId('world-revert').click();
+    await openHierarchy(page);
     await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toHaveCount(0);
     await expect(page.getByTestId('scene-node-instance-controlled-humanoid')).toBeVisible();
   });
