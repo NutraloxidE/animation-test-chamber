@@ -29,6 +29,7 @@ export function AnimationPreviewWorkspace() {
   const setPreviewSpeed = useChamber((state) => state.setPreviewSpeed);
   const setPreviewNormalizedTime = useChamber((state) => state.setPreviewNormalizedTime);
   const clearAnimationPreview = useChamber((state) => state.clearAnimationPreview);
+  const presentation = useChamber((state) => state.viewportPresentation);
 
   const states = project.graph.states;
   const selectedInstance = selectedInstanceId(selection);
@@ -175,6 +176,14 @@ export function AnimationPreviewWorkspace() {
           />
         </label>
       </div>
+
+      {active && presentation !== 'world' && (
+        <p className="workspace__hint" data-testid="preview-needs-world-view">
+          The preview targets a world instance, and the world viewport is what draws it. Switch{' '}
+          <b>View</b> to <b>World</b> to see it. Saying so is better than letting Play look broken:
+          the override is applied, it is simply not on screen in this presentation.
+        </p>
+      )}
 
       <div className="workspace__row">
         <button

@@ -213,16 +213,41 @@ export function SceneHierarchy() {
     }
   };
 
-  // Sibling counts for aria-setsize/posinset, computed per depth run.
-  const siblings = rows.map((row, index) => {
-    const peers = rows.filter((other, otherIndex) => {
-      if (other.depth !== row.depth) return false;
-      // Same parent means no shallower row sits between the two.
-      const [low, high] = index < otherIndex ? [index, otherIndex] : [otherIndex, index];
-      return !rows.slice(low + 1, high).some((between) => between.depth < row.depth);
-    });
-    return { setSize: peers.length, positionInSet: peers.indexOf(row) + 1 };
-  });
+  /**
+   * `aria-setsize` / `aria-posinset` for each row.
+   *
+   * A screen reader announces "3 of 5" from these, so they must count
+   * *siblings* — a run of rows at the same depth with no shallower row between
+   * them — rather than every row at that depth in the whole tree. One pass
+   * collects the runs; a second stamps each run's length onto its members.
+   */
+  const siblings = useMemo(() => {
+    const runs: number[][] = [];
+    // The run currently open at each depth, or undefined once closed.
+    const open: (number[] | undefined)[] = [];
+
+    for (const [index, row] of rows.entries()) {
+      // A row closes every run deeper than itself: those siblings are done.
+      for (let depth = row.depth + 1; depth < open.length; depth += 1) {
+        open[depth] = undefined;
+      }
+      let run = open[row.depth];
+      if (!run) {
+        run = [];
+        open[row.depth] = run;
+        runs.push(run);
+      }
+      run.push(index);
+    }
+
+    const result = rows.map(() => ({ setSize: 1, positionInSet: 1 }));
+    for (const run of runs) {
+      run.forEach((index, position) => {
+        result[index] = { setSize: run.length, positionInSet: position + 1 };
+      });
+    }
+    return result;
+  }, [rows]);
 
   return (
     <div className="hierarchy" data-testid="hierarchy">

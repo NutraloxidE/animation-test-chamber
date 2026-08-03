@@ -125,7 +125,7 @@ test.describe('instance loadout', () => {
 
     await expect(page.getByTestId('attachment-inspector')).toBeVisible();
     await expect(page.getByTestId('attachment-slot-id')).toHaveText('shield');
-    await expect(page.getByTestId('attachment-parent-instance')).toContainText('controlled');
+    await expect(page.getByTestId('attachment-parent-instance')).toHaveText('Controlled humanoid');
 
     // The toggle here edits the same instance override the Loadout section does.
     await page.getByTestId('attachment-equipped-input').check();

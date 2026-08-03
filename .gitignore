@@ -26,6 +26,8 @@ reports/*.md
 !reports/pr14-critical-fixes.json
 !reports/pr14-replay-lifecycle.md
 !reports/pr14-replay-lifecycle.json
+!reports/scene-hierarchy-contextual-inspector.md
+!reports/scene-hierarchy-contextual-inspector.json
 # Asset transaction staging. Created and deleted within a single request; a
 # directory surviving here means a transaction died mid-flight.
 .chamber-asset-transactions/

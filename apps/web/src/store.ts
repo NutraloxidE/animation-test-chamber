@@ -386,8 +386,13 @@ interface ChamberActions {
   setPreviewSpeed(speed: number): void;
   setPreviewNormalizedTime(normalizedTime: number): void;
   clearAnimationPreview(): void;
-  /** Pushes transport state at the engine's read side. Never at its tick. */
-  syncPreviewOverride(): void;
+  /**
+   * Pushes transport state at the engine's read side. Never at its tick.
+   *
+   * `seek` means "the user moved the playhead": without it the engine's live
+   * playback time is preserved, so changing the speed does not rewind the clip.
+   */
+  syncPreviewOverride(options?: { seek?: boolean }): void;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
@@ -1637,23 +1642,27 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     resetInstanceLoadout(instanceId) {
       const state = get();
+      // Each clear is its own staged command, so a partially-refused reset
+      // leaves the overrides it did clear cleared rather than rolling back a
+      // batch the command surface never agreed to treat as one.
       state.setInstanceWeaponMode(instanceId, null);
       for (const slot of state.canonicalProject.equipment) {
-        get().setInstanceEquipment(instanceId, slot.id, null);
+        state.setInstanceEquipment(instanceId, slot.id, null);
       }
       set({ worldMessage: `loadout overrides cleared on ${instanceId}` });
     },
 
     setPreviewTarget(targetInstanceId) {
       set({ animationPreview: { ...get().animationPreview, targetInstanceId } });
-      get().syncPreviewOverride();
+      get().syncPreviewOverride({ seek: true });
     },
 
     setPreviewSubject(layer, stateId) {
+      // A new state starts at its beginning, so this is a seek.
       set({
         animationPreview: { ...get().animationPreview, layer, stateId, normalizedTime: 0 },
       });
-      get().syncPreviewOverride();
+      get().syncPreviewOverride({ seek: true });
     },
 
     setPreviewPlaying(playing) {
@@ -1673,7 +1682,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     setPreviewNormalizedTime(normalizedTime) {
       set({ animationPreview: { ...get().animationPreview, normalizedTime } });
-      get().syncPreviewOverride();
+      get().syncPreviewOverride({ seek: true });
     },
 
     /**
@@ -1696,18 +1705,31 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
      * canonical bytes and the replay traces unchanged" testable rather than
      * aspirational.
      */
-    syncPreviewOverride() {
+    syncPreviewOverride(options = {}) {
       const preview = get().animationPreview;
       const engine = get().worldEngine;
       if (!preview.targetInstanceId || !preview.stateId) {
         engine.setPreviewOverride(null);
         return;
       }
+      /*
+       * Playback time belongs to the engine while a preview is running — it is
+       * the engine that advances it. Pushing the store's copy back on every
+       * unrelated change would make nudging the speed slider jump the clip
+       * back to wherever the store last happened to hear about. Only the scrub
+       * control and a state change say "seek", and they say so explicitly.
+       */
+      const live = engine.previewOverride;
+      const normalizedTime =
+        options.seek || !live || live.instanceId !== preview.targetInstanceId
+          ? preview.normalizedTime
+          : live.normalizedTime;
+
       engine.setPreviewOverride({
         instanceId: preview.targetInstanceId,
         layer: preview.layer,
         stateId: preview.stateId,
-        normalizedTime: preview.normalizedTime,
+        normalizedTime,
         playing: preview.playing,
         loop: preview.loop,
         speed: preview.speed,

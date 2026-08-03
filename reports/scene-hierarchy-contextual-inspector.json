@@ -1,0 +1,106 @@
+{
+  "workPackage": "Scene Hierarchy & Contextual Inspector Refactor",
+  "baseSha": "d4be2dfa9e7f5844ee6b5166950c0fcce1a5eeeb",
+  "branch": "claude/new-session-8lsuc4",
+  "branchDeviation": {
+    "suggested": "claude/scene-hierarchy-contextual-inspector",
+    "reason": "the session's designated branch is claude/new-session-8lsuc4 and pushing to another branch was not authorised"
+  },
+  "executingAgent": {
+    "id": "main-agent",
+    "model": "claude-opus-5"
+  },
+  "orchestration": {
+    "followed": false,
+    "specifiedSubagents": 8,
+    "subagentsRun": 0,
+    "handoffsFabricated": 0,
+    "reviewFilesFabricated": 0,
+    "reason": "the tiered models named in §19 are not addressable as separate agents in this environment, and the specified file ownership is not disjoint — tasks 01, 04 and 05 all own apps/web/src/store.ts, and the selection model, hierarchy and inspector are three views of one SceneSelection type"
+  },
+  "schemaPolicy": {
+    "canonicalSchemaChanged": false,
+    "reason": "RuntimeInstanceOverrides already carried weaponModeId and equipped; attachment rows are derived UI projections",
+    "schemaDrift": false,
+    "animationAssetIndexDrift": false,
+    "unityDtoDrift": false
+  },
+  "decisions": ["DECISIONS/0012-scene-hierarchy-and-contextual-inspector.md"],
+  "commandsAdded": [
+    "world.set_instance_weapon_mode",
+    "world.set_instance_equipment"
+  ],
+  "storeSurfaceRemoved": [
+    "PanelId",
+    "activePanel",
+    "setPanel",
+    "worldMode",
+    "setWorldMode",
+    "selectedInstanceId (writable field)",
+    "setWeaponMode",
+    "setEquipped"
+  ],
+  "filesRemoved": [
+    "apps/web/src/components/world/WorldPanel.tsx",
+    "apps/web/src/panels/Hierarchy.tsx"
+  ],
+  "previewNonPersistence": {
+    "appliedAt": "WorldChamberEngine.poseOf",
+    "appliedInsideFixedStep": false,
+    "note": "the override is on the read side, after runtime.step(), so the tick record, world trace hash and replay are structurally unaffected"
+  },
+  "testCounts": {
+    "before": {
+      "vitestTests": 546,
+      "playwrightDeclarations": 47,
+      "playwrightCases": 141
+    },
+    "after": {
+      "vitestTests": 564,
+      "playwrightDeclarations": 71,
+      "playwrightCases": 213
+    },
+    "deletedOrWeakened": 0,
+    "skipped": 0,
+    "only": 0
+  },
+  "testsAdded": [
+    "tests/unit/web/scene-selection.test.ts",
+    "tests/integration/world/instance-loadout.test.ts",
+    "tests/visual/hierarchy/scene-hierarchy.spec.ts",
+    "tests/visual/loadout/instance-loadout.spec.ts",
+    "tests/visual/animation-preview/preview-workspace.spec.ts"
+  ],
+  "repoGuardAdded": "scene selection and loadout stay instance-qualified",
+  "verification": [
+    { "command": "pnpm install --frozen-lockfile", "exit": 0 },
+    { "command": "pnpm typecheck", "exit": 0 },
+    { "command": "pnpm lint", "exit": 0 },
+    { "command": "pnpm harness:unit", "exit": 0, "tests": 289 },
+    { "command": "pnpm harness:integration", "exit": 0, "tests": 145 },
+    { "command": "pnpm harness:replay", "exit": 0, "tests": 112 },
+    { "command": "npx vitest run", "exit": 0, "tests": 564 },
+    { "command": "pnpm harness:world", "exit": 0 },
+    { "command": "pnpm harness:capabilities", "exit": 0 },
+    { "command": "pnpm harness:check", "exit": 0 },
+    { "command": "pnpm harness:repo-guard", "exit": 0, "checks": "10/10" },
+    { "command": "pnpm build", "exit": 0 },
+    { "command": "pnpm schema:generate", "exit": 0, "drift": false },
+    { "command": "pnpm assets:animation:index", "exit": 0, "drift": false },
+    { "command": "pnpm unity:export", "exit": 0, "drift": false }
+  ],
+  "deviations": [
+    "agent orchestration not followed; no subagent ran",
+    "agents/reviews/14 and 15 not written — they would be self-reviews signed as independent ones",
+    "branch name is the session's designated branch",
+    "isolate presentation maps to the pre-existing focused renderer rather than dimming non-selected instances in the world viewport",
+    "secondary workspaces (Diff, AI, Import, Haptics) docked at the bottom; §12 lists them as optional-later but removing the right-hand tab strip left them no home",
+    "§21 screenshot review not performed by a human reviewer"
+  ],
+  "declaration": {
+    "result": "PASS",
+    "agentOrchestrationEvidence": "FAIL",
+    "finalUxArchitectureReview": "HOLD",
+    "holdReason": "§28 condition 26 requires an independent reviewer to return UI ARCHITECTURE ACCEPTED. No independent reviewer ran, and a self-review claiming otherwise is what §0 forbids. All other numbered conditions are met and verified by executable checks."
+  }
+}

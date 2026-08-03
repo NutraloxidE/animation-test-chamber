@@ -2296,18 +2296,39 @@ button.link {
   background: var(--panel);
 }
 
+/* The dock body constrains rather than scrolls. The Asset Library manages its
+   own three-pane scrolling and expects to be a flex child with a bounded
+   height; letting the dock scroll instead would stretch it to its full content
+   height and take the whole page with it. */
 .workspace-dock__body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 0.6rem;
+  display: flex;
+  overflow: hidden;
 }
 
 .workspace {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.6rem;
+  min-height: 0;
   min-width: 0;
+  overflow: auto;
+  padding: 0.6rem;
+}
+
+/* Project/Assets is the exception: its body is the Asset Library, which
+   scrolls internally, so this workspace must not add a second scroller. */
+.workspace--project {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace--project > .workspace__row {
+  padding: 0.4rem 0.6rem;
+  flex: none;
 }
 
 .workspace__header {
