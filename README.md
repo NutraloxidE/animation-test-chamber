@@ -124,6 +124,32 @@ The disabled features say why, rather than failing with a network error. Run
 Button prompts follow the device you used last. The on-screen pad appears
 automatically on touch devices and can be forced on or off.
 
+## Where things live
+
+The editor is laid out around one question — *what is selected?*
+
+- **Hierarchy** (left) is the world: its instances, their equipment
+  attachments, the terrain and the camera. Rows select; they do not edit.
+- **Inspector** (right) shows whatever the hierarchy has selected. Select an
+  instance to edit its transform, loadout and intent source; select its shield
+  to edit that one slot. There is no tab strip — and no `World` tab, because
+  the instance list is the hierarchy now.
+- **Bottom dock** holds the workspaces: Project/Assets, Animation Preview,
+  Timeline, Graph and Replay. The inspector stays visible while they change.
+- **View: World | Isolate** in the toolbar is a display choice. It never moves
+  your selection.
+
+Two badges are worth learning. `INSTANCE` means the change affects only the
+selected instance; `SHARED` means it affects every instance referencing that
+definition. `PREVIEW` means nothing is being saved at all — the Animation
+Preview workspace plays a state on an instance without writing to the project,
+the world or any asset, and **Clear preview override** restores the authored
+behaviour exactly.
+
+Two instances of the same character can therefore carry different weapon modes
+and different equipment without either one changing the other, or the shared
+character definition they both point at.
+
 ## What protects your work
 
 The chamber's second job — after making tuning fast — is stopping later edits
@@ -141,8 +167,9 @@ This is enforced in four independent places, so no single bug or careless agent
 can bypass it: the edit session in the browser, the AI proposal generator, the
 API server before it commits, and the repo guard in the harness.
 
-Try it: open the Terrain panel and attempt to drag **Jump height**. It is
-locked, and the slider is disabled until you unlock it deliberately.
+Try it: select **Terrain** in the Hierarchy and attempt to drag **Jump
+height**. It is locked, and the slider is disabled until you unlock it
+deliberately.
 
 ## Project layout
 

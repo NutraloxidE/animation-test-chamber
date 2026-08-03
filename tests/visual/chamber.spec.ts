@@ -12,39 +12,88 @@ const here = dirname(fileURLToPath(import.meta.url));
  * when a colour changes.
  */
 
+/**
+ * Opens the workspace or inspector that now owns a panel.
+ *
+ * The right-hand dock stopped being a tab strip: it shows whatever is selected
+ * in the scene, and the editors that used to be tabs are bottom-dock
+ * workspaces. So "open the terrain panel" is now "select the terrain node",
+ * and "open the graph panel" is "open the Graph workspace". The tests kept
+ * their assertions; only the route to the panel changed.
+ */
 async function openPanel(page: Page, id: string): Promise<void> {
+  // Scene objects are reached by selecting them in the hierarchy.
+  if (id === 'terrain') {
+    await openHierarchyDock(page);
+    await page.getByTestId('scene-node-terrain').click();
+    await openInspectorSheet(page);
+    return;
+  }
+
+  const workspace = {
+    inspector: 'graph',
+    timing: 'graph',
+    graph: 'graph',
+    timeline: 'timeline',
+    replay: 'replay',
+    diff: 'diff',
+    ai: 'ai',
+    capability: 'capability',
+    acquisition: 'acquisition',
+    project: 'project',
+  }[id];
+  if (!workspace) throw new Error(`no home for panel "${id}"`);
+  await openBottomDock(page);
+  await page.getByTestId(`workspace-${workspace}`).click();
+}
+
+/** The bottom dock is a toggle; opening it is idempotent. */
+async function openBottomDock(page: Page): Promise<void> {
+  if (!(await page.getByTestId('workspace-dock').isVisible())) {
+    await page.getByTestId('workspace-asset-library').click();
+  }
+}
+
+/** The inspector sheet only exists on narrow viewports. */
+async function openInspectorSheet(page: Page): Promise<void> {
   const handle = page.getByTestId('sheet-handle');
-  // The bottom sheet only exists on narrow viewports.
   if (await handle.isVisible()) {
     const panels = page.locator('.app__panels');
     if (!(await panels.evaluate((element) => element.classList.contains('is-open')))) {
       await handle.click();
     }
   }
-  await page.getByTestId(`tab-${id}`).click();
 }
 
 /**
- * The Hierarchy dock (character/weapon/equipment) only defaults open above
- * the 900px breakpoint — below it, it would otherwise overlay and block the
- * rest of the narrow layout (PLAN Part VI, the same overlay-by-default bug
- * fixed for the bottom sheet).
+ * The Hierarchy dock only defaults open above the 900px breakpoint — below it
+ * it would otherwise overlay and block the rest of the narrow layout (PLAN
+ * Part VI, the same overlay-by-default bug fixed for the bottom sheet).
  */
-async function openHierarchy(page: Page): Promise<void> {
-  if (!(await page.getByTestId('character-select').isVisible())) {
+async function openHierarchyDock(page: Page): Promise<void> {
+  if (!(await page.getByTestId('hierarchy').isVisible())) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+async function closeHierarchyDock(page: Page): Promise<void> {
+  if (await page.getByTestId('hierarchy').isVisible()) {
     await page.getByTestId('toggle-hierarchy').click();
   }
 }
 
 /**
- * On a narrow viewport the Hierarchy dock is a full-height overlay (unlike
- * desktop, where it is a reserved column) — closing it once done frees the
- * area other overlays (the bottom sheet, its buttons) also need.
+ * Selects the focused instance and opens its Loadout section.
+ *
+ * Weapon mode is an instance property now, so reaching it means selecting an
+ * instance first — which is the behaviour change these tests exist to keep
+ * honest, not an inconvenience to route around.
  */
-async function closeHierarchy(page: Page): Promise<void> {
-  if (await page.getByTestId('character-select').isVisible()) {
-    await page.getByTestId('toggle-hierarchy').click();
-  }
+async function openFocusedLoadout(page: Page): Promise<void> {
+  await openHierarchyDock(page);
+  await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+  await openInspectorSheet(page);
+  await expect(page.getByTestId('inspector-loadout')).toBeVisible();
 }
 
 /**
@@ -113,16 +162,19 @@ test('camera control switches between mouse movement and click-drag', async ({ p
 });
 
 test('character and weapon presets can be selected', async ({ page }) => {
-  await openHierarchy(page);
+  // The render preset is a shared definition, so it lives in Project/Assets.
+  await openPanel(page, 'project');
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );
-  await page.getByTestId('weapon-mode-select').selectOption('sword');
+  // Weapon mode is instance loadout, so it is reached through the instance.
+  await openFocusedLoadout(page);
+  await page.getByTestId('loadout-weapon-mode-input').selectOption('sword');
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
-  await closeHierarchy(page);
+  await closeHierarchyDock(page);
   await page.getByTestId('grip-editor-select').selectOption('rotate');
   await expect(page.getByTestId('reset-grip')).toBeVisible();
   await expect(page.getByTestId('mobile-pad')).toBeHidden();
@@ -133,7 +185,7 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Character, weapon and equipment moved into the Hierarchy dock; only
+  // Character, weapon and equipment left the overlay entirely; only
   // viewport-controls' own body (e.g. the grip editor) collapses with it.
   await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
@@ -171,10 +223,11 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
-  await openHierarchy(page);
+  await openPanel(page, 'project');
   await page.getByTestId('character-select').selectOption('quaternius-universal-base');
-  await page.getByTestId('weapon-mode-select').selectOption('sword');
-  await closeHierarchy(page);
+  await openFocusedLoadout(page);
+  await page.getByTestId('loadout-weapon-mode-input').selectOption('sword');
+  await closeHierarchyDock(page);
   // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
   // of scripted replay, so ticking forward deterministically replaces waiting
   // on however fast this machine renders frames.

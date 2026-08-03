@@ -117,58 +117,67 @@ body {
   align-items: center;
   gap: 4px;
   padding-right: 6px;
+  font-size: 12px;
+  cursor: default;
 }
 
-.hierarchy__row.is-active {
+.hierarchy__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.hierarchy__row.is-selected {
   background: rgba(56, 189, 248, 0.14);
 }
 
-.hierarchy__row input[type="checkbox"] {
-  margin: 0;
+.hierarchy__row.is-selected .hierarchy__label {
+  color: var(--accent);
 }
 
-.hierarchy__spacer {
+/* Disabled instances and unequipped slots. Dimmed *and* struck through: the
+   dim alone is a colour cue, and colour alone is not a scope signal. */
+.hierarchy__row.is-inactive .hierarchy__label {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.hierarchy__disclosure {
   width: 13px;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.hierarchy__disclosure--leaf {
+  cursor: default;
 }
 
 .hierarchy__label {
   flex: 1;
-  display: flex;
-  gap: 6px;
-  align-items: center;
   padding: 3px 4px;
-  font-size: 12px;
   text-align: left;
-  background: transparent;
-  border: none;
-  color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.hierarchy__label:disabled {
-  opacity: 1;
-  cursor: default;
-}
-
-.hierarchy__row.is-active .hierarchy__label {
-  color: var(--accent);
 }
 
 .hierarchy__icon {
   color: var(--muted);
 }
 
-.hierarchy__inline {
-  padding-right: 6px;
-  padding-bottom: 4px;
-}
-
-.hierarchy__inline select {
-  width: 100%;
-  font-size: 11px;
-  padding: 2px 4px;
+.hierarchy__badge {
+  flex: none;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--muted);
 }
 
 .app__viewport canvas {
@@ -2004,32 +2013,32 @@ button.link {
  * badges are the whole reason a human can tell a tuning edit that reaches every
  * instance from a transform edit that reaches one.
  */
-.world-panel {
+.inspector {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
 }
 
-.world-panel__header {
+.inspector__header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
-.world-panel__header h2 {
+.inspector__header h2 {
   font-size: 0.95rem;
   margin: 0;
 }
 
-.world-panel__tick {
+.inspector__tick {
   font-variant-numeric: tabular-nums;
   opacity: 0.7;
   font-size: 0.75rem;
 }
 
-.world-panel__list {
+.inspector__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2038,7 +2047,7 @@ button.link {
   gap: 0.25rem;
 }
 
-.world-panel__instance {
+.inspector__instance {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: 'name state' 'meta state';
@@ -2054,24 +2063,24 @@ button.link {
   cursor: pointer;
 }
 
-.world-panel__instance--selected {
+.inspector__instance--selected {
   border-color: var(--accent, #facc15);
   background: rgba(250, 204, 21, 0.08);
 }
 
-.world-panel__instance-name {
+.inspector__instance-name {
   grid-area: name;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.world-panel__instance-meta {
+.inspector__instance-meta {
   grid-area: meta;
   font-size: 0.72rem;
   opacity: 0.7;
 }
 
-.world-panel__instance-state {
+.inspector__instance-state {
   grid-area: state;
   align-self: center;
   font-size: 0.72rem;
@@ -2079,14 +2088,14 @@ button.link {
   opacity: 0.85;
 }
 
-.world-panel__actions {
+.inspector__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
 
-.world-panel__provenance,
-.world-panel__runtime {
+.inspector__provenance,
+.inspector__runtime {
   display: grid;
   grid-template-columns: minmax(6rem, auto) minmax(0, 1fr);
   gap: 0.15rem 0.6rem;
@@ -2094,18 +2103,18 @@ button.link {
   font-size: 0.78rem;
 }
 
-.world-panel__provenance dt,
-.world-panel__runtime dt {
+.inspector__provenance dt,
+.inspector__runtime dt {
   opacity: 0.65;
 }
 
-.world-panel__provenance dd,
-.world-panel__runtime dd {
+.inspector__provenance dd,
+.inspector__runtime dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.world-panel__sharing {
+.inspector__sharing {
   font-size: 0.75rem;
   line-height: 1.4;
   padding: 0.4rem 0.55rem;
@@ -2114,7 +2123,7 @@ button.link {
   margin: 0.25rem 0 0.6rem;
 }
 
-.world-panel__field {
+.inspector__field {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -2122,14 +2131,14 @@ button.link {
   font-size: 0.8rem;
 }
 
-.world-panel__field-label {
+.inspector__field-label {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   font-weight: 600;
 }
 
-.world-panel__scope {
+.scope-badge {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2137,30 +2146,30 @@ button.link {
   border-radius: 999px;
 }
 
-.world-panel__scope--instance {
+.scope-badge--instance {
   background: rgba(56, 189, 248, 0.18);
   color: #7dd3fc;
 }
 
-.world-panel__scope--shared-definition {
+.scope-badge--shared {
   background: rgba(250, 204, 21, 0.18);
   color: #facc15;
 }
 
-.world-panel__vector {
+.inspector__vector {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
 }
 
-.world-panel__observed {
+.inspector__observed {
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   opacity: 0.8;
 }
 
-.world-panel__hint,
-.world-panel__message {
+.inspector__hint,
+.inspector__message {
   font-size: 0.72rem;
   opacity: 0.7;
   line-height: 1.35;
@@ -2168,12 +2177,191 @@ button.link {
 
 /* At 320px the vector row would otherwise force the panel to scroll sideways. */
 @media (max-width: 420px) {
-  .world-panel__vector {
+  .inspector__vector {
     grid-template-columns: 1fr;
   }
 
-  .world-panel__provenance,
-  .world-panel__runtime {
+  .inspector__provenance,
+  .inspector__runtime {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------- inspector */
+
+.contextual-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.contextual-inspector__preview-banner {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  background: rgba(244, 114, 182, 0.16);
+  color: #f9a8d4;
+}
+
+.inspector__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.inspector__section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.inspector__list {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+}
+
+.inspector__empty {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.inspector__provenance-row {
+  display: contents;
+}
+
+/* Scope labels are words first. Colour is a secondary cue only — a user
+   deciding whether a toggle affects one instance or all of them cannot read
+   that off a hue, and finding out later is the expensive way. */
+.scope-badge--preview {
+  background: rgba(244, 114, 182, 0.18);
+  color: #f9a8d4;
+}
+
+.scope-badge--runtime,
+.scope-badge--inherited {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--muted);
+}
+
+.scope-badge--overridden {
+  background: rgba(52, 211, 153, 0.18);
+  color: #6ee7b7;
+}
+
+/* -------------------------------------------------------- bottom workspaces */
+
+.workspace-dock {
+  flex-direction: column;
+}
+
+.workspace-dock__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.workspace-dock__tabs button {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+}
+
+.workspace-dock__tabs button.is-active {
+  color: var(--accent);
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+.workspace-dock__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.6rem;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.workspace__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace__header h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.workspace__preview-flag {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(244, 114, 182, 0.2);
+  color: #f9a8d4;
+}
+
+.workspace__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.workspace__row label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.workspace__hint {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  flex: 1 1 12rem;
+}
+
+.workspace--graph {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 0.6rem;
+  align-items: start;
+}
+
+/* Below this width the graph and its detail panels stop being side-by-side
+   information and start being a horizontal scrollbar. */
+@media (max-width: 900px) {
+  .workspace--graph {
     grid-template-columns: 1fr;
   }
 }

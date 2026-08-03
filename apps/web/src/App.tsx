@@ -1,68 +1,14 @@
 import { useEffect, useState } from 'react';
 import { detectTouchDevice } from '@atc/input-runtime';
-import { useChamber, type PanelId } from './store.ts';
+import { useChamber } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
 import { WorldViewport } from './components/world/WorldViewport.tsx';
-import { WorldPanel } from './components/world/WorldPanel.tsx';
-import { TransitionInspector } from './panels/TransitionInspector.tsx';
-import { StateGraph } from './panels/StateGraph.tsx';
-import { Timeline } from './panels/Timeline.tsx';
-import { MotionTimingPanel } from './panels/MotionTimingPanel.tsx';
-import { ReplayPanel } from './panels/ReplayPanel.tsx';
-import { DiffPanel } from './panels/DiffPanel.tsx';
-import { AiPanel } from './panels/AiPanel.tsx';
-import { CapabilityPanel } from './panels/CapabilityPanel.tsx';
-import { TerrainPanel } from './panels/TerrainPanel.tsx';
-import { AcquisitionPanel } from './panels/AcquisitionPanel.tsx';
 import { MobilePad } from './panels/MobilePad.tsx';
-import { Hierarchy } from './panels/Hierarchy.tsx';
-import { AssetLibrary } from './asset-library/AssetLibrary.tsx';
+import { SceneHierarchy } from './hierarchy/SceneHierarchy.tsx';
+import { ContextualInspector } from './inspector/ContextualInspector.tsx';
+import { BottomWorkspaceDock } from './workspaces/BottomWorkspaceDock.tsx';
 import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
-import type { MouseLookMode } from '@atc/input-runtime';
 import { characterPreset, weaponMode } from './three/catalog.ts';
-
-const PANELS: { id: PanelId; label: string }[] = [
-  { id: 'inspector', label: 'Inspector' },
-  { id: 'world', label: 'World' },
-  { id: 'graph', label: 'Graph' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'timing', label: 'Timing' },
-  { id: 'replay', label: 'Replay' },
-  { id: 'terrain', label: 'Terrain' },
-  { id: 'ai', label: 'AI' },
-  { id: 'diff', label: 'Diff' },
-  { id: 'capability', label: 'Haptics' },
-  // Renamed from "Assets" (PLAN 29): the Asset Library is where assets live
-  // now, and this panel does one specific thing — bring new motion in.
-  { id: 'acquisition', label: 'Import' },
-];
-
-function PanelBody({ id }: { id: PanelId }) {
-  switch (id) {
-    case 'inspector':
-      return <TransitionInspector />;
-    case 'world':
-      return <WorldPanel />;
-    case 'graph':
-      return <StateGraph />;
-    case 'timeline':
-      return <Timeline />;
-    case 'timing':
-      return <MotionTimingPanel />;
-    case 'replay':
-      return <ReplayPanel />;
-    case 'terrain':
-      return <TerrainPanel />;
-    case 'ai':
-      return <AiPanel />;
-    case 'diff':
-      return <DiffPanel />;
-    case 'capability':
-      return <CapabilityPanel />;
-    case 'acquisition':
-      return <AcquisitionPanel />;
-  }
-}
 
 /** Live readout of what the simulation is doing right now. */
 function Hud() {
@@ -143,9 +89,8 @@ function DockBar({
 }) {
   const mode = useChamber((state) => state.workspaceMode);
   const setMode = useChamber((state) => state.setWorkspaceMode);
-  const worldMode = useChamber((state) => state.worldMode);
-  const setWorldMode = useChamber((state) => state.setWorldMode);
-  const setPanel = useChamber((state) => state.setPanel);
+  const presentation = useChamber((state) => state.viewportPresentation);
+  const setPresentation = useChamber((state) => state.setViewportPresentation);
   const showLibrary = mode === 'asset-library';
   return (
     <nav className="workspace-switch" data-testid="workspace-switch">
@@ -166,16 +111,19 @@ function DockBar({
       >
         Inspector
       </button>
+      {/* View is a presentation choice and nothing else. The old button also
+          called setWorldMode *and* setPanel('world'), so asking to see the
+          whole world moved the inspector off whatever you were editing. */}
       <button
         type="button"
-        className={worldMode === 'world' ? 'is-active' : ''}
-        onClick={() => {
-          setWorldMode(worldMode === 'world' ? 'focused' : 'world');
-          setPanel('world');
-        }}
+        className={presentation === 'world' ? 'is-active' : ''}
+        onClick={() =>
+          setPresentation(presentation === 'world' ? 'isolate-selection' : 'world')
+        }
         data-testid="toggle-world-mode"
+        title="Viewport presentation. Does not change the selection or the inspector."
       >
-        {worldMode === 'world' ? 'World view' : 'Focused view'}
+        View: {presentation === 'world' ? 'World' : 'Isolate'}
       </button>
       <button
         type="button"
@@ -191,8 +139,6 @@ function DockBar({
 
 export function App() {
   const engine = useChamber((state) => state.engine);
-  const activePanel = useChamber((state) => state.activePanel);
-  const setPanel = useChamber((state) => state.setPanel);
   const statusMessage = useChamber((state) => state.statusMessage);
   const staleCharacterDrafts = useChamber((state) => state.staleCharacterDrafts);
   const discardStaleCharacterDraft = useChamber((state) => state.discardStaleCharacterDraft);
@@ -214,7 +160,9 @@ export function App() {
 
   const workspaceMode = useChamber((state) => state.workspaceMode);
   const libraryDialog = useChamber((state) => state.libraryDialog);
-  const worldMode = useChamber((state) => state.worldMode);
+  const presentation = useChamber((state) => state.viewportPresentation);
+  const mouseLookMode = useChamber((state) => state.mouseLookMode);
+  const setMouseLookMode = useChamber((state) => state.setMouseLookMode);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
@@ -224,18 +172,14 @@ export function App() {
   const [showHierarchy, setShowHierarchy] = useState(() => window.matchMedia('(min-width: 901px)').matches);
   const [showInspector, setShowInspector] = useState(true);
   const [padAuto] = useState(() => detectTouchDevice());
-  const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
   const [paused, setPaused] = useState(() => engine.isPaused);
   const gripSupported = Boolean(
     characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
     weaponMode(weaponModeId).heldItem,
   );
 
-  const toggleMouseLookMode = (): void => {
-    const next = mouseLookMode === 'free' ? 'drag' : 'free';
-    setMouseLookMode(next);
-    engine.setMouseLookMode(next);
-  };
+  const toggleMouseLookMode = (): void =>
+    setMouseLookMode(mouseLookMode === 'free' ? 'drag' : 'free');
 
   useEffect(() => {
     void detectBackend();
@@ -281,11 +225,15 @@ export function App() {
       )}
       {!hideUi && showHierarchy && (
         <aside className="app__hierarchy">
-          <Hierarchy />
+          <SceneHierarchy />
         </aside>
       )}
       <div className="app__viewport">
-        {worldMode === 'world' ? <WorldViewport /> : <Viewport />}
+        {/* Presentation picks the renderer and nothing else: `world` draws
+            every instance, `isolate-selection` draws one. Neither branch reads
+            or writes `sceneSelection`, which is what makes switching views
+            leave the inspector where it was. */}
+        {presentation === 'world' ? <WorldViewport /> : <Viewport />}
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 
@@ -293,8 +241,10 @@ export function App() {
           <details className="viewport-controls" data-testid="viewport-controls" open>
             <summary>Controls</summary>
             <div className="viewport-controls__body">
-              {/* Character, weapon and equipment live in the Hierarchy now —
-                  they are scene objects, not scene-view controls. */}
+              {/* Character, weapon, equipment and animation selection are
+                  all gone from here. The overlay answers "how do I observe and
+                  drive this view?"; it does not answer "how is this object
+                  authored?" — that is the Inspector's question. */}
               <label className="viewport-select">
                 Grip
                 <select
@@ -397,34 +347,22 @@ export function App() {
             </button>
           )}
 
+          {/* No tab strip. The right dock shows whatever is selected in the
+              scene, so there is nothing here for a tab index to disagree
+              with — and no `World` tab hiding the instance list behind a
+              click. */}
           {showInspector && (
             <aside className={`app__panels${sheetOpen ? ' is-open' : ''}`}>
-              <nav className="tabs">
-                {PANELS.map((panel) => (
-                  <button
-                    type="button"
-                    key={panel.id}
-                    className={activePanel === panel.id ? 'is-active' : ''}
-                    onClick={() => setPanel(panel.id)}
-                    data-testid={`tab-${panel.id}`}
-                  >
-                    {panel.label}
-                  </button>
-                ))}
-              </nav>
               <div className="app__panel-body">
-                <PanelBody id={activePanel} />
+                <ContextualInspector />
               </div>
             </aside>
           )}
 
-          {/* Unity's Project window: the asset library docked along the bottom
-              rather than a screen you leave the running simulation to visit. */}
-          {libraryOpen && (
-            <section className="app__library-dock">
-              <AssetLibrary />
-            </section>
-          )}
+          {/* Unity's Project window: the editor workspaces docked along the
+              bottom rather than screens you leave the running simulation to
+              visit. The Inspector stays visible while they change. */}
+          {libraryOpen && <BottomWorkspaceDock />}
 
           {/* The dialog belongs to the Chamber too: a commit that turns out to
               hold animation edits opens it here rather than sending the reader

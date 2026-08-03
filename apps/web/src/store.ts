@@ -35,9 +35,16 @@ import { RuleBasedProvider } from '@atc/ai-adapter';
 import type { ReplayTrace } from '@atc/replay-runtime';
 import { REPLAY_FIXTURES, defaultEquipped } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
+import type { MouseLookMode } from '@atc/input-runtime';
 import { worldOf } from '@atc/world-runtime';
 import { createDefaultRegistry } from '@atc/capability-runtime';
 import { WorldChamberEngine } from './world/world-engine.ts';
+import {
+  reconcileSelection,
+  selectedInstanceId as instanceIdOf,
+  type SceneSelection,
+} from './selection/scene-selection.ts';
+import type { BottomWorkspace, ViewportPresentation } from './selection/asset-selection.ts';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
 import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
@@ -72,12 +79,62 @@ if (import.meta.hot) {
   });
 }
 
-export type PanelId =
-  | 'world'
-  | 'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
-
 /** Chamber or Asset Library. Deliberately not a router (PLAN 24.1). */
 export type WorkspaceMode = 'chamber' | 'asset-library';
+
+/**
+ * One instance's loadout, with the two layers kept apart.
+ *
+ * `definition` is what the shared character says; `override` is what this
+ * instance disagrees about; `effective` is what it actually runs. Collapsing
+ * them into one value is how "off" stops being distinguishable from "off
+ * because the shared default is off" — and how a user ends up editing every
+ * instance while believing they edited one.
+ */
+export interface InstanceLoadout {
+  weaponMode: {
+    definition: string;
+    override: string | null;
+    effective: string;
+  };
+  equipment: {
+    slotId: string;
+    label: string;
+    definition: boolean;
+    override: boolean | null;
+    effective: boolean;
+  }[];
+  /** True when this instance disagrees with the definition about anything. */
+  hasOverrides: boolean;
+}
+
+/**
+ * The Animation Preview transport's state.
+ *
+ * Every field here is a temporary display decision. Nothing in this object is
+ * ever written to a project, world or asset document — the workspace exists so
+ * that "try this now" has somewhere to live that is *not* the authoring
+ * surface it was previously indistinguishable from.
+ */
+export interface AnimationPreviewState {
+  targetInstanceId: string | null;
+  layer: 'locomotion' | 'action';
+  stateId: string | null;
+  playing: boolean;
+  loop: boolean;
+  speed: number;
+  normalizedTime: number;
+}
+
+const NO_PREVIEW: AnimationPreviewState = {
+  targetInstanceId: null,
+  layer: 'locomotion',
+  stateId: null,
+  playing: false,
+  loop: true,
+  speed: 1,
+  normalizedTime: 0,
+};
 
 /**
  * Where a chamber edit should be written (PLAN Part II §14-16).
@@ -193,9 +250,27 @@ interface ChamberState {
   canonicalWorld: WorldDefinition;
   /** The world including unsaved edits. This is what the viewport runs. */
   stagedWorld: WorldDefinition;
-  /** Presentation only. No runtime decision may read this. */
-  selectedInstanceId: string;
-  worldMode: 'focused' | 'world';
+  /**
+   * The one selection in the scene. Presentation only — no runtime decision
+   * may read this — and deliberately the *only* writable answer to "what is
+   * selected": the selected instance is derived from it, never stored beside
+   * it (DECISION 0011).
+   */
+  sceneSelection: SceneSelection;
+  /**
+   * How the viewport draws the world. Not a selection, not an inspector mode:
+   * `isolate-selection` is the old "focused view" reduced to what it always
+   * really was, a display option.
+   */
+  viewportPresentation: ViewportPresentation;
+  /** Which bottom editor workspace is open. Independent of scene selection. */
+  bottomWorkspace: BottomWorkspace;
+  /**
+   * Transient viewport camera control. Lifted out of `App`'s local state so the
+   * Camera Inspector and the viewport toolbar are two views of one value
+   * rather than two switches that can disagree about which mode is on.
+   */
+  mouseLookMode: MouseLookMode;
   worldDirty: boolean;
   worldMessage: string;
 
@@ -210,7 +285,6 @@ interface ChamberState {
 
   selectedTransitionId: string;
   selectedStateId: string;
-  activePanel: PanelId;
   terrainPresetId: string;
   characterPresetId: string;
   weaponModeId: string;
@@ -282,20 +356,40 @@ interface ChamberActions {
   revertSession(): void;
   selectTransition(id: string): void;
   selectState(id: string): void;
-  setPanel(panel: PanelId): void;
-  setWorldMode(mode: 'focused' | 'world'): void;
-  selectInstance(instanceId: string): void;
+  /** The single writer for scene selection. */
+  selectScene(selection: SceneSelection): void;
+  setViewportPresentation(presentation: ViewportPresentation): void;
+  setBottomWorkspace(workspace: BottomWorkspace): void;
+  setMouseLookMode(mode: MouseLookMode): void;
   /** Every world edit goes through a declared command; there is no other path. */
   runWorldCommand(commandId: string, input: unknown): void;
   duplicateSelectedInstance(): void;
+  removeSelectedInstance(): void;
   setFocusedInstance(instanceId: string): void;
   setCameraTargetInstance(instanceId: string): void;
   revertWorldEdits(): void;
-  sharedAssetsFor(instanceId: string): CharacterAnimationAssignment | null;
+  sharedAssetsFor(instanceId: string | null): CharacterAnimationAssignment | null;
+  /** Effective loadout for one instance: definition default + instance override. */
+  loadoutOf(instanceId: string | null): InstanceLoadout | null;
+  setInstanceWeaponMode(instanceId: string, weaponModeId: string | null): void;
+  setInstanceEquipment(instanceId: string, slotId: string, equipped: boolean | null): void;
+  resetInstanceLoadout(instanceId: string): void;
+  /** Opens a shared definition in Project/Assets. Leaves scene selection alone. */
+  openCharacterDefinition(characterId: string): void;
+
+  /** Animation Preview transport. None of this reaches canonical data. */
+  animationPreview: AnimationPreviewState;
+  setPreviewTarget(instanceId: string | null): void;
+  setPreviewSubject(layer: 'locomotion' | 'action', stateId: string): void;
+  setPreviewPlaying(playing: boolean): void;
+  setPreviewLoop(loop: boolean): void;
+  setPreviewSpeed(speed: number): void;
+  setPreviewNormalizedTime(normalizedTime: number): void;
+  clearAnimationPreview(): void;
+  /** Pushes transport state at the engine's read side. Never at its tick. */
+  syncPreviewOverride(): void;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
-  setWeaponMode(id: string): void;
-  setEquipped(slotId: string, equipped: boolean): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
   saveWeaponGrip(characterId: string, weaponId: string, grip: WeaponGrip): void;
   resetWeaponGrip(characterId: string, weaponId: string): void;
@@ -599,10 +693,17 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     worldEngine,
     canonicalWorld,
     stagedWorld: canonicalWorld,
-    selectedInstanceId: canonicalWorld.focusedInstanceId,
-    worldMode: 'focused',
+    // Opens on the instance the world declares focused, not on the world root:
+    // a chamber that opened with nothing selected would show an empty
+    // inspector on first paint for every project that has exactly one
+    // instance, which is most of them.
+    sceneSelection: { kind: 'instance', instanceId: canonicalWorld.focusedInstanceId },
+    viewportPresentation: 'isolate-selection',
+    bottomWorkspace: 'project',
+    mouseLookMode: 'free',
     worldDirty: false,
     worldMessage: '',
+    animationPreview: NO_PREVIEW,
 
     librarySelection: null,
     libraryTypeFilter: 'all',
@@ -613,7 +714,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     selectedTransitionId: 'run-to-attack-01',
     selectedStateId: 'run',
-    activePanel: 'inspector',
     terrainPresetId: canonicalSeed.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
     weaponModeId: WEAPON_MODES[0]!.id,
@@ -1285,19 +1385,28 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       set({ selectedStateId: id });
     },
 
-    setPanel(panel) {
-      set({ activePanel: panel });
-    },
-
-    setWorldMode(mode) {
-      set({ worldMode: mode });
-    },
-
-    selectInstance(instanceId) {
+    selectScene(selection) {
       // Selection is presentation. It changes what the inspector shows and
       // nothing about what the simulation does — see the visual test that
       // asserts the world hash is unchanged across a selection.
-      set({ selectedInstanceId: instanceId });
+      set({ sceneSelection: selection });
+    },
+
+    setViewportPresentation(presentation) {
+      // Note what this does *not* do: it does not touch `sceneSelection` and
+      // it does not call `setPanel`. The old world-mode button did both, so
+      // asking to see the whole world moved the inspector off whatever the
+      // user was editing.
+      set({ viewportPresentation: presentation });
+    },
+
+    setBottomWorkspace(workspace) {
+      set({ bottomWorkspace: workspace });
+    },
+
+    setMouseLookMode(mode) {
+      get().engine.setMouseLookMode(mode);
+      set({ mouseLookMode: mode });
     },
 
     /**
@@ -1329,6 +1438,13 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       state.worldEngine.setWorld(stagedWorld);
       set({
         stagedWorld,
+        // A command may have removed the instance the user was looking at, so
+        // selection is reconciled here rather than at each call site: the one
+        // writer for selection is also the one place it can go stale.
+        sceneSelection: reconcileSelection(
+          state.sceneSelection,
+          stagedWorld.instances.map((entry) => entry.id),
+        ),
         worldDirty: true,
         worldMessage: `${commandId} staged (${(result.changedPaths ?? []).join(', ')})`,
       });
@@ -1336,7 +1452,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     duplicateSelectedInstance() {
       const state = get();
-      const source = state.selectedInstanceId;
+      const source = instanceIdOf(state.sceneSelection);
       if (!source) return;
       // A stable, collision-free id without a random suffix: a duplicate whose
       // id changed between two runs would make its trace unreproducible.
@@ -1347,7 +1463,19 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         newInstanceId = `${source}-${index}`;
       }
       state.runWorldCommand('world.duplicate_instance', { instanceId: source, newInstanceId });
-      set({ selectedInstanceId: newInstanceId });
+      // Selecting the copy is the point: a duplicate you then have to hunt for
+      // in the tree is a worse "duplicate" than no button at all.
+      set({ sceneSelection: { kind: 'instance', instanceId: newInstanceId } });
+    },
+
+    removeSelectedInstance() {
+      const state = get();
+      const instanceId = instanceIdOf(state.sceneSelection);
+      if (!instanceId) return;
+      // `runWorldCommand` reconciles the selection: removing the instance the
+      // inspector is showing falls back to the world root rather than leaving
+      // it rendering something the world no longer contains.
+      state.runWorldCommand('world.remove_instance', { instanceId });
     },
 
     setFocusedInstance(instanceId) {
@@ -1379,7 +1507,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       state.worldEngine.setWorld(state.canonicalWorld);
       set({
         stagedWorld: state.canonicalWorld,
-        selectedInstanceId: state.canonicalWorld.focusedInstanceId,
+        sceneSelection: reconcileSelection(
+          state.sceneSelection,
+          state.canonicalWorld.instances.map((entry) => entry.id),
+        ),
         worldDirty: false,
         worldMessage: 'staged world changes reverted',
       });
@@ -1387,6 +1518,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     sharedAssetsFor(instanceId) {
       const state = get();
+      if (!instanceId) return null;
       const instance = state.stagedWorld.instances.find((entry) => entry.id === instanceId);
       if (!instance) return null;
       const character = state.canonicalProject.characters.find(
@@ -1395,6 +1527,191 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       // References, not copies: this is the provenance the panel shows to make
       // "shared definition" a visible fact rather than a claim.
       return character?.animation ?? null;
+    },
+
+    /**
+     * The three loadout layers, kept separate all the way to the inspector.
+     *
+     * The definition default comes from the project's declared equipment slots
+     * and the first weapon mode; the override comes from the instance; the
+     * effective value is what the runtime builds the simulation with. The
+     * inspector renders all three because "Shield: off" without "…and the
+     * definition says on" is the sentence that makes shared-vs-instance
+     * invisible.
+     */
+    loadoutOf(instanceId) {
+      const state = get();
+      if (!instanceId) return null;
+      const instance = state.stagedWorld.instances.find((entry) => entry.id === instanceId);
+      if (!instance) return null;
+
+      const overrides = instance.overrides ?? {};
+      const definitionWeaponMode = WEAPON_MODES[0]!.id;
+      const weaponOverride = overrides.weaponModeId ?? null;
+
+      const equipment = state.canonicalProject.equipment.map((slot) => {
+        const override = overrides.equipped?.[slot.id];
+        return {
+          slotId: slot.id,
+          label: slot.label,
+          definition: slot.defaultEquipped,
+          override: override === undefined ? null : override,
+          effective: override ?? slot.defaultEquipped,
+        };
+      });
+
+      return {
+        weaponMode: {
+          definition: definitionWeaponMode,
+          override: weaponOverride,
+          effective: weaponOverride ?? definitionWeaponMode,
+        },
+        equipment,
+        hasOverrides:
+          weaponOverride !== null || equipment.some((slot) => slot.override !== null),
+      };
+    },
+
+    /**
+     * Weapon mode, targeted at one explicit instance.
+     *
+     * There is no focused-character shortcut here on purpose. The old
+     * `setWeaponMode(id)` had no instance in its signature, so in a world with
+     * two instances there was no answer to "which one did that change?" that
+     * the code could give.
+     */
+    setInstanceWeaponMode(instanceId, weaponModeId) {
+      get().runWorldCommand('world.set_instance_weapon_mode', {
+        instanceId,
+        ...(weaponModeId === null ? {} : { weaponModeId }),
+      });
+      const state = get();
+      if (instanceId !== state.stagedWorld.focusedInstanceId) return;
+      // The focused chamber is a *view over* the focused instance, not a
+      // second runtime — so an edit to that instance has to reach the focused
+      // engine too, or isolating the selection would show a stale loadout.
+      // Editing any other instance deliberately leaves it alone.
+      const effective = state.loadoutOf(instanceId)?.weaponMode.effective;
+      const weapon = WEAPON_MODES.find((mode) => mode.id === effective);
+      if (!weapon) return;
+      engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
+      engine.setWeaponModeId(weapon.id);
+      set({
+        weaponModeId: weapon.id,
+        gripEditorMode: null,
+        statusMessage: `Weapon: ${weapon.label}`,
+      });
+    },
+
+    setInstanceEquipment(instanceId, slotId, equipped) {
+      get().runWorldCommand('world.set_instance_equipment', {
+        instanceId,
+        slotId,
+        ...(equipped === null ? {} : { equipped }),
+      });
+      const state = get();
+      if (instanceId !== state.stagedWorld.focusedInstanceId) return;
+      const slot = state.loadoutOf(instanceId)?.equipment.find((entry) => entry.slotId === slotId);
+      if (!slot) return;
+      engine.setEquipped(slotId, slot.effective);
+      set({
+        equipped: { ...get().equipped, [slotId]: slot.effective },
+        statusMessage: `${slot.label}: ${slot.effective ? 'equipped' : 'unequipped'}`,
+      });
+    },
+
+    /**
+     * "Open the source character" — in the bottom dock, not in the inspector.
+     *
+     * The right-hand inspector deliberately stays on the scene object. Swapping
+     * it for a shared definition is how a user ends up editing an asset every
+     * instance references while believing they are still editing the one they
+     * had selected.
+     */
+    openCharacterDefinition(characterId) {
+      const state = get();
+      state.setWorkspaceMode('asset-library');
+      set({ bottomWorkspace: 'project' });
+      if (characterId !== state.activeCharacterId) state.setActiveCharacter(characterId);
+    },
+
+    resetInstanceLoadout(instanceId) {
+      const state = get();
+      state.setInstanceWeaponMode(instanceId, null);
+      for (const slot of state.canonicalProject.equipment) {
+        get().setInstanceEquipment(instanceId, slot.id, null);
+      }
+      set({ worldMessage: `loadout overrides cleared on ${instanceId}` });
+    },
+
+    setPreviewTarget(targetInstanceId) {
+      set({ animationPreview: { ...get().animationPreview, targetInstanceId } });
+      get().syncPreviewOverride();
+    },
+
+    setPreviewSubject(layer, stateId) {
+      set({
+        animationPreview: { ...get().animationPreview, layer, stateId, normalizedTime: 0 },
+      });
+      get().syncPreviewOverride();
+    },
+
+    setPreviewPlaying(playing) {
+      set({ animationPreview: { ...get().animationPreview, playing } });
+      get().syncPreviewOverride();
+    },
+
+    setPreviewLoop(loop) {
+      set({ animationPreview: { ...get().animationPreview, loop } });
+      get().syncPreviewOverride();
+    },
+
+    setPreviewSpeed(speed) {
+      set({ animationPreview: { ...get().animationPreview, speed } });
+      get().syncPreviewOverride();
+    },
+
+    setPreviewNormalizedTime(normalizedTime) {
+      set({ animationPreview: { ...get().animationPreview, normalizedTime } });
+      get().syncPreviewOverride();
+    },
+
+    /**
+     * Clears the preview completely.
+     *
+     * "Completely" is the requirement: leaving a target or a parked normalized
+     * time behind is how a cleared preview keeps subtly affecting what the
+     * viewport shows while the PREVIEW badge is gone.
+     */
+    clearAnimationPreview() {
+      set({ animationPreview: NO_PREVIEW });
+      get().worldEngine.setPreviewOverride(null);
+    },
+
+    /**
+     * Pushes the transport state at the engine's *read* side.
+     *
+     * This is the only place preview state reaches the runtime, and it reaches
+     * `poseOf`, never `step`. That is what makes "animation preview leaves the
+     * canonical bytes and the replay traces unchanged" testable rather than
+     * aspirational.
+     */
+    syncPreviewOverride() {
+      const preview = get().animationPreview;
+      const engine = get().worldEngine;
+      if (!preview.targetInstanceId || !preview.stateId) {
+        engine.setPreviewOverride(null);
+        return;
+      }
+      engine.setPreviewOverride({
+        instanceId: preview.targetInstanceId,
+        layer: preview.layer,
+        stateId: preview.stateId,
+        normalizedTime: preview.normalizedTime,
+        playing: preview.playing,
+        loop: preview.loop,
+        speed: preview.speed,
+      });
     },
 
     setTerrainPreset(id) {
@@ -1408,28 +1725,6 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         characterPresetId: id,
         gripEditorMode: null,
         statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}`,
-      });
-    },
-
-    setWeaponMode(id) {
-      const weapon = WEAPON_MODES.find((mode) => mode.id === id);
-      if (!weapon) return;
-      engine.setUpperBodyActionRootMotionEnabled(weapon.usesAttackRootMotion === true);
-      engine.setWeaponModeId(weapon.id);
-      set({
-        weaponModeId: id,
-        gripEditorMode: null,
-        statusMessage: `Weapon: ${weapon.label}`,
-      });
-    },
-
-    setEquipped(slotId, equipped) {
-      const slot = canonicalSeed.equipment.find((entry) => entry.id === slotId);
-      if (!slot) return;
-      engine.setEquipped(slotId, equipped);
-      set({
-        equipped: { ...get().equipped, [slotId]: equipped },
-        statusMessage: `${slot.label}: ${equipped ? 'equipped' : 'unequipped'}`,
       });
     },
 
@@ -1831,7 +2126,8 @@ export const useChamber = create<ChamberState & ChamberActions>()(
     partialize: (state) => ({
       selectedTransitionId: state.selectedTransitionId,
       selectedStateId: state.selectedStateId,
-      activePanel: state.activePanel,
+      bottomWorkspace: state.bottomWorkspace,
+      viewportPresentation: state.viewportPresentation,
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
       weaponModeId: state.weaponModeId,

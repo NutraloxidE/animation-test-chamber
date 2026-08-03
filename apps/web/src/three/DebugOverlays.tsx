@@ -13,7 +13,9 @@ const MAX_TRAIL = 240;
  * to disagree with the animation when the animation is wrong.
  */
 export function DebugOverlays({ engine }: { engine: ChamberEngine }) {
-  const showDebug = useChamber((state) => state.activePanel === 'terrain');
+  // Terrain debug follows the terrain being *selected* now, not a tab being
+  // open — the tab it used to watch no longer exists.
+  const showDebug = useChamber((state) => state.sceneSelection.kind === 'terrain');
 
   const footL = useRef<THREE.Mesh>(null);
   const footR = useRef<THREE.Mesh>(null);

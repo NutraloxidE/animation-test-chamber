@@ -642,6 +642,90 @@ export function worldContractGuardStage(): StageResult {
   );
 }
 
+/**
+ * The information-architecture boundaries, as boundaries rather than as prose.
+ *
+ * These are deliberately narrow. The behavioural claims — no World tab, no
+ * property selects in the tree, a shield change that does not reach a sibling —
+ * are asserted against the real DOM in `tests/visual/hierarchy` and
+ * `tests/visual/loadout`, because a source scan can only ever check that the
+ * text nobody wrote is still not written. What a scan *is* good for is the two
+ * structural facts a future edit could restore by accident: a second writable
+ * selection field, and a loadout setter with no instance in its signature.
+ * Both were real, both were the actual defect, and neither is visible in a
+ * screenshot (DECISION 0012).
+ */
+export function sceneSelectionGuardStage(): StageResult {
+  return stage(
+    'scene selection and loadout stay instance-qualified',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'derive the selected instance from sceneSelection, and give every loadout mutation an instanceId',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const webFiles = listFiles('apps/web/src').filter(
+        (file) => file.endsWith('.ts') || file.endsWith('.tsx'),
+      );
+
+      for (const file of webFiles) {
+        const raw = readRepoFile(file);
+        if (!raw) continue;
+        // Comments are stripped first. This file's own prose names the removed
+        // setters in order to explain why they were removed, and a guard that
+        // fired on the explanation would make documenting the rule impossible.
+        const content = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+        /*
+         * A second writable selected-instance field. `selectedInstanceId` as a
+         * *derivation* is fine and is what the selection module exports; as a
+         * store field assigned to, it is the ambiguity this refactor removed.
+         */
+        if (/\bset\(\{[^}]*\bselectedInstanceId\s*:/s.test(content)) {
+          issues.push({
+            files: [file],
+            expected: 'selected instance derived from sceneSelection',
+            actual: 'a writable selectedInstanceId store field',
+            message: `${file} writes selectedInstanceId; derive it from sceneSelection instead`,
+          });
+        }
+
+        /*
+         * Loadout actions without an instance, on the *store's* surface only.
+         *
+         * `ChamberEngine.setEquipped` is deliberately untouched: the focused
+         * engine drives exactly one character, so an instance id there would
+         * be a parameter with one legal value. What must not come back is a
+         * store action a panel can call without saying which instance it
+         * means — the old signatures are named exactly, because "a weapon-mode
+         * setter" is not something a regex can recognise in general, and a
+         * guard that guessed would fire on the instance-qualified ones this
+         * refactor added.
+         */
+        if (file !== 'apps/web/src/store.ts') continue;
+        for (const declaration of [/^\s*setWeaponMode\(id/m, /^\s*setEquipped\(slotId/m]) {
+          const match = content.match(declaration);
+          if (match) {
+            issues.push({
+              files: [file],
+              expected: 'setInstanceWeaponMode / setInstanceEquipment',
+              actual: match[0].trim(),
+              message: `${file} declares a loadout action with no instanceId; loadout is per-instance`,
+            });
+          }
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${webFiles.length} web sources scanned`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     protectedValuesStage(),
@@ -653,6 +737,7 @@ export function repoGuardStages(): StageResult[] {
     publishedAssetImmutabilityStage(),
     stateNameDependenceStage(),
     worldContractGuardStage(),
+    sceneSelectionGuardStage(),
   ];
 }
 

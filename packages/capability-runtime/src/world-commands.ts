@@ -1,7 +1,7 @@
 /**
  * The machine-operable surface of the multi-instance world.
  *
- * Ten commands, each with a declared input and output schema, each returning
+ * Twelve commands, each with a declared input and output schema, each returning
  * structured issues rather than throwing. Notably absent: anything shaped like
  * `apply_patch(path, value)`. A general "edit arbitrary canonical JSON" command
  * would make every other guarantee in this package unenforceable — protection,
@@ -18,6 +18,7 @@ import type {
   IntentSourceDefinition,
   ProjectDefinition,
   RuntimeInstanceDefinition,
+  RuntimeInstanceOverrides,
   ValidationIssue,
   WorldDefinition,
 } from '@atc/schema';
@@ -599,6 +600,140 @@ const bindIntentSource: CommandDeclaration = {
   },
 };
 
+/**
+ * Drops a key from an instance's overrides, and the overrides object itself
+ * once it is empty.
+ *
+ * "Reset to the definition default" has to mean *absent*, not "written back to
+ * whatever the default happens to be today": an override recorded as `false`
+ * because that was the default at the time would silently stop following the
+ * character definition the moment somebody changed it.
+ */
+function withoutOverride(
+  overrides: RuntimeInstanceOverrides | undefined,
+  key: keyof RuntimeInstanceOverrides,
+): RuntimeInstanceOverrides | undefined {
+  if (!overrides || !(key in overrides)) return overrides;
+  const next = { ...overrides };
+  delete next[key];
+  return Object.keys(next).length === 0 ? undefined : next;
+}
+
+function withOverrides(
+  instance: RuntimeInstanceDefinition,
+  overrides: RuntimeInstanceOverrides | undefined,
+): RuntimeInstanceDefinition {
+  const next = { ...instance };
+  if (overrides) next.overrides = overrides;
+  else delete next.overrides;
+  return next;
+}
+
+const setInstanceWeaponMode: CommandDeclaration = {
+  id: 'world.set_instance_weapon_mode',
+  description:
+    'Stages the weapon mode one instance opens in, as an instance override. The shared character definition is untouched — omit weaponModeId to fall back to it.',
+  mutating: true,
+  inputSchema: Type.Object(
+    {
+      instanceId: InstanceId,
+      /** Absent means "no override": follow the character definition. */
+      weaponModeId: Type.Optional(Type.String({ minLength: 1, maxLength: 96 })),
+    },
+    { additionalProperties: false },
+  ),
+  outputSchema: Type.Object(
+    { instanceId: Type.String(), weaponModeId: Type.Union([Type.String(), Type.Null()]) },
+    { additionalProperties: false },
+  ),
+  execute: (rawInput: unknown, context: CommandContext) => {
+    const input = rawInput as { instanceId: string; weaponModeId?: string };
+
+    const instance = instanceOf(context.world, input.instanceId);
+    if (!instance) return refuse('/instanceId', `unknown instance "${input.instanceId}"`);
+    const path = `/world/instances/${input.instanceId}/overrides/weaponModeId`;
+    const refusal = protectionRefusal(context.project, context.world, path, context.actor ?? 'ai');
+    if (refusal) return { ok: false, issues: [refusal] };
+
+    const overrides =
+      input.weaponModeId === undefined
+        ? withoutOverride(instance.overrides, 'weaponModeId')
+        : { ...(instance.overrides ?? {}), weaponModeId: input.weaponModeId };
+
+    const staged = withInstance(
+      context.world,
+      input.instanceId,
+      withOverrides(instance, overrides),
+    );
+    return stagedOrIssues(
+      context,
+      staged,
+      { instanceId: input.instanceId, weaponModeId: input.weaponModeId ?? null },
+      [path],
+    );
+  },
+};
+
+const setInstanceEquipment: CommandDeclaration = {
+  id: 'world.set_instance_equipment',
+  description:
+    'Stages one equipment slot as equipped or unequipped for one instance. Omit `equipped` to clear the override and follow the character definition default.',
+  mutating: true,
+  inputSchema: Type.Object(
+    {
+      instanceId: InstanceId,
+      slotId: InstanceId,
+      /** Absent means "no override": follow the slot's declared default. */
+      equipped: Type.Optional(Type.Boolean()),
+    },
+    { additionalProperties: false },
+  ),
+  outputSchema: Type.Object(
+    {
+      instanceId: Type.String(),
+      slotId: Type.String(),
+      equipped: Type.Union([Type.Boolean(), Type.Null()]),
+    },
+    { additionalProperties: false },
+  ),
+  execute: (rawInput: unknown, context: CommandContext) => {
+    const input = rawInput as { instanceId: string; slotId: string; equipped?: boolean };
+
+    const instance = instanceOf(context.world, input.instanceId);
+    if (!instance) return refuse('/instanceId', `unknown instance "${input.instanceId}"`);
+    // Equipment slots are project data (PLAN: "no code anywhere learns the word
+    // shield"), so an unknown slot is a reference error the command can catch
+    // rather than an override that quietly never applies to anything.
+    if (!context.project.equipment.some((slot) => slot.id === input.slotId)) {
+      return refuse('/slotId', `unknown equipment slot "${input.slotId}"`);
+    }
+    const path = `/world/instances/${input.instanceId}/overrides/equipped/${input.slotId}`;
+    const refusal = protectionRefusal(context.project, context.world, path, context.actor ?? 'ai');
+    if (refusal) return { ok: false, issues: [refusal] };
+
+    const equippedOverrides = { ...(instance.overrides?.equipped ?? {}) };
+    if (input.equipped === undefined) delete equippedOverrides[input.slotId];
+    else equippedOverrides[input.slotId] = input.equipped;
+
+    const overrides =
+      Object.keys(equippedOverrides).length === 0
+        ? withoutOverride(instance.overrides, 'equipped')
+        : { ...(instance.overrides ?? {}), equipped: equippedOverrides };
+
+    const staged = withInstance(
+      context.world,
+      input.instanceId,
+      withOverrides(instance, overrides),
+    );
+    return stagedOrIssues(
+      context,
+      staged,
+      { instanceId: input.instanceId, slotId: input.slotId, equipped: input.equipped ?? null },
+      [path],
+    );
+  },
+};
+
 export const WORLD_COMMANDS: CommandDeclaration[] = [
   listInstances,
   inspectInstance,
@@ -610,4 +745,6 @@ export const WORLD_COMMANDS: CommandDeclaration[] = [
   setInstanceEnabled,
   setInstanceTransform,
   bindIntentSource,
+  setInstanceWeaponMode,
+  setInstanceEquipment,
 ];

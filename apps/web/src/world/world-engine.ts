@@ -8,7 +8,7 @@
  * why this file has no knowledge of states, clips or transitions.
  */
 import type { ProjectDefinition, WorldDefinition } from '@atc/schema';
-import { FixedStepAccumulator } from '@atc/runtime-core';
+import { FIXED_DT, FixedStepAccumulator } from '@atc/runtime-core';
 import { BrowserInputSampler, type ActionSample } from '@atc/input-runtime';
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import {
@@ -17,6 +17,32 @@ import {
   type WorldObservation,
 } from '@atc/world-runtime';
 import type { CharacterPose } from '../three/characters/ProceduralCharacter.tsx';
+
+/**
+ * A temporary "show me this state now" override for one instance.
+ *
+ * It deliberately carries no authored data and is applied in `poseOf` —
+ * *after* the simulation has stepped, on the read side — so previewing cannot
+ * reach the fixed-step tick at all. That placement is the whole design: a
+ * preview that forced a state into `Simulation.step` would change the tick
+ * record, which is the thing replay determinism is measured against, and
+ * "preview does not mutate canonical data" would become a claim about
+ * discipline rather than a property of the code.
+ */
+export interface PreviewOverride {
+  instanceId: string;
+  layer: 'locomotion' | 'action';
+  stateId: string;
+  /** Advanced by the transport, not by the simulation clock. */
+  normalizedTime: number;
+  playing: boolean;
+  loop: boolean;
+  /** 1 = the clip's authored rate. */
+  speed: number;
+}
+
+/** Seconds of preview time one normalized loop spans. Display-only. */
+const PREVIEW_LOOP_SEC = 1;
 
 /** Per-tick callbacks for `advance`. */
 export interface AdvanceHooks {
@@ -37,6 +63,7 @@ export class WorldChamberEngine {
   private readonly accumulator = new FixedStepAccumulator();
   private readonly sampler: BrowserInputSampler;
   private cameraYaw = 0;
+  private preview: PreviewOverride | null = null;
 
   /**
    * True while a test driver owns tick advancement.
@@ -97,6 +124,7 @@ export class WorldChamberEngine {
    * difference a cadence bug.
    */
   advance(deltaSec: number, hooks: AdvanceHooks = {}): void {
+    this.advancePreview(deltaSec);
     const steps = this.accumulator.advance(deltaSec);
     for (let i = 0; i < steps; i += 1) {
       hooks.beforeTick?.(this.runtime.tick);
@@ -110,12 +138,48 @@ export class WorldChamberEngine {
     return this.runtime.instance(instanceId);
   }
 
+  /**
+   * Installs or clears the preview override.
+   *
+   * Passing `null` is the "Clear preview" path, and it is the only state the
+   * viewport can be left in by accident — so clearing restores the authored
+   * behaviour completely rather than restoring a remembered pose.
+   */
+  setPreviewOverride(preview: PreviewOverride | null): void {
+    this.preview = preview;
+  }
+
+  get previewOverride(): PreviewOverride | null {
+    return this.preview;
+  }
+
+  /**
+   * Advances preview time. Called from `advance` and from `stepOnce` so a
+   * test-driven world — which never calls `advance` — can still step the
+   * transport by an exact number of fixed steps.
+   */
+  advancePreview(deltaSec: number): void {
+    const preview = this.preview;
+    if (!preview || !preview.playing) return;
+    const next = preview.normalizedTime + (deltaSec * preview.speed) / PREVIEW_LOOP_SEC;
+    if (next < 1) {
+      this.preview = { ...preview, normalizedTime: next };
+    } else if (preview.loop) {
+      this.preview = { ...preview, normalizedTime: next % 1 };
+    } else {
+      // Parking at the end rather than wrapping is what makes "Loop off" a
+      // visible fact instead of a setting that looks broken.
+      this.preview = { ...preview, normalizedTime: 1, playing: false };
+    }
+  }
+
   /** Exactly one fixed step. The test driver calls this directly. */
   stepOnce(sample?: ActionSample): void {
     // One poll, then routing. Instances never touch a device.
     const intent = sample ?? this.sampler.sample();
     this.runtime.injectLocalIntent(0, intent);
     this.runtime.step();
+    if (this.testDriven) this.advancePreview(FIXED_DT);
   }
 
   observe(): WorldObservation {
@@ -134,7 +198,7 @@ export class WorldChamberEngine {
       if (!state || !state.enabled) return null;
       const record = state.lastRecord;
       if (!record) {
-        return {
+        return this.applyPreview(instanceId, {
           position: state.definition.transform.position,
           yawRad: state.definition.transform.yawRad,
           locomotionState: 'idle',
@@ -142,9 +206,9 @@ export class WorldChamberEngine {
           locomotionNormalizedTime: 0,
           actionNormalizedTime: 0,
           pelvisOffset: 0,
-        };
+        });
       }
-      return {
+      return this.applyPreview(instanceId, {
         position: record.position,
         yawRad: record.yawRad,
         locomotionState: record.locomotionState,
@@ -152,7 +216,22 @@ export class WorldChamberEngine {
         locomotionNormalizedTime: record.locomotionNormalizedTime,
         actionNormalizedTime: record.actionNormalizedTime,
         pelvisOffset: record.pelvisOffset,
-      };
+      });
     };
+  }
+
+  /**
+   * Substitutes the previewed state into a pose on its way to the renderer.
+   *
+   * Only the animation layer is replaced. Position and yaw keep coming from the
+   * simulation, so a previewing instance still stands where the world says it
+   * stands — previewing a clip is not a way to move something.
+   */
+  private applyPreview(instanceId: string, pose: CharacterPose): CharacterPose {
+    const preview = this.preview;
+    if (!preview || preview.instanceId !== instanceId) return pose;
+    return preview.layer === 'locomotion'
+      ? { ...pose, locomotionState: preview.stateId, locomotionNormalizedTime: preview.normalizedTime }
+      : { ...pose, actionState: preview.stateId, actionNormalizedTime: preview.normalizedTime };
   }
 }

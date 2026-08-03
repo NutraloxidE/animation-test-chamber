@@ -7,8 +7,8 @@
  *
  * Nothing here decides anything: the pose closures read the runtime, and the
  * selection ring is presentation. UI selection must not reach the simulation,
- * so the only thing selecting an instance changes is the camera target and what
- * the inspector shows.
+ * so the only thing selecting an instance changes is what the inspector shows —
+ * not even the camera, which follows the world's *authored* target.
  */
 import { useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -17,6 +17,7 @@ import { useChamber } from '../../store.ts';
 import type { WorldChamberEngine } from '../../world/world-engine.ts';
 import { ProceduralCharacter } from '../../three/characters/ProceduralCharacter.tsx';
 import { weaponMode } from '../../three/catalog.ts';
+import { selectedInstanceId } from '../../selection/scene-selection.ts';
 
 /** Advances the world and keeps the camera behind the camera-target instance. */
 function WorldLoop({ engine, cameraTargetId }: { engine: WorldChamberEngine; cameraTargetId: string }) {
@@ -64,8 +65,12 @@ function SelectionRing({ engine, instanceId }: { engine: WorldChamberEngine; ins
 export function WorldViewport() {
   const engine = useChamber((state) => state.worldEngine);
   const world = useChamber((state) => state.stagedWorld);
-  const selectedInstanceId = useChamber((state) => state.selectedInstanceId);
-  const weapon = weaponMode(useChamber((state) => state.weaponModeId));
+  const selection = useChamber((state) => state.sceneSelection);
+  const selectScene = useChamber((state) => state.selectScene);
+  const loadoutOf = useChamber((state) => state.loadoutOf);
+  // An attachment selection rings its parent instance: clicking the shield in
+  // the tree and clicking the instance mean the same object out here.
+  const selectedId = selectedInstanceId(selection);
 
   useEffect(() => {
     engine.attachInput();
@@ -97,17 +102,30 @@ export function WorldViewport() {
       {world.instances
         .filter((instance) => instance.enabled)
         .map((instance) => (
-          <ProceduralCharacter
+          // Clicking an instance selects it, which is the other half of
+          // hierarchy/viewport synchronization: the tree highlights what you
+          // clicked here, and this rings what you clicked there.
+          <group
             key={instance.id}
-            pose={engine.poseOf(instance.id)}
-            weapon={weapon}
-            // Colour by intent source, so "which one am I driving?" is
-            // answerable without reading the inspector.
-            color={instance.intentSource.kind === 'local-input' ? '#7dd3fc' : '#c4b5fd'}
-          />
+            onClick={(event) => {
+              event.stopPropagation();
+              selectScene({ kind: 'instance', instanceId: instance.id });
+            }}
+          >
+            <ProceduralCharacter
+              pose={engine.poseOf(instance.id)}
+              // Per-instance, not global: two instances of one character can
+              // hold different weapons, and the viewport has to be able to
+              // show that or the isolation guarantee is invisible.
+              weapon={weaponMode(loadoutOf(instance.id)?.weaponMode.effective ?? '')}
+              // Colour by intent source, so "which one am I driving?" is
+              // answerable without reading the inspector.
+              color={instance.intentSource.kind === 'local-input' ? '#7dd3fc' : '#c4b5fd'}
+            />
+          </group>
         ))}
 
-      {selectedInstanceId && <SelectionRing engine={engine} instanceId={selectedInstanceId} />}
+      {selectedId && <SelectionRing engine={engine} instanceId={selectedId} />}
     </Canvas>
   );
 }

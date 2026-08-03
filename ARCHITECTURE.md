@@ -360,6 +360,76 @@ list), which meant typing into an unrelated search box could change which
 destinations a save offered — the same class of bug as a protection check
 that reads a display label instead of the field it labels.
 
+## The editor's information architecture
+
+The UI has one rule per surface, and every control's placement follows from it
+(DECISION 0012):
+
+| Surface | Owns |
+| --- | --- |
+| Scene Hierarchy (left) | What exists in the world, and what is selected |
+| Contextual Inspector (right) | What the selected scene object is configured to be |
+| Animation Preview (bottom) | Temporary "try this now" operations |
+| Project / Assets (bottom) | Reusable definitions shared by many instances |
+| Graph / Timeline / Replay (bottom) | Dedicated editors |
+| Viewport toolbar | How the scene is displayed |
+
+### One selection, derived rather than duplicated
+
+`SceneSelection` is a union over world, instance, attachment, terrain and
+camera, and it is the only writable answer to "what is selected". The selected
+instance is a *function* of it — `selectedInstanceId(selection)` — not a second
+field beside it. An attachment resolves to its parent instance, so selecting a
+shield and selecting the instance that carries it target the same object.
+
+The previous UI had two writable answers (`selectedInstanceId`, written by the
+world panel, and `activePanel`, written by the pseudo-hierarchy). They could
+disagree, and when they did the inspector showed one object's properties under
+another object's name.
+
+Asset selection, bottom workspace and viewport presentation live in separate
+fields. Opening a shared definition from an instance moves the bottom dock, so
+the inspector stays on the scene object being edited.
+
+### Presentation is not selection
+
+`ViewportPresentation` is `world | isolate-selection`. Changing it picks a
+renderer and does nothing else — it neither reads nor writes the selection.
+The old "focused view" button called `setWorldMode` *and* `setPanel('world')`,
+so asking to see the whole world moved the inspector off whatever was being
+edited.
+
+### Hierarchy rows are navigation, not forms
+
+A row answers *what is this, is it selected, is it enabled, does it have
+children*. `HierarchyRow` has no slot an arbitrary control could occupy, which
+is deliberate: the previous tree grew inline character, weapon and equipment
+pickers one reasonable-looking commit at a time until the left panel was a
+settings form wearing indentation.
+
+Attachment rows are derived projections of the project's declared equipment
+slots onto an instance. No schema changed to add them.
+
+### Loadout edits are instance-qualified
+
+`world.set_instance_weapon_mode` and `world.set_instance_equipment` write
+`RuntimeInstanceOverrides` fields the schema already had. The global
+`setWeaponMode(id)` / `setEquipped(slotId, equipped)` setters are gone: neither
+had an instance in its signature, so in a world with two instances of one
+character definition there was no answer to "which one did that change?".
+
+Clearing an override removes it rather than writing the current default back.
+An override recorded as the default of the day would silently stop tracking the
+definition the moment somebody changed it.
+
+### Preview is applied on the read side
+
+The Animation Preview override is applied in `WorldChamberEngine.poseOf`, after
+the simulation has stepped — never inside `Simulation.step`. A preview that
+forced a state into the fixed step would change the tick record, which is what
+replay determinism is measured against, and "preview does not mutate canonical
+data" would become a claim about discipline rather than a property of the code.
+
 ## Regression policy
 
 A replay difference is never automatically the new truth. `compareTraces`

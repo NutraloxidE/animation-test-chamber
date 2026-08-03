@@ -160,7 +160,11 @@ function CurveEditor({
 function WeaponCurveRow({ stateId }: { stateId: string }) {
   const rawProject = useChamber((state) => state.project);
   const weaponModeId = useChamber((state) => state.weaponModeId);
-  const setWeaponMode = useChamber((state) => state.setWeaponMode);
+  // Switching the weapon context while editing a curve is a loadout edit on
+  // the focused instance, not a global mode flip — same command the Instance
+  // Inspector dispatches, so there is one path rather than two.
+  const setInstanceWeaponMode = useChamber((state) => state.setInstanceWeaponMode);
+  const focusedInstanceId = useChamber((state) => state.stagedWorld.focusedInstanceId);
   const session = useChamber((state) => state.session);
   useChamber((state) => state.revision);
 
@@ -200,7 +204,7 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
             data-testid={`weapon-curve-${mode.id}`}
             data-edited={edited ? 'true' : 'false'}
             title={clipId}
-            onClick={() => setWeaponMode(mode.id)}
+            onClick={() => setInstanceWeaponMode(focusedInstanceId, mode.id)}
           >
             {mode.id}
             {edited && <span aria-label="edited"> •</span>}

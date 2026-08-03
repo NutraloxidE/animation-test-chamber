@@ -9,13 +9,34 @@ import { expect, test, type Page } from '@playwright/test';
  * frame rate instead.
  */
 
+/**
+ * Opens the world.
+ *
+ * There is no longer a `World` tab to click: the instance list *is* the scene
+ * hierarchy on the left, and the right-hand dock shows whatever is selected in
+ * it. Switching to World view is now only a viewport presentation change —
+ * this helper does it because these tests assert about multiple instances
+ * being drawn, not because anything about navigation requires it.
+ */
 async function openWorld(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
   await page.evaluate(() => window.__ATC_TEST__!.enableWorld());
   await page.getByTestId('toggle-world-mode').click();
+  await openHierarchy(page);
+  await openInspector(page);
+  await expect(page.getByTestId('hierarchy')).toBeVisible();
+}
 
-  // On narrow viewports the panels live in a bottom sheet.
+/** The hierarchy dock only defaults open above the 900px breakpoint. */
+async function openHierarchy(page: Page): Promise<void> {
+  if (!(await page.getByTestId('hierarchy').isVisible())) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+}
+
+/** On narrow viewports the inspector lives in a bottom sheet. */
+async function openInspector(page: Page): Promise<void> {
   const handle = page.getByTestId('sheet-handle');
   if (await handle.isVisible()) {
     const panels = page.locator('.app__panels');
@@ -23,8 +44,6 @@ async function openWorld(page: Page): Promise<void> {
       await handle.click();
     }
   }
-  await page.getByTestId('tab-world').click();
-  await expect(page.getByTestId('world-panel')).toBeVisible();
 }
 
 async function advanceWorld(page: Page, ticks: number): Promise<void> {
@@ -39,8 +58,8 @@ async function observe(page: Page) {
 test.describe('multi-instance world authoring', () => {
   test('shows two instances of one shared character definition', async ({ page }) => {
     await openWorld(page);
-    await expect(page.getByTestId('world-instance-controlled-humanoid')).toBeVisible();
-    await expect(page.getByTestId('world-instance-scripted-humanoid')).toBeVisible();
+    await expect(page.getByTestId('scene-node-instance-controlled-humanoid')).toBeVisible();
+    await expect(page.getByTestId('scene-node-instance-scripted-humanoid')).toBeVisible();
 
     const observation = await observe(page);
     const characters = observation.instances.map((entry) => entry.characterId);
@@ -56,7 +75,7 @@ test.describe('multi-instance world authoring', () => {
     await advanceWorld(page, 60);
     const before = await observe(page);
 
-    await page.getByTestId('world-instance-scripted-humanoid').click();
+    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
     await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
 
     // Selection is presentation: the world must be exactly where it was.
@@ -66,7 +85,7 @@ test.describe('multi-instance world authoring', () => {
       before.instances.map((entry) => entry.transform.position),
     );
 
-    await page.getByTestId('world-instance-controlled-humanoid').click();
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
     await expect(page.getByTestId('world-inspector-id')).toHaveText('controlled-humanoid');
   });
 
@@ -115,10 +134,10 @@ test.describe('multi-instance world authoring', () => {
 
   test('duplicating stages a new instance that shares the source reference', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('world-instance-controlled-humanoid').click();
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
     await page.getByTestId('world-duplicate').click();
 
-    await expect(page.getByTestId('world-instance-controlled-humanoid-2')).toBeVisible();
+    await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toBeVisible();
     const observation = await observe(page);
     const copy = observation.instances.find((e) => e.instanceId === 'controlled-humanoid-2')!;
     const source = observation.instances.find((e) => e.instanceId === 'controlled-humanoid')!;
@@ -129,7 +148,7 @@ test.describe('multi-instance world authoring', () => {
 
   test('a transform edit moves only the selected instance', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('world-instance-controlled-humanoid').click();
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
 
     const before = await observe(page);
     const scriptedBefore = before.instances.find((e) => e.instanceId === 'scripted-humanoid')!;
@@ -147,7 +166,7 @@ test.describe('multi-instance world authoring', () => {
 
   test('rebinding the intent source changes one instance only', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('world-instance-scripted-humanoid').click();
+    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
     await page.getByTestId('world-field-instance.intentSource-input').selectOption('none');
     await advanceWorld(page, 60);
 
@@ -160,21 +179,24 @@ test.describe('multi-instance world authoring', () => {
 
   test('staged world changes can be reverted', async ({ page }) => {
     await openWorld(page);
-    await page.getByTestId('world-instance-controlled-humanoid').click();
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
     await page.getByTestId('world-duplicate').click();
-    await expect(page.getByTestId('world-instance-controlled-humanoid-2')).toBeVisible();
+    await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toBeVisible();
 
+    // Reverting is a world-level action, so it lives on the world root's
+    // inspector rather than on whichever instance happened to be selected.
+    await page.getByTestId('scene-node-world').click();
     await page.getByTestId('world-revert').click();
-    await expect(page.getByTestId('world-instance-controlled-humanoid-2')).toHaveCount(0);
-    await expect(page.getByTestId('world-instance-controlled-humanoid')).toBeVisible();
+    await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toHaveCount(0);
+    await expect(page.getByTestId('scene-node-instance-controlled-humanoid')).toBeVisible();
   });
 
   test('the focused chamber still opens and tunes', async ({ page }) => {
     await page.goto('/');
     await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
-    // Focused view is the default: the world switch has to be opt-in for a
-    // human who has never heard of world composition.
-    await expect(page.getByTestId('toggle-world-mode')).toHaveText('Focused view');
+    // Isolate is the default presentation: seeing the whole world has to be
+    // opt-in for a human who has never heard of world composition.
+    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Isolate');
     await expect(page.getByTestId('viewport-canvas')).toBeVisible();
   });
 });
