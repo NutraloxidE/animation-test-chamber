@@ -810,6 +810,56 @@ export function sandboxSeamGuardStage(): StageResult {
   );
 }
 
+/**
+ * Canonical demo data is clean after the visual suite.
+ *
+ * The visual tests drive the real API server, which writes to the repository —
+ * that is the point of them, and it is also how a test run leaves the demo
+ * project or an asset file modified without anybody noticing until the diff
+ * shows up in an unrelated commit. `git add -A` on top of that commits test
+ * output as authored data.
+ *
+ * This fails the build instead. It is deliberately a *comparison against HEAD*
+ * rather than a snapshot taken by the test harness: a guard that only knows
+ * what the tests touched cannot catch what something else did.
+ */
+export function canonicalDataCleanStage(): StageResult {
+  return stage(
+    'canonical demo data unmodified by test runs',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'restore projects/ and assets/ (git checkout --), and make the visual test isolate or undo its writes',
+    },
+    () => {
+      if (!gitHasCommits()) {
+        return { ok: true, issues: [], output: 'no previous commit to compare against' };
+      }
+      const issues: StageIssue[] = [];
+      const canonical = [
+        ...listFiles('projects').filter((file) => file.endsWith('.json')),
+        ...listFiles('assets/animation').filter((file) => file.endsWith('.json')),
+      ];
+
+      for (const file of canonical) {
+        const committed = readAtRevision('HEAD', file);
+        const working = readRepoFile(file);
+        if (committed === null || working === null) continue;
+        if (committed !== working) {
+          issues.push({
+            files: [file],
+            expected: 'byte-identical to HEAD',
+            actual: 'modified in the working tree',
+            message: `${file} differs from HEAD; a test run may have written to canonical data`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${canonical.length} canonical files checked` };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     protectedValuesStage(),
@@ -823,6 +873,7 @@ export function repoGuardStages(): StageResult[] {
     worldContractGuardStage(),
     sceneSelectionGuardStage(),
     sandboxSeamGuardStage(),
+    canonicalDataCleanStage(),
   ];
 }
 

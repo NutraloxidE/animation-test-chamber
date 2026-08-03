@@ -2152,6 +2152,27 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         return;
       }
 
+      /*
+       * A source that names a state this target's Behavior does not have is a
+       * dangling reference, not a selection. It arrives whenever the target
+       * moves between two Characters on different Behaviors, and left alone it
+       * renders as a frozen empty pose with nothing to point at — which is
+       * exactly the failure the global state list used to produce.
+       */
+      const sourceStateId = preview.source.stateId;
+      const resolved = state.resolvedAnimationTarget();
+      if (
+        resolved?.ok &&
+        !resolved.target.resolvedProject.graph.states.some((entry) => entry.id === sourceStateId)
+      ) {
+        engine.setPreviewOverride(null);
+        set({
+          clipPreview: { ...preview, source: null, timeSec: 0, playing: false },
+          clipPreviewActive: false,
+        });
+        return;
+      }
+
       const durationSec = state.clipPreviewDurationSec();
       /*
        * Playback time belongs to the engine while a preview is running — it is
