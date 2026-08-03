@@ -1334,12 +1334,15 @@ textarea {
     background: var(--panel-2);
     font-size: 12px;
     padding: 8px;
-    /* Narrow: the bottom workspace dock is a fixed 72vh overlay (z-index 22)
-       that would otherwise cover this handle — the one control that opens the
-       Inspector. Navigation outranks the docks it opens, the same rule the
-       dock bar already follows against the hierarchy overlay. */
-    position: relative;
-    z-index: 23;
+  }
+
+  /* Narrow viewports give the bottom of the screen to one overlay at a time.
+     While the workspace dock owns it, this handle is not merely hidden behind
+     the dock — it is withdrawn, because a handle floating above the dock's own
+     crumbs would block them instead. The way back to the Inspector is the dock
+     bar's Project toggle, which outranks every dock at z-index 26. */
+  .app--library-dock .sheet-handle {
+    display: none;
   }
 
   .app__panels {

@@ -54,9 +54,20 @@ async function openBottomDock(page: Page): Promise<void> {
   }
 }
 
-/** The inspector sheet only exists on narrow viewports. */
+/**
+ * Opens the Inspector sheet, closing the bottom dock first if it owns the
+ * screen.
+ *
+ * Narrow viewports give the bottom to one overlay at a time, so this is the
+ * sequence a person performs: close the dock from the dock bar, then pull the
+ * sheet up. On desktop both are docks and neither step is needed.
+ */
 async function openInspectorSheet(page: Page): Promise<void> {
   const handle = page.getByTestId('sheet-handle');
+  if (!(await handle.isVisible()) && (await page.getByTestId('workspace-dock').isVisible())) {
+    const chamber = page.getByTestId('workspace-chamber');
+    if (await chamber.isVisible()) await chamber.click();
+  }
   if (await handle.isVisible()) {
     const panels = page.locator('.app__panels');
     if (!(await panels.evaluate((element) => element.classList.contains('is-open')))) {
