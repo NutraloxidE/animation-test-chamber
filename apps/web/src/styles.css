@@ -1334,10 +1334,16 @@ textarea {
     background: var(--panel-2);
     font-size: 12px;
     padding: 8px;
-    /* The handle both opens and closes the sheet, so it has to outrank it:
-       at z-index 20 the open sheet covered its own close button, leaving the
-       Inspector with no way out on a short viewport. Below the dock's 22,
-       because while the dock owns the screen the handle is withdrawn. */
+  }
+
+  /* The handle both opens and closes the sheet, so while the sheet is open it
+     has to outrank it: at the sheet's own z-index the open sheet covered its
+     close button, leaving the Inspector with no way out on a short viewport.
+     Only while open, though — a permanently raised handle creates a stacking
+     context that beats the viewport controls it sits beside, which on a 412px
+     viewport means covering the pause button instead. Below the dock's 22,
+     because while the dock owns the screen the handle is withdrawn entirely. */
+  .sheet-handle.is-raised {
     position: relative;
     z-index: 21;
   }

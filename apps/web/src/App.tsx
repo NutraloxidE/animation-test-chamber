@@ -343,7 +343,7 @@ export function App() {
           {showInspector && (
             <button
               type="button"
-              className="sheet-handle"
+              className={`sheet-handle${sheetOpen ? ' is-raised' : ''}`}
               onClick={() => {
                 const next = !sheetOpen;
                 setSheetOpen(next);
