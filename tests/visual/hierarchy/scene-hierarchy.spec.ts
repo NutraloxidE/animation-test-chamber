@@ -11,21 +11,33 @@ import { expect, test, type Page } from '@playwright/test';
  * true-by-convention before and is true-by-test now.
  */
 
+/**
+ * These assert information architecture — what the tree is backed by, what the
+ * inspector routes to, whether a view toggle moves the selection. None of that
+ * is viewport-dependent, and on narrow viewports the hierarchy and the
+ * Inspector are overlays that take turns owning the screen, so a test
+ * alternating between them would spend its length toggling docks and assert
+ * the same facts more weakly. The narrow layout has its own test at the bottom
+ * of this file, which is about the layout rather than about the architecture.
+ */
+test.skip(
+  (_, testInfo) => testInfo.project.name !== 'desktop',
+  'information architecture is viewport-independent; narrow layout is covered separately',
+);
+
 async function open(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
   await page.evaluate(() => window.__ATC_TEST__!.enableWorld());
+  await showHierarchy(page);
+}
+
+async function showHierarchy(page: Page): Promise<void> {
   if (!(await page.getByTestId('hierarchy').isVisible())) {
     await page.getByTestId('toggle-hierarchy').click();
   }
-  const handle = page.getByTestId('sheet-handle');
-  if (await handle.isVisible()) {
-    const panels = page.locator('.app__panels');
-    if (!(await panels.evaluate((element) => element.classList.contains('is-open')))) {
-      await handle.click();
-    }
-  }
 }
+
 
 async function openBottomDock(page: Page): Promise<void> {
   if (!(await page.getByTestId('workspace-dock').isVisible())) {
@@ -230,5 +242,67 @@ test.describe('contextual inspector', () => {
     // selection guaranteed to survive any world edit.
     await expect(page.getByTestId('world-inspector')).toBeVisible();
     await expect(page.getByTestId('scene-node-instance-controlled-humanoid-2')).toHaveCount(0);
+  });
+});
+
+/**
+ * The 320px layout, asserted where it means something.
+ *
+ * The claim is not that everything is visible at once — it cannot be — but
+ * that every dock is reachable, that the selection survives the docks opening
+ * and closing, and that nothing overflows the viewport horizontally.
+ */
+test.describe('narrow layout', () => {
+  test.skip(
+    (_, testInfo) => testInfo.project.name !== 'narrow',
+    'this is the 320px layout test',
+  );
+
+  test('hierarchy, inspector and workspaces are each reachable at 320px', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
+    await page.evaluate(() => window.__ATC_TEST__!.enableWorld());
+
+    const noOverflow = async () => {
+      const [scrollWidth, clientWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        document.documentElement.clientWidth,
+      ]);
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    };
+    await noOverflow();
+
+    // The hierarchy opens as an overlay, and a selection made in it survives
+    // the overlay closing — that is the selection model doing its job.
+    await page.getByTestId('toggle-hierarchy').click();
+    await expect(page.getByTestId('hierarchy')).toBeVisible();
+    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
+    await noOverflow();
+    await page.getByTestId('toggle-hierarchy').click();
+    await expect(page.getByTestId('hierarchy')).toBeHidden();
+
+    // The Inspector opens over the viewport and still shows that selection.
+    await page.getByTestId('sheet-handle').click();
+    await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
+    await noOverflow();
+
+    // And closes again, releasing the viewport controls underneath it.
+    await page.getByTestId('sheet-handle').click();
+    await page.getByTestId('toggle-pause').click();
+    await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
+
+    // The bottom workspaces are reachable, and take the screen from the sheet.
+    await page.getByTestId('workspace-asset-library').click();
+    await expect(page.getByTestId('workspace-dock')).toBeVisible();
+    await page.getByTestId('workspace-animation-preview').click();
+    await expect(page.getByTestId('animation-preview')).toBeVisible();
+    await noOverflow();
+
+    // Closing the dock brings the sheet handle back, and the selection is
+    // still the one made before any of this.
+    await page.getByTestId('workspace-chamber').click();
+    await page.getByTestId('sheet-handle').click();
+    await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
+    await noOverflow();
   });
 });

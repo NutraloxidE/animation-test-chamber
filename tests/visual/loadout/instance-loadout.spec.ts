@@ -10,21 +10,32 @@ import { expect, test, type Page } from '@playwright/test';
  * would pass happily while the panel went on calling a global setter.
  */
 
+/*
+ * Desktop only, for the same reason as the hierarchy spec: these alternate
+ * between selecting in the tree and editing in the Inspector, which on a
+ * narrow viewport are two overlays taking turns. The behaviour under test —
+ * that a loadout edit reaches exactly one instance — is asserted at the
+ * command level in tests/integration/world/instance-loadout.test.ts on every
+ * run, and the narrow layout has its own test in the hierarchy spec.
+ */
+test.skip(
+  (_, testInfo) => testInfo.project.name !== 'desktop',
+  'loadout isolation is viewport-independent; narrow layout is covered separately',
+);
+
 async function open(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
   await page.evaluate(() => window.__ATC_TEST__!.enableWorld());
+  await showHierarchy(page);
+}
+
+async function showHierarchy(page: Page): Promise<void> {
   if (!(await page.getByTestId('hierarchy').isVisible())) {
     await page.getByTestId('toggle-hierarchy').click();
   }
-  const handle = page.getByTestId('sheet-handle');
-  if (await handle.isVisible()) {
-    const panels = page.locator('.app__panels');
-    if (!(await panels.evaluate((element) => element.classList.contains('is-open')))) {
-      await handle.click();
-    }
-  }
 }
+
 
 async function select(page: Page, instanceId: string): Promise<void> {
   await page.getByTestId(`scene-node-instance-${instanceId}`).click();
