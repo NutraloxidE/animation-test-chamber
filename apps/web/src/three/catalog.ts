@@ -20,6 +20,15 @@ export interface CharacterPreset {
   animationPositionScale?: number;
   clipMap?: Record<string, string>;
   rigId?: string;
+  /**
+   * Lets this model play a state machine authored for a different rig.
+   *
+   * `bones` maps this model's bone names to `rigId`'s. One source rig, not a
+   * table of them: a model that could be retargeted from two rigs does not
+   * exist yet, and guessing which one a clip came from is how you get an
+   * arm bent backwards.
+   */
+  retargetFrom?: { rigId: string; bones: Record<string, string> };
   rightHandBone?: string;
   weaponGrips?: Record<string, WeaponGrip>;
 }

@@ -14,6 +14,7 @@ import type { WorldChamberEngine } from '../../world/world-engine.ts';
 import type { CharacterPreset, WeaponGrip, WeaponMode } from '../catalog.ts';
 import type { CharacterPose } from './ProceduralCharacter.tsx';
 import { HeldSword } from './HeldSword.tsx';
+import { retargetClips } from './retarget.ts';
 
 const CLIP_FOR_STATE: Record<string, string> = {
   idle: 'HumanArmature|Idle',
@@ -76,22 +77,46 @@ export function GltfCharacter({
   // original skeleton.
   const model = useMemo(() => skeletonClone(cached), [cached]);
   const baseAnimationUrl = character.animationUrl ?? character.modelUrl!;
+  // A rig mismatch is no longer a dead end: a model that declares how its bones
+  // line up with the clip's rig plays the state machine retargeted, so every
+  // weapon mode is selectable on every model rather than only on its own rig.
+  const retargetBones =
+    character.retargetFrom?.rigId === weapon.rigId
+      ? character.retargetFrom!.bones
+      : undefined;
   const weaponCompatible = Boolean(
-    weapon.animationUrl && weapon.rigId === character.rigId,
+    weapon.animationUrl && (weapon.rigId === character.rigId || retargetBones),
   );
   const weaponAnimationUrl = weaponCompatible
     ? weapon.animationUrl!
     : baseAnimationUrl;
   const { animations: baseAnimations } = useGLTF(baseAnimationUrl);
-  const { animations: weaponAnimations } = useGLTF(weaponAnimationUrl);
+  const { animations: weaponAnimations, scene: weaponScene } = useGLTF(weaponAnimationUrl);
   const baseClipMap = character.clipMap ?? CLIP_FOR_STATE;
   const clipMap = {
     ...baseClipMap,
     ...(weaponCompatible ? weapon.clipMap : undefined),
   };
+  // Only the clips the graph can actually reach are retargeted — the universal
+  // library ships 43 of them and sampling the unreachable ones would be a hitch
+  // for nothing.
+  const retargetedWeaponClips = useMemo(() => {
+    if (!weaponCompatible || !retargetBones) return null;
+    const wanted = new Set(Object.values(weapon.clipMap ?? {}));
+    return retargetClips(
+      model,
+      weaponScene,
+      weaponAnimations.filter((clip) => wanted.has(clip.name)),
+      retargetBones,
+    );
+  }, [model, retargetBones, weapon.clipMap, weaponAnimations, weaponCompatible, weaponScene]);
   const animations = useMemo(() => {
-    const sourceAnimations =
-      baseAnimationUrl === weaponAnimationUrl
+    // Retargeted clips are already expressed in the model's own bones, so they
+    // bypass the position rescaling below — that converts between the source
+    // rig's units and the model's, which retargeting has done.
+    const sourceAnimations = retargetedWeaponClips
+      ? [...baseAnimations, ...retargetedWeaponClips]
+      : baseAnimationUrl === weaponAnimationUrl
         ? baseAnimations
         : [...baseAnimations, ...weaponAnimations];
     if (baseAnimationUrl === character.modelUrl && !weaponCompatible) {
@@ -132,6 +157,7 @@ export function GltfCharacter({
     character.animationPositionScale,
     character.modelUrl,
     clipMap,
+    retargetedWeaponClips,
     weaponAnimationUrl,
     weapon.animationPositionScale,
     weaponAnimations,
