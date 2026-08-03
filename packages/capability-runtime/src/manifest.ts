@@ -21,6 +21,12 @@ export type AuthoringControl =
   | { kind: 'number'; min: number; max: number; step: number }
   | { kind: 'boolean' }
   | { kind: 'enum'; values: string[] }
+  /**
+   * A picker over the project's own character definitions. Not an `enum`: the
+   * choices are project data, and a manifest that listed them would be a second
+   * copy of the character list going stale the moment one is added.
+   */
+  | { kind: 'character-reference' }
   | { kind: 'vector3'; min: number; max: number; step: number };
 
 export interface AuthoringFieldDeclaration {

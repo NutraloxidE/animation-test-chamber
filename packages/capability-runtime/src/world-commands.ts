@@ -508,6 +508,44 @@ const setInstanceEnabled: CommandDeclaration = {
   },
 };
 
+const setInstanceCharacter: CommandDeclaration = {
+  id: 'world.set_instance_character',
+  description:
+    'Stages which character definition an instance is a use of. Rebinds one instance; the definition itself is untouched and every other instance keeps referencing what it referenced.',
+  mutating: true,
+  inputSchema: Type.Object(
+    { instanceId: InstanceId, characterId: InstanceId },
+    { additionalProperties: false },
+  ),
+  outputSchema: Type.Object(
+    { instanceId: Type.String(), characterId: Type.String() },
+    { additionalProperties: false },
+  ),
+  execute: (rawInput: unknown, context: CommandContext) => {
+    const input = rawInput as { instanceId: string; characterId: string };
+
+    const instance = instanceOf(context.world, input.instanceId);
+    if (!instance) return refuse('/instanceId', `unknown instance "${input.instanceId}"`);
+    if (!context.project.characters.some((entry) => entry.id === input.characterId)) {
+      return refuse('/characterId', `unknown character "${input.characterId}"`);
+    }
+    const path = `/world/instances/${input.instanceId}/source/characterId`;
+    const refusal = protectionRefusal(context.project, context.world, path, context.actor ?? 'ai');
+    if (refusal) return { ok: false, issues: [refusal] };
+
+    const staged = withInstance(context.world, input.instanceId, {
+      ...instance,
+      source: { kind: 'character', characterId: input.characterId },
+    });
+    return stagedOrIssues(
+      context,
+      staged,
+      { instanceId: input.instanceId, characterId: input.characterId },
+      [path],
+    );
+  },
+};
+
 const setInstanceTransform: CommandDeclaration = {
   id: 'world.set_instance_transform',
   description: 'Stages an instance-scoped transform. Affects exactly one instance.',
@@ -743,6 +781,7 @@ export const WORLD_COMMANDS: CommandDeclaration[] = [
   duplicateInstance,
   removeInstance,
   setInstanceEnabled,
+  setInstanceCharacter,
   setInstanceTransform,
   bindIntentSource,
   setInstanceWeaponMode,

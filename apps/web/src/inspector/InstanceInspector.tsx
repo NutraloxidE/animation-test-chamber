@@ -16,6 +16,19 @@ import { RuntimeStateSection } from './sections/RuntimeStateSection.tsx';
 import { SharedDefinitionsSection } from './sections/SharedDefinitionsSection.tsx';
 import { ScopeBadge } from './sections/ScopeBadge.tsx';
 
+/*
+ * Split by field, not by a second list: every declared field is still rendered
+ * exactly once, so a field added to the manifest still shows up somewhere
+ * rather than silently belonging to neither section.
+ */
+const IDENTITY_FIELD_IDS = ['instance.character'];
+const IDENTITY_FIELDS = INSTANCE_SURFACE.fields.filter((field) =>
+  IDENTITY_FIELD_IDS.includes(field.id),
+);
+const TRANSFORM_FIELDS = INSTANCE_SURFACE.fields.filter(
+  (field) => !IDENTITY_FIELD_IDS.includes(field.id),
+);
+
 export function InstanceInspector({ instanceId }: { instanceId: string }) {
   const world = useChamber((state) => state.stagedWorld);
   const setFocusedInstance = useChamber((state) => state.setFocusedInstance);
@@ -50,11 +63,22 @@ export function InstanceInspector({ instanceId }: { instanceId: string }) {
           <dt>Display name</dt>
           <dd>{instance.displayName}</dd>
         </dl>
+        {/* Which character this instance *is* belongs to identity, not to
+            "Transform & Activation" — it is the one field here that changes
+            what you are looking at rather than where it stands. */}
+        {IDENTITY_FIELDS.map((field) => (
+          <DeclaredField
+            key={field.id}
+            field={field}
+            instanceId={instance.id}
+            observations={observed}
+          />
+        ))}
       </section>
 
       <section className="inspector__section" data-testid="inspector-transform">
         <h3>Transform &amp; Activation</h3>
-        {INSTANCE_SURFACE.fields.map((field) => (
+        {TRANSFORM_FIELDS.map((field) => (
           <DeclaredField
             key={field.id}
             field={field}

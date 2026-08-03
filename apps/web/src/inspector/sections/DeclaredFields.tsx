@@ -41,6 +41,8 @@ export function describeObservation(id: string, observation: InstanceObservation
       return observation.enabled ? 'ticking' : 'not ticking';
     case 'world.instance.transform':
       return `x ${observation.transform.position.x.toFixed(2)} z ${observation.transform.position.z.toFixed(2)}`;
+    case 'world.instance.source':
+      return observation.characterId;
     case 'world.instance.intentSource':
       return observation.intentSourceBinding;
     case 'world.instance.intent':
@@ -61,6 +63,7 @@ export function DeclaredField({
   observations: InstanceObservation | undefined;
 }) {
   const world = useChamber((state) => state.stagedWorld);
+  const characters = useChamber((state) => state.canonicalProject.characters);
   const runWorldCommand = useChamber((state) => state.runWorldCommand);
   const instance = world.instances.find((entry) => entry.id === instanceId);
   if (!instance) return null;
@@ -135,6 +138,25 @@ export function DeclaredField({
             })
           }
         />
+      )}
+
+      {field.control.kind === 'character-reference' && (
+        <select
+          value={instance.source.characterId}
+          data-testid={`world-field-${field.id}-input`}
+          onChange={(event) =>
+            runWorldCommand(field.commandId, {
+              instanceId,
+              characterId: event.target.value,
+            })
+          }
+        >
+          {characters.map((character) => (
+            <option key={character.id} value={character.id}>
+              {character.displayName}
+            </option>
+          ))}
+        </select>
       )}
 
       {field.control.kind === 'enum' && (

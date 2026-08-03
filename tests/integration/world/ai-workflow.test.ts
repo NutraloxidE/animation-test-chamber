@@ -168,6 +168,39 @@ describe('AI command workflow', () => {
     expect(unknownTrack.issues[0]!.message).toContain('unknown intent track');
   });
 
+  it('rebinds one instance to another character without touching its siblings', () => {
+    const registry = createDefaultRegistry();
+    const project = loadDemoProject();
+    const world = loadWorldFixture();
+    const other = project.characters.find(
+      (character) => character.id !== world.instances[0]!.source.characterId,
+    )!;
+
+    const result = registry.execute(
+      'world.set_instance_character',
+      { instanceId: CONTROLLED, characterId: other.id },
+      contextFor(project, world),
+    );
+    expect(result.ok).toBe(true);
+    const staged = result.stagedWorld!;
+    expect(staged.instances.find((entry) => entry.id === CONTROLLED)!.source.characterId).toBe(
+      other.id,
+    );
+    // The sibling is the assertion: a character is a shared definition, and
+    // choosing a different one must stay instance-scoped.
+    expect(staged.instances.find((entry) => entry.id === SCRIPTED)!.source.characterId).toBe(
+      world.instances.find((entry) => entry.id === SCRIPTED)!.source.characterId,
+    );
+
+    const unknown = registry.execute(
+      'world.set_instance_character',
+      { instanceId: CONTROLLED, characterId: 'no-such-character' },
+      contextFor(project, world),
+    );
+    expect(unknown.ok).toBe(false);
+    expect(unknown.issues[0]!.message).toContain('unknown character');
+  });
+
   it('refuses a staged world that would leave focus pointing at a disabled instance', () => {
     const registry = createDefaultRegistry();
     const context = contextFor(loadDemoProject(), loadWorldFixture());

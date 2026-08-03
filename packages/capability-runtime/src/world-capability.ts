@@ -28,6 +28,16 @@ export const WORLD_CAPABILITY: CapabilityManifest = {
       title: 'Runtime instance',
       fields: [
         {
+          id: 'instance.character',
+          label: 'Character',
+          description:
+            'Which character definition this instance is a use of. Instance-scoped: the definition is shared, the choice of it is not.',
+          scope: 'instance',
+          control: { kind: 'character-reference' },
+          commandId: 'world.set_instance_character',
+          observationIds: ['world.instance.source'],
+        },
+        {
           id: 'instance.enabled',
           label: 'Enabled',
           description: 'A disabled instance stops ticking. It stays selectable and inspectable.',
