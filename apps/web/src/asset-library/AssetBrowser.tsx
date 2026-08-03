@@ -15,6 +15,7 @@ const TYPE_FILTERS: { id: string; label: string }[] = [
   { id: 'animation-clip', label: 'Clips' },
   { id: 'humanoid-rig', label: 'Rig Profiles' },
   { id: 'animation-tuning', label: 'Tuning Profiles' },
+  { id: 'worlds', label: 'Worlds' },
   { id: 'candidates', label: 'Candidates' },
 ];
 
@@ -132,6 +133,51 @@ export function AssetTypeFilter() {
   );
 }
 
+/** The world list, shown when the Worlds type filter is selected. */
+function WorldList() {
+  const worlds = useChamber((state) => state.worldLibrary);
+  const activeWorldId = useChamber((state) => state.activeWorldId);
+  const worldDirty = useChamber((state) => state.worldDirty);
+  const loadWorld = useChamber((state) => state.loadWorld);
+
+  return (
+    <ul className="asset-list" data-testid="asset-world-list">
+      {worlds.map((world) => {
+        const active = world.id === activeWorldId;
+        return (
+          <li key={world.id}>
+            <div className="asset-card asset-card--static">
+              <span className="asset-card__name">{world.displayName}</span>
+              <span className="asset-card__meta">
+                <code>{world.id}</code>
+                <span className="asset-badge">
+                  {world.instances.length} instance{world.instances.length === 1 ? '' : 's'}
+                </span>
+                {active && <span className="asset-badge asset-badge--valid">loaded</span>}
+              </span>
+              <button
+                type="button"
+                disabled={active}
+                data-testid={`load-world-${world.id}`}
+                title={
+                  active
+                    ? 'Already the running scene'
+                    : worldDirty
+                      ? 'Loading this scene discards the staged world edits'
+                      : 'Load this scene'
+                }
+                onClick={() => loadWorld(world.id)}
+              >
+                {active ? 'Loaded' : 'Load scene'}
+              </button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** The candidate list, shown when the Candidates type filter is selected. */
 function CandidateList() {
   const candidates = useChamber((state) => state.canonicalProject.candidates);
@@ -207,7 +253,9 @@ export function AssetBrowser() {
         />
       </label>
 
-      {typeFilter === 'candidates' ? (
+      {typeFilter === 'worlds' ? (
+        <WorldList />
+      ) : typeFilter === 'candidates' ? (
         <CandidateList />
       ) : summaries.length === 0 ? (
         <p className="muted" data-testid="asset-list-empty">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create, type StateCreator } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { BUTTON_ACTIONS } from '@atc/schema';
+import { BUTTON_ACTIONS, validateAgainst } from '@atc/schema';
 import type {
   AnimationAssetSummary,
   AnimationBehaviorAsset,
@@ -290,6 +290,13 @@ interface ChamberState {
   mouseLookMode: MouseLookMode;
   worldDirty: boolean;
   worldMessage: string;
+  /**
+   * Every world the repository ships: the project's own, plus the standalone
+   * documents under `projects/<project>/worlds/`. A world is a scene you switch
+   * to, not a fifth thing bolted onto the project document.
+   */
+  worldLibrary: WorldDefinition[];
+  activeWorldId: string;
 
   /** Asset Library view state. */
   librarySelection: { assetType: string; assetId: string; version: string } | null;
@@ -385,6 +392,8 @@ interface ChamberActions {
   setFocusedInstance(instanceId: string): void;
   setCameraTargetInstance(instanceId: string): void;
   revertWorldEdits(): void;
+  /** Switch the running scene to another world in the library. */
+  loadWorld(worldId: string): void;
   sharedAssetsFor(instanceId: string | null): CharacterAnimationAssignment | null;
   /** Effective loadout for one instance: definition default + instance override. */
   loadoutOf(instanceId: string | null): InstanceLoadout | null;
@@ -552,6 +561,16 @@ const canonicalSeed = seedProject as ProjectDefinition;
  * project import always was.
  */
 const seedRegistry: AnimationAssetRegistry = registryFromLibraryIndex(seedAssetIndex);
+
+/**
+ * Standalone worlds shipped beside the project. Globbed rather than imported
+ * one by one so adding a scene is adding a file, and eagerly so the list is
+ * there on first paint like every other seed.
+ */
+const seedWorldModules = import.meta.glob<{ default: unknown }>(
+  '../../../projects/demo-character/worlds/*.json',
+  { eager: true },
+);
 
 function resolveFor(
   project: ProjectDefinition,
@@ -792,6 +811,15 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
    * separate runtime kept alive beside it.
    */
   const canonicalWorld = worldOf(canonicalSeedWithDrafts);
+  /*
+   * A hand-authored world file is a trust boundary like any other canonical
+   * document: a scene that fails its schema is dropped here rather than
+   * reaching the runtime as a half-world nobody can debug.
+   */
+  const seedWorlds = Object.values(seedWorldModules)
+    .map((module) => module.default as WorldDefinition)
+    .filter((world) => validateAgainst('WorldDefinition', world).valid)
+    .filter((world) => world.id !== canonicalWorld.id);
   const commandRegistry = createDefaultRegistry();
   const worldEngine = new WorldChamberEngine({
     registry: seedRegistry,
@@ -832,6 +860,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     mouseLookMode: 'free',
     worldDirty: false,
     worldMessage: '',
+    worldLibrary: [canonicalWorld, ...seedWorlds],
+    activeWorldId: canonicalWorld.id,
     clipPreview: NO_CLIP_PREVIEW,
     clipPreviewActive: false,
     // Follow Selection is the default because it is the common path: select a
@@ -1682,6 +1712,26 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         ),
         worldDirty: false,
         worldMessage: 'staged world changes reverted',
+      });
+    },
+
+    /**
+     * Switching scenes replaces the canonical world, not just the staged one:
+     * "revert my edits" after a switch has to mean the scene you switched to,
+     * not the one you left.
+     */
+    loadWorld(worldId) {
+      const state = get();
+      const world = state.worldLibrary.find((entry) => entry.id === worldId);
+      if (!world || worldId === state.activeWorldId) return;
+      state.worldEngine.setWorld(world);
+      set({
+        canonicalWorld: world,
+        stagedWorld: world,
+        activeWorldId: world.id,
+        sceneSelection: { kind: 'instance', instanceId: world.focusedInstanceId },
+        worldDirty: false,
+        worldMessage: `loaded world ${world.displayName}`,
       });
     },
 

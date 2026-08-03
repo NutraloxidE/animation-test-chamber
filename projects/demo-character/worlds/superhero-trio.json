@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "id": "superhero-trio",
+  "displayName": "Superhero trio",
+  "instances": [
+    {
+      "schemaVersion": 2,
+      "id": "hero-player",
+      "displayName": "Hero (player)",
+      "source": { "kind": "character", "characterId": "demo-humanoid" },
+      "transform": { "position": { "x": 0, "y": 2, "z": 3 }, "yawRad": 0 },
+      "intentSource": { "kind": "local-input", "playerIndex": 0 },
+      "enabled": true
+    },
+    {
+      "schemaVersion": 2,
+      "id": "hero-sentinel",
+      "displayName": "Hero (sentinel, holds position)",
+      "source": { "kind": "character", "characterId": "demo-humanoid" },
+      "transform": { "position": { "x": -3, "y": 2, "z": 0 }, "yawRad": 1.5708 },
+      "intentSource": { "kind": "none" },
+      "enabled": true
+    },
+    {
+      "schemaVersion": 2,
+      "id": "hero-skirmisher",
+      "displayName": "Hero (skirmisher, dodges and attacks)",
+      "source": { "kind": "character", "characterId": "alternate-humanoid-character" },
+      "transform": { "position": { "x": 3, "y": 2, "z": 0 }, "yawRad": -1.5708 },
+      "intentSource": { "kind": "scripted-track", "trackId": "skirmish-leash-cycle" },
+      "enabled": true
+    }
+  ],
+  "intentTracks": [
+    {
+      "schemaVersion": 2,
+      "id": "skirmish-leash-cycle",
+      "displayName": "Advance, dodge, attack, return to the start point",
+      "loop": true,
+      "durationTicks": 484,
+      "keyframes": [
+        { "tick": 0, "move": { "x": 0, "y": 0 } },
+        { "tick": 20, "move": { "x": 1, "y": 0.4 } },
+        { "tick": 80, "buttons": { "Dodge": true } },
+        { "tick": 82, "buttons": { "Dodge": false } },
+        { "tick": 110, "move": { "x": 0, "y": 0 }, "buttons": { "PrimaryAction": true } },
+        { "tick": 114, "buttons": { "PrimaryAction": false } },
+        { "tick": 140, "move": { "x": -1, "y": -0.4 } },
+        { "tick": 240, "buttons": { "Guard": true } },
+        { "tick": 250, "move": { "x": 0, "y": 0 } },
+        { "tick": 260, "move": { "x": -1, "y": 0.3 } },
+        { "tick": 265, "buttons": { "Guard": false } },
+        { "tick": 320, "buttons": { "Dodge": true } },
+        { "tick": 322, "buttons": { "Dodge": false } },
+        { "tick": 350, "move": { "x": 0, "y": 0 }, "buttons": { "SecondaryAction": true } },
+        { "tick": 354, "buttons": { "SecondaryAction": false } },
+        { "tick": 380, "move": { "x": 1, "y": -0.3 } },
+        { "tick": 474, "move": { "x": 0, "y": 0 } }
+      ]
+    }
+  ],
+  "focusedInstanceId": "hero-player",
+  "cameraTargetInstanceId": "hero-player"
+}
