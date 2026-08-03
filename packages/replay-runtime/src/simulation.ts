@@ -48,6 +48,34 @@ export interface SimulationInit {
   weaponModeId?: string;
   /** Equipment slot id → equipped. Slots left out use their declared default. */
   equipped?: Record<string, boolean>;
+  /**
+   * Where the animation layers start, instead of their default states.
+   *
+   * Construction-only, and deliberately part of `SimulationInit` rather than a
+   * method: a `forceState(...)` on a running simulation would be reachable from
+   * `WorldRuntime`, world commands, the HTTP API and replay playback, and every
+   * one of those would be a way to rewrite a tick record that replay
+   * determinism is measured against. Existing as a constructor argument means
+   * the only thing that can use it is something building a *new* simulation —
+   * which is exactly what the State Sandbox does, and what `WorldRuntime`
+   * never asks for.
+   */
+  bootstrap?: SimulationBootstrap;
+}
+
+/**
+ * A starting position for a fresh simulation's animation layers.
+ *
+ * Not a transition and not an override: after this is applied the simulation
+ * runs the ordinary fixed step, so the state's own duration, transitions,
+ * events, recovery and root motion all execute for real. That is the whole
+ * difference between the State Sandbox and Clip Preview.
+ */
+export interface SimulationBootstrap {
+  /** Layer id → state id. Validated against the resolved behaviour. */
+  states: Record<string, string>;
+  /** Where in the clip to begin. Clamped to [0, 1]; defaults to 0. */
+  normalizedTime?: number;
 }
 
 export interface RootMotionTrack {
@@ -148,6 +176,15 @@ export class Simulation {
     this.graph = new AnimationGraphRuntime(this.project.graph, motionResolverFor(this.project), {
       contextKey: this.weaponModeId,
     });
+    // Before tick zero and nowhere else. `AnimationGraphRuntime.bootstrapState`
+    // refuses to run once the graph has ticked, so this cannot be reached again
+    // through any path that reaches a *running* simulation.
+    if (init.bootstrap) {
+      for (const [layerId, stateId] of Object.entries(init.bootstrap.states)) {
+        this.graph.bootstrapState(layerId, stateId, init.bootstrap.normalizedTime ?? 0);
+      }
+    }
+
     this.input = new InputState(this.project.inputMap);
     this.lastTerrain = resolveTerrain(this.terrain, this.project.terrain, {
       position: this.position,

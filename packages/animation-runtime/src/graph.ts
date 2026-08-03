@@ -183,6 +183,8 @@ export class AnimationGraphRuntime {
   private states = new Map<string, StateDefinition>();
   private transitionsByLayer = new Map<LayerId, TransitionDefinition[]>();
   private speedScales = new Map<LayerId, number>();
+  /** Latched on the first `tick`. Closes the bootstrap seam permanently. */
+  private ticked = false;
 
   constructor(
     private graph: AnimationGraphDefinition,
@@ -264,6 +266,41 @@ export class AnimationGraphRuntime {
     for (const layer of this.graph.layers) {
       this.enterState(layer.id, layer.defaultState, null, 0, 0, 1);
     }
+  }
+
+  /**
+   * Places a layer in a chosen state *before tick zero*.
+   *
+   * The State Sandbox needs to begin somewhere other than the default state and
+   * then let the real rules run. The tempting shape for that is a general
+   * `setLayerState` on the live runtime — and it would be a hole straight
+   * through every guarantee this codebase makes: forcing a state mid-run
+   * rewrites the tick record, which is the thing replay determinism is measured
+   * against, and it would be reachable from world commands, the HTTP API and
+   * replay playback alike.
+   *
+   * So this is not a setter. It is refused once the graph has ticked, and the
+   * only caller is `Simulation`'s constructor path, which accepts a bootstrap
+   * exclusively through `SimulationInit`. `WorldRuntime` never passes one.
+   * After it runs, nothing about the tick is special: the sandbox is executing
+   * the same `tick()` as the live world, which is the entire point of it.
+   */
+  bootstrapState(layerId: LayerId, stateId: string, normalizedTime = 0): void {
+    if (this.ticked) {
+      throw new Error('bootstrapState is construction-only; the graph has already ticked');
+    }
+    const layer = this.graph.layers.find((entry) => entry.id === layerId);
+    if (!layer) throw new Error(`unknown layer "${layerId}"`);
+    const state = this.states.get(stateId);
+    if (!state) throw new Error(`unknown state "${stateId}"`);
+    if (state.layer !== layerId) {
+      throw new Error(`state "${stateId}" belongs to layer "${state.layer}", not "${layerId}"`);
+    }
+    const start = Number.isFinite(normalizedTime) ? clamp01(normalizedTime) : 0;
+    // Entered with no arriving transition and no blend, exactly as a default
+    // state is: a bootstrap is a starting position, not a transition that
+    // happened.
+    this.enterState(layerId, stateId, null, start, 0, state.speed);
   }
 
   /** Per-tick playback multiplier on top of the transition's authored speed. */
@@ -402,6 +439,7 @@ export class AnimationGraphRuntime {
    * layer sees the locomotion result from the same tick.
    */
   tick(params: ParameterSource): GraphTickResult {
+    this.ticked = true;
     const result: GraphTickResult = { events: [], transitions: [] };
     const ordered = [...this.graph.layers].sort((a, b) => a.order - b.order);
 

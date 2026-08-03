@@ -2,6 +2,10 @@
 import type { SimulationState } from '@atc/replay-runtime';
 import type { WorldObservation } from '@atc/world-runtime';
 import { useChamber } from './store.ts';
+import { previewNormalizedTime } from './world/world-engine.ts';
+import type { AnimationTargetMode } from './animation/target/animation-target.ts';
+import type { ClipPreviewSource } from './animation/clip-preview/clip-preview-state.ts';
+import type { SandboxObservation } from './animation/state-sandbox/AnimationSandboxEngine.ts';
 
 /**
  * Fixed-tick test driver (PLAN Part VII §27). Lets a Playwright test replace
@@ -30,6 +34,36 @@ export interface AtcTestDriver {
   enableWorld(): void;
   advanceWorldTicks(count: number): void;
   observeWorld(): WorldObservation;
+
+  /**
+   * Animation hooks.
+   *
+   * Deterministic by construction: `stepClipPreview` advances clip seconds and
+   * `stepSandbox` advances whole fixed ticks, so a test never has to sleep and
+   * hope. A wall-clock wait asserting that an animation progressed is a test
+   * that passes on a fast machine and fails on a loaded one, which is worse
+   * than no test at all.
+   */
+  animation: {
+    setTargetMode(mode: AnimationTargetMode): void;
+    setClipPreview(source: ClipPreviewSource | null): void;
+    /** Advances the clip transport by seconds, without touching the world. */
+    stepClipPreview(seconds: number): void;
+    readClipPreview(): {
+      timeSec: number;
+      durationSec: number;
+      normalizedTime: number;
+      playing: boolean;
+    } | null;
+    createSandbox(bootstrap: {
+      layer: 'locomotion' | 'action';
+      stateId: string | null;
+      normalizedTime?: number;
+    }): void;
+    stepSandbox(ticks: number): void;
+    readSandboxObservation(): SandboxObservation | null;
+    clearAnimation(): void;
+  };
 }
 
 declare global {
@@ -66,6 +100,52 @@ export function installTestDriver(): void {
     },
     observeWorld() {
       return useChamber.getState().worldEngine.observe();
+    },
+
+    animation: {
+      setTargetMode(mode) {
+        useChamber.getState().setAnimationTargetMode(mode);
+      },
+      setClipPreview(source) {
+        const state = useChamber.getState();
+        state.setAnimationWorkspaceMode('clip-preview');
+        state.setClipPreviewSource(source);
+      },
+      stepClipPreview(seconds) {
+        // Straight at the engine's transport, not through the world clock: a
+        // clip preview is not a simulation and advancing it must not require
+        // advancing one.
+        useChamber.getState().worldEngine.advancePreview(seconds);
+      },
+      readClipPreview() {
+        const preview = useChamber.getState().worldEngine.previewOverride;
+        if (!preview) return null;
+        return {
+          timeSec: preview.timeSec,
+          durationSec: preview.durationSec,
+          normalizedTime: previewNormalizedTime(preview),
+          playing: preview.playing,
+        };
+      },
+      createSandbox(bootstrap) {
+        const state = useChamber.getState();
+        state.setAnimationWorkspaceMode('state-sandbox');
+        if (bootstrap.normalizedTime !== undefined) {
+          state.setSandboxNormalizedTime(bootstrap.normalizedTime);
+        }
+        state.setSandboxBootstrap(bootstrap.layer, bootstrap.stateId);
+      },
+      stepSandbox(ticks) {
+        useChamber.getState().stepSandbox(ticks);
+      },
+      readSandboxObservation() {
+        return useChamber.getState().sandboxEngine?.observation() ?? null;
+      },
+      clearAnimation() {
+        const state = useChamber.getState();
+        state.clearClipPreview();
+        state.disposeSandbox();
+      },
     },
   };
 }

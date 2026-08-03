@@ -205,6 +205,13 @@ test.describe('contextual inspector', () => {
     );
 
     await page.getByTestId('toggle-world-mode').click();
+    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Rig');
+    await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
+
+    // All the way round, and the selection is still the one that was made
+    // before any presentation changed.
+    await page.getByTestId('toggle-world-mode').click();
+    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Isolate');
     await expect(page.getByTestId('world-inspector-id')).toHaveText('scripted-humanoid');
   });
 

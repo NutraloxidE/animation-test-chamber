@@ -1,7 +1,7 @@
 import { ACTION_LAYER, clipForState, layerStateOf } from '@atc/animation-runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { dodgeRecoveryBlendWeight } from '@atc/animation-runtime';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber } from '../store.ts';
 
 interface GraphWarning {
   kind: 'unreachable' | 'conflict' | 'self-loop';
@@ -14,7 +14,10 @@ interface GraphWarning {
  * conflicting transitions and self-loops.
  */
 export function StateGraph() {
-  const project = useWeaponProject();
+  // The Graph workspace's target, under the inspected Binding Context — not a
+  // globally resolved document that silently belongs to whichever character
+  // happened to be active.
+  const project = useChamber((state) => state.graphProject());
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const selectTransition = useChamber((state) => state.selectTransition);

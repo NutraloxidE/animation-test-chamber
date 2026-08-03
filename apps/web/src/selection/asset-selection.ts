@@ -20,7 +20,9 @@ export type AssetSelection =
 /** The bottom editor dock's workspaces. Not a router, and not scene state. */
 export type BottomWorkspace =
   | 'project'
-  | 'animation-preview'
+  // One Animation workspace with Clip Preview and State Sandbox modes inside
+  // it, rather than a tab named after one of the two things it did.
+  | 'animation'
   | 'timeline'
   | 'graph'
   | 'replay'
@@ -40,4 +42,16 @@ export type BottomWorkspace =
  * a display toggle from reaching into the selection model, which is what the
  * old `setWorldMode(...); setPanel('world')` pair did.
  */
-export type ViewportPresentation = 'world' | 'isolate-selection';
+/**
+ * `world` and `isolate-selection` are one renderer with two visibility filters
+ * (see `viewport/visibility-filter.ts`); they are not two code paths any more,
+ * which is what lets Clip Preview and the State Sandbox be visible in both.
+ *
+ * `rig` is the legacy focused viewport, kept as an explicit presentation rather
+ * than as the hidden meaning of "Isolate": it owns the skinned GLTF path, the
+ * weapon-grip gizmo, the terrain mesh and the debug overlays, and every one of
+ * those is still reachable. Making it a named choice is the honest version of
+ * what it always was — a different renderer — instead of a second renderer that
+ * Isolate silently switched you to.
+ */
+export type ViewportPresentation = 'world' | 'isolate-selection' | 'rig';

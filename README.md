@@ -134,17 +134,34 @@ The editor is laid out around one question — *what is selected?*
   instance to edit its transform, loadout and intent source; select its shield
   to edit that one slot. There is no tab strip — and no `World` tab, because
   the instance list is the hierarchy now.
-- **Bottom dock** holds the workspaces: Project/Assets, Animation Preview,
-  Timeline, Graph and Replay. The inspector stays visible while they change.
-- **View: World | Isolate** in the toolbar is a display choice. It never moves
-  your selection.
+- **Bottom dock** — opened with **Editor** — holds the workspaces, grouped
+  Create / Animate / Tools: Project/Assets, Import, Animation, Graph, Timeline,
+  Replay, AI, Diff and Haptics. The inspector stays visible while they change.
+- **View: World | Isolate | Rig** in the toolbar is a display choice. It never
+  moves your selection. World and Isolate are the same renderer under two
+  visibility filters; Rig is the focused skinned viewport with the weapon-grip
+  gizmo and terrain debugging.
 
 Two badges are worth learning. `INSTANCE` means the change affects only the
 selected instance; `SHARED` means it affects every instance referencing that
-definition. `PREVIEW` means nothing is being saved at all — the Animation
-Preview workspace plays a state on an instance without writing to the project,
-the world or any asset, and **Clear preview override** restores the authored
-behaviour exactly.
+definition. `PREVIEW` means nothing is being saved at all.
+
+The Animation workspace has two modes, and the difference between them is the
+point (DECISION 0013):
+
+- **Clip Preview** samples a resolved clip and displays the pose. It executes
+  nothing — no transitions, no semantic events, no recovery, no gameplay root
+  motion — and says so on the panel. Its transport is in seconds of clip time,
+  so `speed = 1` plays the clip at its authored duration. Nothing is written to
+  the project, the world or any asset, and **Clear preview** restores authored
+  behaviour exactly.
+- **State Sandbox** runs the real runtime in a separate disposable simulation
+  built from the same resolved document. Transitions, exit times, cancel
+  windows, buffered input, events, recovery and root motion all execute. The
+  live world is never advanced, moved or recorded by it.
+
+Both follow the Hierarchy selection by default, and either can be **pinned** to
+one instance so it stays put while you select elsewhere.
 
 Two instances of the same character can therefore carry different weapon modes
 and different equipment without either one changing the other, or the shared

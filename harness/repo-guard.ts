@@ -726,6 +726,90 @@ export function sceneSelectionGuardStage(): StageResult {
   );
 }
 
+/**
+ * The sandbox bootstrap seam stays construction-only, and stays out of the
+ * live world.
+ *
+ * `AnimationGraphRuntime.bootstrapState` refuses to run after the first tick,
+ * which is what makes it safe — but a `forceState` added next to it, or a
+ * `WorldRuntime` that started passing a bootstrap through to its instances,
+ * would reopen exactly the hole the seam was shaped to avoid: a way to rewrite
+ * a tick record that replay determinism is measured against, reachable from
+ * world commands, the HTTP capability surface and replay playback.
+ *
+ * So this guards the *reachability*, not the intent.
+ */
+export function sandboxSeamGuardStage(): StageResult {
+  return stage(
+    'the sandbox bootstrap seam is construction-only and unreachable from the live world',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'accept a bootstrap through SimulationInit at construction; never add a force-state method or pass one from WorldRuntime',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const sources = [
+        ...listFiles('packages').filter((file) => file.endsWith('.ts')),
+        ...listFiles('apps/web/src').filter(
+          (file) => file.endsWith('.ts') || file.endsWith('.tsx'),
+        ),
+      ];
+
+      for (const file of sources) {
+        const raw = readRepoFile(file);
+        if (!raw) continue;
+        // Comments stripped for the same reason as the selection guard: this
+        // rule is explained in prose in several files, and a guard that fired
+        // on its own explanation could not be documented.
+        const content = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+        // A force-state on a running object, under any of its usual names.
+        for (const pattern of [
+          /\bforceState\s*\(/,
+          /\bsetLayerState\s*\(/,
+          /\bsetActionState\s*\(/,
+          /\bsetLocomotionState\s*\(/,
+        ]) {
+          const match = content.match(pattern);
+          if (match) {
+            issues.push({
+              files: [file],
+              expected: 'construction-only bootstrap through SimulationInit',
+              actual: match[0].trim(),
+              message: `${file} exposes ${match[0].trim()}; a running state override must not exist`,
+            });
+          }
+        }
+
+        // The world runtime must never construct a bootstrapped simulation:
+        // that would put the seam on the live path after all.
+        if (file.includes('world-runtime') && /\bbootstrap\s*:/.test(content)) {
+          issues.push({
+            files: [file],
+            expected: 'WorldRuntime builds simulations with no bootstrap',
+            actual: 'a bootstrap passed from the world runtime',
+            message: `${file} passes a bootstrap into a live simulation`,
+          });
+        }
+      }
+
+      // And the seam itself must still latch shut.
+      const graph = readRepoFile('packages/animation-runtime/src/graph.ts') ?? '';
+      if (!/this\.ticked\s*=\s*true/.test(graph) || !/construction-only/.test(graph)) {
+        issues.push({
+          files: ['packages/animation-runtime/src/graph.ts'],
+          expected: 'bootstrapState throws once the graph has ticked',
+          actual: 'no latch found',
+          message: 'the bootstrap seam no longer closes after the first tick',
+        });
+      }
+
+      return { ok: issues.length === 0, issues, output: `${sources.length} sources scanned` };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     protectedValuesStage(),
@@ -738,6 +822,7 @@ export function repoGuardStages(): StageResult[] {
     stateNameDependenceStage(),
     worldContractGuardStage(),
     sceneSelectionGuardStage(),
+    sandboxSeamGuardStage(),
   ];
 }
 

@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { detectTouchDevice } from '@atc/input-runtime';
 import { useChamber } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
-import { WorldViewport } from './components/world/WorldViewport.tsx';
+import { WorldSceneViewport } from './viewport/WorldSceneViewport.tsx';
+import { SHOW_ALL } from './viewport/visibility-filter.ts';
+import { LIVE_WORLD, type ViewportSceneSource } from './viewport/viewport-scene-source.ts';
+import { selectedInstanceId } from './selection/scene-selection.ts';
+import type { ViewportPresentation } from './selection/asset-selection.ts';
 import { MobilePad } from './panels/MobilePad.tsx';
 import { SceneHierarchy } from './hierarchy/SceneHierarchy.tsx';
 import { ContextualInspector } from './inspector/ContextualInspector.tsx';
@@ -103,6 +107,27 @@ function useDockBarHeight(): (element: HTMLElement | null) => void {
   return setElement;
 }
 
+const PRESENTATION_LABEL: Record<ViewportPresentation, string> = {
+  world: 'World',
+  'isolate-selection': 'Isolate',
+  rig: 'Rig',
+};
+
+/**
+ * World → Isolate → Rig → World.
+ *
+ * World and Isolate are the same renderer under two filters, so cycling between
+ * them changes nothing but what is drawn. Rig is the focused skinned viewport,
+ * and it is a third stop rather than the hidden second half of "Isolate" — the
+ * arrangement that used to make the Clip Preview override invisible in the
+ * presentation where inspecting one character's animation is easiest.
+ */
+const NEXT_PRESENTATION: Record<ViewportPresentation, ViewportPresentation> = {
+  world: 'isolate-selection',
+  'isolate-selection': 'rig',
+  rig: 'world',
+};
+
 function DockBar({
   showHierarchy,
   setShowHierarchy,
@@ -145,21 +170,25 @@ function DockBar({
       <button
         type="button"
         className={presentation === 'world' ? 'is-active' : ''}
-        onClick={() =>
-          setPresentation(presentation === 'world' ? 'isolate-selection' : 'world')
-        }
+        onClick={() => setPresentation(NEXT_PRESENTATION[presentation])}
         data-testid="toggle-world-mode"
         title="Viewport presentation. Does not change the selection or the inspector."
       >
-        View: {presentation === 'world' ? 'World' : 'Isolate'}
+        View: {PRESENTATION_LABEL[presentation]}
       </button>
       <button
         type="button"
         className={showLibrary ? 'is-active' : ''}
         onClick={() => setMode(showLibrary ? 'chamber' : 'asset-library')}
         data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'}
+        title="Show or hide the bottom editor dock."
       >
-        Project (Assets)
+        {/* Not "Project (Assets)". The dock holds Animation, Graph, Timeline,
+            Replay, Diff, AI, Import and Haptics as well, and opening the
+            animation tools through a button named after one of the nine
+            workspaces inside it is a label that describes its own history
+            rather than what it does. */}
+        Editor
       </button>
     </nav>
   );
@@ -192,6 +221,18 @@ export function App() {
   const presentation = useChamber((state) => state.viewportPresentation);
   const mouseLookMode = useChamber((state) => state.mouseLookMode);
   const setMouseLookMode = useChamber((state) => state.setMouseLookMode);
+  const sceneSelection = useChamber((state) => state.sceneSelection);
+  const animationMode = useChamber((state) => state.animationWorkspaceMode);
+  const sandboxRunning = useChamber((state) => state.sandboxEngine !== null);
+  const selectedId = selectedInstanceId(sceneSelection);
+  /*
+   * The scene source is derived, not stored. A stored copy would be a second
+   * answer to "what am I looking at", and the stale one would be the one on
+   * screen — which is precisely the failure mode the old two-renderer split
+   * produced.
+   */
+  const sceneSource: ViewportSceneSource =
+    animationMode === 'state-sandbox' && sandboxRunning ? { kind: 'state-sandbox' } : LIVE_WORLD;
 
   const [sheetOpen, setSheetOpen] = useState(false);
   // Matches the 900px breakpoint styles.css uses to turn the side and bottom
@@ -261,11 +302,24 @@ export function App() {
         </aside>
       )}
       <div className="app__viewport">
-        {/* Presentation picks the renderer and nothing else: `world` draws
-            every instance, `isolate-selection` draws one. Neither branch reads
-            or writes `sceneSelection`, which is what makes switching views
-            leave the inspector where it was. */}
-        {presentation === 'world' ? <WorldViewport /> : <Viewport />}
+        {/* World and Isolate are one renderer under two visibility filters, so
+            an animation feature attached to the world engine is visible in
+            both — that is what removed the "switch to World view to see the
+            preview" workaround. `rig` is the focused skinned viewport, chosen
+            explicitly. No branch reads or writes `sceneSelection`, which is
+            what makes switching views leave the inspector where it was. */}
+        {presentation === 'rig' ? (
+          <Viewport />
+        ) : (
+          <WorldSceneViewport
+            source={sceneSource}
+            filter={
+              presentation === 'isolate-selection' && selectedId
+                ? { kind: 'instance', instanceId: selectedId }
+                : SHOW_ALL
+            }
+          />
+        )}
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 

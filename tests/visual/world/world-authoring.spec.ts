@@ -230,8 +230,16 @@ test.describe('multi-instance world authoring', () => {
     await page.goto('/');
     await page.waitForFunction(() => Boolean(window.__ATC_TEST__));
     // Isolate is the default presentation: seeing the whole world has to be
-    // opt-in for a human who has never heard of world composition.
+    // opt-in for a human who has never heard of world composition. It is now a
+    // visibility filter over the shared renderer rather than a second one,
+    // which is what makes animation features visible in it.
     await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Isolate');
+    await expect(page.getByTestId('world-viewport-canvas')).toBeVisible();
+
+    // The focused skinned viewport is still reachable, as its own presentation
+    // rather than as the hidden second meaning of "Isolate".
+    await page.getByTestId('toggle-world-mode').click();
+    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Rig');
     await expect(page.getByTestId('viewport-canvas')).toBeVisible();
   });
 });

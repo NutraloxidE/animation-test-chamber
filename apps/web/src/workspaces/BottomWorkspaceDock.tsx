@@ -1,5 +1,5 @@
 /**
- * The bottom editor dock: Project, Animation Preview, Timeline, Graph, Replay.
+ * The bottom editor dock: Project, Animation, Graph, Timeline, Replay, tools.
  *
  * These were right-hand inspector tabs, which put "the properties of the thing
  * I selected" and "a state-machine editor" in the same strip of UI competing
@@ -7,6 +7,12 @@
  * about the selection, an editor workspace is a place you work. Splitting them
  * is what lets the Contextual Inspector stay visible while the graph is open —
  * previously, opening the graph hid whatever you were inspecting.
+ *
+ * The tabs are grouped rather than flat. Nine peers in one strip is a list you
+ * read rather than a structure you navigate, and at narrow widths it was a
+ * horizontal scroll with the tool you wanted somewhere off the right edge.
+ * CREATE / ANIMATE / TOOLS is the smallest grouping that makes the dock
+ * scannable without turning it into a menu.
  *
  * Changing the workspace deliberately does not touch `sceneSelection`.
  */
@@ -19,30 +25,51 @@ import { DiffPanel } from '../panels/DiffPanel.tsx';
 import { AiPanel } from '../panels/AiPanel.tsx';
 import { CapabilityPanel } from '../panels/CapabilityPanel.tsx';
 import { AcquisitionPanel } from '../panels/AcquisitionPanel.tsx';
-import { AnimationPreviewWorkspace } from './AnimationPreviewWorkspace.tsx';
+import { AnimationWorkspace } from './AnimationWorkspace.tsx';
 import { GraphWorkspace } from './GraphWorkspace.tsx';
 
-const WORKSPACES: { id: BottomWorkspace; label: string }[] = [
-  { id: 'project', label: 'Project / Assets' },
-  { id: 'animation-preview', label: 'Animation Preview' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'graph', label: 'Graph' },
-  { id: 'replay', label: 'Replay' },
-  // The secondary set. They are workspaces rather than inspector tabs for the
-  // same reason as the five above: none of them is about the current
-  // selection, so none of them belongs in the dock that is.
-  { id: 'diff', label: 'Diff' },
-  { id: 'ai', label: 'AI' },
-  { id: 'acquisition', label: 'Import' },
-  { id: 'capability', label: 'Haptics' },
+interface WorkspaceGroup {
+  id: string;
+  label: string;
+  entries: { id: BottomWorkspace; label: string }[];
+}
+
+const GROUPS: WorkspaceGroup[] = [
+  {
+    id: 'create',
+    label: 'Create',
+    entries: [
+      { id: 'project', label: 'Project / Assets' },
+      { id: 'acquisition', label: 'Import' },
+    ],
+  },
+  {
+    id: 'animate',
+    label: 'Animate',
+    entries: [
+      { id: 'animation', label: 'Animation' },
+      { id: 'graph', label: 'Graph' },
+      { id: 'timeline', label: 'Timeline' },
+      { id: 'replay', label: 'Replay' },
+    ],
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    entries: [
+      { id: 'ai', label: 'AI' },
+      { id: 'diff', label: 'Diff' },
+      { id: 'capability', label: 'Haptics' },
+    ],
+  },
 ];
 
 function WorkspaceBody({ id }: { id: BottomWorkspace }) {
   switch (id) {
     case 'project':
       return <ProjectWorkspace />;
-    case 'animation-preview':
-      return <AnimationPreviewWorkspace />;
+    case 'animation':
+      return <AnimationWorkspace />;
     case 'timeline':
       return <Timeline />;
     case 'graph':
@@ -73,16 +100,21 @@ export function BottomWorkspaceDock() {
     // several, which is not a reason to re-derive where the dock sits.
     <section className="app__library-dock workspace-dock" data-testid="workspace-dock">
       <nav className="workspace-dock__tabs">
-        {WORKSPACES.map((entry) => (
-          <button
-            type="button"
-            key={entry.id}
-            className={workspace === entry.id ? 'is-active' : ''}
-            onClick={() => setWorkspace(entry.id)}
-            data-testid={`workspace-${entry.id}`}
-          >
-            {entry.label}
-          </button>
+        {GROUPS.map((group) => (
+          <span key={group.id} className="workspace-dock__group" data-testid={`workspace-group-${group.id}`}>
+            <span className="workspace-dock__group-label">{group.label}</span>
+            {group.entries.map((entry) => (
+              <button
+                type="button"
+                key={entry.id}
+                className={workspace === entry.id ? 'is-active' : ''}
+                onClick={() => setWorkspace(entry.id)}
+                data-testid={`workspace-${entry.id}`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </span>
         ))}
       </nav>
       <div className="workspace-dock__body">

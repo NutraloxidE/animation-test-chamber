@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { create, type StateCreator } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { BUTTON_ACTIONS } from '@atc/schema';
 import type {
   AnimationAssetSummary,
   AnimationBehaviorAsset,
   AssetIssue,
   AssetReference,
+  ButtonAction,
   CanonicalPatch,
   CapabilityProfile,
   CharacterAnimationAssignment,
@@ -45,6 +47,39 @@ import {
   type SceneSelection,
 } from './selection/scene-selection.ts';
 import type { BottomWorkspace, ViewportPresentation } from './selection/asset-selection.ts';
+import {
+  FOLLOW_ANIMATION_TARGET,
+  type GraphDetailsTab,
+  type GraphTarget,
+  type MotionBindingContext,
+} from './workspaces/graph-target.ts';
+import {
+  FOLLOW_SELECTION,
+  resolveAnimationTargetMode,
+  type AnimationTargetMode,
+  type AnimationTargetResolution,
+} from './animation/target/animation-target.ts';
+import {
+  resolveAnimationTarget,
+  resolveStateClip,
+  type AnimationTargetResult,
+  type AnimationTargetSource,
+} from './animation/target/resolve-animation-target.ts';
+import {
+  NO_CLIP_PREVIEW,
+  clampPreviewSpeed,
+  clampPreviewTime,
+  type ClipPreviewSource,
+  type ClipPreviewState,
+} from './animation/clip-preview/clip-preview-state.ts';
+import { AnimationSandboxEngine } from './animation/state-sandbox/AnimationSandboxEngine.ts';
+import {
+  NO_SANDBOX,
+  intentPresetsFor,
+  sampleFor,
+  type SandboxDisplayMode,
+  type StateSandboxUiState,
+} from './animation/state-sandbox/animation-sandbox-state.ts';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
 import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
@@ -109,32 +144,14 @@ export interface InstanceLoadout {
 }
 
 /**
- * The Animation Preview transport's state.
+ * Which of the Animation workspace's two modes is open.
  *
- * Every field here is a temporary display decision. Nothing in this object is
- * ever written to a project, world or asset document — the workspace exists so
- * that "try this now" has somewhere to live that is *not* the authoring
- * surface it was previously indistinguishable from.
+ * They were one panel making two incompatible promises. Clip Preview samples a
+ * clip and executes nothing; State Sandbox runs the real runtime in a separate
+ * disposable simulation. Splitting the mode is what lets each one's banner be
+ * true.
  */
-export interface AnimationPreviewState {
-  targetInstanceId: string | null;
-  layer: 'locomotion' | 'action';
-  stateId: string | null;
-  playing: boolean;
-  loop: boolean;
-  speed: number;
-  normalizedTime: number;
-}
-
-const NO_PREVIEW: AnimationPreviewState = {
-  targetInstanceId: null,
-  layer: 'locomotion',
-  stateId: null,
-  playing: false,
-  loop: true,
-  speed: 1,
-  normalizedTime: 0,
-};
+export type AnimationWorkspaceMode = 'clip-preview' | 'state-sandbox';
 
 /**
  * Where a chamber edit should be written (PLAN Part II §14-16).
@@ -377,22 +394,97 @@ interface ChamberActions {
   /** Opens a shared definition in Project/Assets. Leaves scene selection alone. */
   openCharacterDefinition(characterId: string): void;
 
-  /** Animation Preview transport. None of this reaches canonical data. */
-  animationPreview: AnimationPreviewState;
-  setPreviewTarget(instanceId: string | null): void;
-  setPreviewSubject(layer: 'locomotion' | 'action', stateId: string): void;
-  setPreviewPlaying(playing: boolean): void;
-  setPreviewLoop(loop: boolean): void;
-  setPreviewSpeed(speed: number): void;
-  setPreviewNormalizedTime(normalizedTime: number): void;
-  clearAnimationPreview(): void;
+  /** Clip Preview transport. Pose only; none of this reaches canonical data. */
+  clipPreview: ClipPreviewState;
+  /**
+   * True while a pose override is installed on the engine.
+   *
+   * A store field rather than a read of `worldEngine.previewOverride`, because
+   * zustand notifies subscribers *during* `set` — so a selector reading the
+   * engine would run before `syncClipPreview` had installed anything and would
+   * never re-run afterwards. Written only by `syncClipPreview` and
+   * `clearClipPreview`, which are the only two things that touch the override,
+   * so it cannot disagree with the engine.
+   */
+  clipPreviewActive: boolean;
+  setClipPreviewSource(source: ClipPreviewSource | null): void;
+  setClipPreviewPlaying(playing: boolean): void;
+  setClipPreviewLoop(loop: boolean): void;
+  setClipPreviewSpeed(speed: number): void;
+  setClipPreviewTimeSec(timeSec: number): void;
+  /** Steps the playhead by a fixed sample, for frame-by-frame inspection. */
+  nudgeClipPreview(deltaSec: number): void;
+  /** Authored duration of the resolved clip the transport points at. 0 = none. */
+  clipPreviewDurationSec(): number;
+  clearClipPreview(): void;
   /**
    * Pushes transport state at the engine's read side. Never at its tick.
    *
    * `seek` means "the user moved the playhead": without it the engine's live
    * playback time is preserved, so changing the speed does not rewind the clip.
    */
-  syncPreviewOverride(options?: { seek?: boolean }): void;
+  syncClipPreview(options?: { seek?: boolean }): void;
+
+  /** Which instance the animation tools act on, and how that was decided. */
+  animationTargetMode: AnimationTargetMode;
+  animationWorkspaceMode: AnimationWorkspaceMode;
+  setAnimationWorkspaceMode(mode: AnimationWorkspaceMode): void;
+  setAnimationTargetMode(mode: AnimationTargetMode): void;
+  /** Pins the current effective target. No-op when there is not one. */
+  pinAnimationTarget(): void;
+  /** Derived every time it is asked, so it cannot fall out of date. */
+  animationTarget(): AnimationTargetResolution;
+  /** Full resolution through the live world's own animation path. */
+  resolvedAnimationTarget(): AnimationTargetResult | null;
+
+  /**
+   * State Sandbox. A separate disposable runtime, never the live world's.
+   *
+   * The engine lives in the store rather than in a component so the viewport
+   * can render its pose, and it is deliberately absent from `partialize`: a
+   * mutable runtime is not view state, and a reload must start from nothing
+   * rather than rehydrate a simulation mid-tick.
+   */
+  sandbox: StateSandboxUiState;
+  sandboxEngine: AnimationSandboxEngine | null;
+  setSandboxBootstrap(layer: 'locomotion' | 'action', stateId: string | null): void;
+  setSandboxNormalizedTime(normalizedTime: number): void;
+  setSandboxPlaying(playing: boolean): void;
+  setSandboxSpeed(speed: number): void;
+  setSandboxDisplayMode(mode: SandboxDisplayMode): void;
+  setSandboxIntentPreset(presetId: string): void;
+  toggleSandboxHold(button: ButtonAction): void;
+  pulseSandboxAction(button: ButtonAction): void;
+  /** Builds (or rebuilds) the sandbox from the current target and bootstrap. */
+  rebuildSandbox(): void;
+  /** Back to tick zero with the same bootstrap. Disposable, by construction. */
+  resetSandbox(): void;
+  disposeSandbox(): void;
+  /** Steps the sandbox by whole ticks. The only thing that advances it. */
+  stepSandbox(ticks: number): void;
+
+  /**
+   * Which contextual binding the Graph/Timing panels are *inspecting*.
+   *
+   * Not a loadout. The Timing panel used to switch weapon by dispatching
+   * `setInstanceWeaponMode` on the focused instance — so clicking a chip to see
+   * what the sword's curve looks like changed what the character in the
+   * viewport was holding, staged a world edit and dirtied the world, all from
+   * a control that reads as a view filter. Three different things were sharing
+   * one value: authoring context, preview context and runtime loadout.
+   */
+  motionBindingContext: MotionBindingContext;
+  setMotionBindingContext(context: MotionBindingContext): void;
+  /** Copies the animation target's effective loadout into the binding context. */
+  adoptTargetBindingContext(): void;
+
+  /** Which Behavior the Graph workspace edits, and which detail tab is open. */
+  graphTarget: GraphTarget;
+  graphDetailsTab: GraphDetailsTab;
+  setGraphTarget(target: GraphTarget): void;
+  setGraphDetailsTab(tab: GraphDetailsTab): void;
+  /** The document the graph edits, under the inspected binding context. */
+  graphProject(): ResolvedProject;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
@@ -415,6 +507,38 @@ interface ChamberActions {
   setStatus(message: string): void;
   detectBackend(): Promise<void>;
   diff(): DiffReport;
+}
+
+/**
+ * The read-only view the animation-target resolver pulls from.
+ *
+ * Built from the store rather than passed a snapshot so it always reads the
+ * current staged world and the live runtime's own resolution — a cached copy
+ * would be a second answer to "which behaviour is this instance running", and
+ * the stale one is the one the panel would show.
+ */
+function animationTargetSource(
+  read: () => ChamberState & ChamberActions,
+): AnimationTargetSource {
+  return {
+    get world() {
+      return read().stagedWorld;
+    },
+    get project() {
+      return read().canonicalProject;
+    },
+    resolvedProjectFor: (instanceId) => read().worldEngine.resolvedProjectFor(instanceId),
+    loadoutFor: (instanceId) => {
+      const loadout = read().loadoutOf(instanceId);
+      if (!loadout) return null;
+      return {
+        weaponModeId: loadout.weaponMode.effective,
+        equipment: Object.fromEntries(
+          loadout.equipment.map((slot) => [slot.slotId, slot.effective]),
+        ),
+      };
+    },
+  };
 }
 
 const canonicalSeed = seedProject as ProjectDefinition;
@@ -708,7 +832,19 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     mouseLookMode: 'free',
     worldDirty: false,
     worldMessage: '',
-    animationPreview: NO_PREVIEW,
+    clipPreview: NO_CLIP_PREVIEW,
+    clipPreviewActive: false,
+    // Follow Selection is the default because it is the common path: select a
+    // character, open Animation, look at it. Requiring an explicit "use the
+    // selected instance" click first made every user pay for the rarer case of
+    // wanting a target that survives their next click — which is what Pin is.
+    animationTargetMode: FOLLOW_SELECTION,
+    animationWorkspaceMode: 'clip-preview',
+    sandbox: NO_SANDBOX,
+    sandboxEngine: null,
+    graphTarget: FOLLOW_ANIMATION_TARGET,
+    graphDetailsTab: 'transition',
+    motionBindingContext: { weaponModeId: WEAPON_MODES[0]!.id, equipment: {} },
 
     librarySelection: null,
     libraryTypeFilter: 'all',
@@ -1395,6 +1531,22 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       // nothing about what the simulation does — see the visual test that
       // asserts the world hash is unchanged across a selection.
       set({ sceneSelection: selection });
+      /*
+       * Follow Selection means the animation target is derived from this, so
+       * the read-side override has to be re-pointed — otherwise selecting a
+       * second character would leave the first one posed by a preview whose
+       * panel is now describing somebody else. Pinned mode derives nothing
+       * from the selection, and `syncClipPreview` re-reads the mode, so this
+       * is correct in both.
+       */
+      if (get().animationWorkspaceMode === 'clip-preview') {
+        get().syncClipPreview({ seek: true });
+      } else if (
+        get().animationWorkspaceMode === 'state-sandbox' &&
+        get().animationTargetMode.kind === 'follow-selection'
+      ) {
+        get().rebuildSandbox();
+      }
     },
 
     setViewportPresentation(presentation) {
@@ -1652,88 +1804,381 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       set({ worldMessage: `loadout overrides cleared on ${instanceId}` });
     },
 
-    setPreviewTarget(targetInstanceId) {
-      set({ animationPreview: { ...get().animationPreview, targetInstanceId } });
-      get().syncPreviewOverride({ seek: true });
+    /**
+     * Animation target mode. The single writer for "whose animation is this?".
+     *
+     * Switching modes seeks the transport to zero rather than carrying the
+     * playhead across: 0.31 s into a 0.43 s attack is a meaningless position in
+     * a different character's 1.2 s dodge, and silently keeping it is how a
+     * preview opens mid-clip with no explanation.
+     */
+    setAnimationTargetMode(mode) {
+      set({ animationTargetMode: mode, clipPreview: { ...get().clipPreview, timeSec: 0 } });
+      get().syncClipPreview({ seek: true });
+      // A sandbox built from the previous target has that target's behaviour,
+      // clips and loadout baked into a running simulation. Rebuilding is the
+      // only honest response; carrying it over would leak the old character's
+      // mutable state into a panel now labelled with the new one.
+      if (get().animationWorkspaceMode === 'state-sandbox') get().rebuildSandbox();
     },
 
-    setPreviewSubject(layer, stateId) {
-      // A new state starts at its beginning, so this is a seek.
+    pinAnimationTarget() {
+      const resolution = get().animationTarget();
+      if (!resolution.instanceId) return;
+      get().setAnimationTargetMode({ kind: 'pinned', instanceId: resolution.instanceId });
+    },
+
+    animationTarget() {
+      const state = get();
+      return resolveAnimationTargetMode(
+        state.animationTargetMode,
+        state.sceneSelection,
+        state.stagedWorld,
+      );
+    },
+
+    /**
+     * The target resolved through the live world's own animation path.
+     *
+     * Null — rather than a failure — when there is no effective target at all,
+     * because "you have not chosen one yet" is not a resolution error and
+     * should not be reported as one.
+     */
+    resolvedAnimationTarget() {
+      const state = get();
+      const instanceId = state.animationTarget().instanceId;
+      if (!instanceId) return null;
+      return resolveAnimationTarget(animationTargetSource(get), instanceId);
+    },
+
+    /**
+     * Builds a sandbox for the current target and bootstrap.
+     *
+     * Always a fresh engine, never a mutated one. "Changing the target rebuilds
+     * the sandbox" and "changing the state rebuilds the sandbox" are the same
+     * requirement, and a reset path that tried to patch an existing runtime in
+     * place would be a second, quietly divergent constructor — the exact bug
+     * `WorldRuntime.reset` avoids by rebuilding too.
+     */
+    rebuildSandbox() {
+      const state = get();
+      const resolved = state.resolvedAnimationTarget();
+      if (!resolved || !resolved.ok) {
+        set({ sandboxEngine: null });
+        return;
+      }
+      const ui = state.sandbox;
       set({
-        animationPreview: { ...get().animationPreview, layer, stateId, normalizedTime: 0 },
+        sandboxEngine: new AnimationSandboxEngine({
+          target: resolved.target,
+          terrainPresetId: state.terrainPresetId,
+          bootstrap: {
+            ...(ui.bootstrapLayer === 'locomotion' && ui.bootstrapStateId
+              ? { locomotionStateId: ui.bootstrapStateId }
+              : {}),
+            ...(ui.bootstrapLayer === 'action' && ui.bootstrapStateId
+              ? { actionStateId: ui.bootstrapStateId }
+              : {}),
+            normalizedTime: ui.bootstrapNormalizedTime,
+          },
+        }),
       });
-      get().syncPreviewOverride({ seek: true });
     },
 
-    setPreviewPlaying(playing) {
-      set({ animationPreview: { ...get().animationPreview, playing } });
-      get().syncPreviewOverride();
+    resetSandbox() {
+      set({ sandbox: { ...get().sandbox, playing: false } });
+      get().rebuildSandbox();
     },
 
-    setPreviewLoop(loop) {
-      set({ animationPreview: { ...get().animationPreview, loop } });
-      get().syncPreviewOverride();
+    disposeSandbox() {
+      set({ sandboxEngine: null, sandbox: { ...get().sandbox, playing: false } });
     },
 
-    setPreviewSpeed(speed) {
-      set({ animationPreview: { ...get().animationPreview, speed } });
-      get().syncPreviewOverride();
+    stepSandbox(ticks) {
+      const state = get();
+      const engine = state.sandboxEngine;
+      if (!engine) return;
+      const ui = state.sandbox;
+      const presets = intentPresetsFor(BUTTON_ACTIONS);
+      const preset = presets.find((entry) => entry.id === ui.intentPresetId);
+      for (let i = 0; i < ticks; i += 1) {
+        // Pulses last exactly one tick. A press that stayed set would satisfy
+        // every buffered condition on every subsequent tick, which is not what
+        // "trigger once" means anywhere else in the runtime.
+        const pulses = i === 0 ? ui.pulseButtons : [];
+        engine.step(sampleFor(preset, ui.heldButtons, pulses));
+      }
+      if (ui.pulseButtons.length > 0) set({ sandbox: { ...get().sandbox, pulseButtons: [] } });
+      // The engine mutated; nothing in the store did. Bump the revision so the
+      // observation panel re-reads it.
+      set({ revision: get().revision + 1 });
     },
 
-    setPreviewNormalizedTime(normalizedTime) {
-      set({ animationPreview: { ...get().animationPreview, normalizedTime } });
-      get().syncPreviewOverride({ seek: true });
+    setSandboxBootstrap(layer, stateId) {
+      set({ sandbox: { ...get().sandbox, bootstrapLayer: layer, bootstrapStateId: stateId } });
+      get().rebuildSandbox();
+    },
+
+    setSandboxNormalizedTime(normalizedTime) {
+      const clamped = Number.isFinite(normalizedTime)
+        ? Math.max(0, Math.min(normalizedTime, 1))
+        : 0;
+      set({ sandbox: { ...get().sandbox, bootstrapNormalizedTime: clamped } });
+      get().rebuildSandbox();
+    },
+
+    setSandboxPlaying(playing) {
+      set({ sandbox: { ...get().sandbox, playing } });
+    },
+
+    setSandboxSpeed(speed) {
+      set({ sandbox: { ...get().sandbox, speed: clampPreviewSpeed(speed) } });
+    },
+
+    setSandboxDisplayMode(displayMode) {
+      set({ sandbox: { ...get().sandbox, displayMode } });
+    },
+
+    setSandboxIntentPreset(intentPresetId) {
+      set({ sandbox: { ...get().sandbox, intentPresetId } });
+    },
+
+    toggleSandboxHold(button) {
+      const held = get().sandbox.heldButtons;
+      set({
+        sandbox: {
+          ...get().sandbox,
+          heldButtons: held.includes(button)
+            ? held.filter((entry) => entry !== button)
+            : [...held, button],
+        },
+      });
+    },
+
+    pulseSandboxAction(button) {
+      const pulses = get().sandbox.pulseButtons;
+      if (pulses.includes(button)) return;
+      set({ sandbox: { ...get().sandbox, pulseButtons: [...pulses, button] } });
+    },
+
+    /**
+     * Changes which binding is inspected, and nothing else.
+     *
+     * No world command, no staged edit, no `worldDirty`. That is the whole
+     * point: the previous control dispatched a loadout edit, so looking at the
+     * sword's timing left the character holding a sword.
+     */
+    setMotionBindingContext(context) {
+      set({ motionBindingContext: context });
+    },
+
+    adoptTargetBindingContext() {
+      const resolved = get().resolvedAnimationTarget();
+      if (!resolved || !resolved.ok) return;
+      set({
+        motionBindingContext: {
+          weaponModeId: resolved.target.effectiveWeaponModeId,
+          equipment: { ...resolved.target.effectiveEquipment },
+        },
+      });
+    },
+
+    /**
+     * Retargets the graph and reconciles its local selection.
+     *
+     * A state id from another behaviour is not a selection, it is a dangling
+     * reference — and one that renders as an empty inspector rather than as an
+     * error. Reconciling to the first valid state (or to nothing, for a
+     * transition) is the honest response.
+     */
+    setGraphTarget(target) {
+      set({ graphTarget: target });
+      const project = get().graphProject();
+      if (!project) return;
+      const states = project.graph.states;
+      const transitions = project.graph.transitions;
+      const patch: { selectedStateId?: string; selectedTransitionId?: string } = {};
+      if (!states.some((state) => state.id === get().selectedStateId)) {
+        patch.selectedStateId = states[0]?.id ?? '';
+      }
+      if (!transitions.some((transition) => transition.id === get().selectedTransitionId)) {
+        patch.selectedTransitionId = '';
+      }
+      if (Object.keys(patch).length > 0) set(patch);
+    },
+
+    setGraphDetailsTab(tab) {
+      set({ graphDetailsTab: tab });
+    },
+
+    /**
+     * The document the Graph workspace edits, under the inspected binding
+     * context. Null when the target cannot be resolved at all.
+     */
+    graphProject() {
+      const state = get();
+      if (state.graphTarget.kind === 'follow-animation-target') {
+        const resolved = state.resolvedAnimationTarget();
+        if (resolved?.ok) {
+          return resolveWeaponMode(
+            resolved.target.resolvedProject,
+            state.motionBindingContext.weaponModeId,
+          );
+        }
+      }
+      // No animation target (or an explicitly pinned asset): fall back to the
+      // globally resolved document so the graph is still editable. The header
+      // says which behaviour that is, which is the part that was missing.
+      return resolveWeaponMode(state.project, state.motionBindingContext.weaponModeId);
+    },
+
+    setAnimationWorkspaceMode(mode) {
+      // Leaving Clip Preview must not leave a pose override on the world: the
+      // banner that explained it is no longer on screen. Leaving State Sandbox
+      // disposes the runtime for the same reason — a simulation still ticking
+      // behind a closed panel is a running thing nobody is looking at.
+      if (mode !== 'clip-preview') {
+        get().worldEngine.setPreviewOverride(null);
+        set({ clipPreviewActive: false });
+      }
+      if (mode !== 'state-sandbox') get().disposeSandbox();
+      set({ animationWorkspaceMode: mode });
+      if (mode === 'clip-preview') get().syncClipPreview({ seek: true });
+      if (mode === 'state-sandbox') get().rebuildSandbox();
+    },
+
+    setClipPreviewSource(source) {
+      // A new source starts at its own beginning, so this is a seek.
+      set({ clipPreview: { ...get().clipPreview, source, timeSec: 0 } });
+      get().syncClipPreview({ seek: true });
+    },
+
+    setClipPreviewPlaying(playing) {
+      set({ clipPreview: { ...get().clipPreview, playing } });
+      get().syncClipPreview();
+    },
+
+    setClipPreviewLoop(loop) {
+      set({ clipPreview: { ...get().clipPreview, loop } });
+      get().syncClipPreview();
+    },
+
+    setClipPreviewSpeed(speed) {
+      set({ clipPreview: { ...get().clipPreview, speed: clampPreviewSpeed(speed) } });
+      get().syncClipPreview();
+    },
+
+    setClipPreviewTimeSec(timeSec) {
+      const duration = get().clipPreviewDurationSec();
+      set({ clipPreview: { ...get().clipPreview, timeSec: clampPreviewTime(timeSec, duration) } });
+      get().syncClipPreview({ seek: true });
+    },
+
+    /**
+     * Steps the playhead by a fixed sample.
+     *
+     * Reads the engine's live position rather than the store's, so stepping
+     * while playing advances from where the clip actually is instead of from
+     * wherever React last heard about.
+     */
+    nudgeClipPreview(deltaSec) {
+      const engine = get().worldEngine;
+      const live = engine.previewOverride;
+      const from = live ? live.timeSec : get().clipPreview.timeSec;
+      set({ clipPreview: { ...get().clipPreview, playing: false } });
+      get().setClipPreviewTimeSec(from + deltaSec);
+    },
+
+    /**
+     * The resolved duration of whatever the transport is pointed at.
+     *
+     * Zero when nothing resolves, which the transport reads as "there is no
+     * clip here" rather than as a one-second default — the fixed span was the
+     * whole reason a 0.35 s attack and a 1.2 s dodge used to take the same
+     * time to play.
+     */
+    clipPreviewDurationSec() {
+      const state = get();
+      const source = state.clipPreview.source;
+      if (!source) return 0;
+      const result = state.resolvedAnimationTarget();
+      if (!result || !result.ok) return 0;
+      if (source.kind === 'clip') {
+        return (
+          result.target.resolvedProject.clips.find((clip) => clip.id === source.clipId)
+            ?.durationSec ?? 0
+        );
+      }
+      return resolveStateClip(result.target, source.stateId)?.durationSec ?? 0;
     },
 
     /**
      * Clears the preview completely.
      *
-     * "Completely" is the requirement: leaving a target or a parked normalized
-     * time behind is how a cleared preview keeps subtly affecting what the
-     * viewport shows while the PREVIEW badge is gone.
+     * "Completely" is the requirement: leaving a source or a parked playhead
+     * behind is how a cleared preview keeps subtly affecting what the viewport
+     * shows while the CLIP PREVIEW badge is gone.
      */
-    clearAnimationPreview() {
-      set({ animationPreview: NO_PREVIEW });
+    clearClipPreview() {
+      set({ clipPreview: NO_CLIP_PREVIEW, clipPreviewActive: false });
       get().worldEngine.setPreviewOverride(null);
     },
 
     /**
      * Pushes the transport state at the engine's *read* side.
      *
-     * This is the only place preview state reaches the runtime, and it reaches
-     * `poseOf`, never `step`. That is what makes "animation preview leaves the
-     * canonical bytes and the replay traces unchanged" testable rather than
-     * aspirational.
+     * This is the only place Clip Preview state reaches the runtime, and it
+     * reaches `poseOf`, never `step`. That is what makes "Clip Preview leaves
+     * the canonical bytes and the replay traces unchanged" a property of the
+     * code rather than a claim about discipline.
      */
-    syncPreviewOverride(options = {}) {
-      const preview = get().animationPreview;
-      const engine = get().worldEngine;
-      if (!preview.targetInstanceId || !preview.stateId) {
+    syncClipPreview(options = {}) {
+      const state = get();
+      const engine = state.worldEngine;
+      const preview = state.clipPreview;
+      const instanceId = state.animationTarget().instanceId;
+
+      // A by-clip source has no state to substitute into a pose. It still
+      // drives the metadata and the transport readout; the viewport keeps
+      // showing the authored behaviour rather than a state that is not playing.
+      if (
+        state.animationWorkspaceMode !== 'clip-preview' ||
+        !instanceId ||
+        !preview.source ||
+        preview.source.kind !== 'state'
+      ) {
         engine.setPreviewOverride(null);
+        set({ clipPreviewActive: false });
         return;
       }
+
+      const durationSec = state.clipPreviewDurationSec();
       /*
        * Playback time belongs to the engine while a preview is running — it is
        * the engine that advances it. Pushing the store's copy back on every
        * unrelated change would make nudging the speed slider jump the clip
-       * back to wherever the store last happened to hear about. Only the scrub
-       * control and a state change say "seek", and they say so explicitly.
+       * back to wherever the store last happened to hear about. Only a seek and
+       * a source change say otherwise, and they say so explicitly.
        */
       const live = engine.previewOverride;
-      const normalizedTime =
-        options.seek || !live || live.instanceId !== preview.targetInstanceId
-          ? preview.normalizedTime
-          : live.normalizedTime;
+      const carryOver =
+        !options.seek &&
+        live !== null &&
+        live.instanceId === instanceId &&
+        live.stateId === preview.source.stateId &&
+        live.durationSec === durationSec;
 
       engine.setPreviewOverride({
-        instanceId: preview.targetInstanceId,
-        layer: preview.layer,
-        stateId: preview.stateId,
-        normalizedTime,
+        instanceId,
+        layer: preview.source.layer,
+        stateId: preview.source.stateId,
+        timeSec: carryOver ? live.timeSec : clampPreviewTime(preview.timeSec, durationSec),
+        durationSec,
         playing: preview.playing,
         loop: preview.loop,
-        speed: preview.speed,
+        speed: clampPreviewSpeed(preview.speed),
       });
+      set({ clipPreviewActive: true });
     },
 
     setTerrainPreset(id) {
@@ -2150,6 +2595,13 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       selectedStateId: state.selectedStateId,
       bottomWorkspace: state.bottomWorkspace,
       viewportPresentation: state.viewportPresentation,
+      // Stable UI preferences only. `clipPreview`, `sandbox` and `sandboxEngine`
+      // are all deliberately absent: a mutable runtime is not view state, and a
+      // reload that rehydrated a half-played clip or a simulation mid-tick
+      // would resume something the user never asked to resume.
+      animationWorkspaceMode: state.animationWorkspaceMode,
+      animationTargetMode: state.animationTargetMode,
+      graphDetailsTab: state.graphDetailsTab,
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
       weaponModeId: state.weaponModeId,

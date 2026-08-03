@@ -1,13 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Animation preview is temporary, and provably so.
+ * Clip Preview is temporary, pose-only, and provably both.
  *
  * The claim being tested is not "the preview looks right" — it is that
- * previewing leaves the canonical bytes alone. The override is applied on the
- * engine's read side rather than in its fixed step, so the assertion is
- * available directly: run the world, preview, and check that the world trace
- * hash and the staged document are the ones you started with.
+ * previewing leaves the canonical bytes alone, that it says what it does and
+ * does not do, and that it is visible in Isolate rather than sending the user
+ * to World view to see the thing they just pressed Play on.
+ *
+ * The target model changed with it: Follow Selection is the default, and the
+ * "explicit target" guarantee the old panel had is now Pin — which is what it
+ * always meant. The test for it moved rather than disappeared.
  */
 
 async function open(page: Page): Promise<void> {
@@ -17,8 +20,15 @@ async function open(page: Page): Promise<void> {
   if (!(await page.getByTestId('workspace-dock').isVisible())) {
     await page.getByTestId('workspace-asset-library').click();
   }
-  await page.getByTestId('workspace-animation-preview').click();
-  await expect(page.getByTestId('animation-preview')).toBeVisible();
+  await page.getByTestId('workspace-animation').click();
+  await expect(page.getByTestId('animation-workspace')).toBeVisible();
+}
+
+async function selectInstance(page: Page, instanceId: string): Promise<void> {
+  if (!(await page.getByTestId('hierarchy').isVisible())) {
+    await page.getByTestId('toggle-hierarchy').click();
+  }
+  await page.getByTestId(`scene-node-instance-${instanceId}`).click();
 }
 
 async function advance(page: Page, ticks: number) {
@@ -30,15 +40,15 @@ async function observe(page: Page) {
   return page.evaluate(() => window.__ATC_TEST__!.observeWorld());
 }
 
-test.describe('animation preview workspace', () => {
-  test('animation preview does not modify the world or its simulation', async ({ page }) => {
+test.describe('clip preview workspace', () => {
+  test('clip preview does not modify the world or its simulation', async ({ page }) => {
     await open(page);
+    await selectInstance(page, 'controlled-humanoid');
     await advance(page, 60);
     const before = await observe(page);
 
-    await page.getByTestId('preview-target').selectOption('controlled-humanoid');
-    await page.getByTestId('preview-state').selectOption('run');
-    await page.getByTestId('preview-play').click();
+    await page.getByTestId('clip-preview-state').selectOption('run');
+    await page.getByTestId('clip-preview-play').click();
     await advance(page, 60);
 
     const after = await observe(page);
@@ -51,45 +61,104 @@ test.describe('animation preview workspace', () => {
     expect(previewed.layers.locomotion?.stateId).toBe('idle');
   });
 
-  test('the preview announces itself and clears completely', async ({ page }) => {
+  test('the preview announces that it is pose-only and clears completely', async ({ page }) => {
     await open(page);
-    await page.getByTestId('preview-target').selectOption('controlled-humanoid');
-    await page.getByTestId('preview-state').selectOption('run');
+    await selectInstance(page, 'controlled-humanoid');
+    await page.getByTestId('clip-preview-state').selectOption('run');
 
-    await expect(page.getByTestId('preview-flag')).toBeVisible();
+    // Always visible, never only in a tooltip.
+    await expect(page.getByTestId('clip-preview-pose-only')).toBeVisible();
+    await expect(page.getByTestId('clip-preview-semantics')).toContainText('POSE ONLY');
+    await expect(page.getByTestId('clip-preview-semantics')).toContainText('not executed');
     await expect(page.getByTestId('preview-active-banner')).toBeVisible();
 
-    await page.getByTestId('preview-clear').click();
-    await expect(page.getByTestId('preview-flag')).toHaveCount(0);
+    await page.getByTestId('clip-preview-clear').click();
     await expect(page.getByTestId('preview-active-banner')).toHaveCount(0);
-    // Cleared means cleared: no parked target left behind to quietly resume.
-    await expect(page.getByTestId('preview-target')).toHaveValue('');
-    await expect(page.getByTestId('preview-state')).toHaveValue('');
+    // Cleared means cleared: no parked source left behind to quietly resume.
+    await expect(page.getByTestId('clip-preview-state')).toHaveValue('');
   });
 
-  test('the preview target is explicit rather than following the selection', async ({ page }) => {
+  test('the target follows the hierarchy selection by default', async ({ page }) => {
     await open(page);
-    await page.getByTestId('preview-target').selectOption('controlled-humanoid');
-    await page.getByTestId('preview-state').selectOption('run');
+    await selectInstance(page, 'controlled-humanoid');
+    await expect(page.getByTestId('animation-target-instance')).toHaveText('controlled-humanoid');
 
-    if (!(await page.getByTestId('hierarchy').isVisible())) {
-      await page.getByTestId('toggle-hierarchy').click();
+    await selectInstance(page, 'scripted-humanoid');
+    await expect(page.getByTestId('animation-target-instance')).toHaveText('scripted-humanoid');
+  });
+
+  test('a pinned target stays put while the selection moves', async ({ page }) => {
+    await open(page);
+    await selectInstance(page, 'controlled-humanoid');
+    await page.getByTestId('animation-target-pin').click();
+    await expect(page.getByTestId('animation-target-pinned')).toBeVisible();
+
+    await selectInstance(page, 'scripted-humanoid');
+    // The scene inspector followed the click; the animation target did not.
+    await expect(page.getByTestId('animation-target-instance')).toHaveText('controlled-humanoid');
+
+    await page.getByTestId('animation-target-follow').click();
+    await expect(page.getByTestId('animation-target-instance')).toHaveText('scripted-humanoid');
+  });
+
+  test('the transport reports real clip seconds rather than a fixed loop', async ({ page }) => {
+    await open(page);
+    await selectInstance(page, 'controlled-humanoid');
+    await page.getByTestId('clip-preview-state').selectOption('run');
+
+    const readout = await page.getByTestId('clip-preview-time').textContent();
+    // `0.00 s / <duration> s`, and the duration is the clip's own.
+    expect(readout).toMatch(/^0\.00 s \/ \d+\.\d\d s$/);
+    const duration = Number(readout!.split('/')[1]!.trim().replace(' s', ''));
+    expect(duration).toBeGreaterThan(0);
+
+    await page.getByTestId('clip-preview-play').click();
+    await page.evaluate((seconds) => window.__ATC_TEST__!.animation.stepClipPreview(seconds), 0.05);
+    const state = await page.evaluate(() => window.__ATC_TEST__!.animation.readClipPreview());
+    expect(state!.durationSec).toBeCloseTo(duration, 2);
+    expect(state!.timeSec).toBeCloseTo(0.05, 3);
+  });
+
+  test('clip preview is visible in Isolate, with no switch-to-World workaround', async ({
+    page,
+  }) => {
+    await open(page);
+    await selectInstance(page, 'controlled-humanoid');
+    await page.getByTestId('clip-preview-state').selectOption('run');
+    await page.getByTestId('clip-preview-play').click();
+
+    // Isolate is a visibility filter over the same renderer, so the override
+    // is on screen in both presentations.
+    while ((await page.getByTestId('toggle-world-mode').textContent()) !== 'View: Isolate') {
+      await page.getByTestId('toggle-world-mode').click();
     }
-    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
-
-    // Selecting elsewhere must not move a running preview onto a new object.
-    await expect(page.getByTestId('preview-target')).toHaveValue('controlled-humanoid');
+    await expect(page.getByTestId('world-viewport-canvas')).toBeVisible();
+    await expect(page.getByTestId('preview-needs-world-view')).toHaveCount(0);
   });
 
-  test('transport controls need a target and a state before they do anything', async ({ page }) => {
+  test('switching to State Sandbox runs the real runtime and leaves the world alone', async ({
+    page,
+  }) => {
     await open(page);
-    await expect(page.getByTestId('preview-play')).toBeDisabled();
-    await expect(page.getByTestId('preview-clear')).toBeDisabled();
+    await selectInstance(page, 'controlled-humanoid');
+    await advance(page, 30);
+    const before = await observe(page);
 
-    await page.getByTestId('preview-target').selectOption('controlled-humanoid');
-    await expect(page.getByTestId('preview-play')).toBeDisabled();
+    await page.getByTestId('animation-mode-state-sandbox').click();
+    await expect(page.getByTestId('sandbox-runtime-badge')).toBeVisible();
+    await expect(page.getByTestId('sandbox-semantics')).toContainText('RUNTIME SIMULATION');
 
-    await page.getByTestId('preview-state').selectOption('run');
-    await expect(page.getByTestId('preview-play')).toBeEnabled();
+    await page.evaluate(() => window.__ATC_TEST__!.animation.stepSandbox(120));
+    await page.evaluate(() => window.__ATC_TEST__!.flushReact());
+
+    const observation = await page.evaluate(() =>
+      window.__ATC_TEST__!.animation.readSandboxObservation(),
+    );
+    expect(observation!.tick).toBe(120);
+
+    // 120 sandbox ticks; zero world ticks.
+    const after = await observe(page);
+    expect(after.tick).toBe(before.tick);
+    expect(after.instances).toEqual(before.instances);
   });
 });

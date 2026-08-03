@@ -7,7 +7,7 @@
  * in `@atc/world-runtime`; nothing here decides simulation behaviour, which is
  * why this file has no knowledge of states, clips or transitions.
  */
-import type { ProjectDefinition, WorldDefinition } from '@atc/schema';
+import type { ProjectDefinition, ResolvedProject, WorldDefinition } from '@atc/schema';
 import { FIXED_DT, FixedStepAccumulator } from '@atc/runtime-core';
 import { BrowserInputSampler, type ActionSample } from '@atc/input-runtime';
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
@@ -33,16 +33,34 @@ export interface PreviewOverride {
   instanceId: string;
   layer: 'locomotion' | 'action';
   stateId: string;
-  /** Advanced by the transport, not by the simulation clock. */
-  normalizedTime: number;
+  /**
+   * Playhead position in *seconds of clip time*, advanced by the transport
+   * rather than by the simulation clock.
+   *
+   * Seconds, not a normalized fraction, because the transport previously
+   * advanced a 0..1 loop against a fixed one-second span: a 0.35 s attack and a
+   * 1.20 s dodge both took exactly one second at speed 1, and the control was
+   * labelled "authored rate" while being the one thing it could not be. The
+   * normalized value the renderer wants is derived from this and the clip's own
+   * duration, so there is one clock and it is the one with units.
+   */
+  timeSec: number;
+  /** The resolved clip's authored duration. 0 means nothing is bound. */
+  durationSec: number;
   playing: boolean;
   loop: boolean;
-  /** 1 = the clip's authored rate. */
+  /** 1 = the clip's authored duration. 0.5 takes twice as long. */
   speed: number;
 }
 
-/** Seconds of preview time one normalized loop spans. Display-only. */
-const PREVIEW_LOOP_SEC = 1;
+/** Normalized position of a preview playhead. Safe for a zero-length clip. */
+export function previewNormalizedTime(preview: {
+  timeSec: number;
+  durationSec: number;
+}): number {
+  if (!(preview.durationSec > 0)) return 0;
+  return Math.max(0, Math.min(preview.timeSec / preview.durationSec, 1));
+}
 
 /** Per-tick callbacks for `advance`. */
 export interface AdvanceHooks {
@@ -139,6 +157,20 @@ export class WorldChamberEngine {
   }
 
   /**
+   * The document this instance's simulation is actually running.
+   *
+   * Read-only, and the reason the animation tools have a resolver seam at all:
+   * `WorldRuntime` resolved every instance when it built the world, so asking
+   * it is the only way to be sure a panel is describing the behaviour that is
+   * running rather than one resolved a second time from the same inputs. The
+   * value is immutable — a resolved document is rebuilt, never mutated — so
+   * handing it out cannot become a way to reach the live simulation.
+   */
+  resolvedProjectFor(instanceId: string): ResolvedProject | null {
+    return this.runtime.instance(instanceId)?.resolved ?? null;
+  }
+
+  /**
    * Installs or clears the preview override.
    *
    * Passing `null` is the "Clear preview" path, and it is the only state the
@@ -161,15 +193,22 @@ export class WorldChamberEngine {
   advancePreview(deltaSec: number): void {
     const preview = this.preview;
     if (!preview || !preview.playing) return;
-    const next = preview.normalizedTime + (deltaSec * preview.speed) / PREVIEW_LOOP_SEC;
-    if (next < 1) {
-      this.preview = { ...preview, normalizedTime: next };
+    // A state whose motion slot resolves to nothing has no clip time to
+    // advance. Playing it would otherwise divide by zero and park the playhead
+    // at NaN, which renders as a frozen pose with nothing to point at.
+    if (!(preview.durationSec > 0) || !Number.isFinite(deltaSec)) return;
+    // A non-finite or negative speed is clamped rather than propagated: it
+    // reaches the playhead, and a NaN there is unrecoverable without a reset.
+    const speed = Number.isFinite(preview.speed) ? Math.max(0, preview.speed) : 0;
+    const next = preview.timeSec + deltaSec * speed;
+    if (next < preview.durationSec) {
+      this.preview = { ...preview, timeSec: next };
     } else if (preview.loop) {
-      this.preview = { ...preview, normalizedTime: next % 1 };
+      this.preview = { ...preview, timeSec: next % preview.durationSec };
     } else {
       // Parking at the end rather than wrapping is what makes "Loop off" a
       // visible fact instead of a setting that looks broken.
-      this.preview = { ...preview, normalizedTime: 1, playing: false };
+      this.preview = { ...preview, timeSec: preview.durationSec, playing: false };
     }
   }
 
@@ -230,8 +269,9 @@ export class WorldChamberEngine {
   private applyPreview(instanceId: string, pose: CharacterPose): CharacterPose {
     const preview = this.preview;
     if (!preview || preview.instanceId !== instanceId) return pose;
+    const normalized = previewNormalizedTime(preview);
     return preview.layer === 'locomotion'
-      ? { ...pose, locomotionState: preview.stateId, locomotionNormalizedTime: preview.normalizedTime }
-      : { ...pose, actionState: preview.stateId, actionNormalizedTime: preview.normalizedTime };
+      ? { ...pose, locomotionState: preview.stateId, locomotionNormalizedTime: normalized }
+      : { ...pose, actionState: preview.stateId, actionNormalizedTime: normalized };
   }
 }

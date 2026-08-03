@@ -369,10 +369,15 @@ The UI has one rule per surface, and every control's placement follows from it
 | --- | --- |
 | Scene Hierarchy (left) | What exists in the world, and what is selected |
 | Contextual Inspector (right) | What the selected scene object is configured to be |
-| Animation Preview (bottom) | Temporary "try this now" operations |
+| Animation → Clip Preview (bottom) | Sampling a resolved clip. Executes nothing |
+| Animation → State Sandbox (bottom) | Running the real runtime, in a separate simulation |
 | Project / Assets (bottom) | Reusable definitions shared by many instances |
 | Graph / Timeline / Replay (bottom) | Dedicated editors |
 | Viewport toolbar | How the scene is displayed |
+
+The bottom dock opens through **Editor**, not through a button named after one
+of the nine workspaces inside it, and its tabs are grouped Create / Animate /
+Tools rather than left as nine peers in one strip.
 
 ### One selection, derived rather than duplicated
 
@@ -422,13 +427,46 @@ Clearing an override removes it rather than writing the current default back.
 An override recorded as the default of the day would silently stop tracking the
 definition the moment somebody changed it.
 
-### Preview is applied on the read side
+### Clip Preview is applied on the read side; State Sandbox is a second runtime
 
-The Animation Preview override is applied in `WorldChamberEngine.poseOf`, after
-the simulation has stepped — never inside `Simulation.step`. A preview that
-forced a state into the fixed step would change the tick record, which is what
-replay determinism is measured against, and "preview does not mutate canonical
-data" would become a claim about discipline rather than a property of the code.
+The Clip Preview override is applied in `WorldChamberEngine.poseOf`, after the
+simulation has stepped — never inside `Simulation.step`. A preview that forced a
+state into the fixed step would change the tick record, which is what replay
+determinism is measured against, and "preview does not mutate canonical data"
+would become a claim about discipline rather than a property of the code.
+
+That placement also bounds what Clip Preview *can* claim: it samples a clip, and
+transitions, semantic events, recovery and gameplay root motion do not run. The
+panel says `POSE ONLY` for that reason. Its transport clock is seconds of clip
+time, so `speed = 1` means the clip's authored duration rather than a fixed
+one-second span shared by every clip.
+
+Runtime behaviour lives in the **State Sandbox**, which constructs its own
+`Simulation` from the target's immutable resolved document and then runs the
+ordinary fixed step. The seam that lets it *start* somewhere other than the
+default state is construction-only: `Simulation` accepts a bootstrap through
+`SimulationInit`, and `AnimationGraphRuntime.bootstrapState` throws once the
+graph has ticked. There is deliberately no `forceState` on a running
+simulation — it would be reachable from world commands, the HTTP capability
+surface and replay playback, and `harness:repo-guard` fails the build if one
+appears. See DECISION 0013.
+
+### Animation targets resolve from the instance
+
+`AnimationTargetMode` is Follow Selection (derived from `SceneSelection` every
+time it is asked) or Pinned (stored, because the user asked for one that
+outlives their next click). Resolution reads the document `WorldRuntime` already
+built for that instance, so two instances on different Character Definitions
+offer their own states and their own clips rather than sharing one globally
+resolved project's.
+
+### One renderer, two filters
+
+`world` and `isolate-selection` are the same renderer under a `VisibilityFilter`;
+Isolate is a filter, which is all it ever meant. That is what makes Clip Preview
+and the State Sandbox visible in both, and it is what removed the
+"switch to World view to see the preview" workaround. `rig` is the focused
+skinned viewport, chosen explicitly rather than reached by accident.
 
 ## Regression policy
 

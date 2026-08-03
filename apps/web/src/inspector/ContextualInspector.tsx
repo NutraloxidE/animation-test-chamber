@@ -35,16 +35,19 @@ export function InspectorBody({ selection }: { selection: SceneSelection }) {
 
 export function ContextualInspector() {
   const selection = useChamber((state) => state.sceneSelection);
-  const previewActive = useChamber(
-    (state) =>
-      state.animationPreview.targetInstanceId !== null && state.animationPreview.stateId !== null,
-  );
+  // The store's record of what is installed on the engine — the banner's job
+  // is to say "what you are looking at is not authored behaviour", and only an
+  // installed override makes that true. Reading the engine
+  // directly would be a selector that runs before the override is installed
+  // and never re-runs after — zustand notifies during `set`, and the engine is
+  // written afterwards.
+  const previewActive = useChamber((state) => state.clipPreviewActive);
 
   return (
     <div className="contextual-inspector" data-testid="contextual-inspector">
       {previewActive && (
         <p className="contextual-inspector__preview-banner" data-testid="preview-active-banner">
-          PREVIEW active — the viewport is showing a temporary override, not authored behaviour.
+          CLIP PREVIEW active — the viewport is showing a sampled pose, not authored behaviour.
         </p>
       )}
       <InspectorBody selection={selection} />

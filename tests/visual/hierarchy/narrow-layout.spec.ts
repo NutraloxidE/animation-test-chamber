@@ -48,8 +48,27 @@ test.describe('narrow layout', () => {
     // The bottom workspaces are reachable, and take the screen from the sheet.
     await page.getByTestId('workspace-asset-library').click();
     await expect(page.getByTestId('workspace-dock')).toBeVisible();
-    await page.getByTestId('workspace-animation-preview').click();
-    await expect(page.getByTestId('animation-preview')).toBeVisible();
+    await page.getByTestId('workspace-animation').click();
+    await expect(page.getByTestId('animation-workspace')).toBeVisible();
+    await noOverflow();
+
+    // Both Animation modes, the target header and the transport are reachable
+    // at this width — a grouped tab strip that pushed one of them off the
+    // right edge would be a regression dressed as information architecture.
+    await expect(page.getByTestId('animation-mode-clip-preview')).toBeVisible();
+    await expect(page.getByTestId('animation-target')).toBeVisible();
+    await page.getByTestId('animation-mode-state-sandbox').click();
+    await expect(page.getByTestId('state-sandbox')).toBeVisible();
+    await noOverflow();
+    await page.getByTestId('animation-mode-clip-preview').click();
+    await noOverflow();
+
+    // And every other workspace is still one click away.
+    for (const id of ['project', 'graph', 'timeline', 'replay', 'diff', 'ai', 'acquisition', 'capability']) {
+      await expect(page.getByTestId(`workspace-${id}`)).toBeVisible();
+    }
+    await page.getByTestId('workspace-graph').click();
+    await expect(page.getByTestId('graph-details-tabs')).toBeVisible();
     await noOverflow();
 
     // Closing the dock brings the sheet handle back, and the selection is

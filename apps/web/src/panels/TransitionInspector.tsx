@@ -7,7 +7,7 @@ import {
 } from '@atc/animation-runtime';
 import { useEffect, useState } from 'react';
 import type { TransitionDefinition } from '@atc/schema';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber } from '../store.ts';
 import { Field, ToggleField } from './Field.tsx';
 
 type TimeUnit = 'seconds' | 'frames30' | 'frames60';
@@ -82,7 +82,10 @@ export function blendRows(
  * preview document, so a drag is visible in the running character immediately.
  */
 export function TransitionInspector() {
-  const project = useWeaponProject();
+  // The Graph workspace's target, under the inspected Binding Context — not a
+  // globally resolved document that silently belongs to whichever character
+  // happened to be active.
+  const project = useChamber((state) => state.graphProject());
   const selectedId = useChamber((state) => state.selectedTransitionId);
   const selectTransition = useChamber((state) => state.selectTransition);
   const engine = useChamber((state) => state.engine);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
 import { applyClipTimeCurve, clipForState, clipIdForState } from '@atc/animation-runtime';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber } from '../store.ts';
 import { WEAPON_MODES } from '../three/catalog.ts';
 import { Field } from './Field.tsx';
 
@@ -159,12 +159,18 @@ function CurveEditor({
  */
 function WeaponCurveRow({ stateId }: { stateId: string }) {
   const rawProject = useChamber((state) => state.project);
-  const weaponModeId = useChamber((state) => state.weaponModeId);
-  // Switching the weapon context while editing a curve is a loadout edit on
-  // the focused instance, not a global mode flip — same command the Instance
-  // Inspector dispatches, so there is one path rather than two.
-  const setInstanceWeaponMode = useChamber((state) => state.setInstanceWeaponMode);
-  const focusedInstanceId = useChamber((state) => state.stagedWorld.focusedInstanceId);
+  /*
+   * The *inspected* context, not any instance's loadout.
+   *
+   * This used to dispatch `setInstanceWeaponMode` on the focused instance, so
+   * clicking a chip to see what the sword's curve looks like re-armed the
+   * character in the viewport, staged a world edit and dirtied the world. The
+   * chip reads as a view filter and behaved as an edit; separating the two is
+   * the fix, and it is why the Graph header owns a Binding Context now.
+   */
+  const weaponModeId = useChamber((state) => state.motionBindingContext.weaponModeId);
+  const setContext = useChamber((state) => state.setMotionBindingContext);
+  const context = useChamber((state) => state.motionBindingContext);
   const session = useChamber((state) => state.session);
   useChamber((state) => state.revision);
 
@@ -204,7 +210,7 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
             data-testid={`weapon-curve-${mode.id}`}
             data-edited={edited ? 'true' : 'false'}
             title={clipId}
-            onClick={() => setInstanceWeaponMode(focusedInstanceId, mode.id)}
+            onClick={() => setContext({ ...context, weaponModeId: mode.id })}
           >
             {mode.id}
             {edited && <span aria-label="edited"> •</span>}
@@ -216,7 +222,10 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
 }
 
 export function MotionTimingPanel() {
-  const project = useWeaponProject();
+  // The Graph workspace's target, under the inspected Binding Context — not a
+  // globally resolved document that silently belongs to whichever character
+  // happened to be active.
+  const project = useChamber((state) => state.graphProject());
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const setPreviewValue = useChamber((state) => state.setPreviewValue);
