@@ -16,6 +16,8 @@ export function SharedDefinitionsSection({ instanceId }: { instanceId: string })
     state.stagedWorld.instances.find((entry) => entry.id === instanceId),
   );
   const openCharacter = useChamber((state) => state.openCharacterDefinition);
+  const openInCharacterLab = useChamber((state) => state.openInCharacterLab);
+  const worldId = useChamber((state) => state.stagedWorld.id);
 
   if (!instance) return null;
 
@@ -47,14 +49,33 @@ export function SharedDefinitionsSection({ instanceId }: { instanceId: string })
         These definitions are <b>shared</b>: changing them affects every instance referencing this
         character. Everything under Loadout and Transform is <b>this instance only</b>.
       </p>
-      <button
-        type="button"
-        className="inspector__action"
-        data-testid="open-source-character"
-        onClick={() => openCharacter(instance.source.characterId)}
-      >
-        Open Character Definition in Project/Assets
-      </button>
+      {/* Two actions, because they were one and they are different questions.
+          "Open in Character Lab" goes to the authoring stage for this shared
+          definition; "Open Assets" goes to the asset browser. Both leave the
+          scene selection exactly where it is — the user asked to look at a
+          shared definition, not to stop editing this instance. */}
+      <div className="inspector__actions">
+        <button
+          type="button"
+          className="inspector__action"
+          data-testid="open-source-character-lab"
+          onClick={() =>
+            openInCharacterLab(instance.source.characterId, {
+              returnLabel: `${instance.id} in ${worldId}`,
+            })
+          }
+        >
+          Open in Character Lab
+        </button>
+        <button
+          type="button"
+          className="inspector__action"
+          data-testid="open-source-character"
+          onClick={() => openCharacter(instance.source.characterId)}
+        >
+          Open Assets
+        </button>
+      </div>
     </section>
   );
 }

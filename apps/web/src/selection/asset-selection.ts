@@ -35,23 +35,15 @@ export type BottomWorkspace =
   | 'capability';
 
 /**
- * How the viewport presents the world — not which object is selected.
+ * How the World viewport draws the world — not which object is selected.
  *
- * `isolate-selection` is what the old "focused view" actually meant: show one
- * instance rather than the crowd. Making it a presentation value is what stops
- * a display toggle from reaching into the selection model, which is what the
- * old `setWorldMode(...); setPanel('world')` pair did.
- */
-/**
- * `world` and `isolate-selection` are one renderer with two visibility filters
- * (see `viewport/visibility-filter.ts`); they are not two code paths any more,
- * which is what lets Clip Preview and the State Sandbox be visible in both.
+ * Two values, and only two. `world` and `isolate-selection` are one renderer
+ * under two visibility filters (see `viewport/visibility-filter.ts`), which is
+ * what lets Clip Preview and the State Sandbox be visible in both.
  *
- * `rig` is the legacy focused viewport, kept as an explicit presentation rather
- * than as the hidden meaning of "Isolate": it owns the skinned GLTF path, the
- * weapon-grip gizmo, the terrain mesh and the debug overlays, and every one of
- * those is still reachable. Making it a named choice is the honest version of
- * what it always was — a different renderer — instead of a second renderer that
- * Isolate silently switched you to.
+ * `Rig` used to be a third stop here. It was never a camera mode: it is a
+ * single-character authoring preview, and it made the World view able to show
+ * either a skinned character or the animation preview but never both. It moved
+ * to Character Lab, where single-character authoring happens (DECISION 0014).
  */
-export type ViewportPresentation = 'world' | 'isolate-selection' | 'rig';
+export type ViewportPresentation = 'world' | 'isolate-selection';

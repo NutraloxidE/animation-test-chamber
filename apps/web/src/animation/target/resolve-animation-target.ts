@@ -197,3 +197,75 @@ export function describeAnimationTargetFailure(failure: AnimationTargetFailure):
       return `Instance “${failure.instanceId}” has no resolved animation document yet.`;
   }
 }
+
+/**
+ * The two things an animation workspace can be pointed at.
+ *
+ * Character Lab previews a *definition* — there is no Instance, and requiring
+ * one would mean placing a character into a world just to look at it. World
+ * previews an *Instance*, because that is what has a loadout, a transform and a
+ * running simulation.
+ *
+ * One workspace, two subject adapters. Two Clip Previews would be two
+ * implementations of "play this clip", and they would drift.
+ */
+export type AnimationSubject =
+  | { kind: 'character-lab'; characterId: string }
+  | { kind: 'world-instance'; instanceId: string };
+
+/**
+ * A resolved target for a Character Definition with no Instance behind it.
+ *
+ * The `instanceId` is a synthetic label rather than a real id, and it is never
+ * looked up in a world: nothing downstream may treat a Character Lab subject as
+ * something placed. The read-side pose override is keyed on it, and no live
+ * instance can collide with a name that is not a legal instance id.
+ */
+export const CHARACTER_LAB_SUBJECT_ID = 'character-lab:preview';
+
+export function resolveCharacterLabTarget(input: {
+  project: ProjectDefinition;
+  resolvedProject: ResolvedProject;
+  characterId: string;
+  weaponModeId: string;
+  equipment: Record<string, boolean>;
+}): AnimationTargetResult {
+  const character = input.project.characters.find((entry) => entry.id === input.characterId);
+  if (!character) {
+    return {
+      ok: false,
+      failure: {
+        code: 'unknown-character',
+        instanceId: CHARACTER_LAB_SUBJECT_ID,
+        characterId: input.characterId,
+      },
+    };
+  }
+  const tuning = character.animation.tuning;
+  return {
+    ok: true,
+    target: {
+      instanceId: CHARACTER_LAB_SUBJECT_ID,
+      // There is no Runtime Instance. A synthetic declaration keeps the shape
+      // uniform without pretending something is placed in a world.
+      instance: {
+        schemaVersion: character.schemaVersion,
+        id: CHARACTER_LAB_SUBJECT_ID,
+        displayName: `${character.displayName} (Character Lab Preview)`,
+        source: { kind: 'character', characterId: character.id },
+        transform: { position: { x: 0, y: 0, z: 0 }, yawRad: 0 },
+        intentSource: { kind: 'none' },
+        enabled: true,
+      } as RuntimeInstanceDefinition,
+      characterId: character.id,
+      character,
+      resolvedProject: resolveWeaponMode(input.resolvedProject, input.weaponModeId),
+      effectiveWeaponModeId: input.weaponModeId,
+      effectiveEquipment: input.equipment,
+      behaviorRef: character.animation.behavior,
+      motionSetRef: character.animation.motionSet,
+      rigRef: character.animation.rig,
+      ...(tuning ? { tuningRef: tuning } : {}),
+    },
+  };
+}

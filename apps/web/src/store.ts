@@ -47,6 +47,7 @@ import {
   type SceneSelection,
 } from './selection/scene-selection.ts';
 import type { BottomWorkspace, ViewportPresentation } from './selection/asset-selection.ts';
+import type { PrimaryWorkspace, WorkspaceReturn } from './navigation/primary-workspace.ts';
 import {
   FOLLOW_ANIMATION_TARGET,
   type GraphDetailsTab,
@@ -61,6 +62,7 @@ import {
 } from './animation/target/animation-target.ts';
 import {
   resolveAnimationTarget,
+  resolveCharacterLabTarget,
   resolveStateClip,
   type AnimationTargetResult,
   type AnimationTargetSource,
@@ -283,6 +285,25 @@ interface ChamberState {
   /** Which bottom editor workspace is open. Independent of scene selection. */
   bottomWorkspace: BottomWorkspace;
   /**
+   * Which production stage is open: Project, Character Lab or World.
+   *
+   * Above every other selection rather than beside them. Switching stages
+   * changes nothing canonical and touches no other selection — a stage is a
+   * question you are asking, not an edit.
+   */
+  primaryWorkspace: PrimaryWorkspace;
+  /**
+   * The canonical Character Definition **Character Lab is editing**.
+   *
+   * Named for what it is. `activeCharacterId` is the edit session's resolved
+   * character and `characterPresetId` is a renderer catalogue entry; neither
+   * answers "which definition am I authoring right now", and both have been
+   * read as if they did.
+   */
+  editingCharacterId: string;
+  /** Where "Open in Character Lab" should offer to return to, if anywhere. */
+  workspaceReturn: WorkspaceReturn | null;
+  /**
    * Transient viewport camera control. Lifted out of `App`'s local state so the
    * Camera Inspector and the viewport toolbar are two views of one value
    * rather than two switches that can disagree about which mode is on.
@@ -377,6 +398,19 @@ interface ChamberActions {
   selectScene(selection: SceneSelection): void;
   setViewportPresentation(presentation: ViewportPresentation): void;
   setBottomWorkspace(workspace: BottomWorkspace): void;
+  setPrimaryWorkspace(workspace: PrimaryWorkspace): void;
+  /**
+   * Opens a Character Definition in Character Lab, remembering the way back.
+   *
+   * Deliberately does not touch `SceneSelection`: the user asked to look at a
+   * shared definition, not to stop editing the instance they had selected.
+   */
+  openInCharacterLab(characterId: string, options?: { returnLabel?: string }): void;
+  /** Character Lab's editing target. Never a World Instance source. */
+  setEditingCharacter(characterId: string): void;
+  /** Staged paths that would be abandoned by switching Character Lab target. */
+  stagedCharacterEdits(): string[];
+  clearWorkspaceReturn(): void;
   setMouseLookMode(mode: MouseLookMode): void;
   /** Every world edit goes through a declared command; there is no other path. */
   runWorldCommand(commandId: string, input: unknown): void;
@@ -436,6 +470,8 @@ interface ChamberActions {
   animationTarget(): AnimationTargetResolution;
   /** Full resolution through the live world's own animation path. */
   resolvedAnimationTarget(): AnimationTargetResult | null;
+  /** The Character Lab subject: a Character Definition with no Instance. */
+  resolvedCharacterLabTarget(): AnimationTargetResult | null;
 
   /**
    * State Sandbox. A separate disposable runtime, never the live world's.
@@ -829,6 +865,12 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     sceneSelection: { kind: 'instance', instanceId: canonicalWorld.focusedInstanceId },
     viewportPresentation: 'isolate-selection',
     bottomWorkspace: 'project',
+    // World is the stage a returning user was in; Project is where a new one
+    // starts. World wins because the app has always opened on the running
+    // simulation, and changing that is not this decision's business.
+    primaryWorkspace: 'world',
+    editingCharacterId: canonicalSeedWithDrafts.activeCharacterId,
+    workspaceReturn: null,
     mouseLookMode: 'free',
     worldDirty: false,
     worldMessage: '',
@@ -1573,6 +1615,76 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       set({ bottomWorkspace: workspace });
     },
 
+    /**
+     * Switches production stage. Canonical data is untouched.
+     *
+     * Nothing here writes a definition, a world, or any selection other than
+     * the stage itself — a stage is the question being asked, not an edit.
+     */
+    setPrimaryWorkspace(workspace) {
+      set({ primaryWorkspace: workspace });
+      // Project's browser lives in the bottom dock, so selecting that stage
+      // opens it there rather than leaving the user on a stage with nothing
+      // visibly different about it.
+      if (workspace === 'project') {
+        set({ workspaceMode: 'asset-library', bottomWorkspace: 'project' });
+      }
+      // Leaving Character Lab retires the return affordance: an offer to go
+      // "back" to somewhere the user has since navigated away from on their own
+      // is a button that lies about where it goes.
+      if (workspace !== 'character-lab') set({ workspaceReturn: null });
+    },
+
+    clearWorkspaceReturn() {
+      set({ workspaceReturn: null });
+    },
+
+    openInCharacterLab(characterId, options = {}) {
+      const state = get();
+      if (!state.canonicalProject.characters.some((entry) => entry.id === characterId)) return;
+      set({
+        primaryWorkspace: 'character-lab',
+        workspaceReturn: options.returnLabel
+          ? { workspace: state.primaryWorkspace, label: options.returnLabel }
+          : null,
+      });
+      state.setEditingCharacter(characterId);
+    },
+
+    /**
+     * Character Lab's editing target.
+     *
+     * This resolves a *shared definition* for authoring. It does not touch any
+     * Runtime Instance's `source.characterId`, and it does not touch
+     * `SceneSelection` — the two operations that "switch character" could
+     * otherwise be mistaken for.
+     *
+     * `setActiveCharacter` is what actually re-resolves the edit session, so
+     * the two ids stay in step while `editingCharacterId` remains the honest
+     * name for what the user picked.
+     */
+    setEditingCharacter(characterId) {
+      const state = get();
+      if (!state.canonicalProject.characters.some((entry) => entry.id === characterId)) return;
+      if (state.editingCharacterId === characterId) return;
+      set({ editingCharacterId: characterId });
+      if (state.activeCharacterId !== characterId) state.setActiveCharacter(characterId);
+    },
+
+    /**
+     * Paths the edit session is holding that a Character Lab switch would
+     * abandon.
+     *
+     * Reported rather than silently discarded or silently carried: carrying
+     * staged edits into a different character is how one character's tuning
+     * ends up saved onto another, and discarding them without saying so loses
+     * work the user still believes they have.
+     */
+    stagedCharacterEdits() {
+      const report = session.diff();
+      return report.findings.map((finding) => finding.path);
+    },
+
     setMouseLookMode(mode) {
       get().engine.setMouseLookMode(mode);
       set({ mouseLookMode: mode });
@@ -1856,6 +1968,27 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
      * because "you have not chosen one yet" is not a resolution error and
      * should not be reported as one.
      */
+    /**
+     * Character Lab's animation subject.
+     *
+     * Resolved from the **edit session's** document rather than a world
+     * runtime's, because Character Lab is an authoring stage: a preview that
+     * read the runtime snapshot would show the character as last built rather
+     * than as currently edited.
+     */
+    resolvedCharacterLabTarget() {
+      const state = get();
+      return resolveCharacterLabTarget({
+        project: state.canonicalProject,
+        resolvedProject: state.project,
+        characterId: state.editingCharacterId,
+        weaponModeId: state.motionBindingContext.weaponModeId,
+        equipment: Object.fromEntries(
+          state.canonicalProject.equipment.map((slot) => [slot.id, slot.defaultEquipped]),
+        ),
+      });
+    },
+
     resolvedAnimationTarget() {
       const state = get();
       const instanceId = state.animationTarget().instanceId;
@@ -2634,6 +2767,10 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       selectedStateId: state.selectedStateId,
       bottomWorkspace: state.bottomWorkspace,
       viewportPresentation: state.viewportPresentation,
+      // The production stage and the character being authored survive a
+      // reload; nothing temporary does (§6.2).
+      primaryWorkspace: state.primaryWorkspace,
+      editingCharacterId: state.editingCharacterId,
       // Stable UI preferences only. `clipPreview`, `sandbox` and `sandboxEngine`
       // are all deliberately absent: a mutable runtime is not view state, and a
       // reload that rehydrated a half-played clip or a simulation mid-tick

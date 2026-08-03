@@ -19,13 +19,45 @@ export function AnimationTargetHeader() {
   const openCharacterDefinition = useChamber((state) => state.openCharacterDefinition);
   // Derived from the current selection and world — there is no stored effective
   // target that could fall out of date with either of them.
-  const { resolution, resolved } = useAnimationTarget();
+  const { resolution, resolved, subject } = useAnimationTarget();
 
   const displayName =
     resolution.instanceId === null
       ? null
       : (world.instances.find((instance) => instance.id === resolution.instanceId)?.displayName ??
         resolution.instanceId);
+
+  /*
+   * Character Lab previews a definition, so Follow Selection and Pin are not
+   * offered: there is no scene selection to follow and one legal subject to
+   * pin. Showing them disabled would be a control that never does anything.
+   */
+  if (subject?.kind === 'character-lab') {
+    return (
+      <div className="animation-target" data-testid="animation-target">
+        <span className="animation-target__label">Subject</span>
+        <span className="animation-target__value" data-testid="animation-target-instance">
+          {subject.characterId}
+        </span>
+        <span className="animation-target__mode" data-testid="animation-subject-character-lab">
+          Character Lab Preview
+        </span>
+        {resolved?.ok && (
+          <div className="animation-target__assets" data-testid="animation-target-assets">
+            <span>
+              Behavior <b>{resolved.target.behaviorRef.assetId}</b>
+            </span>
+            <span>
+              Motion Set <b>{resolved.target.motionSetRef.assetId}</b>
+            </span>
+            <span>
+              Context <b>{resolved.target.effectiveWeaponModeId}</b>
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="animation-target" data-testid="animation-target">

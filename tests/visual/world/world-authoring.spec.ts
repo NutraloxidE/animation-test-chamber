@@ -236,10 +236,14 @@ test.describe('multi-instance world authoring', () => {
     await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Isolate');
     await expect(page.getByTestId('world-viewport-canvas')).toBeVisible();
 
-    // The focused skinned viewport is still reachable, as its own presentation
-    // rather than as the hidden second meaning of "Isolate".
+    // World presentation is two values now. The single-character rig preview
+    // is not a camera mode — it is Character Lab (DECISION 0014).
     await page.getByTestId('toggle-world-mode').click();
-    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: Rig');
+    await expect(page.getByTestId('toggle-world-mode')).toHaveText('View: World');
+    await expect(page.getByTestId('world-viewport-canvas')).toBeVisible();
+
+    await page.getByTestId('primary-nav-character-lab').click();
+    await expect(page.getByTestId('character-lab-stage')).toBeVisible();
     await expect(page.getByTestId('viewport-canvas')).toBeVisible();
   });
 });

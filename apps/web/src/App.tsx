@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { detectTouchDevice } from '@atc/input-runtime';
 import { useChamber } from './store.ts';
-import { Viewport } from './three/Viewport.tsx';
 import { WorldSceneViewport } from './viewport/WorldSceneViewport.tsx';
 import { SHOW_ALL } from './viewport/visibility-filter.ts';
 import { LIVE_WORLD, type ViewportSceneSource } from './viewport/viewport-scene-source.ts';
@@ -11,6 +10,8 @@ import { MobilePad } from './panels/MobilePad.tsx';
 import { SceneHierarchy } from './hierarchy/SceneHierarchy.tsx';
 import { ContextualInspector } from './inspector/ContextualInspector.tsx';
 import { BottomWorkspaceDock } from './workspaces/BottomWorkspaceDock.tsx';
+import { PrimaryWorkspaceNav } from './navigation/PrimaryWorkspaceNav.tsx';
+import { CharacterLab } from './character-lab/CharacterLab.tsx';
 import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
 import { characterPreset, weaponMode } from './three/catalog.ts';
 
@@ -149,22 +150,19 @@ function useDockBarHeight(): (element: HTMLElement | null) => void {
 const PRESENTATION_LABEL: Record<ViewportPresentation, string> = {
   world: 'World',
   'isolate-selection': 'Isolate',
-  rig: 'Rig',
 };
 
 /**
- * World → Isolate → Rig → World.
+ * World ⇄ Isolate.
  *
- * World and Isolate are the same renderer under two filters, so cycling between
- * them changes nothing but what is drawn. Rig is the focused skinned viewport,
- * and it is a third stop rather than the hidden second half of "Isolate" — the
- * arrangement that used to make the Clip Preview override invisible in the
- * presentation where inspecting one character's animation is easiest.
+ * The same renderer under two visibility filters, so cycling changes nothing
+ * but what is drawn. `Rig` was a third stop here and is not any more: it is a
+ * single-character authoring preview, and it now lives in Character Lab where
+ * that is the job (DECISION 0014).
  */
 const NEXT_PRESENTATION: Record<ViewportPresentation, ViewportPresentation> = {
   world: 'isolate-selection',
-  'isolate-selection': 'rig',
-  rig: 'world',
+  'isolate-selection': 'world',
 };
 
 function DockBar({
@@ -187,6 +185,9 @@ function DockBar({
   return (
     <nav className="workspace-switch" data-testid="workspace-switch" ref={measure}>
       <span className="workspace-switch__title">Animation Test Chamber</span>
+      {/* The production stages come first, before every dock toggle: they are
+          what the app is for, and the toggles are how you arrange it. */}
+      <PrimaryWorkspaceNav />
       <button
         type="button"
         className={showHierarchy ? 'is-active' : ''}
@@ -261,6 +262,7 @@ export function App() {
   const mouseLookMode = useChamber((state) => state.mouseLookMode);
   const setMouseLookMode = useChamber((state) => state.setMouseLookMode);
   const sceneSelection = useChamber((state) => state.sceneSelection);
+  const primaryWorkspace = useChamber((state) => state.primaryWorkspace);
   const animationMode = useChamber((state) => state.animationWorkspaceMode);
   const sandboxRunning = useChamber((state) => state.sandboxEngine !== null);
   const selectedId = selectedInstanceId(sceneSelection);
@@ -322,11 +324,20 @@ export function App() {
       showMobilePad);
 
   const libraryOpen = workspaceMode === 'asset-library';
+  /*
+   * Character Lab is a stage and takes the whole working area, so the world
+   * layout's reserved hierarchy and inspector columns must not still be
+   * claiming width — an empty 240px column beside a preview stage is width the
+   * stage was supposed to get.
+   */
+  const inCharacterLab = primaryWorkspace === 'character-lab' && !hideUi;
   const layout = hideUi
     ? ' app--clean'
-    : `${showHierarchy ? ' app--hierarchy' : ''}${showInspector ? ' app--inspector' : ''}${
-        libraryOpen ? ' app--library-dock' : ''
-      }`;
+    : inCharacterLab
+      ? ''
+      : `${showHierarchy ? ' app--hierarchy' : ''}${showInspector ? ' app--inspector' : ''}${
+          libraryOpen ? ' app--library-dock' : ''
+        }`;
 
   return (
     <div className={`app${layout}`}>
@@ -338,6 +349,16 @@ export function App() {
           setShowInspector={setShowInspector}
         />
       )}
+      {/* Character Lab is a stage, not a dock: it owns the whole working area
+          while it is open. The World layout — hierarchy, world viewport,
+          contextual inspector — is what the other two stages share, because
+          Project's browser docks into the same bottom strip. */}
+      {inCharacterLab ? (
+        <main className="app__stage" data-testid="primary-stage-character-lab">
+          <CharacterLab />
+        </main>
+      ) : (
+        <>
       {!hideUi && showHierarchy && (
         <aside className="app__hierarchy">
           <SceneHierarchy />
@@ -350,18 +371,14 @@ export function App() {
             preview" workaround. `rig` is the focused skinned viewport, chosen
             explicitly. No branch reads or writes `sceneSelection`, which is
             what makes switching views leave the inspector where it was. */}
-        {presentation === 'rig' ? (
-          <Viewport />
-        ) : (
-          <WorldSceneViewport
-            source={sceneSource}
-            filter={
-              presentation === 'isolate-selection' && selectedId
-                ? { kind: 'instance', instanceId: selectedId }
-                : SHOW_ALL
-            }
-          />
-        )}
+        <WorldSceneViewport
+          source={sceneSource}
+          filter={
+            presentation === 'isolate-selection' && selectedId
+              ? { kind: 'instance', instanceId: selectedId }
+              : SHOW_ALL
+          }
+        />
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 
@@ -529,6 +546,8 @@ export function App() {
           <footer className="status" data-testid="status-bar">
             {statusMessage}
           </footer>
+        </>
+      )}
         </>
       )}
     </div>

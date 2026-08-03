@@ -217,17 +217,19 @@ test('camera control switches between mouse movement and click-drag', async ({ p
 test('character and weapon presets can be selected', async ({ page }) => {
   // The render preset is a shared definition, so it lives in Project/Assets.
   await openPanel(page, 'project');
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+  // The render preset is a *renderer* setting, not Character identity, so it
+  // lives under Diagnostics now and is named Preview Renderer (DECISION 0014).
+  await page.getByTestId('project-diagnostics').getByText('Diagnostics').click();
+  await page.getByTestId('preview-renderer-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   /*
-   * The skinned character and its weapon animations are the Rig
-   * presentation's renderer. World and Isolate are one shared procedural
-   * path now — which is what makes Clip Preview visible in both — so the
-   * GLB fetch this asserts happens where that renderer actually lives.
+   * The skinned character and its weapon animations are Character Lab's
+   * preview stage. World and Isolate are one shared procedural path — which
+   * is what makes Clip Preview visible in both — so the GLB fetch this
+   * asserts happens in the stage where that renderer actually lives.
    */
-  while ((await page.getByTestId('toggle-world-mode').textContent()) !== 'View: Rig') {
-    await page.getByTestId('toggle-world-mode').click();
-  }
+  await page.getByTestId('primary-nav-character-lab').click();
+  await expect(page.getByTestId('character-lab-stage')).toBeVisible();
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );
@@ -287,7 +289,10 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
   await openPanel(page, 'project');
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+  // The render preset is a *renderer* setting, not Character identity, so it
+  // lives under Diagnostics now and is named Preview Renderer (DECISION 0014).
+  await page.getByTestId('project-diagnostics').getByText('Diagnostics').click();
+  await page.getByTestId('preview-renderer-select').selectOption('quaternius-universal-base');
   await openFocusedLoadout(page);
   await page.getByTestId('loadout-weapon-mode-input').selectOption('sword');
   await closeHierarchyDock(page);

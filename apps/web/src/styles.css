@@ -2794,3 +2794,331 @@ button.link {
     grid-column: 1 / -1;
   }
 }
+
+/* ------------------------------------------- primary production stages */
+
+/* Project → Character Lab → World, always visible. The arrows are load-bearing:
+   they are what says these are ordered stages rather than three peers. */
+.primary-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+}
+
+.primary-nav__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.primary-nav__arrow {
+  color: var(--muted);
+  opacity: 0.5;
+  font-size: 11px;
+  padding: 0 2px;
+}
+
+.primary-nav button {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+}
+
+.primary-nav button.is-active {
+  color: var(--accent);
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+/* Character Lab owns the whole working area while it is open: it is a stage,
+   not a dock competing with the world layout.
+
+   Explicit column/row rather than `grid-area: viewport` — this grid has no
+   named areas, so a named area creates *implicit* tracks and pushes the dock
+   bar into a column of its own. */
+.app__stage {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.character-lab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.character-lab__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  flex: none;
+}
+
+.character-lab__header h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.character-lab__picker {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
+.character-lab__return {
+  font-size: 0.7rem;
+  margin-left: auto;
+}
+
+/* The switch guard is a dialog, not a toast: it has to be answered, because
+   both silent outcomes (carry the edits, drop the edits) lose something. */
+.character-lab__guard {
+  flex: 1 1 100%;
+  border: 1px solid var(--danger);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 0.72rem;
+}
+
+.character-lab__guard p {
+  margin: 0 0 0.35rem;
+}
+
+.character-lab__guard-paths {
+  margin: 0 0 0.5rem;
+  padding-left: 1.1rem;
+  font-size: 0.66rem;
+  opacity: 0.85;
+}
+
+.character-lab__guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.character-lab__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+  flex: 1;
+  min-height: 0;
+}
+
+.character-lab__stage {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.character-lab__stage-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.character-lab__side {
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  min-height: 0;
+  padding: 0.6rem;
+}
+
+.character-lab__animation {
+  border-top: 1px solid var(--line);
+  max-height: 40%;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.character-lab__inspector section {
+  margin-bottom: 0.9rem;
+}
+
+.character-lab__inspector h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.character-lab__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.character-lab__grid dt {
+  opacity: 0.6;
+  font-size: 0.62rem;
+}
+
+.character-lab__grid dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.character-lab__warning {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--danger);
+}
+
+/* -------------------------------------------------- character usage */
+
+.character-usage__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.character-usage__list {
+  margin: 0.35rem 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.character-usage__list button {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  width: 100%;
+  text-align: left;
+}
+
+/* -------------------------------------------------- character browser */
+
+.character-browser {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.character-browser__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.character-browser__header h3 {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.character-browser__list {
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 0.4rem;
+}
+
+.character-browser__row {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.character-browser__row.is-editing {
+  border-color: var(--accent);
+}
+
+.character-browser__identity {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-browser__identity code {
+  font-size: 0.62rem;
+  opacity: 0.7;
+}
+
+.character-browser__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  opacity: 0.8;
+  flex: 1 1 12rem;
+}
+
+.character-browser__actions {
+  margin-left: auto;
+}
+
+.project-diagnostics {
+  padding: 0.4rem 0.6rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.7rem;
+  flex: none;
+}
+
+.project-diagnostics summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inspector__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* At narrow widths the lab stacks: a 320px column cannot hold a preview stage
+   beside an inspector, and the inspector is the part you came for. */
+@media (max-width: 900px) {
+  .character-lab__body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(12rem, 1fr) auto;
+  }
+
+  .character-lab__side {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}
