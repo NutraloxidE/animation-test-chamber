@@ -1,0 +1,122 @@
+{
+  "workPackage": "PR #14 final replay lifecycle closure",
+  "baseShaForThisPass": "b1920f249b23d2a47d31ca004b57c0eac04aa102",
+  "lastImplementationSha": "f00572d",
+  "branch": "claude/multi-instance-world-harness",
+  "pullRequest": 14,
+  "executingAgent": {
+    "id": "main-opus-pr14-replay-lifecycle",
+    "model": "claude-opus-5"
+  },
+  "orchestration": {
+    "followed": false,
+    "reason": "the tiered subagent models named in the work package are not addressable as separate agents in this environment",
+    "subagentsRun": 0,
+    "handoffsFabricated": 0,
+    "reviewsAreSelfReviews": true
+  },
+  "defects": {
+    "resetDropsControlSource": {
+      "before": "createReplayRuntime attached the control source after construction; reset() rebuilds from constructor options, so a reset replay ran with camera yaw pinned at zero",
+      "after": "controlSource is a WorldRuntimeOptions field passed through the constructor; sources are stateless per tick so a runtime and its reset can share one"
+    },
+    "recorderCapturedPreviousTickYaw": {
+      "before": "the recorder read runtime.cameraYawRad before step(); a control source is sampled inside step, so a control-source-driven run recorded the previous tick's yaw and every re-record shifted the track one tick",
+      "after": "WorldTickRecord.controls reports the control the tick consumed and the recorder reads that"
+    },
+    "invalidControlAtomicity": {
+      "after": "controls are sampled and validated before the instance loop; a NaN source throws and neither the tick index nor any instance advances"
+    }
+  },
+  "regressionTests": {
+    "file": "tests/integration/world/replay-lifecycle.test.ts",
+    "count": 9,
+    "failAgainstBase": {
+      "failed": 7,
+      "passed": 2,
+      "note": "the two that pass at base are per-instance frame preservation and host-driven recording, which the defects did not touch"
+    }
+  },
+  "harness": {
+    "worldStageGatesAdded": [
+      "a reset replay runtime produces the same world hash as a fresh one",
+      "re-recording a replay reproduces its camera keyframes exactly",
+      "record to replay to record round-trips to the same world hash"
+    ],
+    "stagesRemoved": 0
+  },
+  "testCounts": {
+    "before": {
+      "vitestFiles": 30,
+      "vitestTests": 537,
+      "playwrightTests": 141
+    },
+    "after": {
+      "vitestFiles": 31,
+      "vitestTests": 546,
+      "playwrightTests": 141
+    },
+    "deleted": 0,
+    "skipped": 0,
+    "weakened": 0,
+    "assertionsReplaced": 0
+  },
+  "legacyReplay": "byte-identical on all four committed fixtures; no baseline regenerated",
+  "renderCadence": "30/60/120 test unchanged and passing",
+  "oneShot": [
+    {
+      "run": 1,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 962.2,
+      "exitCode": 0
+    },
+    {
+      "run": 2,
+      "stagesPassed": 29,
+      "stagesTotal": 29,
+      "durationSec": 925.5,
+      "exitCode": 0
+    }
+  ],
+  "generatedDrift": {
+    "secondGenerationClean": true,
+    "schemasChanged": false,
+    "unityDtosChanged": false
+  },
+  "acceptance": {
+    "resetPersistentControlSource": "PASS",
+    "resetAfterPartialPlayback": "PASS",
+    "tickConsumedControlObservation": "PASS",
+    "controlSourceRerecordBoundary": "PASS",
+    "recordReplayRecordControls": "PASS",
+    "recordReplayRecordIntent": "PASS",
+    "recordReplayRecordTrace": "PASS",
+    "hostDrivenRecordingCompatibility": "PASS",
+    "invalidControlAtomicity": "PASS",
+    "legacyReplayCompatibility": "PASS",
+    "cadence306090120": "PASS",
+    "typecheckLint": "PASS",
+    "unitIntegrationReplay": "PASS",
+    "repoGuard": "PASS",
+    "buildVisual": "PASS",
+    "generatedArtifactStability": "PASS",
+    "oneShotRun1": "PASS",
+    "oneShotRun2": "PASS",
+    "agentOrchestrationEvidence": "FAIL",
+    "latestHeadVercel": "NOT VERIFIED"
+  },
+  "knownLimitations": [
+    "orchestration not followed; reviews are self-reviews",
+    "the browser samples camera yaw once per frame; inherent to frame-sampled continuous input and not fixable by the replay contract",
+    "RuntimeInstanceOverrides.moveSpeedScale declared and unread",
+    "setFocusedInstance/setCameraTargetInstance bypass the command registry",
+    "world viewport renders the procedural character on a flat plane",
+    "only local-input player index 0 is wired in the browser",
+    "no performance ceiling established for instance count",
+    "only camera yaw is a replayed control; pitch and distance are out of scope",
+    "latest-head Vercel not verified"
+  ],
+  "finalMergeReview": "HOLD",
+  "finalMergeReviewReason": "every replay lifecycle row passes and the three earlier critical fixes remain green; MERGE RECOMMENDED requires latest-head Vercel PASS, which this environment cannot verify"
+}

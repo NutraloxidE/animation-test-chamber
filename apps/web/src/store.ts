@@ -16,6 +16,7 @@ import type {
   ReplayDefinition,
   ResolvedProject,
   SaveAnimationChangesRequest,
+  WorldDefinition,
 } from '@atc/schema';
 import { resolveWeaponMode } from '@atc/animation-runtime';
 import {
@@ -34,6 +35,9 @@ import { RuleBasedProvider } from '@atc/ai-adapter';
 import type { ReplayTrace } from '@atc/replay-runtime';
 import { REPLAY_FIXTURES, defaultEquipped } from '@atc/replay-runtime';
 import { unavailableCapability } from '@atc/haptics-runtime';
+import { worldOf } from '@atc/world-runtime';
+import { createDefaultRegistry } from '@atc/capability-runtime';
+import { WorldChamberEngine } from './world/world-engine.ts';
 import { ChamberEngine } from './engine.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
 import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
@@ -69,7 +73,8 @@ if (import.meta.hot) {
 }
 
 export type PanelId =
-  'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
+  | 'world'
+  | 'inspector' | 'graph' | 'timeline' | 'timing' | 'replay' | 'diff' | 'ai' | 'capability' | 'terrain' | 'acquisition';
 
 /** Chamber or Asset Library. Deliberately not a router (PLAN 24.1). */
 export type WorkspaceMode = 'chamber' | 'asset-library';
@@ -175,6 +180,25 @@ interface ChamberState {
   workspaceMode: WorkspaceMode;
   activeCharacterId: string;
 
+  /**
+   * World authoring.
+   *
+   * Deliberately split into four separate fields rather than one blob: the
+   * canonical world, the staged edit on top of it, the selection, and the
+   * running state are four different things with four different lifetimes, and
+   * collapsing them is how a selection ends up able to change a simulation.
+   */
+  worldEngine: WorldChamberEngine;
+  /** The world as the repository has it, explicit or synthesized. */
+  canonicalWorld: WorldDefinition;
+  /** The world including unsaved edits. This is what the viewport runs. */
+  stagedWorld: WorldDefinition;
+  /** Presentation only. No runtime decision may read this. */
+  selectedInstanceId: string;
+  worldMode: 'focused' | 'world';
+  worldDirty: boolean;
+  worldMessage: string;
+
   /** Asset Library view state. */
   librarySelection: { assetType: string; assetId: string; version: string } | null;
   libraryTypeFilter: string;
@@ -259,6 +283,15 @@ interface ChamberActions {
   selectTransition(id: string): void;
   selectState(id: string): void;
   setPanel(panel: PanelId): void;
+  setWorldMode(mode: 'focused' | 'world'): void;
+  selectInstance(instanceId: string): void;
+  /** Every world edit goes through a declared command; there is no other path. */
+  runWorldCommand(commandId: string, input: unknown): void;
+  duplicateSelectedInstance(): void;
+  setFocusedInstance(instanceId: string): void;
+  setCameraTargetInstance(instanceId: string): void;
+  revertWorldEdits(): void;
+  sharedAssetsFor(instanceId: string): CharacterAnimationAssignment | null;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
   setWeaponMode(id: string): void;
@@ -529,6 +562,20 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
   const restoredChanges = restoreStagedDraft(session);
   const engine = new ChamberEngine(session.previewProject);
 
+  /*
+   * The world the chamber opens on. The demo project ships no explicit world,
+   * so this is the synthesized one-instance world built from
+   * `activeCharacterId` — the focused chamber as a world, rather than a
+   * separate runtime kept alive beside it.
+   */
+  const canonicalWorld = worldOf(canonicalSeedWithDrafts);
+  const commandRegistry = createDefaultRegistry();
+  const worldEngine = new WorldChamberEngine({
+    registry: seedRegistry,
+    project: canonicalSeedWithDrafts,
+    world: canonicalWorld,
+  });
+
   /** Pushes the current preview document into the running simulation. */
   const syncPreview = (): void => {
     const preview = session.previewProject;
@@ -548,6 +595,14 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     workspaceMode: 'chamber',
     activeCharacterId: canonicalSeedWithDrafts.activeCharacterId,
+
+    worldEngine,
+    canonicalWorld,
+    stagedWorld: canonicalWorld,
+    selectedInstanceId: canonicalWorld.focusedInstanceId,
+    worldMode: 'focused',
+    worldDirty: false,
+    worldMessage: '',
 
     librarySelection: null,
     libraryTypeFilter: 'all',
@@ -1232,6 +1287,114 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
     setPanel(panel) {
       set({ activePanel: panel });
+    },
+
+    setWorldMode(mode) {
+      set({ worldMode: mode });
+    },
+
+    selectInstance(instanceId) {
+      // Selection is presentation. It changes what the inspector shows and
+      // nothing about what the simulation does — see the visual test that
+      // asserts the world hash is unchanged across a selection.
+      set({ selectedInstanceId: instanceId });
+    },
+
+    /**
+     * The single path a human world edit takes.
+     *
+     * It runs the same typed command the API exposes, keeps the returned staged
+     * world, and rebuilds the running world from it. The UI never constructs a
+     * `WorldDefinition` itself, so it cannot express a change the command
+     * surface would have refused.
+     */
+    runWorldCommand(commandId, input) {
+      const state = get();
+      const result = commandRegistry.execute(commandId, input, {
+        project: state.canonicalProject,
+        world: state.stagedWorld,
+        actor: 'human',
+      });
+
+      if (!result.ok || !result.stagedWorld) {
+        set({
+          worldMessage:
+            result.issues.map((issue) => `${issue.path}: ${issue.message}`).join('; ') ||
+            'the command produced no change',
+        });
+        return;
+      }
+
+      const stagedWorld = result.stagedWorld;
+      state.worldEngine.setWorld(stagedWorld);
+      set({
+        stagedWorld,
+        worldDirty: true,
+        worldMessage: `${commandId} staged (${(result.changedPaths ?? []).join(', ')})`,
+      });
+    },
+
+    duplicateSelectedInstance() {
+      const state = get();
+      const source = state.selectedInstanceId;
+      if (!source) return;
+      // A stable, collision-free id without a random suffix: a duplicate whose
+      // id changed between two runs would make its trace unreproducible.
+      let index = 2;
+      let newInstanceId = `${source}-${index}`;
+      while (state.stagedWorld.instances.some((instance) => instance.id === newInstanceId)) {
+        index += 1;
+        newInstanceId = `${source}-${index}`;
+      }
+      state.runWorldCommand('world.duplicate_instance', { instanceId: source, newInstanceId });
+      set({ selectedInstanceId: newInstanceId });
+    },
+
+    setFocusedInstance(instanceId) {
+      const state = get();
+      const instance = state.stagedWorld.instances.find((entry) => entry.id === instanceId);
+      if (!instance || !instance.enabled) {
+        set({ worldMessage: 'focus must name an enabled instance' });
+        return;
+      }
+      const stagedWorld = { ...state.stagedWorld, focusedInstanceId: instanceId };
+      state.worldEngine.setWorld(stagedWorld);
+      set({ stagedWorld, worldDirty: true, worldMessage: `focused ${instanceId}` });
+    },
+
+    setCameraTargetInstance(instanceId) {
+      const state = get();
+      const instance = state.stagedWorld.instances.find((entry) => entry.id === instanceId);
+      if (!instance || !instance.enabled) {
+        set({ worldMessage: 'the camera must target an enabled instance' });
+        return;
+      }
+      const stagedWorld = { ...state.stagedWorld, cameraTargetInstanceId: instanceId };
+      state.worldEngine.setWorld(stagedWorld);
+      set({ stagedWorld, worldDirty: true, worldMessage: `camera on ${instanceId}` });
+    },
+
+    revertWorldEdits() {
+      const state = get();
+      state.worldEngine.setWorld(state.canonicalWorld);
+      set({
+        stagedWorld: state.canonicalWorld,
+        selectedInstanceId: state.canonicalWorld.focusedInstanceId,
+        worldDirty: false,
+        worldMessage: 'staged world changes reverted',
+      });
+    },
+
+    sharedAssetsFor(instanceId) {
+      const state = get();
+      const instance = state.stagedWorld.instances.find((entry) => entry.id === instanceId);
+      if (!instance) return null;
+      const character = state.canonicalProject.characters.find(
+        (entry) => entry.id === instance.source.characterId,
+      );
+      // References, not copies: this is the provenance the panel shows to make
+      // "shared definition" a visible fact rather than a claim.
+      return character?.animation ?? null;
     },
 
     setTerrainPreset(id) {

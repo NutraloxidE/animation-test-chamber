@@ -19,6 +19,11 @@ import {
   HumanoidRigProfileAsset,
 } from './animation-assets.ts';
 import { SaveAnimationChangesRequest } from './animation-save.ts';
+import {
+  IntentTrackDefinition,
+  RuntimeInstanceDefinition,
+  WorldDefinition,
+} from './world.ts';
 
 export interface ValidationIssue {
   path: string;
@@ -59,6 +64,9 @@ export const SCHEMA_REGISTRY = {
   AssetReference,
   CharacterAnimationAssignment,
   SaveAnimationChangesRequest,
+  WorldDefinition,
+  RuntimeInstanceDefinition,
+  IntentTrackDefinition,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
@@ -221,7 +229,160 @@ export function validateProjectReferences(project: unknown): ValidationResult {
   }
 
   issues.push(...equipmentIssues(p.equipment ?? [], null));
+  issues.push(...worldIssues(project, seenCharacters));
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Structural checks on the optional world.
+ *
+ * Exported so a staged world can be checked before it is ever attached to a
+ * project — the command surface refuses a bad instance at the command, not at
+ * publication, and a refusal that arrives that late is one a caller has already
+ * built a UI on top of.
+ */
+export function validateWorldReferences(
+  world: unknown,
+  knownCharacterIds: ReadonlySet<string>,
+): ValidationResult {
+  const issues = worldIssues({ world }, knownCharacterIds);
+  return { valid: issues.length === 0, issues };
+}
+
+function worldIssues(project: unknown, characterIds: ReadonlySet<string>): ValidationIssue[] {
+  const world = (project as { world?: unknown }).world as
+    | {
+        instances?: {
+          id: string;
+          enabled: boolean;
+          source?: { kind: string; characterId?: string };
+          intentSource?: { kind: string; trackId?: string };
+          transform?: { position?: Record<string, number>; yawRad?: number };
+        }[];
+        intentTracks?: { id: string; durationTicks: number; keyframes: { tick: number }[] }[];
+        focusedInstanceId?: string;
+        cameraTargetInstanceId?: string;
+      }
+    | undefined;
+  if (!world) return [];
+
+  const issues: ValidationIssue[] = [];
+  const instances = world.instances ?? [];
+  const enabled = new Map<string, boolean>();
+
+  const trackIds = new Set<string>();
+  for (const track of world.intentTracks ?? []) {
+    if (trackIds.has(track.id)) {
+      issues.push({
+        path: `/world/intentTracks/${track.id}`,
+        message: `duplicate intent track id "${track.id}"`,
+        keyword: 'unique',
+      });
+    }
+    trackIds.add(track.id);
+
+    /*
+     * Keyframes must be strictly ascending. Out-of-order keyframes are not a
+     * schema error and would still sample *something*, which is worse than
+     * failing: the track would play a different shape than the one the author
+     * can see written down.
+     */
+    let previous = -1;
+    for (const keyframe of track.keyframes ?? []) {
+      if (keyframe.tick <= previous) {
+        issues.push({
+          path: `/world/intentTracks/${track.id}/keyframes`,
+          message: `keyframe ticks must strictly ascend (saw ${keyframe.tick} after ${previous})`,
+          keyword: 'order',
+        });
+      }
+      previous = keyframe.tick;
+      if (keyframe.tick >= track.durationTicks) {
+        issues.push({
+          path: `/world/intentTracks/${track.id}/keyframes`,
+          message: `keyframe at tick ${keyframe.tick} is outside durationTicks ${track.durationTicks}`,
+          keyword: 'range',
+        });
+      }
+    }
+  }
+
+  for (const instance of instances) {
+    if (enabled.has(instance.id)) {
+      issues.push({
+        path: `/world/instances/${instance.id}`,
+        message: `duplicate instance id "${instance.id}"`,
+        keyword: 'unique',
+      });
+    }
+    enabled.set(instance.id, instance.enabled);
+
+    if (instance.source?.kind === 'character') {
+      const characterId = instance.source.characterId ?? '';
+      if (!characterIds.has(characterId)) {
+        issues.push({
+          path: `/world/instances/${instance.id}/source/characterId`,
+          message: `instance "${instance.id}" references unknown character "${characterId}"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    if (instance.intentSource?.kind === 'scripted-track') {
+      const trackId = instance.intentSource.trackId ?? '';
+      if (!trackIds.has(trackId)) {
+        issues.push({
+          path: `/world/instances/${instance.id}/intentSource/trackId`,
+          message: `instance "${instance.id}" references unknown intent track "${trackId}"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    for (const [axis, value] of Object.entries(instance.transform?.position ?? {})) {
+      if (!Number.isFinite(value)) {
+        issues.push({
+          path: `/world/instances/${instance.id}/transform/position/${axis}`,
+          message: `transform position ${axis} must be finite`,
+          keyword: 'finite',
+        });
+      }
+    }
+    if (!Number.isFinite(instance.transform?.yawRad ?? 0)) {
+      issues.push({
+        path: `/world/instances/${instance.id}/transform/yawRad`,
+        message: 'transform yaw must be finite',
+        keyword: 'finite',
+      });
+    }
+  }
+
+  /*
+   * Focus and camera must point at an instance that actually ticks. A focused
+   * id naming a disabled instance opens the chamber on a character that will
+   * never move, which reads as a broken build rather than a broken document.
+   */
+  for (const [field, id] of [
+    ['focusedInstanceId', world.focusedInstanceId],
+    ['cameraTargetInstanceId', world.cameraTargetInstanceId],
+  ] as const) {
+    if (id === undefined) continue;
+    if (!enabled.has(id)) {
+      issues.push({
+        path: `/world/${field}`,
+        message: `${field} references unknown instance "${id}"`,
+        keyword: 'reference',
+      });
+    } else if (!enabled.get(id)) {
+      issues.push({
+        path: `/world/${field}`,
+        message: `${field} references disabled instance "${id}"`,
+        keyword: 'enabled',
+      });
+    }
+  }
+
+  return issues;
 }
 
 /**

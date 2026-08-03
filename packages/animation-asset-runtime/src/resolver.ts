@@ -228,10 +228,61 @@ function resolveMotionSet(
  * in `issues`, and callers that must not start the engine check for them.
  */
 export function resolveCharacterAnimation(request: ResolveRequest): ResolveResult {
-  const { registry, project } = request;
-  const character: CharacterDefinition =
-    project.characters.find((entry) => entry.id === request.characterId) ??
-    activeCharacter(project);
+  const character = characterFor(request);
+  const { bundle, issues } = resolveCharacterAnimationBundle(request);
+  return {
+    project: materializeResolvedProject({ project: request.project, character, bundle }),
+    issues,
+  };
+}
+
+/** The character a request resolves for: the named one, or the active one. */
+export function characterFor(request: ResolveRequest): CharacterDefinition {
+  return (
+    request.project.characters.find((entry) => entry.id === request.characterId) ??
+    activeCharacter(request.project)
+  );
+}
+
+/**
+ * Everything a resolution produces that does *not* depend on which character
+ * asked for it.
+ *
+ * This split exists because of a specific bug. The world runtime caches
+ * resolution so two instances of one character share it — but the thing being
+ * cached used to be the whole `ResolvedProject`, which carries the character's
+ * own `modelAssetPath`, capsule dimensions, id and display name. Two *different*
+ * characters that happened to reference the same animation assets would then
+ * receive each other's body. The bundle is the part that is genuinely
+ * shareable; the wrapper around it is not.
+ */
+export interface ResolvedAnimationBundle {
+  graph: AnimationGraphDefinition;
+  clips: AnimationClipDefinition[];
+  motionBindings: Record<string, string>;
+  contextualMotionBindings: Record<string, Record<string, string>>;
+  motionContextKeys: string[];
+  clipAssetSources: Record<string, AssetReference>;
+  resolution: ResolvedValue[];
+  skeleton: SkeletonDefinition;
+  rigCompatibilityKey: string;
+}
+
+export interface ResolveBundleResult {
+  bundle: ResolvedAnimationBundle;
+  issues: AssetIssue[];
+}
+
+/**
+ * Resolves the character-independent half.
+ *
+ * It still takes a whole `ResolveRequest` because it needs the character's
+ * `animation` block to know *which* assets to resolve — but nothing it returns
+ * carries the character's identity or body.
+ */
+export function resolveCharacterAnimationBundle(request: ResolveRequest): ResolveBundleResult {
+  const { registry } = request;
+  const character: CharacterDefinition = characterFor(request);
 
   const issues: AssetIssue[] = [];
   const resolution: ResolvedValue[] = [];
@@ -330,13 +381,7 @@ export function resolveCharacterAnimation(request: ResolveRequest): ResolveResul
   issues.push(...rigIssues);
   const rig = rigIssues.length === 0 ? registry.getRig(character.animation.rig) : undefined;
 
-  const resolved: ResolvedProject = {
-    ...project,
-    character: {
-      ...character,
-      skeleton: rig?.skeleton ?? EMPTY_SKELETON,
-      rigCompatibilityKey: rig?.compatibilityKey ?? 'unresolved',
-    },
+  const bundle: ResolvedAnimationBundle = {
     graph: animation.graph,
     clips: animation.clips,
     motionBindings: motion.bindings,
@@ -344,9 +389,42 @@ export function resolveCharacterAnimation(request: ResolveRequest): ResolveResul
     motionContextKeys: motion.contextKeys,
     clipAssetSources: motion.clipAssetSources,
     resolution,
+    skeleton: rig?.skeleton ?? EMPTY_SKELETON,
+    rigCompatibilityKey: rig?.compatibilityKey ?? 'unresolved',
   };
 
-  return { project: resolved, issues };
+  return { bundle, issues };
+}
+
+/**
+ * Wraps a shared bundle in one character's resolved project.
+ *
+ * Cheap by design: the wrapper is a fresh object per character, and every value
+ * inside it that is safe to share is shared *by reference*. Deep-cloning the
+ * graph and clips here would fix the contamination and throw away the entire
+ * point of the cache along with it.
+ */
+export function materializeResolvedProject(input: {
+  project: ProjectDefinition;
+  character: CharacterDefinition;
+  bundle: ResolvedAnimationBundle;
+}): ResolvedProject {
+  const { project, character, bundle } = input;
+  return {
+    ...project,
+    character: {
+      ...character,
+      skeleton: bundle.skeleton,
+      rigCompatibilityKey: bundle.rigCompatibilityKey,
+    },
+    graph: bundle.graph,
+    clips: bundle.clips,
+    motionBindings: bundle.motionBindings,
+    contextualMotionBindings: bundle.contextualMotionBindings,
+    motionContextKeys: bundle.motionContextKeys,
+    clipAssetSources: bundle.clipAssetSources,
+    resolution: bundle.resolution,
+  };
 }
 
 /**

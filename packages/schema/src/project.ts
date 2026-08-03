@@ -7,6 +7,7 @@ import { CameraProfile, MovementProfile, RootMotionProfile } from './movement.ts
 import { TerrainInteractionProfile } from './terrain.ts';
 import { HapticProfile } from './haptics.ts';
 import { CandidateAsset } from './acquisition.ts';
+import { WorldDefinition } from './world.ts';
 
 export const CharacterDefinition = Type.Object(
   {
@@ -121,6 +122,17 @@ export const ProjectDefinition = Type.Object(
     characters: Type.Array(CharacterDefinition, { minItems: 1 }),
     /** Which character the chamber opens with. */
     activeCharacterId: Id,
+    /**
+     * Optional multi-instance world.
+     *
+     * Optional because `characters` is not being replaced: a project that
+     * predates this field still opens, and resolves through
+     * `synthesizeLegacyWorld` into a one-instance world built from
+     * `activeCharacterId`. The focused chamber is therefore a *view over a
+     * one-instance world* rather than a second runtime kept alive alongside
+     * this one.
+     */
+    world: Type.Optional(WorldDefinition),
     inputMap: InputMapDefinition,
     /** Toggleable equipment. Each slot publishes one boolean parameter. */
     equipment: Type.Array(EquipmentSlotDefinition),

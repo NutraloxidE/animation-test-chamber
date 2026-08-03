@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import type { SimulationState } from '@atc/replay-runtime';
+import type { WorldObservation } from '@atc/world-runtime';
 import { useChamber } from './store.ts';
 
 /**
@@ -18,6 +19,17 @@ export interface AtcTestDriver {
   advanceTicks(count: number): void;
   flushReact(): Promise<void>;
   getSnapshot(): SimulationState;
+
+  /**
+   * World-mode equivalents.
+   *
+   * The world has its own clock, so a visual test that stepped the focused
+   * engine and then asserted on the world would be asserting about a
+   * simulation it never advanced.
+   */
+  enableWorld(): void;
+  advanceWorldTicks(count: number): void;
+  observeWorld(): WorldObservation;
 }
 
 declare global {
@@ -44,6 +56,16 @@ export function installTestDriver(): void {
     flushReact,
     getSnapshot() {
       return useChamber.getState().engine.simulationState;
+    },
+    enableWorld() {
+      useChamber.getState().worldEngine.testDriven = true;
+    },
+    advanceWorldTicks(count) {
+      const engine = useChamber.getState().worldEngine;
+      for (let i = 0; i < count; i += 1) engine.stepOnce();
+    },
+    observeWorld() {
+      return useChamber.getState().worldEngine.observe();
     },
   };
 }

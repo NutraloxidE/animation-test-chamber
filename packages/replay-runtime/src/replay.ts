@@ -102,7 +102,15 @@ export function runReplay(
   };
 }
 
-function computeMetrics(ticks: TickRecord[], simulation: Simulation): ReplayMetrics {
+/**
+ * Aggregate metrics for a finished run.
+ *
+ * Exported because a world trace has to produce the *same* metrics per instance
+ * as a legacy single-character trace does. A second copy of this arithmetic in
+ * the world package would be the fastest possible way to make the projection
+ * test pass while the two traces quietly measured different things.
+ */
+export function computeMetrics(ticks: TickRecord[], simulation: Simulation): ReplayMetrics {
   let footSlidingDistance = 0;
   let footFloatingTicks = 0;
   let maxPenetration = 0;
