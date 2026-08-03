@@ -1309,9 +1309,12 @@ textarea {
 
   /* Narrow: the side and bottom docks overlay the scene instead of squeezing
      it. They are toggles, so an overlay is the honest shape. */
+  /* Starts below the dock bar rather than under it: the bar outranks every
+     overlay because it holds the buttons that close them, so an overlay
+     spanning from y=0 would put its own first rows out of reach. */
   .app__hierarchy {
     position: fixed;
-    top: 0;
+    top: var(--dockbar-h, 0px);
     bottom: 0;
     left: 0;
     width: min(240px, 78vw);

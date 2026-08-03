@@ -76,6 +76,33 @@ function Hud() {
  * "show the bottom dock" and shares the same workspaceMode state (and test
  * ids) it always had.
  */
+/**
+ * Publishes the dock bar's height as `--dockbar-h`.
+ *
+ * The narrow overlays (hierarchy, and the docks below it) are fixed to the
+ * viewport, so without this they start at y=0 and their first rows sit *under*
+ * the bar — which outranks them deliberately, since it holds the buttons that
+ * close them. A constant offset would be wrong at some width: the bar wraps to
+ * two or three rows depending on how its labels fall, so it is measured.
+ */
+function useDockBarHeight(): (element: HTMLElement | null) => void {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!element) return;
+    const publish = (): void => {
+      document.documentElement.style.setProperty(
+        '--dockbar-h',
+        `${Math.round(element.getBoundingClientRect().height)}px`,
+      );
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return setElement;
+}
+
 function DockBar({
   showHierarchy,
   setShowHierarchy,
@@ -92,8 +119,9 @@ function DockBar({
   const presentation = useChamber((state) => state.viewportPresentation);
   const setPresentation = useChamber((state) => state.setViewportPresentation);
   const showLibrary = mode === 'asset-library';
+  const measure = useDockBarHeight();
   return (
-    <nav className="workspace-switch" data-testid="workspace-switch">
+    <nav className="workspace-switch" data-testid="workspace-switch" ref={measure}>
       <span className="workspace-switch__title">Animation Test Chamber</span>
       <button
         type="button"
