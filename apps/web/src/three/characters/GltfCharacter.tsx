@@ -80,9 +80,13 @@ export function GltfCharacter({
   // A rig mismatch is no longer a dead end: a model that declares how its bones
   // line up with the clip's rig plays the state machine retargeted, so every
   // weapon mode is selectable on every model rather than only on its own rig.
+  // Both sides must actually name a rig. `retargetFrom?.rigId === weapon.rigId`
+  // alone is true when *neither* exists — an unarmed mode on a model with no
+  // retarget map — and that read a `bones` off nothing and took the whole
+  // character down with it.
   const retargetBones =
-    character.retargetFrom?.rigId === weapon.rigId
-      ? character.retargetFrom!.bones
+    character.retargetFrom && character.retargetFrom.rigId === weapon.rigId
+      ? character.retargetFrom.bones
       : undefined;
   const weaponCompatible = Boolean(
     weapon.animationUrl && (weapon.rigId === character.rigId || retargetBones),
