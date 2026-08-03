@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from 'react';
 import type { TransitionDefinition } from '@atc/schema';
 import { useChamber } from '../store.ts';
+import { useGraphProject } from '../workspaces/useGraphProject.ts';
 import { Field, ToggleField } from './Field.tsx';
 
 type TimeUnit = 'seconds' | 'frames30' | 'frames60';
@@ -85,7 +86,7 @@ export function TransitionInspector() {
   // The Graph workspace's target, under the inspected Binding Context — not a
   // globally resolved document that silently belongs to whichever character
   // happened to be active.
-  const project = useChamber((state) => state.graphProject());
+  const project = useGraphProject();
   const selectedId = useChamber((state) => state.selectedTransitionId);
   const selectTransition = useChamber((state) => state.selectTransition);
   const engine = useChamber((state) => state.engine);

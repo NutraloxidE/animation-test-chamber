@@ -24,11 +24,20 @@ async function open(page: Page): Promise<void> {
   await expect(page.getByTestId('animation-workspace')).toBeVisible();
 }
 
+/**
+ * Selects an instance and gets the hierarchy back out of the way.
+ *
+ * Below 900px the hierarchy is a fixed overlay rather than a reserved column
+ * (styles.css), so leaving it open covers the bottom dock and every click into
+ * the workspace lands on the tree instead. Closing it is what a human does
+ * too; the narrow layout gives the screen to one overlay at a time.
+ */
 async function selectInstance(page: Page, instanceId: string): Promise<void> {
-  if (!(await page.getByTestId('hierarchy').isVisible())) {
-    await page.getByTestId('toggle-hierarchy').click();
-  }
+  const opened = !(await page.getByTestId('hierarchy').isVisible());
+  if (opened) await page.getByTestId('toggle-hierarchy').click();
   await page.getByTestId(`scene-node-instance-${instanceId}`).click();
+  const narrow = await page.evaluate(() => !window.matchMedia('(min-width: 901px)').matches);
+  if (narrow) await page.getByTestId('toggle-hierarchy').click();
 }
 
 async function advance(page: Page, ticks: number) {

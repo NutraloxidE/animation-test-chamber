@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
 import { applyClipTimeCurve, clipForState, clipIdForState } from '@atc/animation-runtime';
 import { useChamber } from '../store.ts';
+import { useGraphProject } from '../workspaces/useGraphProject.ts';
 import { WEAPON_MODES } from '../three/catalog.ts';
 import { Field } from './Field.tsx';
 
@@ -225,7 +226,7 @@ export function MotionTimingPanel() {
   // The Graph workspace's target, under the inspected Binding Context — not a
   // globally resolved document that silently belongs to whichever character
   // happened to be active.
-  const project = useChamber((state) => state.graphProject());
+  const project = useGraphProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const selectState = useChamber((state) => state.selectState);
   const setPreviewValue = useChamber((state) => state.setPreviewValue);

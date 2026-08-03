@@ -9,17 +9,18 @@ import { TerrainMesh } from './TerrainMesh.tsx';
 import { DebugOverlays } from './DebugOverlays.tsx';
 import { characterPreset, weaponMode } from './catalog.ts';
 
-/** Advances the simulation from render deltas and keeps the camera behind the character. */
+/**
+ * Keeps the camera behind the character.
+ *
+ * It no longer advances the simulation. The clock moved to `useChamberClock`
+ * in `App`, because a renderer that owned it made the focused engine stop
+ * ticking whenever a different presentation was on screen.
+ */
 function ChamberLoop({ engine }: { engine: ChamberEngine }) {
   const { camera } = useThree();
   const smoothed = useRef(new THREE.Vector3(0, 3, -6));
 
   useFrame((_, delta) => {
-    // While a test driver owns simulation advancement (window.__ATC_TEST__),
-    // wall-clock deltas must not also advance it — that would race the
-    // deterministic ticks the test is asserting against.
-    if (!engine.testDriven) engine.advance(delta);
-
     const profile = engine.currentProject.camera;
     const state = engine.simulationState;
     const { yaw, pitch } = engine.camera;
@@ -56,11 +57,6 @@ export function Viewport() {
   const grip =
     weaponGripOverrides[`${character.id}:${weapon.id}`] ??
     character.weaponGrips?.[weapon.id];
-
-  useEffect(() => {
-    engine.attachInput();
-    return () => engine.detachInput();
-  }, [engine]);
 
   // Gamepad capability is only knowable after a device announces itself.
   useEffect(() => {

@@ -8,6 +8,7 @@
  * a routing hint, not a lock.
  */
 import { useChamber } from '../store.ts';
+import { useGraphProject } from './useGraphProject.ts';
 import { TransitionInspector } from '../panels/TransitionInspector.tsx';
 import { MotionTimingPanel } from '../panels/MotionTimingPanel.tsx';
 import type { GraphDetailsTab } from './graph-target.ts';
@@ -19,7 +20,7 @@ const TABS: { id: GraphDetailsTab; label: string }[] = [
 ];
 
 function StateDetails() {
-  const project = useChamber((state) => state.graphProject());
+  const project = useGraphProject();
   const selectedStateId = useChamber((state) => state.selectedStateId);
   const state = project.graph.states.find((entry) => entry.id === selectedStateId);
 

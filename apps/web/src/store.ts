@@ -1518,12 +1518,24 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       });
     },
 
+    /*
+     * Selecting routes the details pane, because the alternative is a user
+     * clicking a transition and looking at a panel about something else. It is
+     * a routing hint rather than a lock: the tabs stay clickable, and a state
+     * click leaves the pane alone if the user has already chosen Motion — the
+     * two are both "about the selected state", and overriding their choice on
+     * every click would be the tab strip fighting them.
+     */
     selectTransition(id) {
-      set({ selectedTransitionId: id });
+      set({ selectedTransitionId: id, graphDetailsTab: 'transition' });
     },
 
     selectState(id) {
-      set({ selectedStateId: id });
+      const tab = get().graphDetailsTab;
+      set({
+        selectedStateId: id,
+        ...(tab === 'transition' ? { graphDetailsTab: 'state' as const } : {}),
+      });
     },
 
     selectScene(selection) {

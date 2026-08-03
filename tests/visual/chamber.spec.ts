@@ -49,6 +49,15 @@ async function openPanel(page: Page, id: string): Promise<void> {
   if (!workspace) throw new Error(`no home for panel "${id}"`);
   await openBottomDock(page);
   await page.getByTestId(`workspace-${workspace}`).click();
+
+  /*
+   * The Graph workspace's details are tabbed now (State / Transition /
+   * Motion) rather than stacked, so "open the timing panel" is one more click
+   * than it was. Nothing became unreachable — the tab strip is what replaced
+   * the graph and both detail panels competing for the same height.
+   */
+  const detailsTab = { inspector: 'transition', timing: 'motion' }[id];
+  if (detailsTab) await page.getByTestId(`graph-details-tab-${detailsTab}`).click();
 }
 
 /** The bottom dock is a toggle; opening it is idempotent. */

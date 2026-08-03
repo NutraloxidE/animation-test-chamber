@@ -89,6 +89,45 @@ function Hud() {
  * close them. A constant offset would be wrong at some width: the bar wraps to
  * two or three rows depending on how its labels fall, so it is measured.
  */
+/**
+ * Drives the focused chamber engine, independently of which renderer is mounted.
+ *
+ * This used to live inside the legacy `Viewport`'s render loop, which made the
+ * focused simulation's clock a property of *which presentation happened to be
+ * on screen*. That was already wrong before the viewport paths merged — in
+ * World presentation the legacy viewport was not mounted, so the HUD, the
+ * Timeline, the layer bar and the terrain readout all silently froze at
+ * whatever tick the user left them on, and nothing said so.
+ *
+ * A simulation's clock does not belong to a camera. Owning it here means the
+ * focused engine advances in World, Isolate and Rig alike, and switching
+ * presentation is once again the display-only operation it claims to be.
+ */
+function useChamberClock(): void {
+  const engine = useChamber((state) => state.engine);
+
+  useEffect(() => {
+    // Input is attached here for the same reason: which renderer is on screen
+    // must not decide whether the keyboard reaches the simulation.
+    engine.attachInput();
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number): void => {
+      const delta = (now - last) / 1000;
+      last = now;
+      // While a test driver owns advancement, wall-clock deltas must not also
+      // advance it — the ticks under assertion would race the frames.
+      if (!engine.testDriven) engine.advance(delta);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      engine.detachInput();
+    };
+  }, [engine]);
+}
+
 function useDockBarHeight(): (element: HTMLElement | null) => void {
   const [element, setElement] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -245,6 +284,9 @@ export function App() {
   const [showHierarchy, setShowHierarchy] = useState(() => window.matchMedia('(min-width: 901px)').matches);
   const [showInspector, setShowInspector] = useState(true);
   const [padAuto] = useState(() => detectTouchDevice());
+  // The focused engine's clock, owned here rather than by whichever renderer
+  // happens to be mounted.
+  useChamberClock();
   const [paused, setPaused] = useState(() => engine.isPaused);
   const gripSupported = Boolean(
     characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
