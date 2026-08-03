@@ -94,6 +94,22 @@ async function closeHierarchyDock(page: Page): Promise<void> {
 }
 
 /**
+ * Closes the Inspector sheet on narrow viewports.
+ *
+ * The sheet is a deliberate overlay over the viewport, so anything that then
+ * drives a viewport control has to put it away first — the same step the
+ * hierarchy dock has always needed, for the same reason.
+ */
+async function closeInspectorSheet(page: Page): Promise<void> {
+  const handle = page.getByTestId('sheet-handle');
+  if (!(await handle.isVisible())) return;
+  const panels = page.locator('.app__panels');
+  if (await panels.evaluate((element) => element.classList.contains('is-open'))) {
+    await handle.click();
+  }
+}
+
+/**
  * Selects the focused instance and opens its Loadout section.
  *
  * Weapon mode is an instance property now, so reaching it means selecting an
@@ -186,6 +202,7 @@ test('character and weapon presets can be selected', async ({ page }) => {
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
   await closeHierarchyDock(page);
+  await closeInspectorSheet(page);
   await page.getByTestId('grip-editor-select').selectOption('rotate');
   await expect(page.getByTestId('reset-grip')).toBeVisible();
   await expect(page.getByTestId('mobile-pad')).toBeHidden();
@@ -239,6 +256,7 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   await openFocusedLoadout(page);
   await page.getByTestId('loadout-weapon-mode-input').selectOption('sword');
   await closeHierarchyDock(page);
+  await closeInspectorSheet(page);
   // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
   // of scripted replay, so ticking forward deterministically replaces waiting
   // on however fast this machine renders frames.
