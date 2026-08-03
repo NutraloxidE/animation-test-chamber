@@ -2668,3 +2668,129 @@ button.link {
     padding-right: 0;
   }
 }
+
+/* ------------------------------------ the bottom dock is wide, not tall */
+
+/*
+ * These panels were written for the right-hand inspector: a tall, narrow
+ * column, where stacking every field vertically is exactly right. The bottom
+ * dock is the opposite shape — wide and short — so the same markup becomes a
+ * one-field-wide ribbon with a long scrollbar, and the graph it belongs to
+ * gets squeezed into whatever is left.
+ *
+ * The fix is layout, not a move back to the inspector. Putting the graph
+ * editor back in the right dock would undo DECISION 0012 and bring back the
+ * thing it removed: opening the graph hid whatever you were inspecting. An
+ * editor workspace is a place you work; it just has to be laid out for the
+ * shape of the space it works in.
+ *
+ * Scoped to `.workspace-dock` so the panels keep their column layout anywhere
+ * they are rendered in a narrow container.
+ */
+@media (min-width: 901px) {
+  /* Each column scrolls on its own, so a long transition list cannot push the
+     graph off the bottom of a dock that is only a few hundred pixels tall. */
+  .workspace-dock .workspace--graph {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace-dock .workspace--graph__graph,
+  .workspace-dock .workspace--graph__details {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .workspace-dock .graph-details {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .workspace-dock .graph-details__body {
+    min-height: 0;
+  }
+
+  /*
+   * Multi-column rather than a grid over the fields.
+   *
+   * A grid would have to be applied to the fields themselves, which detaches
+   * them from the `<h3>` section headings they belong under — "Clip tuning"
+   * ending up in one column and its fields in another is worse than the
+   * scrollbar this replaces. Columns preserve document order, so a heading
+   * keeps its fields, and `break-inside` stops a slider being sawn in half.
+   */
+  .workspace-dock .graph-details__body .panel {
+    columns: 17rem;
+    column-gap: 1.5rem;
+    padding-top: 0;
+  }
+
+  .workspace-dock .graph-details__body .panel__header,
+  .workspace-dock .graph-details__body .panel > h3:first-of-type {
+    column-span: all;
+  }
+
+  .workspace-dock .graph-details__body .field,
+  .workspace-dock .graph-details__body .field--toggle,
+  .workspace-dock .graph-details__body h3,
+  .workspace-dock .graph-details__body .timing-actions,
+  .workspace-dock .graph-details__body .weapon-curves {
+    break-inside: avoid;
+  }
+
+  /* A heading must not be the last thing in a column with its fields in the
+     next one. */
+  .workspace-dock .graph-details__body h3 {
+    break-after: avoid;
+  }
+
+  /*
+   * Motion timing reads as a picture plus its numbers, so in a wide dock the
+   * curve sits beside the controls instead of above them — the arrangement
+   * that made the curve and its own sliders unable to be on screen together.
+   */
+  .workspace-dock .graph-details__body .motion-timing {
+    max-width: none;
+    columns: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    grid-column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .workspace-dock .graph-details__body .motion-timing > .panel__header {
+    grid-column: 1 / -1;
+  }
+
+  /* Sized to the dock's height rather than its width: the curve is square, and
+     a column wide enough to look generous makes it taller than the strip it
+     lives in. */
+  .workspace-dock .graph-details__body .motion-timing > .timing-curve {
+    grid-row: span 6;
+    margin: 0;
+    width: min(100%, 14rem);
+  }
+
+  .workspace-dock .graph-details__body .motion-timing .timing-controls {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0.5rem 0;
+  }
+
+  /* The state graph's layers run side by side for the same reason. */
+  .workspace-dock .workspace--graph__graph .state-graph {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    grid-column-gap: 1rem;
+    align-items: start;
+  }
+
+  /* The layer-mix gauge stays absolutely positioned in the gutter that
+     `padding-left` reserves for it — it is out of flow, so it does not
+     participate in this grid and does not need to be told not to. */
+  .workspace-dock .workspace--graph__graph .state-graph > .panel__header {
+    grid-column: 1 / -1;
+  }
+}
