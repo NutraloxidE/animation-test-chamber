@@ -16,7 +16,8 @@ import * as THREE from 'three';
 import { useChamber } from '../../store.ts';
 import type { WorldChamberEngine } from '../../world/world-engine.ts';
 import { ProceduralCharacter } from '../../three/characters/ProceduralCharacter.tsx';
-import { weaponMode } from '../../three/catalog.ts';
+import { GltfCharacter } from '../../three/characters/GltfCharacter.tsx';
+import { characterPreset, weaponMode } from '../../three/catalog.ts';
 import { selectedInstanceId } from '../../selection/scene-selection.ts';
 
 /** Advances the world and keeps the camera behind the camera-target instance. */
@@ -68,9 +69,16 @@ export function WorldViewport() {
   const selection = useChamber((state) => state.sceneSelection);
   const selectScene = useChamber((state) => state.selectScene);
   const loadoutOf = useChamber((state) => state.loadoutOf);
+  // The render preset is shared, so the world draws every instance with the
+  // model the inspector names — otherwise switching it would only ever be
+  // visible in Isolate.
+  const character = useChamber((state) => characterPreset(state.characterPresetId));
   // An attachment selection rings its parent instance: clicking the shield in
   // the tree and clicking the instance mean the same object out here.
   const selectedId = selectedInstanceId(selection);
+  // Grip tuning is authored in Focused; without the same override lookup the
+  // world would keep drawing the catalog's untuned grip.
+  const weaponGripOverrides = useChamber((state) => state.weaponGripOverrides);
 
   useEffect(() => {
     engine.attachInput();
@@ -101,7 +109,12 @@ export function WorldViewport() {
 
       {world.instances
         .filter((instance) => instance.enabled)
-        .map((instance) => (
+        .map((instance) => {
+          const weapon = weaponMode(loadoutOf(instance.id)?.weaponMode.effective ?? '');
+          const grip =
+            weaponGripOverrides[`${character.id}:${weapon.id}`] ??
+            character.weaponGrips?.[weapon.id];
+          return (
           // Clicking an instance selects it, which is the other half of
           // hierarchy/viewport synchronization: the tree highlights what you
           // clicked here, and this rings what you clicked there.
@@ -112,18 +125,32 @@ export function WorldViewport() {
               selectScene({ kind: 'instance', instanceId: instance.id });
             }}
           >
-            <ProceduralCharacter
-              pose={engine.poseOf(instance.id)}
+            {character.modelUrl ? (
               // Per-instance, not global: two instances of one character can
               // hold different weapons, and the viewport has to be able to
               // show that or the isolation guarantee is invisible.
-              weapon={weaponMode(loadoutOf(instance.id)?.weaponMode.effective ?? '')}
-              // Colour by intent source, so "which one am I driving?" is
-              // answerable without reading the inspector.
-              color={instance.intentSource.kind === 'local-input' ? '#7dd3fc' : '#c4b5fd'}
-            />
+              <GltfCharacter
+                pose={engine.poseOf(instance.id)}
+                // Per instance, not the world's raw document: each instance
+                // resolves its own character's motion set.
+                poseProject={engine.instance(instance.id)?.resolved}
+                character={character}
+                weapon={weapon}
+                {...(grip ? { grip } : {})}
+              />
+            ) : (
+              <ProceduralCharacter
+                pose={engine.poseOf(instance.id)}
+                character={character}
+                weapon={weapon}
+                // Colour by intent source, so "which one am I driving?" is
+                // answerable without reading the inspector.
+                color={instance.intentSource.kind === 'local-input' ? '#7dd3fc' : '#c4b5fd'}
+              />
+            )}
           </group>
-        ))}
+          );
+        })}
 
       {selectedId && <SelectionRing engine={engine} instanceId={selectedId} />}
     </Canvas>

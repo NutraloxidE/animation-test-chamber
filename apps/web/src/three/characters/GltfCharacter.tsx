@@ -6,9 +6,12 @@ import {
   isDodgeRecoveryTransition,
 } from '@atc/animation-runtime';
 import type { RootMotionTrack } from '@atc/replay-runtime';
+import type { ResolvedProject } from '@atc/schema';
 import * as THREE from 'three';
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { ChamberEngine } from '../../engine.ts';
 import type { CharacterPreset, WeaponGrip, WeaponMode } from '../catalog.ts';
+import type { CharacterPose } from './ProceduralCharacter.tsx';
 import { HeldSword } from './HeldSword.tsx';
 
 const CLIP_FOR_STATE: Record<string, string> = {
@@ -22,15 +25,35 @@ const CLIP_FOR_STATE: Record<string, string> = {
   'attack-02': 'HumanArmature|swordAttackJump',
 };
 
+/**
+ * Cross-fade used when no engine owns the blend clock.
+ *
+ * ponytail: fixed value in pose mode. The world runtime does not surface a
+ * per-instance blend duration; read it from there if the blends ever need to
+ * match the authored layer timings exactly.
+ */
+const POSE_MODE_BLEND_SEC = 0.12;
+
 export function GltfCharacter({
   engine,
+  pose,
+  poseProject,
   character,
   weapon,
   grip,
   gripEditorMode,
   onGripChange,
 }: {
-  engine: ChamberEngine;
+  /** Isolate view: the model reads the focused engine directly. */
+  engine?: ChamberEngine;
+  /** World view: a per-frame pose closure, one per instance. */
+  pose?: () => CharacterPose | null;
+  /**
+   * World view: the document the pose was simulated from. Without it the clip,
+   * loop and blend choices below fall back to the hardcoded table, so authored
+   * motion bindings and blend timings only ever apply in Isolate.
+   */
+  poseProject?: ResolvedProject;
   character: CharacterPreset;
   weapon: WeaponMode;
   grip?: WeaponGrip;
@@ -39,7 +62,13 @@ export function GltfCharacter({
 }) {
   const root = useRef<THREE.Group>(null);
   const [heldWeapon, setHeldWeapon] = useState<THREE.Group | null>(null);
-  const { scene: model } = useGLTF(character.modelUrl!);
+  const { scene: cached } = useGLTF(character.modelUrl!);
+  // `useGLTF` caches one scene per URL, and a three object can only have one
+  // parent: without a per-component clone the second instance steals the mesh
+  // from the first and both end up half-drawn. `SkeletonUtils.clone` is the
+  // skinned-mesh-safe copy — `Object3D.clone` leaves the bones pointing at the
+  // original skeleton.
+  const model = useMemo(() => skeletonClone(cached), [cached]);
   const baseAnimationUrl = character.animationUrl ?? character.modelUrl!;
   const weaponCompatible = Boolean(
     weapon.animationUrl && weapon.rigId === character.rigId,
@@ -136,6 +165,7 @@ export function GltfCharacter({
     weaponCompatible,
   ]);
   useEffect(() => {
+    if (!engine) return;
     engine.setActionRootMotionTracks(actionRootMotionTracks);
     return () => engine.setActionRootMotionTracks({});
   }, [actionRootMotionTracks, engine]);
@@ -168,18 +198,27 @@ export function GltfCharacter({
   useFrame((_, delta) => {
     const group = root.current;
     if (!group) return;
-    const state = engine.simulationState;
-    const record = engine.lastRecord;
-    group.position.set(state.position.x, state.position.y, state.position.z);
-    group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
+    // Pose mode hands the model one instance's state; engine mode reads the
+    // focused simulation. Everything below this point is identical.
+    const posed = pose?.() ?? null;
+    if (!engine && !posed) {
+      group.visible = false;
+      return;
+    }
+    group.visible = true;
+    const record = posed ?? engine!.lastRecord;
+    const position = posed?.position ?? engine!.simulationState.position;
+    const yawRad = posed?.yawRad ?? engine!.simulationState.yawRad;
+    group.position.set(position.x, position.y, position.z);
+    group.rotation.y = yawRad + (character.modelRotationY ?? 0);
 
-    const project = engine.currentProject;
-    const actionState = project.graph.states.find((entry) => entry.id === record?.actionState);
-    const locomotionState = project.graph.states.find(
+    const project = engine?.currentProject ?? poseProject ?? null;
+    const actionState = project?.graph.states.find((entry) => entry.id === record?.actionState);
+    const locomotionState = project?.graph.states.find(
       (entry) => entry.id === record?.locomotionState,
     );
     // The state names a slot; the character's motion set says which clip that is.
-    const actionClip = project.clips.find(
+    const actionClip = project?.clips.find(
       (entry) => entry.id === (actionState ? project.motionBindings[actionState.motionSlot] : ''),
     );
     const dodgeRecovery =
@@ -202,8 +241,10 @@ export function GltfCharacter({
     if (clipName !== currentClip.current) {
       const clip = animations.find((animation) => animation.name === clipName);
       if (clip) {
+        // Without a graph to ask, actions play once and locomotion loops —
+        // which is what every state in the shipped graphs declares anyway.
         const loop =
-          project.graph.states.find((state) => state.id === stateId)?.loop ?? true;
+          project?.graph.states.find((state) => state.id === stateId)?.loop ?? !actionActive;
         const nextAction = mixer
           .clipAction(clip, model)
           .reset()
@@ -215,7 +256,7 @@ export function GltfCharacter({
           nextAction,
           dodgeRecovery
             ? DODGE_RECOVERY_BLEND_SEC
-            : (engine.graphLayers[layer]?.blendDurationSec ?? 0),
+            : (engine?.graphLayers[layer]?.blendDurationSec ?? POSE_MODE_BLEND_SEC),
           false,
         );
         currentAction.current = nextAction;
@@ -263,9 +304,9 @@ export function GltfCharacter({
           size={0.45}
           translationSnap={0.005}
           rotationSnap={THREE.MathUtils.degToRad(1)}
-          onMouseDown={() => engine.detachInput()}
+          onMouseDown={() => engine?.detachInput()}
           onMouseUp={() => {
-            engine.attachInput();
+            engine?.attachInput();
             onGripChange?.({
               position: heldWeapon.position.toArray(),
               rotation: [

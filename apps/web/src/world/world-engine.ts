@@ -105,6 +105,21 @@ export class WorldChamberEngine {
     this.runtime = new WorldRuntime(this.options);
   }
 
+  /**
+   * Pushes edited canonical data into the world, so tuning done in Focused is
+   * what the world simulates.
+   *
+   * ponytail: rebuilds the runtime, which respawns every instance. Same
+   * trade-off `setWorld` already makes. Re-resolve per instance and call
+   * `Simulation.updateProject` if editing while the world runs needs to keep
+   * positions.
+   */
+  setProject(project: ProjectDefinition): void {
+    this.options = { ...this.options, project };
+    this.runtime = new WorldRuntime(this.options);
+    this.sampler.setInputMap(project.inputMap);
+  }
+
   setCameraYaw(yawRad: number): void {
     this.cameraYaw = yawRad;
     this.runtime.setCameraYaw(yawRad);

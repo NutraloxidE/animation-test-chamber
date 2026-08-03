@@ -680,6 +680,9 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     const preview = session.previewProject;
     persistStagedDraft(session);
     engine.setProject(preview);
+    // The world runs its own instances off its own document; without this it
+    // keeps simulating the seed and every tuning edit stops at Isolate.
+    worldEngine.setProject(preview);
     set({ project: preview, revision: get().revision + 1 });
   };
 
