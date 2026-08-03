@@ -1334,6 +1334,12 @@ textarea {
     background: var(--panel-2);
     font-size: 12px;
     padding: 8px;
+    /* Narrow: the bottom workspace dock is a fixed 72vh overlay (z-index 22)
+       that would otherwise cover this handle — the one control that opens the
+       Inspector. Navigation outranks the docks it opens, the same rule the
+       dock bar already follows against the hierarchy overlay. */
+    position: relative;
+    z-index: 23;
   }
 
   .app__panels {

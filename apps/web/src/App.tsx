@@ -159,12 +159,16 @@ export function App() {
   const backendOnline = useChamber((state) => state.backendOnline);
 
   const workspaceMode = useChamber((state) => state.workspaceMode);
+  const setWorkspaceMode = useChamber((state) => state.setWorkspaceMode);
   const libraryDialog = useChamber((state) => state.libraryDialog);
   const presentation = useChamber((state) => state.viewportPresentation);
   const mouseLookMode = useChamber((state) => state.mouseLookMode);
   const setMouseLookMode = useChamber((state) => state.setMouseLookMode);
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Matches the 900px breakpoint styles.css uses to turn the side and bottom
+  // docks from reserved columns into overlays.
+  const narrow = !window.matchMedia('(min-width: 901px)').matches;
   // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
   // (styles.css) rather than a reserved grid column, so leaving it open by
   // default there would cover the sheet handle and every other narrow-width
@@ -340,7 +344,15 @@ export function App() {
             <button
               type="button"
               className="sheet-handle"
-              onClick={() => setSheetOpen((open) => !open)}
+              onClick={() => {
+                const next = !sheetOpen;
+                setSheetOpen(next);
+                // Narrow viewports give the bottom of the screen to one
+                // overlay at a time. The Inspector sheet and the workspace
+                // dock both live there, and stacking them leaves whichever
+                // lost the z-index race unreachable rather than merely hidden.
+                if (next && narrow && libraryOpen) setWorkspaceMode('chamber');
+              }}
               data-testid="sheet-handle"
             >
               {sheetOpen ? 'Close panels ▾' : 'Open panels ▴'}
