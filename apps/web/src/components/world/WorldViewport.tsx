@@ -74,10 +74,11 @@ export function WorldViewport() {
   const selection = useChamber((state) => state.sceneSelection);
   const selectScene = useChamber((state) => state.selectScene);
   const loadoutOf = useChamber((state) => state.loadoutOf);
-  // The render preset is shared, so the world draws every instance with the
-  // model the inspector names — otherwise switching it would only ever be
-  // visible in Isolate.
-  const character = useChamber((state) => characterPreset(state.characterPresetId));
+  // Resolved per instance below. Subscribing to both fields keeps the viewport
+  // repainting when either the default or one instance's override changes.
+  const characterPresetIdFor = useChamber((state) => state.characterPresetIdFor);
+  useChamber((state) => state.characterPresetId);
+  useChamber((state) => state.instanceCharacterPresets);
   // An attachment selection rings its parent instance: clicking the shield in
   // the tree and clicking the instance mean the same object out here.
   const selectedId = selectedInstanceId(selection);
@@ -125,6 +126,7 @@ export function WorldViewport() {
       {world.instances
         .filter((instance) => instance.enabled)
         .map((instance) => {
+          const character = characterPreset(characterPresetIdFor(instance.id));
           const weapon = weaponMode(loadoutOf(instance.id)?.weaponMode.effective ?? '');
           const grip =
             weaponGripOverrides[`${character.id}:${weapon.id}`] ??

@@ -15,6 +15,10 @@ export function CameraInspector() {
   const mouseLookMode = useChamber((state) => state.mouseLookMode);
   const setMouseLookMode = useChamber((state) => state.setMouseLookMode);
   const selectScene = useChamber((state) => state.selectScene);
+  const setCameraTargetInstance = useChamber((state) => state.setCameraTargetInstance);
+  // Disabled instances are omitted rather than shown greyed: the store rejects
+  // them anyway, and an option that always fails is worse than no option.
+  const targets = world.instances.filter((instance) => instance.enabled);
 
   return (
     <div className="inspector inspector--camera" data-testid="camera-inspector">
@@ -27,10 +31,20 @@ export function CameraInspector() {
           Target
           <ScopeBadge scope="SHARED" />
         </h3>
-        <dl className="inspector__provenance">
-          <dt>Authored camera target</dt>
-          <dd data-testid="camera-target-instance">{world.cameraTargetInstanceId}</dd>
-        </dl>
+        <label className="inspector__field">
+          <span className="inspector__field-label">Follows</span>
+          <select
+            value={world.cameraTargetInstanceId}
+            data-testid="camera-target-instance"
+            onChange={(event) => setCameraTargetInstance(event.target.value)}
+          >
+            {targets.map((instance) => (
+              <option key={instance.id} value={instance.id}>
+                {instance.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           data-testid="camera-select-target"
@@ -41,8 +55,8 @@ export function CameraInspector() {
           Select target instance
         </button>
         <p className="inspector__hint">
-          Set from the target instance&rsquo;s World Roles. The camera follows the authored target;
-          which object is <em>selected</em> does not move it.
+          Also settable from the target instance&rsquo;s World Roles. The camera follows the
+          authored target; which object is <em>selected</em> does not move it.
         </p>
       </section>
 

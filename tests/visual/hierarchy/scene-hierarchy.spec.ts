@@ -170,6 +170,43 @@ test.describe('contextual inspector', () => {
     await expect(page.getByTestId('camera-target-instance')).toBeVisible();
   });
 
+  test('the camera inspector retargets which instance is followed', async ({ page }) => {
+    await open(page);
+    await page.getByTestId('scene-node-camera').click();
+    const target = page.getByTestId('camera-target-instance');
+    await expect(target).toHaveValue('controlled-humanoid');
+
+    await target.selectOption('scripted-humanoid');
+    await expect(target).toHaveValue('scripted-humanoid');
+
+    // The badge is read off the world document, so it moving proves the edit
+    // reached canonical data rather than only the select element.
+    await expect(page.getByTestId('scene-node-instance-scripted-humanoid')).toContainText('Camera');
+  });
+
+  test('render model is per instance, not shared', async ({ page }) => {
+    await open(page);
+    const select = page.getByTestId('instance-character-select');
+
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await expect(select).toHaveValue('');
+    const models = await select.locator('option').evaluateAll((options) =>
+      options.map((option) => (option as HTMLOptionElement).value).filter(Boolean),
+    );
+    await select.selectOption(models[1]!);
+    await expect(select).toHaveValue(models[1]!);
+
+    // The other instance must still be following the default. If the preset
+    // were still shared state, this would read back the model set above.
+    await page.getByTestId('scene-node-instance-scripted-humanoid').click();
+    await expect(select).toHaveValue('');
+
+    // And the override has to survive coming back, rather than being reset by
+    // whichever instance was selected last.
+    await page.getByTestId('scene-node-instance-controlled-humanoid').click();
+    await expect(select).toHaveValue(models[1]!);
+  });
+
   test('switching between world and isolate preserves selection and inspector', async ({
     page,
   }) => {

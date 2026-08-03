@@ -29,6 +29,11 @@ export default defineConfig({
     },
   },
   server: {
+    // Explicit IPv4. Vite's default binds whatever `localhost` resolves to,
+    // which on some hosts is `::1` only — and every other address in this repo
+    // (the proxy target below, Playwright's baseURL) is spelled 127.0.0.1, so
+    // the test runner would wait for a port nothing was listening on.
+    host: '127.0.0.1',
     port: 5173,
     fs: {
       // Needed because sources and canonical data live above apps/web.

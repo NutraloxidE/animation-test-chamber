@@ -287,6 +287,18 @@ interface ChamberState {
   selectedStateId: string;
   terrainPresetId: string;
   characterPresetId: string;
+  /**
+   * Instance id → render model, for instances that have been given their own.
+   *
+   * A sparse map rather than a value on every instance: an unset instance
+   * follows `characterPresetId`, so changing the default still moves everything
+   * the user never singled out. Storing a copy per instance would freeze each
+   * one at whatever the default happened to be when the world was authored.
+   *
+   * View state, not canonical data — which model draws an instance is not a
+   * property of the world document, so this never reaches project.json.
+   */
+  instanceCharacterPresets: Record<string, string>;
   weaponModeId: string;
   /** Equipment slot id → equipped, seeded from each slot's declared default. */
   equipped: Record<string, boolean>;
@@ -395,6 +407,10 @@ interface ChamberActions {
   syncPreviewOverride(options?: { seek?: boolean }): void;
   setTerrainPreset(id: string): void;
   setCharacterPreset(id: string): void;
+  /** Gives one instance its own render model. `null` returns it to the default. */
+  setInstanceCharacterPreset(instanceId: string, id: string | null): void;
+  /** The render model an instance draws with: its own, or the default. */
+  characterPresetIdFor(instanceId: string): string;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
   saveWeaponGrip(characterId: string, weaponId: string, grip: WeaponGrip): void;
   resetWeaponGrip(characterId: string, weaponId: string): void;
@@ -724,6 +740,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     selectedStateId: 'run',
     terrainPresetId: canonicalSeed.defaultTerrainPresetId,
     characterPresetId: CHARACTER_PRESETS[0]!.id,
+    instanceCharacterPresets: {},
     weaponModeId: WEAPON_MODES[0]!.id,
     equipped: defaultEquipped(canonicalSeed),
     weaponGripOverrides: {},
@@ -1753,6 +1770,28 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       });
     },
 
+    setInstanceCharacterPreset(instanceId, id) {
+      if (id !== null && !CHARACTER_PRESETS.some((preset) => preset.id === id)) return;
+      set((state) => {
+        const next = { ...state.instanceCharacterPresets };
+        // Clearing deletes the key rather than writing the current default:
+        // "follows the default" has to keep following it afterwards.
+        if (id === null) delete next[instanceId];
+        else next[instanceId] = id;
+        return { instanceCharacterPresets: next };
+      });
+    },
+
+    characterPresetIdFor(instanceId) {
+      const state = get();
+      const id = state.instanceCharacterPresets[instanceId];
+      // A stored id can outlive the catalog entry it names, and a missing model
+      // would render nothing at all rather than visibly falling back.
+      return id && CHARACTER_PRESETS.some((preset) => preset.id === id)
+        ? id
+        : state.characterPresetId;
+    },
+
     setGripEditorMode(mode) {
       set({
         gripEditorMode: mode,
@@ -2155,6 +2194,7 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       viewportPresentation: state.viewportPresentation,
       terrainPresetId: state.terrainPresetId,
       characterPresetId: state.characterPresetId,
+      instanceCharacterPresets: state.instanceCharacterPresets,
       weaponModeId: state.weaponModeId,
       equipped: state.equipped,
       weaponGripOverrides: state.weaponGripOverrides,

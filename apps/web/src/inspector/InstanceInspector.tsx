@@ -9,12 +9,59 @@
  * pixels from a shared asset reference.
  */
 import { useChamber } from '../store.ts';
+import { CHARACTER_PRESETS } from '../three/catalog.ts';
 import { useObservations } from './observations.ts';
 import { DeclaredField, INSTANCE_SURFACE } from './sections/DeclaredFields.tsx';
 import { LoadoutSection } from './sections/LoadoutSection.tsx';
 import { RuntimeStateSection } from './sections/RuntimeStateSection.tsx';
 import { SharedDefinitionsSection } from './sections/SharedDefinitionsSection.tsx';
 import { ScopeBadge } from './sections/ScopeBadge.tsx';
+
+/**
+ * Which model draws this instance.
+ *
+ * Instance-scoped, and sits above Shared Definitions so the panel's ordering
+ * still holds: this changes one instance's appearance and nothing else. The
+ * explicit "Default" option matters — without it, picking the model that
+ * happens to be the current default would pin the instance to it forever,
+ * and the user would have no way to tell the two states apart.
+ */
+function RenderModelSection({ instanceId }: { instanceId: string }) {
+  const override = useChamber((state) => state.instanceCharacterPresets[instanceId]);
+  const defaultId = useChamber((state) => state.characterPresetId);
+  const setInstanceCharacterPreset = useChamber((state) => state.setInstanceCharacterPreset);
+  const defaultLabel = CHARACTER_PRESETS.find((preset) => preset.id === defaultId)?.label;
+
+  return (
+    <section className="inspector__section" data-testid="inspector-render-model">
+      <h3>
+        Render Model
+        <ScopeBadge scope="INSTANCE" />
+      </h3>
+      <label className="inspector__field">
+        <span className="inspector__field-label">Model</span>
+        <select
+          value={override ?? ''}
+          data-testid="instance-character-select"
+          onChange={(event) =>
+            setInstanceCharacterPreset(instanceId, event.target.value || null)
+          }
+        >
+          <option value="">Default ({defaultLabel})</option>
+          {CHARACTER_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="inspector__hint">
+        Presentation only. Nothing here changes the animation this instance plays, and nothing is
+        written to the world document.
+      </p>
+    </section>
+  );
+}
 
 export function InstanceInspector({ instanceId }: { instanceId: string }) {
   const world = useChamber((state) => state.stagedWorld);
@@ -65,6 +112,8 @@ export function InstanceInspector({ instanceId }: { instanceId: string }) {
       </section>
 
       <LoadoutSection instanceId={instance.id} />
+
+      <RenderModelSection instanceId={instance.id} />
 
       <section className="inspector__section" data-testid="inspector-world-roles">
         <h3>World Roles</h3>

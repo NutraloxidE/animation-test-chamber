@@ -8,7 +8,6 @@
  * selection are separate fields.
  */
 import { useChamber } from '../../store.ts';
-import { CHARACTER_PRESETS } from '../../three/catalog.ts';
 import { ScopeBadge } from './ScopeBadge.tsx';
 
 export function SharedDefinitionsSection({ instanceId }: { instanceId: string }) {
@@ -17,8 +16,6 @@ export function SharedDefinitionsSection({ instanceId }: { instanceId: string })
     state.stagedWorld.instances.find((entry) => entry.id === instanceId),
   );
   const openCharacter = useChamber((state) => state.openCharacterDefinition);
-  const characterPresetId = useChamber((state) => state.characterPresetId);
-  const setCharacterPreset = useChamber((state) => state.setCharacterPreset);
 
   if (!instance) return null;
 
@@ -46,23 +43,6 @@ export function SharedDefinitionsSection({ instanceId }: { instanceId: string })
           </div>
         ))}
       </dl>
-      <label className="inspector__field">
-        <span className="inspector__field-label">
-          Render model
-          <ScopeBadge scope="SHARED" />
-        </span>
-        <select
-          value={characterPresetId}
-          data-testid="instance-character-select"
-          onChange={(event) => setCharacterPreset(event.target.value)}
-        >
-          {CHARACTER_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
-      </label>
       <p className="inspector__sharing">
         These definitions are <b>shared</b>: changing them affects every instance referencing this
         character. Everything under Loadout and Transform is <b>this instance only</b>.
