@@ -52,6 +52,18 @@ async function openPanel(page: Page, id: string): Promise<void> {
 }
 
 /** The bottom dock is a toggle; opening it is idempotent. */
+/**
+ * True below the 900px breakpoint styles.css uses to turn the docks from
+ * reserved columns into overlays.
+ *
+ * Measured from the viewport rather than inferred from whether the sheet
+ * handle is showing: the handle is withdrawn while the workspace dock owns the
+ * screen, so asking about it answers "not narrow" at 320px with the dock open.
+ */
+function isNarrow(page: Page): boolean {
+  return (page.viewportSize()?.width ?? 0) < 901;
+}
+
 async function openBottomDock(page: Page): Promise<void> {
   if (!(await page.getByTestId('workspace-dock').isVisible())) {
     await page.getByTestId('workspace-asset-library').click();
