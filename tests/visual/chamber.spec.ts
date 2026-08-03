@@ -215,44 +215,55 @@ test('camera control switches between mouse movement and click-drag', async ({ p
 });
 
 test('character and weapon presets can be selected', async ({ page }) => {
-  // The render preset is a shared definition, so it lives in Project/Assets.
+  /*
+   * This walks the three stages, because the controls it touches now live in
+   * the stage that owns each question:
+   *   Project        which renderer draws the fallback model (Diagnostics)
+   *   World          which weapon this *instance* is holding (loadout)
+   *   Character Lab  the skinned model, and the grip that positions the weapon
+   *
+   * The grip editor used to be in the World viewport's Controls overlay, which
+   * stopped working the moment the skinned renderer left World: the control
+   * was in one stage and the gizmo it drives in another.
+   */
   await openPanel(page, 'project');
-  // The render preset is a *renderer* setting, not Character identity, so it
-  // lives under Diagnostics now and is named Preview Renderer (DECISION 0014).
   await page.getByTestId('project-diagnostics').getByText('Diagnostics').click();
   await page.getByTestId('preview-renderer-select').selectOption('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
-  /*
-   * The skinned character and its weapon animations are Character Lab's
-   * preview stage. World and Isolate are one shared procedural path — which
-   * is what makes Clip Preview visible in both — so the GLB fetch this
-   * asserts happens in the stage where that renderer actually lives.
-   */
-  await page.getByTestId('primary-nav-character-lab').click();
-  await expect(page.getByTestId('character-lab-stage')).toBeVisible();
-  const swordAsset = page.waitForResponse((response) =>
-    response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
-  );
+
   // Weapon mode is instance loadout, so it is reached through the instance.
   await openFocusedLoadout(page);
   await page.getByTestId('loadout-weapon-mode-input').selectOption('sword');
-  expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
   await closeHierarchyDock(page);
   await closeInspectorSheet(page);
+
+  // The skinned character and its weapon animations are Character Lab's
+  // preview stage; the GLB is fetched when that renderer mounts.
+  const swordAsset = page.waitForResponse((response) =>
+    response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
+  );
+  await page.getByTestId('primary-nav-character-lab').click();
+  await expect(page.getByTestId('character-lab-stage')).toBeVisible();
+  expect((await swordAsset).ok()).toBe(true);
+
   await page.getByTestId('grip-editor-select').selectOption('rotate');
   await expect(page.getByTestId('reset-grip')).toBeVisible();
-  await expect(page.getByTestId('mobile-pad')).toBeHidden();
   await expect(page.getByTestId('status-bar')).toContainText('auto-save');
+
+  // Back in World, the viewport overlay keeps the controls that are genuinely
+  // about observing and driving the running world.
+  await page.getByTestId('primary-nav-world').click();
+  await expect(page.getByTestId('mobile-pad')).toBeHidden();
   await expect(page.getByTestId('frame-step')).toBeDisabled();
   await page.getByTestId('toggle-pause').click();
   await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Character, weapon and equipment left the overlay entirely; only
-  // viewport-controls' own body (e.g. the grip editor) collapses with it.
-  await expect(page.getByTestId('grip-editor-select')).toBeHidden();
+  // Character, weapon, equipment and the grip editor all left this overlay;
+  // only its own body collapses with it.
+  await expect(page.getByTestId('toggle-camera-control')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {

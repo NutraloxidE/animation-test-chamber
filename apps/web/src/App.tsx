@@ -13,7 +13,6 @@ import { BottomWorkspaceDock } from './workspaces/BottomWorkspaceDock.tsx';
 import { PrimaryWorkspaceNav } from './navigation/PrimaryWorkspaceNav.tsx';
 import { CharacterLab } from './character-lab/CharacterLab.tsx';
 import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
-import { characterPreset, weaponMode } from './three/catalog.ts';
 
 /** Live readout of what the simulation is doing right now. */
 function Hud() {
@@ -247,11 +246,7 @@ export function App() {
   const redo = useChamber((state) => state.redo);
   const exportUnity = useChamber((state) => state.exportUnity);
   const project = useChamber((state) => state.project);
-  const characterPresetId = useChamber((state) => state.characterPresetId);
-  const weaponModeId = useChamber((state) => state.weaponModeId);
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
-  const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
-  const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
   const detectBackend = useChamber((state) => state.detectBackend);
   const backendOnline = useChamber((state) => state.backendOnline);
 
@@ -290,10 +285,6 @@ export function App() {
   // happens to be mounted.
   useChamberClock();
   const [paused, setPaused] = useState(() => engine.isPaused);
-  const gripSupported = Boolean(
-    characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
-    weaponMode(weaponModeId).heldItem,
-  );
 
   const toggleMouseLookMode = (): void =>
     setMouseLookMode(mouseLookMode === 'free' ? 'drag' : 'free');
@@ -390,34 +381,11 @@ export function App() {
                   all gone from here. The overlay answers "how do I observe and
                   drive this view?"; it does not answer "how is this object
                   authored?" — that is the Inspector's question. */}
-              <label className="viewport-select">
-                Grip
-                <select
-                  value={gripEditorMode ?? 'off'}
-                  disabled={!gripSupported}
-                  onChange={(event) =>
-                    setGripEditorMode(
-                      event.target.value === 'off'
-                        ? null
-                        : (event.target.value as 'translate' | 'rotate'),
-                    )
-                  }
-                  data-testid="grip-editor-select"
-                >
-                  <option value="off">Off</option>
-                  <option value="translate">Move · autosave</option>
-                  <option value="rotate">Rotate · autosave</option>
-                </select>
-              </label>
-              {gripEditorMode && (
-                <button
-                  type="button"
-                  onClick={() => resetWeaponGrip(characterPresetId, weaponModeId)}
-                  data-testid="reset-grip"
-                >
-                  Reset grip
-                </button>
-              )}
+              {/* The weapon-grip editor moved to Character Lab's preview
+                  stage: a grip is Character/Rig attachment configuration, and
+                  the gizmo that edits it only exists in the renderer that
+                  stage owns. Leaving the control here would have been a
+                  control pointing at nothing. */}
               <button
                 type="button"
                 onClick={toggleMouseLookMode}
@@ -520,35 +488,47 @@ export function App() {
           {/* The dialog belongs to the Chamber too: a commit that turns out to
               hold animation edits opens it here rather than sending the reader
               to another workspace to find out why the commit stopped. */}
-          {libraryDialog === 'save-destination' && <SaveDestinationDialog />}
 
           {/* A draft made against a repository revision that has since moved
               on is never reapplied silently (PLAN Part V §24) — it is only
               ever offered here, for a human to discard. */}
-          {staleCharacterDrafts.length > 0 && (
-            <div className="app__stale-draft-banner" data-testid="stale-character-draft-banner">
-              {staleCharacterDrafts.map((draft) => (
-                <p key={`${draft.characterId}:${draft.revisionId}`}>
-                  A browser-only draft for “{draft.characterId}” was made against an older
-                  repository revision and was not applied.
-                  <button
-                    type="button"
-                    onClick={() => discardStaleCharacterDraft(draft.characterId, draft.revisionId)}
-                    data-testid={`stale-character-draft-discard-${draft.characterId}`}
-                  >
-                    Discard
-                  </button>
-                </p>
-              ))}
-            </div>
-          )}
-
-          <footer className="status" data-testid="status-bar">
-            {statusMessage}
-          </footer>
         </>
       )}
         </>
+      )}
+
+      {/* Application chrome, not world chrome. The status bar, the stale-draft
+          banner and the save-destination dialog report on the edit session,
+          which every stage shares — so they render in every stage. Nesting
+          them inside the World layout meant a Character Lab edit produced a
+          status message with nowhere to appear. */}
+      {!hideUi && staleCharacterDrafts.length > 0 && (
+        <div className="app__stale-draft-banner" data-testid="stale-character-draft-banner">
+          {staleCharacterDrafts.map((draft) => (
+            <p key={`${draft.characterId}:${draft.revisionId}`}>
+              A browser-only draft for “{draft.characterId}” was made against an older
+              repository revision and was not applied.
+              <button
+                type="button"
+                onClick={() => discardStaleCharacterDraft(draft.characterId, draft.revisionId)}
+                data-testid={`stale-character-draft-discard-${draft.characterId}`}
+              >
+                Discard
+              </button>
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* The dialog belongs to the edit session too: a commit that turns out
+          to hold animation edits opens it wherever the user is, rather than
+          sending them to another stage to find out why the commit stopped. */}
+      {!hideUi && libraryDialog === 'save-destination' && <SaveDestinationDialog />}
+
+      {!hideUi && (
+        <footer className="status" data-testid="status-bar">
+          {statusMessage}
+        </footer>
       )}
     </div>
   );

@@ -3122,3 +3122,32 @@ button.link {
     border-top: 1px solid var(--line);
   }
 }
+
+/* Character Lab stage controls: the grip editor, with the gizmo it drives. */
+.character-lab__stage-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+.character-lab__stage-controls summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.character-lab__stage-controls-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}

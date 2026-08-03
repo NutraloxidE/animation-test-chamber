@@ -16,6 +16,7 @@ import { useChamber } from '../store.ts';
 import { CharacterLabHeader } from './CharacterLabHeader.tsx';
 import { CharacterLabInspector } from './CharacterLabInspector.tsx';
 import { AnimationWorkspace } from '../workspaces/AnimationWorkspace.tsx';
+import { CharacterLabStageControls } from './CharacterLabStageControls.tsx';
 
 export function CharacterLab() {
   const editingCharacterId = useChamber((state) => state.editingCharacterId);
@@ -41,6 +42,7 @@ export function CharacterLab() {
               the header names. */}
           <Viewport />
           <span className="character-lab__stage-badge">Preview Stage</span>
+          <CharacterLabStageControls />
         </div>
         <aside className="character-lab__side">
           <CharacterLabInspector character={character} />
