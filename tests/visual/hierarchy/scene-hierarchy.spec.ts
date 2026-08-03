@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * The scene hierarchy and the contextual inspector, driven the way a person
@@ -20,15 +20,15 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
  * the same facts more weakly. The narrow layout has its own test at the bottom
  * of this file, which is about the layout rather than about the architecture.
  */
-// Playwright requires the fixtures argument to be a destructuring pattern,
-// and this predicate needs none of them — only testInfo.
-// eslint-disable-next-line no-empty-pattern
-const notProject = (name: string) => ({}, testInfo: TestInfo) => testInfo.project.name !== name;
-
-test.skip(
-  notProject('desktop'),
-  'information architecture is viewport-independent; narrow layout is covered separately',
-);
+// Asked inside a hook rather than through test.skip's predicate form: that
+// form is handed the fixtures object first, and Playwright decides how to call
+// it by inspecting the function, which a wrapper defeats.
+test.beforeEach(() => {
+  test.skip(
+    test.info().project.name !== 'desktop',
+    'information architecture is viewport-independent; narrow layout is covered separately',
+  );
+});
 
 async function open(page: Page): Promise<void> {
   await page.goto('/');
@@ -258,7 +258,9 @@ test.describe('contextual inspector', () => {
  * and closing, and that nothing overflows the viewport horizontally.
  */
 test.describe('narrow layout', () => {
-  test.skip(notProject('narrow'), 'this is the 320px layout test');
+  test.beforeEach(() => {
+    test.skip(test.info().project.name !== 'narrow', 'this is the 320px layout test');
+  });
 
   test('hierarchy, inspector and workspaces are each reachable at 320px', async ({ page }) => {
     await page.goto('/');

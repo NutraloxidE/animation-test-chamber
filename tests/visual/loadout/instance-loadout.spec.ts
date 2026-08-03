@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * Two instances of one character, given different loadouts, through the UI.
@@ -18,15 +18,14 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
  * command level in tests/integration/world/instance-loadout.test.ts on every
  * run, and the narrow layout has its own test in the hierarchy spec.
  */
-// Playwright requires the fixtures argument to be a destructuring pattern,
-// and this predicate needs none of them — only testInfo.
-// eslint-disable-next-line no-empty-pattern
-const desktopOnly = ({}, testInfo: TestInfo) => testInfo.project.name !== 'desktop';
-
-test.skip(
-  desktopOnly,
-  'loadout isolation is viewport-independent; narrow layout is covered separately',
-);
+// Asked inside a hook rather than through test.skip's predicate form, which is
+// handed the fixtures object first — see the hierarchy spec.
+test.beforeEach(() => {
+  test.skip(
+    test.info().project.name !== 'desktop',
+    'loadout isolation is viewport-independent; narrow layout is covered separately',
+  );
+});
 
 async function open(page: Page): Promise<void> {
   await page.goto('/');
