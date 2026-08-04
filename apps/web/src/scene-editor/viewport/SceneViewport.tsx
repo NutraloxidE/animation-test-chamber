@@ -12,12 +12,13 @@
  * here and clicking its row there are the same selection, because they are the
  * same `SceneSelection` value passed in — not two selections kept in sync.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Grid, OrbitControls, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SceneDefinition, SceneEntityDefinition, TransformDefinition } from '@atc/schema';
 import type { SceneSelection } from '../scene-selection.ts';
+import { readDragPayload, type SceneAssetDragPayload } from '../drag-payload.ts';
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale';
 export type TransformSpace = 'local' | 'world';
@@ -37,6 +38,15 @@ export interface SceneViewportProps {
   onCommitTransform: (entityId: string, transform: TransformDefinition) => void;
   mode: GizmoMode;
   space: TransformSpace;
+  /**
+   * Called on a valid drop, with the ground-plane point under the cursor.
+   *
+   * The *drop* decides where a thing lands, which is why the drag payload
+   * carries no transform. Placing everything at the origin when a real hit
+   * point exists would make composing a scene a sequence of drop-then-drag-it-
+   * to-where-you-meant gestures.
+   */
+  onDropAsset: (payload: SceneAssetDragPayload, point: { x: number; y: number; z: number }) => void;
 }
 
 /** The colour an entity renders in, so kinds are distinguishable without labels. */
@@ -173,6 +183,37 @@ function InitialCamera() {
   return null;
 }
 
+/**
+ * Captures the camera so a DOM drag event — which knows nothing about three.js
+ * — can be turned into a point on the ground plane.
+ */
+function CameraProbe({ onReady }: { onReady: (camera: THREE.Camera) => void }) {
+  const { camera } = useThree();
+  useEffect(() => onReady(camera), [camera, onReady]);
+  return null;
+}
+
+/**
+ * The drop ghost.
+ *
+ * Presentation only, and never written into `previewDocument` (§12.3): a ghost
+ * that edited the preview would make "I dragged over the viewport and changed
+ * my mind" produce a dirty session with an entity in it.
+ */
+function DropGhost({ point, valid }: { point: THREE.Vector3; valid: boolean }) {
+  return (
+    <mesh position={[point.x, point.y + 0.5, point.z]}>
+      <boxGeometry args={[0.6, 1, 0.6]} />
+      <meshBasicMaterial
+        color={valid ? '#6ea8fe' : '#ff6b6b'}
+        transparent
+        opacity={0.45}
+        wireframe={!valid}
+      />
+    </mesh>
+  );
+}
+
 export function SceneViewport({
   scene,
   selection,
@@ -180,13 +221,76 @@ export function SceneViewport({
   onCommitTransform,
   mode,
   space,
+  onDropAsset,
 }: SceneViewportProps): JSX.Element {
   const [target, setTarget] = useState<THREE.Object3D | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [ghost, setGhost] = useState<{ point: THREE.Vector3; valid: boolean } | null>(null);
   const selectedId = selection.kind === 'entity' ? selection.entityId : null;
 
+  const cameraRef = useRef<THREE.Camera | null>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const onCameraReady = useCallback((camera: THREE.Camera) => {
+    cameraRef.current = camera;
+  }, []);
+
+  /**
+   * Where the cursor points on the ground plane, or `null` when the ray misses
+   * it — looking up at the sky, for instance. A miss must stay a miss: silently
+   * substituting the origin would place the entity somewhere the user never
+   * pointed.
+   */
+  const groundPoint = (event: React.DragEvent): THREE.Vector3 | null => {
+    const camera = cameraRef.current;
+    const surface = surfaceRef.current;
+    if (!camera || !surface) return null;
+
+    const bounds = surface.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(ndc, camera);
+    const hit = new THREE.Vector3();
+    const found = raycaster.ray.intersectPlane(
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+      hit,
+    );
+    return found ? hit : null;
+  };
+
+  const handleDragOver = (event: React.DragEvent): void => {
+    if (!event.dataTransfer.types.includes('application/x-atc-scene-asset')) return;
+    // Preventing default is what makes this a drop target at all.
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    const point = groundPoint(event);
+    setGhost(point ? { point, valid: true } : null);
+  };
+
+  const handleDrop = (event: React.DragEvent): void => {
+    event.preventDefault();
+    setGhost(null);
+    const payload = readDragPayload(event.dataTransfer);
+    // An unrecognised payload is refused rather than guessed at — that is how
+    // an OS file drag stays out of canonical Scene data.
+    if (!payload) return;
+    const point = groundPoint(event);
+    if (!point) return;
+    onDropAsset(payload, { x: point.x, y: point.y, z: point.z });
+  };
+
   return (
-    <div className="scene-viewport" data-testid="scene-viewport">
+    <div
+      className="scene-viewport"
+      data-testid="scene-viewport"
+      ref={surfaceRef}
+      onDragOver={handleDragOver}
+      // Cancelling or leaving clears the ghost; nothing was ever staged by it.
+      onDragLeave={() => setGhost(null)}
+      onDrop={handleDrop}
+    >
       <Canvas
         camera={{ fov: 55, near: 0.1, far: 500 }}
         onPointerMissed={() => {
@@ -196,6 +300,7 @@ export function SceneViewport({
         }}
       >
         <InitialCamera />
+        <CameraProbe onReady={onCameraReady} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[5, 8, 4]} intensity={1.1} />
         <Grid
@@ -235,6 +340,8 @@ export function SceneViewport({
             }}
           />
         )}
+
+        {ghost && <DropGhost point={ghost.point} valid={ghost.valid} />}
 
         {/* Disabled during a gizmo drag so orbiting does not fight the handle. */}
         <OrbitControls makeDefault enabled={!dragging} target={[0, 1, 0]} />

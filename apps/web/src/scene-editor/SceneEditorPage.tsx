@@ -7,11 +7,11 @@
  * would have had to share the chamber's single-character session, and "which
  * character is this panel about" is exactly the question the split removes.
  *
- * **Phase 7 is partial and says so.** The viewport renders the authored scene,
- * shares one selection with the Hierarchy and drives move/rotate/scale gizmos;
- * drag-and-drop placement from the Asset Panel is still Phase 8, and Apply is
- * not yet wired from this page. Everything present is real — every edit goes
- * through a typed operation and the shared staging model.
+ * Every edit here — an Inspector field, a gizmo drag, a drop from the Asset
+ * Panel — goes through one typed operation and the shared staging model, which
+ * is what makes the same change reachable by a machine. What is still missing
+ * is browsing repository prop and model assets; the Asset Panel currently
+ * offers Character Definitions and the built-in Light and Camera entries.
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -23,6 +23,8 @@ import { useSceneSession, type SceneSessionHandle } from './use-scene-session.ts
 import { selectedEntityId, type SceneSelection } from './scene-selection.ts';
 import { SceneViewport, type GizmoMode, type TransformSpace } from './viewport/SceneViewport.tsx';
 import type { SceneDefinition, SceneEntityDefinition } from '@atc/schema';
+import { IDENTITY_ROTATION, UNIT_SCALE } from '@atc/schema';
+import { assetOf, placementEntityId, writeDragPayload } from './drag-payload.ts';
 import type { PlaceableAsset } from '@atc/editor-core';
 
 export function SceneEditorPage(): JSX.Element {
@@ -167,6 +169,27 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
         }
         mode={mode}
         space={space}
+        onDropAsset={(payload, point) => {
+          const asset = assetOf(payload);
+          if (!asset) return;
+          /*
+           * The drop dispatches the *same* typed command the Asset Panel's
+           * place button does. A drop handler that pushed onto scene.entities
+           * directly would be a second write path with no validation, no
+           * protection check and no machine equivalent.
+           */
+          handle.dispatch({
+            type: 'scene.place_asset',
+            entityId: placementEntityId(payload.id, handle.scene.entities),
+            displayName: payload.displayName,
+            asset,
+            transform: {
+              position: point,
+              rotation: { ...IDENTITY_ROTATION },
+              scale: { ...UNIT_SCALE },
+            },
+          });
+        }}
       />
 
       <aside className="scene-inspector" data-testid="scene-inspector">
@@ -451,10 +474,19 @@ function AssetPanel({ handle }: { handle: SceneSessionHandle }): JSX.Element {
           <li key={character.id}>
             <button
               type="button"
+              draggable
+              onDragStart={(event) =>
+                writeDragPayload(event.dataTransfer, {
+                  kind: 'character',
+                  id: character.id,
+                  displayName: character.displayName,
+                })
+              }
               onClick={() =>
                 place(character.displayName, { kind: 'character', characterId: character.id }, character.id)
               }
               data-testid={`scene-place-character-${character.id}`}
+              title="Drag into the viewport to place it where you point, or click to place it at the origin"
             >
               Place {character.displayName}
             </button>
@@ -467,21 +499,43 @@ function AssetPanel({ handle }: { handle: SceneSessionHandle }): JSX.Element {
           <li key={lightType}>
             <button
               type="button"
+              draggable
+              onDragStart={(event) =>
+                writeDragPayload(event.dataTransfer, {
+                  kind: 'light',
+                  id: lightType,
+                  displayName: `${lightType} light`,
+                })
+              }
               onClick={() => place(`${lightType} light`, { kind: 'light', lightType }, `${lightType}-light`)}
+              data-testid={`scene-place-light-${lightType}`}
             >
               {lightType} light
             </button>
           </li>
         ))}
         <li>
-          <button type="button" onClick={() => place('Camera', { kind: 'camera' }, 'camera')}>
+          <button
+            type="button"
+            draggable
+            onDragStart={(event) =>
+              writeDragPayload(event.dataTransfer, {
+                kind: 'camera',
+                id: 'camera',
+                displayName: 'Camera',
+              })
+            }
+            onClick={() => place('Camera', { kind: 'camera' }, 'camera')}
+            data-testid="scene-place-camera"
+          >
             Camera
           </button>
         </li>
       </ul>
       <p className="scene-assets__note">
-        Repository prop/model browsing and drag-and-drop placement are Phase 8. Placement is by
-        button for now, and dispatches the same <code>scene.place_asset</code> command a drop will.
+        Drag an entry into the viewport to place it where you point, or click to place it at the
+        origin. Both dispatch the same <code>scene.place_asset</code> command. Browsing repository
+        prop and model assets is still to come.
       </p>
     </section>
   );
