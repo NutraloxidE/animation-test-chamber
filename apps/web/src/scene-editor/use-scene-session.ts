@@ -22,6 +22,7 @@ import {
   type OperationResult,
   type SceneOperation,
 } from '@atc/editor-core';
+import { applyToRepository, type ApplyOutcome } from '../editor/apply-client.ts';
 
 export interface SceneSessionHandle {
   session: DocumentEditSession<SceneDefinition, SceneOperation>;
@@ -33,6 +34,11 @@ export interface SceneSessionHandle {
   revert: () => void;
   undo: () => void;
   redo: () => void;
+  /** Sends the staged operations to the repository. Never writes on its own. */
+  apply: (intent: string) => Promise<ApplyOutcome>;
+  /** The outcome of the last Apply, for the status line. */
+  lastApply: ApplyOutcome | null;
+  applying: boolean;
   revision: number;
 }
 
@@ -42,6 +48,8 @@ export function useSceneSession(
 ): SceneSessionHandle {
   const [revision, setRevision] = useState(0);
   const [lastIssues, setLastIssues] = useState<OperationResult<SceneDefinition>['issues']>([]);
+  const [lastApply, setLastApply] = useState<ApplyOutcome | null>(null);
+  const [applying, setApplying] = useState(false);
   const characterIds = useMemo(
     () => new Set(project.characters.map((entry) => entry.id)),
     [project],
@@ -105,6 +113,31 @@ export function useSceneSession(
       session.redo();
       bump();
     }, [session, bump]),
+    apply: useCallback(
+      async (intent: string) => {
+        setApplying(true);
+        const outcome = await applyToRepository(session.buildApplyRequest(intent));
+        /*
+         * The session adopts a new baseline only after the repository reports
+         * success, so it can never claim a write that did not land — and a
+         * failure deliberately leaves the staged operations in place, because
+         * the next move is usually to fix one issue and apply again.
+         */
+        if (outcome.status === 'applied') {
+          session.acceptApplied(outcome.targetDocument);
+          setLastIssues([]);
+        } else {
+          setLastIssues(outcome.status === 'unavailable' ? [] : outcome.issues);
+        }
+        setLastApply(outcome);
+        setApplying(false);
+        bump();
+        return outcome;
+      },
+      [session, bump],
+    ),
+    lastApply,
+    applying,
     revision,
   };
 }

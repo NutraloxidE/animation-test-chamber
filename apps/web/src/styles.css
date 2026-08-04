@@ -2314,3 +2314,5 @@ button.link {
   }
   .scene-hierarchy, .scene-inspector { border: 0; max-height: 30vh; }
 }
+
+.scene-toolbar__apply { color: #8fb7ff; font-size: 0.75rem; }

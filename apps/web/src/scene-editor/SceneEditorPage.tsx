@@ -102,18 +102,25 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
         <button type="button" onClick={handle.revert} data-testid="scene-revert">
           Revert preview
         </button>
-        {/*
-          Apply is not wired to the endpoint from this shell yet. It is disabled
-          and labelled rather than present-and-silent: a button that only
-          changed browser state while saying "Apply" is the exact dishonesty
-          §9.4 forbids.
-        */}
-        <button type="button" disabled title="Not wired from this page yet (Phase 7)">
-          Apply to Repository
+        <button
+          type="button"
+          onClick={() => void handle.apply(`Scene edit: ${scene.id}`)}
+          disabled={staged.length === 0 || handle.applying}
+          data-testid="scene-apply"
+          title={
+            staged.length === 0
+              ? 'Nothing is staged. Stage the changes you want written first.'
+              : 'Validate and write the staged operations to the repository'
+          }
+        >
+          {handle.applying ? 'Applying…' : 'Apply to Repository'}
         </button>
-        <span data-testid="scene-dirty-state">
-          {staged.length > 0 ? `STAGED (${staged.length})` : handle.session.isDirty ? 'PREVIEW' : 'CLEAN'}
-        </span>
+        <span data-testid="scene-dirty-state">{stateLabel(handle, staged.length)}</span>
+        {handle.lastApply && (
+          <span data-testid="scene-apply-result" className="scene-toolbar__apply">
+            {applyLabel(handle.lastApply)}
+          </span>
+        )}
       </header>
 
       <aside className="scene-hierarchy" data-testid="scene-hierarchy">
@@ -182,6 +189,40 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
       )}
     </div>
   );
+}
+
+/**
+ * The one word describing where this session's work currently lives.
+ *
+ * CONFLICT and INVALID outrank the local states because they are what the human
+ * has to act on: a session that showed "STAGED" after a refused Apply would be
+ * telling them the work is fine and waiting, when it is neither.
+ */
+function stateLabel(handle: SceneSessionHandle, stagedCount: number): string {
+  const outcome = handle.lastApply;
+  if (outcome?.status === 'conflict') return 'CONFLICT';
+  if (outcome?.status === 'invalid') return 'INVALID';
+  if (stagedCount > 0) return `STAGED (${stagedCount})`;
+  if (handle.session.isDirty) return 'PREVIEW';
+  if (outcome?.status === 'applied') return 'APPLIED';
+  return 'CLEAN';
+}
+
+function applyLabel(outcome: NonNullable<SceneSessionHandle['lastApply']>): string {
+  switch (outcome.status) {
+    case 'applied':
+      return `Applied ${outcome.changedPaths.length} path(s)${outcome.reportPath ? ` · ${outcome.reportPath}` : ''}`;
+    case 'conflict':
+      // Named as a conflict rather than a generic failure: the next move is
+      // reload-and-reapply, not edit-and-retry.
+      return 'Apply refused: the repository moved on. Reload and reapply.';
+    case 'invalid':
+      return 'Apply refused: the repository rejected the staged operations.';
+    case 'unavailable':
+      // Never dressed up as a success, and never silently downgraded to a
+      // browser-local save.
+      return outcome.reason;
+  }
 }
 
 function kindIcon(kind: SceneEntityDefinition['kind']): string {
