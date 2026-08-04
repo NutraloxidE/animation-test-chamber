@@ -10,8 +10,6 @@
 import { staticStages } from './check-static.ts';
 import { animationAssetStages } from './check-animation-assets.ts';
 import { transactionRecoveryStage } from './check-transaction-recovery.ts';
-import { worldStages } from './check-world.ts';
-import { capabilityStages } from './check-capabilities.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
@@ -151,18 +149,6 @@ async function main(): Promise<void> {
   // would then fail for a reason that has nothing to do with what they test.
   results.push(transactionRecoveryStage());
   printStage(results.at(-1)!);
-
-  // The world contract and capability completeness come before the suites for
-  // the same reason the asset stages do: a broken contract turns every later
-  // failure into a symptom of it.
-  for (const result of worldStages()) {
-    printStage(result);
-    results.push(result);
-  }
-  for (const result of capabilityStages()) {
-    printStage(result);
-    results.push(result);
-  }
 
   results.push(vitestStage('unit', 'tests/unit', 'fix the implementation, not the assertion'));
   printStage(results.at(-1)!);

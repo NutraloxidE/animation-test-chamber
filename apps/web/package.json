@@ -16,8 +16,6 @@
     "@atc/haptics-runtime": "workspace:*",
     "@atc/input-runtime": "workspace:*",
     "@atc/replay-runtime": "workspace:*",
-    "@atc/world-runtime": "workspace:*",
-    "@atc/capability-runtime": "workspace:*",
     "@atc/runtime-core": "workspace:*",
     "@atc/schema": "workspace:*",
     "@atc/terrain-runtime": "workspace:*",

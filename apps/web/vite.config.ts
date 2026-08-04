@@ -19,8 +19,6 @@ export default defineConfig({
       '@atc/terrain-runtime': resolve(repoRoot, 'packages/terrain-runtime/src/index.ts'),
       '@atc/haptics-runtime': resolve(repoRoot, 'packages/haptics-runtime/src/index.ts'),
       '@atc/replay-runtime': resolve(repoRoot, 'packages/replay-runtime/src/index.ts'),
-      '@atc/world-runtime': resolve(repoRoot, 'packages/world-runtime/src/index.ts'),
-      '@atc/capability-runtime': resolve(repoRoot, 'packages/capability-runtime/src/index.ts'),
       '@atc/editor-core': resolve(repoRoot, 'packages/editor-core/src/index.ts'),
       '@atc/ai-adapter': resolve(repoRoot, 'packages/ai-adapter/src/index.ts'),
       '@atc/acquisition-core': resolve(repoRoot, 'packages/acquisition-core/src/index.ts'),

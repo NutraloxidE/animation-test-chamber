@@ -8,7 +8,6 @@ export * from './terrain.ts';
 export * from './haptics.ts';
 export * from './replay.ts';
 export * from './acquisition.ts';
-export * from './world.ts';
 export * from './project.ts';
 export * from './validate.ts';
 

@@ -36,7 +36,6 @@ import {
 import { readOnlyRefusal, refusesWrite } from './read-only-guard.ts';
 import { createRepositoryRuntime, type RepositoryRuntime } from './runtime.ts';
 import { animationAssetRoutes } from './routes/animation-assets.ts';
-import { capabilityRoutes, isReadOnlyCommandRequest } from './routes/capabilities.ts';
 import type { ServerContext } from './context.ts';
 
 export interface CreateAppOptions {
@@ -68,13 +67,6 @@ export function createApp(options: CreateAppOptions = {}): {
    * write proceed until someone restarted the process.
    */
   app.use('/api/*', async (c, next) => {
-    // A non-mutating capability command writes nothing, so a read-only
-    // repository is no reason to refuse it — discovery and observation have to
-    // keep working precisely when writes do not.
-    if (isReadOnlyCommandRequest(c.req.method, new URL(c.req.url).pathname)) {
-      await next();
-      return;
-    }
     if (refusesWrite(runtime.health.readOnly, c.req.method)) {
       return c.json(readOnlyRefusal(runtime.health), 503);
     }
@@ -122,7 +114,6 @@ export function createApp(options: CreateAppOptions = {}): {
   });
 
   app.route('/', animationAssetRoutes(runtime));
-  app.route('/', capabilityRoutes(runtime));
 
   app.get('/api/replays', (c) => c.json({ replays: REPLAY_FIXTURES }));
 

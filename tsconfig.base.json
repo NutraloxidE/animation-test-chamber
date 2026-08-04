@@ -28,8 +28,6 @@
       "@atc/terrain-runtime": ["packages/terrain-runtime/src/index.ts"],
       "@atc/haptics-runtime": ["packages/haptics-runtime/src/index.ts"],
       "@atc/replay-runtime": ["packages/replay-runtime/src/index.ts"],
-      "@atc/world-runtime": ["packages/world-runtime/src/index.ts"],
-      "@atc/capability-runtime": ["packages/capability-runtime/src/index.ts"],
       "@atc/editor-core": ["packages/editor-core/src/index.ts"],
       "@atc/git-adapter": ["packages/git-adapter/src/index.ts"],
       "@atc/ai-adapter": ["packages/ai-adapter/src/index.ts"],

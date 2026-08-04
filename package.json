@@ -24,8 +24,6 @@
     "harness:visual": "playwright test",
     "harness:repo-guard": "tsx harness/repo-guard.ts",
     "harness:animation-assets": "tsx harness/check-animation-assets.ts",
-    "harness:world": "tsx harness/check-world.ts",
-    "harness:capabilities": "tsx harness/check-capabilities.ts",
     "harness:build": "tsx harness/build.ts",
     "harness:one-shot": "tsx harness/one-shot.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

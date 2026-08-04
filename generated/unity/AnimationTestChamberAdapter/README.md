@@ -17,23 +17,6 @@ Then use **Tools > Animation Test Chamber > Import Chamber Project**.
 - A runtime state machine with the same transition ordering, cancel windows,
   exit times and input buffering semantics as the web runtime
 - Adapter interfaces for input, haptics and terrain
-- The canonical **world** contract: multiple runtime instances of shared
-  character definitions, their transforms, their bound intent sources and the
-  deterministic intent tracks scripted instances sample
-  (`IChamberWorld.cs`)
-
-## Multi-instance worlds
-
-`ProjectDefinition.world` carries a list of `RuntimeInstanceDefinition`.
-Each instance names a character by id; it does **not** carry a copy of that
-character's behaviour, motion set, rig or clips. Two instances of one character
-therefore appear in the bundle as two small objects and one set of asset
-references, which is the property `IChamberWorld` is shaped to preserve:
-spawn many, resolve once.
-
-A project exported before this contract existed has no `world` field. Treat
-that as a single instance of `activeCharacterId` — that is exactly what the
-web runtime does.
 
 ## LIMITATIONS
 
@@ -52,14 +35,3 @@ These are real, and listed so nobody discovers them the hard way:
    implementation; wire it to your platform's gamepad API.
 6. **Float precision differs.** Do not expect the web replay traces to match
    bit-for-bit; use them as behavioural references, not golden values.
-7. **No instance spawning is implemented.** `IChamberWorld` defines the seam —
-   spawn, bind intent, own a state machine per instance, report observations —
-   and nothing behind it. Instantiating GameObjects, parenting them and
-   choosing a camera target are project decisions, not adapter decisions.
-8. **Intent sources are declarations, not drivers.** `local-input` and
-   `replay` name a source the adapter must supply; only `scripted-track`
-   and `none` can be evaluated from the bundle alone.
-9. **World traces are not compared.** The web harness hashes a world run and
-   asserts it is reproducible. Nothing here does, and given (6) a cross-engine
-   hash comparison would fail for reasons that have nothing to do with
-   behaviour.

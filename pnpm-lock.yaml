@@ -105,9 +105,6 @@ importers:
       '@atc/animation-runtime':
         specifier: workspace:*
         version: link:../../packages/animation-runtime
-      '@atc/capability-runtime':
-        specifier: workspace:*
-        version: link:../../packages/capability-runtime
       '@atc/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
@@ -129,9 +126,6 @@ importers:
       '@atc/terrain-runtime':
         specifier: workspace:*
         version: link:../../packages/terrain-runtime
-      '@atc/world-runtime':
-        specifier: workspace:*
-        version: link:../../packages/world-runtime
       '@react-three/drei':
         specifier: ^9.120.4
         version: 9.122.0(@react-three/fiber@8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.171.0))(@types/react@18.3.31)(@types/three@0.171.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.171.0)(use-sync-external-store@1.6.0(react@18.3.1))
@@ -196,24 +190,6 @@ importers:
       '@atc/schema':
         specifier: workspace:*
         version: link:../schema
-
-  packages/capability-runtime:
-    dependencies:
-      '@atc/animation-asset-runtime':
-        specifier: workspace:*
-        version: link:../animation-asset-runtime
-      '@atc/runtime-core':
-        specifier: workspace:*
-        version: link:../runtime-core
-      '@atc/schema':
-        specifier: workspace:*
-        version: link:../schema
-      '@atc/world-runtime':
-        specifier: workspace:*
-        version: link:../world-runtime
-      '@sinclair/typebox':
-        specifier: ^0.34.9
-        version: 0.34.52
 
   packages/editor-core:
     dependencies:
@@ -321,30 +297,6 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.9
         version: 0.34.52
-
-  packages/world-runtime:
-    dependencies:
-      '@atc/animation-asset-runtime':
-        specifier: workspace:*
-        version: link:../animation-asset-runtime
-      '@atc/animation-runtime':
-        specifier: workspace:*
-        version: link:../animation-runtime
-      '@atc/input-runtime':
-        specifier: workspace:*
-        version: link:../input-runtime
-      '@atc/replay-runtime':
-        specifier: workspace:*
-        version: link:../replay-runtime
-      '@atc/runtime-core':
-        specifier: workspace:*
-        version: link:../runtime-core
-      '@atc/schema':
-        specifier: workspace:*
-        version: link:../schema
-      '@atc/terrain-runtime':
-        specifier: workspace:*
-        version: link:../terrain-runtime
 
 packages:
 
