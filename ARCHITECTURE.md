@@ -189,6 +189,49 @@ Git conflict reporting are all keyed on these paths — which is why they must b
 stable.
 
 
+## Route-scoped editors
+
+There are two editing products, and the URL says which one you are in and what
+it is editing:
+
+```text
+/edit/rig/:characterId     tune one reusable Character Definition
+/edit/scene/:sceneId       compose one Scene Definition
+```
+
+The route parameter is the target, not a hint. Resolution is an exact id match
+and an unknown id renders a not-found state — never a fallback to the first
+item, because a page that always renders something is a page that can render the
+wrong thing while looking entirely correct. See DECISIONS/0012.
+
+The Rig Editor is the chamber that already existed; the route added an identity
+header and reversed the direction `activeCharacterId` travels. The Scene Editor
+is a separate page with a Unity-like layout — Hierarchy, viewport, Inspector and
+Asset Panel — because a tab inside the chamber would have had to share the
+chamber's single-character session.
+
+Every persistent edit in either editor follows one path:
+
+```text
+Preview -> Stage -> Validate -> Apply to Repository
+```
+
+with git commit a separate action afterwards. See DECISIONS/0014.
+
+## The production model, in three nouns
+
+```text
+CharacterDefinition     reusable authored behaviour and animation references
+CharacterSceneEntity    one placement and one controller binding of it
+ControllableCharacter   the runtime instance built from the two
+```
+
+A Scene entity owns no rig mapping, behaviour graph, motion set or clip. A
+Character Definition owns no scene position, controller binding or runtime
+state. The third exists only at runtime and is never serialized. Every
+controller — human, AI, scripted, replay — reaches it as normalized intent and
+by no other route. See DECISIONS/0013 and 0015.
+
 ## Definitions and runtime instances
 
 A `CharacterDefinition` is a **definition**: reusable, shared, and never itself
