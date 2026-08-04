@@ -7,12 +7,11 @@
  * would have had to share the chamber's single-character session, and "which
  * character is this panel about" is exactly the question the split removes.
  *
- * **Phase 7 is partial and says so.** The centre pane is not a 3D viewport yet:
- * there is no renderer, no selection outline, no gizmos and no drag-and-drop
- * placement. Rather than draw a convincing-looking empty canvas, it states what
- * it is. Everything else here is real — the Hierarchy renders the staged scene,
- * the Inspector routes by entity kind, and every edit goes through a typed
- * operation and the shared staging model.
+ * **Phase 7 is partial and says so.** The viewport renders the authored scene,
+ * shares one selection with the Hierarchy and drives move/rotate/scale gizmos;
+ * drag-and-drop placement from the Asset Panel is still Phase 8, and Apply is
+ * not yet wired from this page. Everything present is real — every edit goes
+ * through a typed operation and the shared staging model.
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -22,6 +21,7 @@ import { NotFoundPage } from '../app/NotFoundPage.tsx';
 import { resolveSceneEditorTarget } from './resolve-scene-editor-target.ts';
 import { useSceneSession, type SceneSessionHandle } from './use-scene-session.ts';
 import { selectedEntityId, type SceneSelection } from './scene-selection.ts';
+import { SceneViewport, type GizmoMode, type TransformSpace } from './viewport/SceneViewport.tsx';
 import type { SceneDefinition, SceneEntityDefinition } from '@atc/schema';
 import type { PlaceableAsset } from '@atc/editor-core';
 
@@ -54,6 +54,10 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
   const project = useChamber((state) => state.canonicalProject);
   const handle = useSceneSession(project, scene);
   const [selection, setSelection] = useState<SceneSelection>({ kind: 'scene', sceneId: scene.id });
+  // Gizmo tool and transform space are viewport presentation, not scene data:
+  // switching between Move and Rotate changes nothing about the document.
+  const [mode, setMode] = useState<GizmoMode>('translate');
+  const [space, setSpace] = useState<TransformSpace>('world');
 
   const staged = handle.session.stagedPaths;
   const entityId = selectedEntityId(selection);
@@ -68,6 +72,24 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
         <span data-testid="scene-target-name">{handle.scene.displayName}</span>
         <span data-testid="scene-target-id">ID: {scene.id}</span>
         <span>Base revision: {handle.session.baseRevisionId}</span>
+        {(['translate', 'rotate', 'scale'] as const).map((tool) => (
+          <button
+            key={tool}
+            type="button"
+            className={mode === tool ? 'is-active' : ''}
+            onClick={() => setMode(tool)}
+            data-testid={`scene-tool-${tool}`}
+          >
+            {tool === 'translate' ? 'Move' : tool === 'rotate' ? 'Rotate' : 'Scale'}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setSpace(space === 'world' ? 'local' : 'world')}
+          data-testid="scene-transform-space"
+        >
+          {space === 'world' ? 'World' : 'Local'}
+        </button>
         <button type="button" onClick={handle.undo} disabled={!handle.session.canUndo}>
           Undo
         </button>
@@ -129,17 +151,16 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
         </ul>
       </aside>
 
-      <div className="scene-viewport" data-testid="scene-viewport">
-        <p>
-          The Scene viewport is not implemented yet. Rendering, selection outlines, transform
-          gizmos and drag-and-drop placement are Phase 7–8 of the work package.
-        </p>
-        <p>
-          {handle.scene.entities.length} entit
-          {handle.scene.entities.length === 1 ? 'y' : 'ies'} in declaration order — which is also
-          tick order.
-        </p>
-      </div>
+      <SceneViewport
+        scene={handle.scene}
+        selection={selection}
+        onSelect={setSelection}
+        onCommitTransform={(entityId, transform) =>
+          handle.dispatch({ type: 'scene.set_transform', entityId, transform })
+        }
+        mode={mode}
+        space={space}
+      />
 
       <aside className="scene-inspector" data-testid="scene-inspector">
         {selected ? (
@@ -418,7 +439,8 @@ function AssetPanel({ handle }: { handle: SceneSessionHandle }): JSX.Element {
         </li>
       </ul>
       <p className="scene-assets__note">
-        Repository prop/model browsing and drag-and-drop placement are Phase 8.
+        Repository prop/model browsing and drag-and-drop placement are Phase 8. Placement is by
+        button for now, and dispatches the same <code>scene.place_asset</code> command a drop will.
       </p>
     </section>
   );
