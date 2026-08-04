@@ -2177,3 +2177,140 @@ button.link {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Route-scoped editor shells.
+
+   The Rig Editor keeps the chamber layout it always had; the only addition is
+   the identity header, which is what makes "which character am I editing?" a
+   question the screen answers rather than one the URL answers alone.
+   ------------------------------------------------------------------------- */
+
+.rig-editor {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+.target-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  background: #14161b;
+  border-bottom: 1px solid #262a33;
+  font-size: 0.8rem;
+  color: #c8ccd6;
+  flex-wrap: wrap;
+}
+
+.target-header__kind {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8fb7ff;
+}
+
+.target-header__name { font-weight: 600; color: #f0f2f6; }
+.target-header__id { font-family: ui-monospace, monospace; color: #98d1a5; }
+.target-header__switch { margin-left: auto; display: flex; gap: 0.5rem; }
+.target-header__switch a { color: #8fb7ff; }
+.target-header__loading { padding: 2rem; color: #98a0b0; }
+
+/* The Rig Editor's chamber fills what is left under the header. */
+.rig-editor > .app { height: 100%; min-height: 0; }
+
+/* Scene Editor: left hierarchy, centre viewport, right inspector + assets. */
+.scene-editor {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    'toolbar toolbar toolbar'
+    'hierarchy viewport inspector'
+    'issues issues issues';
+  height: 100vh;
+  background: #0d0f13;
+  color: #d6dae2;
+}
+
+.scene-toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.75rem;
+  background: #14161b;
+  border-bottom: 1px solid #262a33;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.scene-hierarchy { grid-area: hierarchy; overflow: auto; border-right: 1px solid #262a33; padding: 0.5rem; }
+.scene-hierarchy ul { list-style: none; margin: 0; padding: 0 0 0 0.5rem; }
+.scene-hierarchy button {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 0.25rem 0.35rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.scene-hierarchy button.is-active { background: #22304a; border-radius: 3px; }
+.scene-hierarchy em { font-style: normal; font-size: 0.7rem; color: #98a0b0; margin-left: auto; }
+.scene-hierarchy em.is-staged { color: #e0b060; }
+
+.scene-viewport {
+  grid-area: viewport;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  color: #7c8494;
+  background: #101319;
+}
+
+.scene-inspector { grid-area: inspector; overflow: auto; border-left: 1px solid #262a33; padding: 0.5rem; font-size: 0.8rem; }
+.scene-inspector h2 { font-size: 0.9rem; margin: 0.5rem 0; }
+.scene-inspector h3 { font-size: 0.75rem; text-transform: uppercase; color: #8b93a4; margin: 0.9rem 0 0.3rem; }
+.scene-inspector label { display: flex; gap: 0.4rem; align-items: center; margin: 0.2rem 0; }
+.scene-inspector input[type='number'] { width: 6rem; }
+.scene-inspector dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.6rem; margin: 0.3rem 0; }
+.scene-inspector dt { color: #8b93a4; }
+.scene-inspector dd { margin: 0; }
+.scene-assets { border-top: 1px solid #262a33; margin-top: 1rem; padding-top: 0.5rem; }
+.scene-assets ul { list-style: none; margin: 0; padding: 0; }
+.scene-assets__note { color: #7c8494; font-size: 0.72rem; }
+
+.scene-issues {
+  grid-area: issues;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  list-style: none;
+  background: #3a1d1d;
+  color: #ffbdbd;
+  font-size: 0.75rem;
+}
+
+.not-found, .resource-list { padding: 2rem; max-width: 44rem; color: #d6dae2; }
+.not-found a, .resource-list a { color: #8fb7ff; }
+.resource-list ul { line-height: 1.9; }
+
+@media (max-width: 900px) {
+  /* Narrow layouts keep one data model: the docks stack rather than becoming a
+     separate mobile screen with its own state. */
+  .scene-editor {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'toolbar' 'hierarchy' 'viewport' 'inspector' 'issues';
+    grid-template-rows: auto auto 1fr auto auto;
+    height: auto;
+    min-height: 100vh;
+  }
+  .scene-hierarchy, .scene-inspector { border: 0; max-height: 30vh; }
+}
