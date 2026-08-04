@@ -17,6 +17,8 @@
     "assets:animation:index": "tsx harness/generate-animation-asset-index.ts",
     "assets:animation:migrate": "tsx harness/migrate-animation-assets.ts",
     "scenes:migrate": "tsx harness/migrate-scenes.ts",
+    "traces:generate": "tsx harness/generate-legacy-traces.ts",
+    "traces:check": "tsx harness/generate-legacy-traces.ts --check",
     "scenes:check": "tsx harness/migrate-scenes.ts --check",
     "unity:export": "tsx harness/export-unity.ts",
     "harness:check": "tsx harness/check-static.ts",
