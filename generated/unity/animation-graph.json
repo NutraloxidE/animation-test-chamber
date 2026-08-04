@@ -51,7 +51,7 @@
         "motionSlot": "locomotion.walk",
         "layer": "locomotion",
         "loop": true,
-        "speed": 1,
+        "speed": 1.53,
         "timeoutSec": 0,
         "completionPolicy": {
           "mode": "loop",
@@ -73,7 +73,7 @@
         "motionSlot": "locomotion.run",
         "layer": "locomotion",
         "loop": true,
-        "speed": 1,
+        "speed": 1.21,
         "timeoutSec": 0,
         "completionPolicy": {
           "mode": "loop",

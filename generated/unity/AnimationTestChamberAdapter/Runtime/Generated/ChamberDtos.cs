@@ -62,6 +62,9 @@ namespace AnimationTestChamber.Generated
         public string revisionId;
         public List<CharacterDefinition> characters;
         public string activeCharacterId;
+        public List<SceneDefinition> scenes;
+        // optional
+        public string activeSceneId;
         // optional
         public WorldDefinition world;
         public InputMapDefinition inputMap;
@@ -160,47 +163,52 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
-    public class WorldDefinition
+    public class SceneDefinition
     {
         public int schemaVersion;
         public string id;
         public string displayName;
-        public List<RuntimeInstanceDefinition> instances;
+        public List<SceneEntityDefinition> entities;
         public List<IntentTrackDefinition> intentTracks;
-        public string focusedInstanceId;
-        public string cameraTargetInstanceId;
+        // optional
+        public string activeCameraEntityId;
         // optional
         public ProtectionMetadata protection;
     }
 
     [Serializable]
-    public class RuntimeInstanceDefinition
+    public class SceneEntityDefinition
     {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
         public int schemaVersion;
         public string id;
         public string displayName;
-        public RuntimeInstanceSource source;
-        public TransformDefinition transform;
-        public IntentSourceDefinition intentSource;
         public bool enabled;
-        // optional
-        public RuntimeInstanceOverrides overrides;
-        // optional
+        public TransformDefinition transform;
         public ProtectionMetadata protection;
-    }
-
-    [Serializable]
-    public class RuntimeInstanceSource
-    {
         public string kind;
         public string characterId;
+        public CharacterControllerBindingDefinition controller;
+        public CharacterInstanceOverrides overrides;
+        public SceneAssetReference asset;
+        public string /* directional | point | spot */ lightType;
+        public float intensity;
+        public string color;
+        public float range;
+        public float spotAngleRad;
+        public string /* perspective | orthographic */ projection;
+        public float fieldOfViewDeg;
+        public float orthographicSize;
+        public string targetEntityId;
     }
 
     [Serializable]
     public class TransformDefinition
     {
         public TransformDefinitionPosition position;
-        public float yawRad;
+        public TransformDefinitionRotation rotation;
+        public TransformDefinitionScale scale;
     }
 
     [Serializable]
@@ -212,18 +220,36 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
-    public class IntentSourceDefinition
+    public class TransformDefinitionRotation
+    {
+        public float x;
+        public float y;
+        public float z;
+        public float w;
+    }
+
+    [Serializable]
+    public class TransformDefinitionScale
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
+    [Serializable]
+    public class CharacterControllerBindingDefinition
     {
         // Flattened discriminated union: check `kind` before reading the
         // other fields. Unity JsonUtility cannot express polymorphism.
         public string kind;
         public int playerIndex;
         public string trackId;
+        public string channelId;
         public string replayId;
     }
 
     [Serializable]
-    public class RuntimeInstanceOverrides
+    public class CharacterInstanceOverrides
     {
         // optional
         public float moveSpeedScale;
@@ -233,6 +259,17 @@ namespace AnimationTestChamber.Generated
         public string weaponModeId;
         // optional
         public string equipped;
+    }
+
+    [Serializable]
+    public class SceneAssetReference
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string assetPath;
+        public string assetId;
+        public string version;
     }
 
     [Serializable]
@@ -293,6 +330,82 @@ namespace AnimationTestChamber.Generated
         public bool Interact;
         // optional
         public bool Pause;
+    }
+
+    [Serializable]
+    public class WorldDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public List<RuntimeInstanceDefinition> instances;
+        public List<IntentTrackDefinition> intentTracks;
+        public string focusedInstanceId;
+        public string cameraTargetInstanceId;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public RuntimeInstanceSource source;
+        public LegacyTransformDefinition transform;
+        public IntentSourceDefinition intentSource;
+        public bool enabled;
+        // optional
+        public RuntimeInstanceOverrides overrides;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceSource
+    {
+        public string kind;
+        public string characterId;
+    }
+
+    [Serializable]
+    public class LegacyTransformDefinition
+    {
+        public LegacyTransformDefinitionPosition position;
+        public float yawRad;
+    }
+
+    [Serializable]
+    public class LegacyTransformDefinitionPosition
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
+    [Serializable]
+    public class IntentSourceDefinition
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public int playerIndex;
+        public string trackId;
+        public string replayId;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceOverrides
+    {
+        // optional
+        public float moveSpeedScale;
+        // optional
+        public int seed;
+        // optional
+        public string weaponModeId;
+        // optional
+        public string equipped;
     }
 
     [Serializable]

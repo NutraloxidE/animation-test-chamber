@@ -3,24 +3,24 @@ using System.Collections.Generic;
 namespace AnimationTestChamber
 {
     /// <summary>
-    /// One instance's observable state, mirroring the web runtime's
-    /// instance-qualified observations. Reported *by* instance id, never by
-    /// list position: the canonical world is ordered, but a position is not an
-    /// identity, and a reordered world would silently relabel every reading.
+    /// One entity's observable state, mirroring the web runtime's
+    /// entity-qualified observations. Reported *by* entity id, never by list
+    /// position: the canonical scene is ordered, but a position is not an
+    /// identity, and a reordered scene would silently relabel every reading.
     /// </summary>
-    public struct ChamberInstanceObservation
+    public struct ChamberEntityObservation
     {
-        public string instanceId;
+        public string entityId;
         public string characterId;
         public bool enabled;
         public UnityEngine.Vector3 position;
-        public float yawRad;
+        public UnityEngine.Quaternion rotation;
         public string locomotionStateId;
         public string actionStateId;
     }
 
     /// <summary>
-    /// The seam between the canonical world contract and a Unity scene.
+    /// The seam between the canonical Scene contract and a Unity scene.
     /// <para>
     /// Deliberately not implemented here. Spawning, parenting, camera choice
     /// and prefab selection are project decisions; an adapter that guessed at
@@ -29,31 +29,44 @@ namespace AnimationTestChamber
     /// </para>
     /// <para>
     /// The one contract an implementation must honour is the one the web
-    /// runtime honours: instances of the same character share resolved
+    /// runtime honours: entities of the same character share resolved
     /// definition data and share no mutable state. Caching a state machine by
     /// character id is the specific mistake this interface exists to warn about.
     /// </para>
+    /// <para>
+    /// Control mirrors the web runtime's boundary too. Intent arrives
+    /// normalized and the adapter feeds it to a controllable character; an
+    /// implementation that reached for an AnimationClip by name would skip the
+    /// transition rules the character was tuned with, and would behave one way
+    /// for a human and another for everything else.
+    /// </para>
     /// </summary>
-    public interface IChamberWorld
+    public interface IChamberScene
     {
-        /// <summary>Creates a runtime instance from its canonical definition.</summary>
-        void SpawnInstance(RuntimeInstanceDefinition definition);
+        /// <summary>Creates a runtime entity from its canonical definition.</summary>
+        void SpawnEntity(CharacterSceneEntity definition);
 
         /// <summary>
-        /// Binds an intent source to an already-spawned instance. The adapter
-        /// supplies local-input and replay sources; scripted tracks come from
-        /// the bundle.
+        /// Binds a controller to an already-spawned entity. The adapter
+        /// supplies human and replay sources; scripted tracks come from the
+        /// bundle, and AI channels from the host.
         /// </summary>
-        void BindIntentSource(string instanceId, IntentSourceDefinition source);
+        void BindController(string entityId, CharacterControllerBindingDefinition controller);
 
         /// <summary>
-        /// The state machine owned by one instance. Must return a distinct
-        /// object per instance id.
+        /// Hands one frame of normalized intent to an entity. The only normal
+        /// way to drive a character: never a clip name, never a state id.
         /// </summary>
-        ChamberStateMachine StateMachineFor(string instanceId);
+        void InjectIntent(string entityId, IntentTrackKeyframe intent);
 
-        /// <summary>Current observations, one per spawned instance.</summary>
-        IReadOnlyList<ChamberInstanceObservation> Observe();
+        /// <summary>
+        /// The state machine owned by one entity. Must return a distinct
+        /// object per entity id.
+        /// </summary>
+        ChamberStateMachine StateMachineFor(string entityId);
+
+        /// <summary>Current observations, one per spawned entity.</summary>
+        IReadOnlyList<ChamberEntityObservation> Observe();
     }
 
     /// <summary>

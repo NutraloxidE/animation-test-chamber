@@ -76,18 +76,28 @@ describe('unity scene export', () => {
     }
   });
 
-  it('ships an adapter seam for instances rather than an implementation', () => {
+  it('ships an adapter seam for entities rather than an implementation', () => {
     const files = bundle();
-    const adapter = files.find((entry) => entry.path.endsWith('Runtime/IChamberWorld.cs'))!.content;
-    expect(adapter).toContain('void SpawnInstance(');
-    expect(adapter).toContain('void BindIntentSource(');
+    const adapter = files.find((entry) => entry.path.endsWith('Runtime/IChamberScene.cs'))!.content;
+    expect(adapter).toContain('void SpawnEntity(');
+    expect(adapter).toContain('void BindController(');
     expect(adapter).toContain('ChamberStateMachine StateMachineFor(');
     expect(adapter).toContain('Observe()');
+
+    /*
+     * The control seam must be intent, not playback. An adapter offering a
+     * "play this clip" entry point would let Unity skip the transition rules
+     * the character was tuned with, which is the whole thing
+     * ControllableCharacter exists to prevent on the web side.
+     */
+    expect(adapter).toContain('void InjectIntent(');
+    expect(adapter).not.toContain('PlayAnimation(');
+    expect(adapter).not.toContain('ForceState(');
 
     // The README must say what is missing. An adapter that quietly did less
     // than the browser is the failure mode this repository keeps writing down.
     const readme = files.find((entry) => entry.path.endsWith('AnimationTestChamberAdapter/README.md'))!.content;
-    expect(readme).toContain('No instance spawning is implemented');
+    expect(readme).toContain('No entity spawning is implemented');
     expect(readme).toContain('No Animator Controller is generated');
   });
 

@@ -519,7 +519,18 @@
             "version": "1.0.0",
             "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
           },
-          "instanceOverrides": []
+          "instanceOverrides": [
+            {
+              "path": "/graph/states/walk/speed",
+              "op": "set",
+              "value": 1.53
+            },
+            {
+              "path": "/graph/states/run/speed",
+              "op": "set",
+              "value": 1.21
+            }
+          ]
         }
       },
       {
@@ -559,103 +570,149 @@
       }
     ],
     "activeCharacterId": "demo-humanoid",
-    "world": {
-      "schemaVersion": 2,
-      "id": "two-humanoids-shared-animation",
-      "displayName": "Two humanoids, shared animation",
-      "instances": [
-        {
-          "schemaVersion": 2,
-          "id": "controlled-humanoid",
-          "displayName": "Controlled humanoid",
-          "source": {
+    "scenes": [
+      {
+        "schemaVersion": 2,
+        "id": "two-humanoids-shared-animation",
+        "displayName": "Two humanoids, shared animation",
+        "entities": [
+          {
+            "schemaVersion": 2,
+            "id": "controlled-humanoid",
+            "displayName": "Controlled humanoid",
             "kind": "character",
-            "characterId": "demo-humanoid"
-          },
-          "transform": {
-            "position": {
-              "x": -1.5,
-              "y": 2,
-              "z": 0
-            },
-            "yawRad": 0
-          },
-          "intentSource": {
-            "kind": "local-input",
-            "playerIndex": 0
-          },
-          "enabled": true
-        },
-        {
-          "schemaVersion": 2,
-          "id": "scripted-humanoid",
-          "displayName": "Scripted humanoid",
-          "source": {
-            "kind": "character",
-            "characterId": "demo-humanoid"
-          },
-          "transform": {
-            "position": {
-              "x": 1.5,
-              "y": 2,
-              "z": 0
-            },
-            "yawRad": 0
-          },
-          "intentSource": {
-            "kind": "scripted-track",
-            "trackId": "scripted-locomotion-cycle"
-          },
-          "enabled": true
-        }
-      ],
-      "intentTracks": [
-        {
-          "schemaVersion": 2,
-          "id": "scripted-locomotion-cycle",
-          "displayName": "Idle, forward, stop, dodge, idle",
-          "loop": true,
-          "durationTicks": 240,
-          "keyframes": [
-            {
-              "tick": 0,
-              "move": {
+            "enabled": true,
+            "characterId": "demo-humanoid",
+            "transform": {
+              "position": {
+                "x": -1.5,
+                "y": 2,
+                "z": 0
+              },
+              "rotation": {
                 "x": 0,
-                "y": 0
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
               }
             },
-            {
-              "tick": 30,
-              "move": {
-                "x": 0,
-                "y": 1
-              }
-            },
-            {
-              "tick": 120,
-              "move": {
-                "x": 0,
-                "y": 0
-              }
-            },
-            {
-              "tick": 150,
-              "buttons": {
-                "Dodge": true
-              }
-            },
-            {
-              "tick": 152,
-              "buttons": {
-                "Dodge": false
-              }
+            "controller": {
+              "kind": "human",
+              "playerIndex": 0
             }
-          ]
-        }
-      ],
-      "focusedInstanceId": "controlled-humanoid",
-      "cameraTargetInstanceId": "controlled-humanoid"
-    },
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scripted-humanoid",
+            "displayName": "Scripted humanoid",
+            "kind": "character",
+            "enabled": true,
+            "characterId": "demo-humanoid",
+            "transform": {
+              "position": {
+                "x": 1.5,
+                "y": 2,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "controller": {
+              "kind": "script",
+              "trackId": "scripted-locomotion-cycle"
+            }
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scene-camera",
+            "displayName": "Scene Camera",
+            "kind": "camera",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 2,
+                "z": 6
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "projection": "perspective",
+            "fieldOfViewDeg": 60,
+            "targetEntityId": "controlled-humanoid"
+          }
+        ],
+        "intentTracks": [
+          {
+            "schemaVersion": 2,
+            "id": "scripted-locomotion-cycle",
+            "displayName": "Idle, forward, stop, dodge, idle",
+            "loop": true,
+            "durationTicks": 240,
+            "keyframes": [
+              {
+                "tick": 0,
+                "move": {
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              {
+                "tick": 30,
+                "move": {
+                  "x": 0,
+                  "y": 1
+                }
+              },
+              {
+                "tick": 120,
+                "move": {
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              {
+                "tick": 150,
+                "buttons": {
+                  "Dodge": true
+                }
+              },
+              {
+                "tick": 152,
+                "buttons": {
+                  "Dodge": false
+                }
+              }
+            ]
+          }
+        ],
+        "activeCameraEntityId": "scene-camera"
+      }
+    ],
+    "activeSceneId": "two-humanoids-shared-animation",
     "character": {
       "schemaVersion": 2,
       "id": "demo-humanoid",
@@ -688,7 +745,18 @@
           "version": "1.0.0",
           "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
         },
-        "instanceOverrides": []
+        "instanceOverrides": [
+          {
+            "path": "/graph/states/walk/speed",
+            "op": "set",
+            "value": 1.53
+          },
+          {
+            "path": "/graph/states/run/speed",
+            "op": "set",
+            "value": 1.21
+          }
+        ]
       },
       "skeleton": {
         "schemaVersion": 2,
@@ -910,7 +978,7 @@
           "motionSlot": "locomotion.walk",
           "layer": "locomotion",
           "loop": true,
-          "speed": 1,
+          "speed": 1.53,
           "timeoutSec": 0,
           "completionPolicy": {
             "mode": "loop",
@@ -932,7 +1000,7 @@
           "motionSlot": "locomotion.run",
           "layer": "locomotion",
           "loop": true,
-          "speed": 1,
+          "speed": 1.21,
           "timeoutSec": 0,
           "completionPolicy": {
             "mode": "loop",
@@ -4250,6 +4318,16 @@
           "contentHash": "973c67a41ed1ee36ea096111e8a84d00c15a3ba48372884b1ed28108541b750c"
         },
         "canonicalPath": "/motionBindings/state.slide"
+      },
+      {
+        "value": 1.53,
+        "source": "character-override",
+        "canonicalPath": "/graph/states/walk/speed"
+      },
+      {
+        "value": 1.21,
+        "source": "character-override",
+        "canonicalPath": "/graph/states/run/speed"
       }
     ]
   }
