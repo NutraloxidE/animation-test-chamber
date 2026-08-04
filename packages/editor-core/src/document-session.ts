@@ -53,11 +53,20 @@ export interface RepositoryApplyRequest<TOperation> {
   operations: TOperation[];
   actor: EditActor;
   intent: string;
+  /** Paths this session's human unlocked. Never sent for an AI actor. */
+  unlockedPaths?: string[];
 }
 
 export class DocumentEditSession<TDocument, TOperation> {
   readonly target: RepositoryDocumentTarget;
-  readonly baseRevisionId: string;
+  /**
+   * The repository revision this session's next Apply is built against.
+   *
+   * Not readonly, because a successful Apply moves it. A session that kept the
+   * revision it opened at would send that stale value on the *second* Apply and
+   * be refused as a conflict — against a change it made itself, one edit ago.
+   */
+  private currentRevisionId: string;
 
   private repository: TDocument;
   private preview: TDocument;
@@ -78,12 +87,19 @@ export class DocumentEditSession<TDocument, TOperation> {
   private readonly unlocked = new Set<string>();
   /** Paths each dispatched-but-unstaged operation touched, by operation index. */
   private readonly pendingPaths: { operation: TOperation; paths: string[] }[] = [];
+  /** Undone operations, kept so redo can put them back where they were. */
+  private readonly redoOperations: { operation: TOperation; paths: string[] }[] = [];
 
   constructor(private readonly options: DocumentSessionOptions<TDocument, TOperation>) {
     this.target = options.target;
-    this.baseRevisionId = options.baseRevisionId;
+    this.currentRevisionId = options.baseRevisionId;
     this.repository = options.document;
     this.preview = options.document;
+  }
+
+  /** The revision the next Apply will declare. Moves when an Apply lands. */
+  get baseRevisionId(): string {
+    return this.currentRevisionId;
   }
 
   get repositoryDocument(): TDocument {
@@ -175,17 +191,36 @@ export class DocumentEditSession<TDocument, TOperation> {
       changedPaths: [...(candidate.changedPaths ?? [])],
     });
     this.redoStack.length = 0;
+    this.redoOperations.length = 0;
     this.preview = candidate.document;
     this.pendingPaths.push({ operation, paths: [...(candidate.changedPaths ?? [])] });
     return candidate;
   }
 
+  /**
+   * Undo and redo move the *operation list*, not only the preview document.
+   *
+   * The two must agree, because Apply replays operations while the human reads
+   * the preview. An undone operation that stayed in the list would be applied
+   * despite having visibly been taken back; a redone one that never came back
+   * to the list would be visible in the preview and silently absent from the
+   * write. Undoing something already staged unstages it, for the same reason:
+   * "staged" cannot outlive the edit it describes.
+   */
   undo(): boolean {
     const entry = this.undoStack.pop();
     if (!entry) return false;
     this.preview = entry.before;
     this.redoStack.push(entry);
-    this.pendingPaths.pop();
+    const undone = this.pendingPaths.pop();
+    if (undone) {
+      const staged = this.stagedOperations.indexOf(undone.operation);
+      if (staged !== -1) {
+        this.stagedOperations.splice(staged, 1);
+        this.rebuildStagedPaths();
+      }
+      this.redoOperations.push(undone);
+    }
     return true;
   }
 
@@ -194,7 +229,20 @@ export class DocumentEditSession<TDocument, TOperation> {
     if (!entry) return false;
     this.preview = entry.after;
     this.undoStack.push(entry);
+    const restored = this.redoOperations.pop();
+    // Restored unstaged: a redo puts the edit back, and staging it again is a
+    // second, separate decision the human has not made yet.
+    if (restored) this.pendingPaths.push(restored);
     return true;
+  }
+
+  /** Recomputes the staged path set from the operations that are still staged. */
+  private rebuildStagedPaths(): void {
+    this.stagedPathSet.clear();
+    for (const operation of this.stagedOperations) {
+      const entry = this.pendingPaths.find((candidate) => candidate.operation === operation);
+      for (const path of entry?.paths ?? []) this.stagedPathSet.add(path);
+    }
   }
 
   /** Stages every pending operation that touched `path`. */
@@ -238,6 +286,7 @@ export class DocumentEditSession<TDocument, TOperation> {
     this.pendingPaths.length = 0;
     this.undoStack.length = 0;
     this.redoStack.length = 0;
+    this.redoOperations.length = 0;
   }
 
   /** Keeps the preview, discards only what was staged. */
@@ -278,10 +327,15 @@ export class DocumentEditSession<TDocument, TOperation> {
   buildApplyRequest(intent: string, actor: EditActor = 'human'): RepositoryApplyRequest<TOperation> {
     return {
       target: this.target,
-      expected: { projectRevisionId: this.baseRevisionId },
+      expected: { projectRevisionId: this.currentRevisionId },
       operations: [...this.stagedOperations],
       actor,
       intent,
+      // Only a human's unlocks travel; the server refuses them from an AI actor
+      // anyway, and sending them would be asking for something it must not grant.
+      ...(actor === 'human' && this.unlocked.size > 0
+        ? { unlockedPaths: [...this.unlocked] }
+        : {}),
     };
   }
 
@@ -292,8 +346,15 @@ export class DocumentEditSession<TDocument, TOperation> {
    * claims a write that did not land. A failed Apply leaves the staged work
    * exactly where it was, because the human's next move is usually to fix one
    * issue and apply again — not to redo everything.
+   *
+   * `revisionId` is the revision the repository reported *back*. Keeping the
+   * one the session opened at would make the very next Apply declare a baseline
+   * that no longer exists, and it would be refused as a conflict with the
+   * session's own previous write — the first thing a user hits when they apply
+   * twice without reloading the page.
    */
-  acceptApplied(document: TDocument): void {
+  acceptApplied(document: TDocument, revisionId?: string): void {
+    if (revisionId !== undefined) this.currentRevisionId = revisionId;
     this.repository = document;
     this.preview = document;
     this.stagedOperations.length = 0;
@@ -301,5 +362,6 @@ export class DocumentEditSession<TDocument, TOperation> {
     this.pendingPaths.length = 0;
     this.undoStack.length = 0;
     this.redoStack.length = 0;
+    this.redoOperations.length = 0;
   }
 }

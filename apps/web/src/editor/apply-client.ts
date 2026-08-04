@@ -34,6 +34,8 @@ export interface ApplyRequestBody {
   operations: SceneOperation[];
   actor: 'human' | 'ai';
   intent: string;
+  /** Paths the human unlocked in this session; the server refuses them from an AI. */
+  unlockedPaths?: string[];
 }
 
 export async function applyToRepository(request: ApplyRequestBody): Promise<ApplyOutcome> {

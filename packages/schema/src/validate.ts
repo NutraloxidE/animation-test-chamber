@@ -32,6 +32,7 @@ import {
   PropSceneEntity,
   SceneDefinition,
   SceneEntityDefinition,
+  SceneOperation,
 } from './scene.ts';
 
 export interface ValidationIssue {
@@ -83,6 +84,7 @@ export const SCHEMA_REGISTRY = {
   LightSceneEntity,
   CameraSceneEntity,
   CharacterControllerBindingDefinition,
+  SceneOperation,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;

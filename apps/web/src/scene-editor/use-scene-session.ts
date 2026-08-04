@@ -124,7 +124,10 @@ export function useSceneSession(
          * the next move is usually to fix one issue and apply again.
          */
         if (outcome.status === 'applied') {
-          session.acceptApplied(outcome.targetDocument);
+          // The revision the repository reported back, not the one this session
+          // opened at: applying twice without a reload is the ordinary case, and
+          // the second Apply has to declare the first one's result.
+          session.acceptApplied(outcome.targetDocument, outcome.project.revisionId);
           setLastIssues([]);
         } else {
           setLastIssues(outcome.status === 'unavailable' ? [] : outcome.issues);

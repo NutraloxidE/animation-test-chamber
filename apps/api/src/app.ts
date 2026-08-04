@@ -124,7 +124,7 @@ export function createApp(options: CreateAppOptions = {}): {
 
   app.route('/', animationAssetRoutes(runtime));
   app.route('/', capabilityRoutes(runtime));
-  repositoryApplyRoutes(app, repoRoot);
+  repositoryApplyRoutes(app, runtime);
 
   app.get('/api/replays', (c) => c.json({ replays: REPLAY_FIXTURES }));
 

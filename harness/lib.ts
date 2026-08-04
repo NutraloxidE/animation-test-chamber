@@ -40,9 +40,21 @@ export function run(command: string, args: string[]): { code: number; output: st
   };
 }
 
+/**
+ * Line endings, normalized to LF.
+ *
+ * Git checks these files out with CRLF on a Windows clone (`core.autocrlf`),
+ * while `git show` hands back the LF blob. Every "did this file change?" check
+ * in the harness compares those two, so without this the whole repository looks
+ * modified in place on Windows and every real finding is buried.
+ */
+function normalizeEol(text: string): string {
+  return text.replace(/\r\n/g, '\n');
+}
+
 export function readRepoFile(relativePath: string): string | null {
   const full = resolve(REPO_ROOT, relativePath);
-  return existsSync(full) ? readFileSync(full, 'utf8') : null;
+  return existsSync(full) ? normalizeEol(readFileSync(full, 'utf8')) : null;
 }
 
 export function writeRepoFile(relativePath: string, content: string): void {
@@ -58,7 +70,7 @@ export function readAtRevision(revision: string, relativePath: string): string |
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
   });
-  return result.status === 0 ? (result.stdout ?? '') : null;
+  return result.status === 0 ? normalizeEol(result.stdout ?? '') : null;
 }
 
 export function gitHasCommits(): boolean {

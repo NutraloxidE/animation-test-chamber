@@ -144,6 +144,159 @@ describe('apply writes', () => {
   });
 });
 
+/**
+ * Protection that only the browser enforces is not protection: `curl` does not
+ * run the browser session, and the endpoint is reachable without it.
+ */
+describe('server-side protection', () => {
+  /** Locks the first entity of the canonical scene, on disk. */
+  function lockFirstEntity(level: 'locked' | 'approval-required'): string {
+    const project = projectOf();
+    const scene = project.scenes[0]!;
+    const entity = scene.entities[0]!;
+    const locked = {
+      ...project,
+      scenes: [
+        {
+          ...scene,
+          entities: [{ ...entity, protection: { level, reason: 'test fixture' } }, ...scene.entities.slice(1)],
+        },
+        ...project.scenes.slice(1),
+      ],
+    };
+    writeFileSync(join(repoRoot, PROJECT_PATH), `${JSON.stringify(locked, null, 2)}\n`, 'utf8');
+    return entity.id;
+  }
+
+  it('refuses a locked path posted directly, with no browser session involved', async () => {
+    const entityId = lockFirstEntity('locked');
+    const before = readFileSync(join(repoRoot, PROJECT_PATH), 'utf8');
+
+    const { status, body } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId, displayName: 'Renamed anyway' }],
+      actor: 'human',
+      intent: 'rename a locked entity',
+    });
+
+    expect(status).toBe(403);
+    expect((body.issues as { keyword: string }[])[0]!.keyword).toBe('protection');
+    expect(readFileSync(join(repoRoot, PROJECT_PATH), 'utf8')).toBe(before);
+  });
+
+  it('refuses an AI edit to an approval-required path', async () => {
+    const entityId = lockFirstEntity('approval-required');
+    const { status, body } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId, displayName: 'Renamed by an agent' }],
+      actor: 'ai',
+      intent: 'agent rename',
+    });
+    expect(status).toBe(403);
+    expect((body.issues as { keyword: string }[])[0]!.keyword).toBe('approval-required');
+  });
+
+  /*
+   * An approval an AI grants itself is not an approval. Refused rather than
+   * ignored: a caller that believed it had approved something has to be told it
+   * did not, and a silently ignored field looks identical to an honoured one.
+   */
+  it('refuses an AI request that carries its own approval', async () => {
+    const entityId = lockFirstEntity('approval-required');
+    const { status, body } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId, displayName: 'Self-approved' }],
+      actor: 'ai',
+      approved: true,
+      intent: 'agent rename with a self-granted approval',
+    });
+    expect(status).toBe(403);
+    expect(String((body.issues as { message: string }[])[0]!.message)).toContain('AI actor');
+  });
+
+  it('refuses an AI request that carries its own unlocks', async () => {
+    const entityId = lockFirstEntity('locked');
+    const { status } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId, displayName: 'Self-unlocked' }],
+      actor: 'ai',
+      unlockedPaths: [`/entities/${entityId}/displayName`],
+      intent: 'agent rename with a self-granted unlock',
+    });
+    expect(status).toBe(403);
+  });
+
+  it('accepts a human edit to a locked path they unlocked in their session', async () => {
+    const entityId = lockFirstEntity('locked');
+    const { status } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId, displayName: 'Unlocked and renamed' }],
+      actor: 'human',
+      unlockedPaths: [`/entities/${entityId}/displayName`],
+      intent: 'rename an entity the human unlocked',
+    });
+    expect(status).toBe(200);
+    expect(sceneOf().entities[0]!.displayName).toBe('Unlocked and renamed');
+  });
+});
+
+/**
+ * Applying twice without reloading the page is the ordinary case, not an edge
+ * one — and it is the first thing a stale session revision breaks.
+ */
+describe('repeated apply from one session', () => {
+  it('accepts the second apply after the session adopts the applied revision', async () => {
+    const s = session();
+    s.dispatch(placeLight);
+    s.stageAll();
+    const first = await post(s.buildApplyRequest('place a key light'));
+    expect(first.status).toBe(200);
+
+    s.acceptApplied(
+      first.body.targetDocument as SceneDefinition,
+      (first.body.project as ProjectDefinition).revisionId,
+    );
+
+    s.dispatch({ type: 'scene.rename_entity', entityId: 'key-light', displayName: 'Rim light' });
+    s.stageAll();
+    const second = await post(s.buildApplyRequest('rename the light'));
+    expect(second.status).toBe(200);
+    expect(sceneOf().entities.find((entity) => entity.id === 'key-light')!.displayName).toBe(
+      'Rim light',
+    );
+  });
+});
+
+/**
+ * An Apply whose operations produce the document that is already on disk is a
+ * success that writes nothing. Minting a revision for it would invalidate every
+ * other open session in exchange for no change at all.
+ */
+describe('no-change apply', () => {
+  it('reports success, writes no file and creates no report', async () => {
+    const before = readFileSync(join(repoRoot, PROJECT_PATH), 'utf8');
+    const scene = sceneOf();
+    const { status, body } = await post({
+      target: { kind: 'scene', id: scene.id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename', displayName: scene.displayName }],
+      actor: 'human',
+      intent: 'rename the scene to the name it already has',
+    });
+
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.unchanged).toBe(true);
+    expect(body.reportPath).toBeUndefined();
+    expect(readFileSync(join(repoRoot, PROJECT_PATH), 'utf8')).toBe(before);
+  });
+});
+
 describe('revision conflict', () => {
   it('refuses a stale baseline instead of overwriting', async () => {
     const s = session();
@@ -214,6 +367,59 @@ describe('server-side validation', () => {
   it('refuses a malformed request', async () => {
     const { status } = await post({ target: { kind: 'scene', id: sceneOf().id } });
     expect(status).toBe(400);
+  });
+
+  /*
+   * The operation union is a TypeScript type, and TypeScript is not present at
+   * runtime. Every case below is one a well-behaved client cannot produce and a
+   * direct POST can, which is exactly why the server has to answer them.
+   */
+  it('refuses an unknown operation type by name', async () => {
+    const before = readFileSync(join(repoRoot, PROJECT_PATH), 'utf8');
+    const { status, body } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.set_matereal', entityId: 'x' }],
+      actor: 'human',
+      intent: 'typo',
+    });
+    expect(status).toBe(400);
+    expect(String((body.issues as { message: string }[])[0]!.message)).toContain(
+      'scene.set_matereal',
+    );
+    expect(readFileSync(join(repoRoot, PROJECT_PATH), 'utf8')).toBe(before);
+  });
+
+  it('refuses an operation carrying an unknown field', async () => {
+    const { status, body } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ ...placeLight, entityIdd: 'typo' }],
+      actor: 'human',
+      intent: 'a typo that must not be silently ignored',
+    });
+    expect(status).toBe(400);
+    expect((body.issues as { path: string }[])[0]!.path).toMatch(/^\/operations\/0/);
+  });
+
+  it('refuses an operation missing a required field', async () => {
+    const { status } = await post({
+      target: { kind: 'scene', id: sceneOf().id },
+      expected: { projectRevisionId: projectOf().revisionId },
+      operations: [{ type: 'scene.rename_entity', entityId: 'ground' }],
+      actor: 'human',
+      intent: 'rename with no name',
+    });
+    expect(status).toBe(400);
+  });
+
+  it('refuses a body that is not JSON at all', async () => {
+    const response = await app.request('/api/repository/apply', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not json',
+    });
+    expect(response.status).toBe(400);
   });
 
   it('refuses a character target here rather than silently applying it', async () => {

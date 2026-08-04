@@ -17,48 +17,79 @@
  */
 import type {
   CameraSceneEntity,
-  CharacterControllerBindingDefinition,
   CharacterSceneEntity,
   LightSceneEntity,
   ProjectDefinition,
   PropSceneEntity,
-  SceneAssetReference,
   SceneDefinition,
   SceneEntityDefinition,
+  SceneOperation,
   TransformDefinition,
   ValidationIssue,
 } from '@atc/schema';
-import { IDENTITY_ROTATION, UNIT_SCALE, validateSceneReferences } from '@atc/schema';
+import { IDENTITY_ROTATION, UNIT_SCALE, validateAgainst, validateSceneReferences } from '@atc/schema';
 
-export type SceneOperation =
-  | { type: 'scene.rename'; displayName: string }
-  | {
-      type: 'scene.place_asset';
-      entityId: string;
-      displayName: string;
-      asset: PlaceableAsset;
-      transform?: TransformDefinition;
-    }
-  | { type: 'scene.delete_entity'; entityId: string }
-  | { type: 'scene.duplicate_entity'; entityId: string }
-  | { type: 'scene.rename_entity'; entityId: string; displayName: string }
-  | { type: 'scene.set_transform'; entityId: string; transform: TransformDefinition }
-  | { type: 'scene.set_enabled'; entityId: string; enabled: boolean }
-  | { type: 'scene.set_character_source'; entityId: string; characterId: string }
-  | {
-      type: 'scene.bind_controller';
-      entityId: string;
-      controller: CharacterControllerBindingDefinition;
-    }
-  | { type: 'scene.reorder_entity'; entityId: string; toIndex: number }
-  | { type: 'scene.set_active_camera'; entityId: string | null };
+/*
+ * The operation union lives in `@atc/schema` and is re-exported here.
+ *
+ * It was a TypeScript-only union until the API had to accept one over HTTP,
+ * where a compile-time union is worth exactly nothing: `POST /api/repository/
+ * apply` receives JSON, and a cast is not a check. Declaring it once, as a
+ * schema, is what keeps the shape the server enforces and the shape the editor
+ * dispatches from being two shapes that drift.
+ */
+export type { PlaceableAsset, SceneOperation } from '@atc/schema';
 
-/** What the Asset Panel can place. Not every asset kind is placeable. */
-export type PlaceableAsset =
-  | { kind: 'character'; characterId: string }
-  | { kind: 'prop'; asset: SceneAssetReference }
-  | { kind: 'light'; lightType: LightSceneEntity['lightType'] }
-  | { kind: 'camera' };
+/** Every operation type the union declares, for naming an unknown one. */
+export const SCENE_OPERATION_TYPES = [
+  'scene.rename',
+  'scene.place_asset',
+  'scene.delete_entity',
+  'scene.duplicate_entity',
+  'scene.rename_entity',
+  'scene.set_transform',
+  'scene.set_enabled',
+  'scene.set_character_source',
+  'scene.bind_controller',
+  'scene.reorder_entity',
+  'scene.set_active_camera',
+] as const;
+
+/**
+ * Validates one untrusted value as a `SceneOperation`.
+ *
+ * The `type` is checked by hand *before* the schema, for one reason: a union of
+ * eleven closed objects reports an unknown `type` as eleven simultaneous
+ * failures, none of which say the useful thing. An operation the server does
+ * not implement has to be refused by name — a caller that sent
+ * `scene.set_matereal` needs to read that word back, not an anyOf dump.
+ */
+export function parseSceneOperation(
+  value: unknown,
+): { ok: true; operation: SceneOperation } | { ok: false; issues: ValidationIssue[] } {
+  const type = (value as { type?: unknown } | null)?.type;
+  if (typeof type !== 'string' || !(SCENE_OPERATION_TYPES as readonly string[]).includes(type)) {
+    return {
+      ok: false,
+      issues: [
+        {
+          path: '/type',
+          message: `unknown operation type ${JSON.stringify(type)}; expected one of ${SCENE_OPERATION_TYPES.join(', ')}`,
+          keyword: 'unsupported',
+        },
+      ],
+    };
+  }
+
+  const result = validateAgainst('SceneOperation', value);
+  if (!result.valid) {
+    // Only the failures of the member that matched this `type` are interesting;
+    // the other ten failed on the discriminator alone.
+    const issues = result.issues.filter((issue) => issue.path !== '/type');
+    return { ok: false, issues: issues.length > 0 ? issues : result.issues };
+  }
+  return { ok: true, operation: value as SceneOperation };
+}
 
 export interface OperationResult<TDocument> {
   ok: boolean;

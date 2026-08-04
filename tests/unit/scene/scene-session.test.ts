@@ -289,6 +289,55 @@ describe('apply', () => {
   });
 });
 
+/**
+ * Undo, redo and the staged operation list have to describe the same edits.
+ * The preview is what the human reads; the operation list is what Apply
+ * replays. Any disagreement between them writes something nobody saw.
+ */
+describe('undo, redo and staging agree', () => {
+  it('unstages an operation that is undone', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'Staged then undone' });
+    s.stageAll();
+    expect(s.staged).toHaveLength(1);
+
+    s.undo();
+    expect(s.staged).toHaveLength(0);
+    expect(s.stagedPaths).toEqual([]);
+    expect(s.buildStagedDocument().document!.displayName).not.toBe('Staged then undone');
+  });
+
+  it('restores the operation on redo, unstaged, and stages it again on request', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'Round trip' });
+    s.undo();
+    s.redo();
+
+    expect(s.previewDocument.displayName).toBe('Round trip');
+    // Redo puts the edit back; staging it again is a separate decision.
+    expect(s.staged).toHaveLength(0);
+    expect(s.pending).toHaveLength(1);
+
+    s.stageAll();
+    expect(s.buildStagedDocument().document!.displayName).toBe('Round trip');
+  });
+
+  it('never stages an operation the preview no longer contains', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'Kept' });
+    s.dispatch({ type: 'scene.rename_entity', entityId: CONTROLLED_ENTITY, displayName: 'Undone' });
+    s.undo();
+    s.stageAll();
+
+    const staged = s.buildStagedDocument().document!;
+    expect(staged.displayName).toBe('Kept');
+    expect(staged.entities.find((entry) => entry.id === CONTROLLED_ENTITY)!.displayName).not.toBe(
+      'Undone',
+    );
+    expect(staged).toEqual(s.previewDocument);
+  });
+});
+
 describe('undo and redo', () => {
   it('removes and restores a placed entity with the same id and transform', () => {
     const s = session();

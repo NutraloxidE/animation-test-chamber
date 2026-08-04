@@ -20,15 +20,28 @@ export interface RepositoryApplyReport {
   files: string[];
 }
 
+/**
+ * The report as a planned file, rather than a file already on disk.
+ *
+ * Apply writes the project and this report as one transaction, so the report
+ * cannot be written here: a report written before the project promoted would
+ * describe a revision that may never exist, and one written after is a second
+ * outcome that can fail on its own.
+ */
+export function repositoryReportFile(report: RepositoryApplyReport): {
+  path: string;
+  contents: string;
+} {
+  return {
+    path: `reports/apply/${report.target.kind}-${report.target.id}-${report.newRevisionId}.json`,
+    contents: `${JSON.stringify({ ...report, generated: true }, null, 2)}\n`,
+  };
+}
+
 /** Writes the report and returns its repository-relative path. */
 export function writeRepositoryReport(root: string, report: RepositoryApplyReport): string {
-  const directory = 'reports/apply';
-  const relative = `${directory}/${report.target.kind}-${report.target.id}-${report.newRevisionId}.json`;
-  mkdirSync(resolve(root, directory), { recursive: true });
-  writeFileSync(
-    resolve(root, relative),
-    `${JSON.stringify({ ...report, generated: true }, null, 2)}\n`,
-    'utf8',
-  );
-  return relative;
+  const file = repositoryReportFile(report);
+  mkdirSync(resolve(root, 'reports/apply'), { recursive: true });
+  writeFileSync(resolve(root, file.path), file.contents, 'utf8');
+  return file.path;
 }

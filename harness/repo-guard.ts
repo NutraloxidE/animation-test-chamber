@@ -36,8 +36,13 @@ function listFiles(directory: string, out: string[] = []): string[] {
   for (const entry of entries) {
     if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
     const path = resolve(full, entry);
+    // Repository-relative and forward-slashed, on every platform. `relative`
+    // returns backslashes on Windows, and every rule here compares against
+    // literal `packages/…` prefixes — so the exemptions silently stopped
+    // matching and the guard reported the packages that legitimately own a
+    // Simulation as violations.
     if (statSync(path).isDirectory()) listFiles(relative(REPO_ROOT, path), out);
-    else out.push(relative(REPO_ROOT, path));
+    else out.push(relative(REPO_ROOT, path).split('\\').join('/'));
   }
   return out;
 }

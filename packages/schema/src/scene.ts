@@ -309,6 +309,112 @@ export const SceneDefinition = Type.Object(
 );
 export type SceneDefinition = Static<typeof SceneDefinition>;
 
+/**
+ * What the Asset Panel can place. Not every asset kind is placeable.
+ */
+export const PlaceableAsset = Type.Union(
+  [
+    Type.Object(
+      { kind: Type.Literal('character'), characterId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { kind: Type.Literal('prop'), asset: SceneAssetReference },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { kind: Type.Literal('light'), lightType: LightSceneEntity.properties.lightType },
+      { additionalProperties: false },
+    ),
+    Type.Object({ kind: Type.Literal('camera') }, { additionalProperties: false }),
+  ],
+  { $id: 'PlaceableAsset' },
+);
+export type PlaceableAsset = Static<typeof PlaceableAsset>;
+
+const DisplayName = Type.String({ minLength: 1, maxLength: 200 });
+
+/**
+ * The typed repository operations, as a *runtime* contract.
+ *
+ * The TypeScript union alone is a compile-time claim about a client that the
+ * server has no way to check: `POST /api/repository/apply` receives JSON, and a
+ * cast is not a check. Anything the server cannot describe as one of these — an
+ * unknown `type`, a missing field, an extra field — has to be refused by name,
+ * because an operation the server half-understands is the one that writes a
+ * document nobody asked for.
+ *
+ * `additionalProperties: false` throughout is the load-bearing part: it is what
+ * makes a typo'd field a refusal rather than a silently ignored intent.
+ */
+export const SceneOperation = Type.Union(
+  [
+    Type.Object(
+      { type: Type.Literal('scene.rename'), displayName: DisplayName },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.place_asset'),
+        entityId: Id,
+        displayName: DisplayName,
+        asset: PlaceableAsset,
+        transform: Type.Optional(TransformDefinition),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.delete_entity'), entityId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.duplicate_entity'), entityId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.rename_entity'), entityId: Id, displayName: DisplayName },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.set_transform'), entityId: Id, transform: TransformDefinition },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.set_enabled'), entityId: Id, enabled: Type.Boolean() },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.set_character_source'), entityId: Id, characterId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.bind_controller'),
+        entityId: Id,
+        controller: CharacterControllerBindingDefinition,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.reorder_entity'),
+        entityId: Id,
+        toIndex: Type.Integer({ minimum: 0 }),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_active_camera'),
+        entityId: Type.Union([Id, Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+  ],
+  { $id: 'SceneOperation' },
+);
+export type SceneOperation = Static<typeof SceneOperation>;
+
 /** Narrowing helper; used wherever only character entities are relevant. */
 export function isCharacterEntity(
   entity: SceneEntityDefinition,

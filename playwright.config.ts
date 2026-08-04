@@ -23,7 +23,10 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? 'line' : [['line']],
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    // `localhost`, not `127.0.0.1`: Vite binds the loopback *name*, which on
+    // Windows resolves to ::1 first. A literal IPv4 address never reaches it,
+    // and the failure looks like a dev server that never started.
+    baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     // WebGL in headless Chromium needs software rendering in a container.
@@ -57,7 +60,7 @@ export default defineConfig({
     },
     {
       command: 'npx pnpm --filter @atc/web dev',
-      url: 'http://127.0.0.1:5173',
+      url: 'http://localhost:5173',
       reuseExistingServer: true,
       timeout: 90_000,
       stdout: 'ignore',
