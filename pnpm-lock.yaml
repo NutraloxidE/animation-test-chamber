@@ -215,6 +215,24 @@ importers:
         specifier: ^0.34.9
         version: 0.34.52
 
+  packages/character-control-runtime:
+    dependencies:
+      '@atc/animation-runtime':
+        specifier: workspace:*
+        version: link:../animation-runtime
+      '@atc/input-runtime':
+        specifier: workspace:*
+        version: link:../input-runtime
+      '@atc/replay-runtime':
+        specifier: workspace:*
+        version: link:../replay-runtime
+      '@atc/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@atc/terrain-runtime':
+        specifier: workspace:*
+        version: link:../terrain-runtime
+
   packages/editor-core:
     dependencies:
       '@atc/animation-runtime':

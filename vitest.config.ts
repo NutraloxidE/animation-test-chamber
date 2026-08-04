@@ -15,6 +15,7 @@ export default defineConfig({
       '@atc/haptics-runtime': pkg('haptics-runtime'),
       '@atc/replay-runtime': pkg('replay-runtime'),
       '@atc/world-runtime': pkg('world-runtime'),
+      '@atc/character-control-runtime': pkg('character-control-runtime'),
       '@atc/capability-runtime': pkg('capability-runtime'),
       '@atc/editor-core': pkg('editor-core'),
       '@atc/git-adapter': pkg('git-adapter'),

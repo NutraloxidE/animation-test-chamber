@@ -29,6 +29,7 @@
       "@atc/haptics-runtime": ["packages/haptics-runtime/src/index.ts"],
       "@atc/replay-runtime": ["packages/replay-runtime/src/index.ts"],
       "@atc/world-runtime": ["packages/world-runtime/src/index.ts"],
+      "@atc/character-control-runtime": ["packages/character-control-runtime/src/index.ts"],
       "@atc/capability-runtime": ["packages/capability-runtime/src/index.ts"],
       "@atc/editor-core": ["packages/editor-core/src/index.ts"],
       "@atc/git-adapter": ["packages/git-adapter/src/index.ts"],
