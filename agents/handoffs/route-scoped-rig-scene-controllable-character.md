@@ -4,7 +4,8 @@ Work package: `WP_ROUTE_SCOPED_RIG_SCENE_CONTROLLABLE_CHARACTER`
 Branch: `claude/edit-rig-scene-controllable-character`
 Base: `2e5b2a21a269f41aad7f14c00b0cded91233f33f` (see §1)
 
-**Phases 0–8 of 11 are complete. Phases 9–11 are not started.** Nothing in this
+**Phases 0–8 are complete, plus §25 documentation from Phase 10. Phase 9,
+the rest of Phase 10, and Phase 11 are not done.** Nothing in this
 document describes work that was not run, and no result below was projected
 from a diff.
 
@@ -162,13 +163,12 @@ code one.
   Two transitional bridges keep it working and must be deleted with it:
   `packages/world-runtime/src/scene-compat.ts` (views a Scene as a World) and
   `world-control.ts` (re-exports the moved control track).
-- **The Rig Editor still steps `Simulation` directly from device input**
-  (`apps/web/src/engine.ts:370`). §10.6 replaces that with a
-  `CharacterIntentSource`; the route work did not touch it, so the rig preview
-  is not yet a `ControllableCharacter`.
-- **The chamber still shows a World tab and a World/Focused toggle.** They live
-  inside the component tree the Rig Editor route now wraps, and §2.3 removes
-  them in Phase 10.
+- **The chamber still shows a World tab and a World/Focused toggle** (§29.62 is
+  therefore unmet). Removing them means migrating a 180-line Playwright spec, a
+  352-line panel and 31 store references to Scene equivalents. `harness:visual`
+  cannot run in this environment, so those assertions would have to be rewritten
+  blind — deliberately left for someone with a working visual harness rather
+  than half-done.
 - **The capability layer is unchanged.** There are no `rig.edit`, `scene.edit`
   or `character.control` groups yet; `world.*` commands remain the machine path.
 - **Unity export** emits the migrated project as-is. `IChamberWorld` and the
@@ -192,8 +192,7 @@ code one.
 
 ## Known follow-up, in the order the work package sequences it
 
-1. Finish Phase 6–8 — `ControllableCharacter` rig preview in place of the direct
-   `Simulation.step`, dirty-navigation guard, viewport play/pause/step, and
+1. Finish Phase 6–8 — dirty-navigation guard, viewport play/pause/step, and
    repository prop/model browsing in the Asset Panel.
 2. Phase 9 — capability groups and the target-aware command context.
 3. Phase 10 — retire `@atc/world-runtime`, migrate its tests, remove
