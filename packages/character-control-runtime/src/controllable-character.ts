@@ -30,7 +30,12 @@ import type {
   TransformDefinition,
 } from '@atc/schema';
 import { quaternionToYaw } from '@atc/schema';
-import { Simulation, defaultEquipped, type TickRecord } from '@atc/replay-runtime';
+import {
+  Simulation,
+  defaultEquipped,
+  type RootMotionTrack,
+  type TickRecord,
+} from '@atc/replay-runtime';
 import { ACTION_LAYER, LOCOMOTION_LAYER, type LayerId } from '@atc/animation-runtime';
 import {
   NeutralCharacterIntentSource,
@@ -59,6 +64,16 @@ export interface ControllableCharacterOptions {
   overrides?: CharacterInstanceOverrides;
   /** Camera yaw at spawn; movement is camera-relative. */
   cameraYawRad?: number;
+  /**
+   * Root-motion policy, forwarded to `Simulation` unchanged.
+   *
+   * Passed through rather than re-modelled here. These are tuning decisions
+   * that belong to the character's authored root-motion profile, and a second
+   * representation of them at this boundary would be one more place for the two
+   * to disagree about what "hybrid" means.
+   */
+  upperBodyActionRootMotionEnabled?: boolean;
+  actionRootMotionTracks?: Record<string, RootMotionTrack>;
 }
 
 /** Per-tick context the host supplies. */
@@ -140,6 +155,10 @@ export class ControllableCharacter {
       cameraYawRad: options.cameraYawRad ?? 0,
       ...(overrides.weaponModeId ? { weaponModeId: overrides.weaponModeId } : {}),
       equipped: { ...defaultEquipped(options.resolvedProject), ...(overrides.equipped ?? {}) },
+      ...(options.upperBodyActionRootMotionEnabled === undefined
+        ? {}
+        : { upperBodyActionRootMotionEnabled: options.upperBodyActionRootMotionEnabled }),
+      ...(options.actionRootMotionTracks ? { actionRootMotionTracks: options.actionRootMotionTracks } : {}),
     });
   }
 

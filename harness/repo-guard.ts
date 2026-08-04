@@ -767,9 +767,68 @@ export function workspaceAliasStage(): StageResult {
   );
 }
 
+/**
+ * Character control must go through `ControllableCharacter`.
+ *
+ * The browser app is the one place a direct `Simulation.step(deviceSample)` is
+ * tempting, because the device is right there — and it was exactly what the web
+ * engine did. The cost is not abstract: the one controller a human actually
+ * uses becomes the one controller that skips the boundary every other
+ * controller is tested against, so "human and AI behave identically" stops
+ * being checkable in the direction that matters.
+ *
+ * The runtime packages that legitimately own a `Simulation` are exempt by name
+ * rather than by a broad substring rule, so the exemption stays visible.
+ */
+export function characterControlBoundaryStage(): StageResult {
+  return stage(
+    'no direct device-to-Simulation control path',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'route the input through a CharacterIntentSource and ControllableCharacter.step, as apps/web/src/engine.ts does',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const owners = [
+        'packages/character-control-runtime/',
+        'packages/replay-runtime/',
+        'packages/world-runtime/',
+      ];
+
+      const files = [...listFiles('apps'), ...listFiles('packages')].filter(
+        (file) =>
+          (file.endsWith('.ts') || file.endsWith('.tsx')) &&
+          !owners.some((owner) => file.startsWith(owner)),
+      );
+
+      for (const file of files) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const [index, line] of source.split('\n').entries()) {
+          // `this.simulation.step(...)` and friends. `runtime.step()` is a
+          // scene/world clock, not a character, and is left alone.
+          if (/\bsimulation\.step\s*\(/i.test(line) && !line.trimStart().startsWith('*')) {
+            issues.push({
+              files: [file],
+              expected: 'intent through ControllableCharacter',
+              actual: `${file}:${index + 1}`,
+              message: `${file} steps a Simulation directly`,
+            });
+          }
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${files.length} file(s) checked` };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     workspaceAliasStage(),
+    characterControlBoundaryStage(),
     protectedValuesStage(),
     testIntegrityStage(),
     schemaConstraintStage(),
