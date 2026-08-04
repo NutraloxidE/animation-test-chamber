@@ -1,5 +1,5 @@
 /**
- * Unity world export.
+ * Unity scene export.
  *
  * The property worth asserting is the one the whole contract is about: two
  * instances of one character must export as two small objects plus one set of
@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { buildUnityBundle } from '@atc/unity-export';
 import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { loadResolvedDemoProject } from '../../fixtures/project.ts';
-import { CONTROLLED, SCRIPTED } from '../../fixtures/world.ts';
+import { CONTROLLED_ENTITY, SCRIPTED_ENTITY } from '../../fixtures/scene.ts';
 
 function bundle() {
   // A fixed generated-at stamp: the default is `new Date()`, and a bundle that
@@ -24,27 +24,30 @@ function projectDocument(files: { path: string; content: string }[]) {
   // The bundle nests the document under `project` beside its generated-file
   // marker, so a human opening the file can see it is generated output.
   return (JSON.parse(file.content) as { project: unknown }).project as {
-    world?: {
-      instances: { id: string; source: { characterId: string }; transform: unknown }[];
+    scenes: {
+      id: string;
+      entities: { id: string; kind: string; characterId?: string; transform: unknown }[];
       intentTracks: { id: string }[];
-    };
+    }[];
     characters: { id: string; animation: unknown }[];
   };
 }
 
-describe('unity world export', () => {
-  it('exports the world contract with stable instance ids', () => {
+describe('unity scene export', () => {
+  it('exports the scene contract with stable entity ids', () => {
     const document = projectDocument(bundle());
-    expect(document.world).toBeDefined();
-    expect(document.world!.instances.map((entry) => entry.id)).toEqual([CONTROLLED, SCRIPTED]);
-    expect(document.world!.intentTracks.map((entry) => entry.id)).toEqual([
-      'scripted-locomotion-cycle',
-    ]);
+    const scene = document.scenes[0];
+    expect(scene).toBeDefined();
+    const characters = scene!.entities.filter((entry) => entry.kind === 'character');
+    expect(characters.map((entry) => entry.id)).toEqual([CONTROLLED_ENTITY, SCRIPTED_ENTITY]);
+    expect(scene!.intentTracks.map((entry) => entry.id)).toEqual(['scripted-locomotion-cycle']);
   });
 
-  it('exports two instances of one character without duplicating the character', () => {
+  it('exports two entities of one character without duplicating the character', () => {
     const document = projectDocument(bundle());
-    const characterIds = document.world!.instances.map((entry) => entry.source.characterId);
+    const characterIds = document
+      .scenes[0]!.entities.filter((entry) => entry.kind === 'character')
+      .map((entry) => entry.characterId!);
     expect(new Set(characterIds).size).toBe(1);
     // One character definition in the bundle, referenced twice.
     expect(document.characters.filter((entry) => entry.id === characterIds[0]!)).toHaveLength(1);

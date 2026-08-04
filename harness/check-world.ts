@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { WorldDefinition } from '@atc/schema';
-import { validateAgainst, validateProjectReferences } from '@atc/schema';
+import { migrateWorldDefinition, validateAgainst, validateProjectReferences } from '@atc/schema';
 import {
   WorldReplayRecorder,
   WorldRuntime,
@@ -317,21 +317,38 @@ export function worldContractStage(): StageResult {
         );
       }
 
-      // The fixture and the demo project must not drift: the project is what a
-      // human opens, the fixture is what the manifest and the tests name.
-      const fixtureJson = JSON.stringify(world);
-      if (JSON.stringify(project.world ?? null) !== fixtureJson) {
+      /*
+       * The fixture and the demo project must not drift: the project is what a
+       * human opens, the fixture is what the manifest and the tests name.
+       *
+       * The demo project now ships the acceptance world *as a Scene* — it was
+       * migrated by `pnpm scenes:migrate` — so the comparison runs the fixture
+       * through the same one-way migration rather than expecting a `world` key
+       * the canonical document no longer has. Comparing the migrated forms is
+       * what keeps this a drift check rather than a shape check: a fixture edit
+       * that the project did not receive still fails here.
+       */
+      const migratedFixture = JSON.stringify(migrateWorldDefinition(world));
+      const shippedScene = project.scenes.find((scene) => scene.id === world.id);
+      if (JSON.stringify(shippedScene ?? null) !== migratedFixture) {
         issues.push(
           issue(
-            'projects/demo-character/project.json does not carry the acceptance world',
-            'the project world to equal the fixture',
+            'projects/demo-character/project.json does not carry the acceptance scene',
+            'the project scene to equal the migrated fixture world',
             'they differ',
           ),
         );
       }
 
-      // Legacy: a project with no explicit world still runs, as one instance.
-      const { world: _explicit, ...legacyProject } = project;
+      /*
+       * Legacy: a project with neither an explicit world nor any scene still
+       * runs, as one synthesized instance. `scenes` is stripped alongside
+       * `world` now that the demo project composes its characters as a Scene —
+       * leaving it in would hand `worldOf` two instances through the Scene
+       * adapter and quietly stop testing the synthesis path at all.
+       */
+      const { world: _explicit, ...withScenes } = project;
+      const legacyProject = { ...withScenes, scenes: [] };
       const legacy = worldOf(legacyProject);
       if (legacy.instances.length !== 1) {
         issues.push(

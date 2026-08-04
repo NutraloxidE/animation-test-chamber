@@ -7,6 +7,7 @@ import { CameraProfile, MovementProfile, RootMotionProfile } from './movement.ts
 import { TerrainInteractionProfile } from './terrain.ts';
 import { HapticProfile } from './haptics.ts';
 import { CandidateAsset } from './acquisition.ts';
+import { SceneDefinition } from './scene.ts';
 import { WorldDefinition } from './world.ts';
 
 export const CharacterDefinition = Type.Object(
@@ -123,14 +124,30 @@ export const ProjectDefinition = Type.Object(
     /** Which character the chamber opens with. */
     activeCharacterId: Id,
     /**
-     * Optional multi-instance world.
+     * Every Scene in the project.
      *
-     * Optional because `characters` is not being replaced: a project that
-     * predates this field still opens, and resolves through
-     * `synthesizeLegacyWorld` into a one-instance world built from
-     * `activeCharacterId`. The focused chamber is therefore a *view over a
-     * one-instance world* rather than a second runtime kept alive alongside
-     * this one.
+     * May be empty, and an empty list is not a degenerate case: a repository
+     * that only authors reusable Characters is a legitimate shape, and the Rig
+     * Editor needs no Scene to open one. The old singular optional `world` is
+     * gone — `scenes` replaced it — and a document still carrying `world` is a
+     * legacy document, read only through `loadProjectDocument`.
+     */
+    scenes: Type.Array(SceneDefinition),
+    /**
+     * Which Scene the Scene list opens on.
+     *
+     * A *navigation preference*, nothing more. `/edit/scene/:sceneId` resolves
+     * its target from the route and never consults this field, so a stale or
+     * absent `activeSceneId` cannot cause one Scene's edits to land in another.
+     */
+    activeSceneId: Type.Optional(Id),
+    /**
+     * The legacy multi-instance world.
+     *
+     * @deprecated Migration-only, and removed once `@atc/world-runtime` retires.
+     * Production code must read `scenes` — `harness:repo-guard` fails a new
+     * reference to this field. It stays declared for exactly as long as the old
+     * runtime and its un-migrated tests still parse documents that contain it.
      */
     world: Type.Optional(WorldDefinition),
     inputMap: InputMapDefinition,

@@ -185,15 +185,37 @@ export function schemaConstraintStage(): StageResult {
       const issues: StageIssue[] = [];
       const schemaFiles = listFiles('packages/schema/src').filter((file) => file.endsWith('.ts'));
 
+      /*
+       * `additionalProperties: false` is what stops unknown fields creeping in,
+       * and the count of them across the package must never fall.
+       *
+       * Counted package-wide as well as per file, because a per-file count
+       * alone cannot tell a deleted constraint from a *moved* one: extracting a
+       * type into a new module drops the old file's count to zero and reads as
+       * five constraints vanishing, which trains everyone to ignore the guard.
+       * The package total is the number that actually answers "did a strict
+       * object stop being strict?", so a per-file drop is only reported when
+       * the total dropped with it.
+       */
+      const strictTotal = (files: (readonly [string, string | null])[]): number =>
+        files.reduce(
+          (sum, [, text]) => sum + (text?.match(/additionalProperties:\s*false/g) ?? []).length,
+          0,
+        );
+      const headSources = schemaFiles.map(
+        (file) => [file, readAtRevision('HEAD', file)] as const,
+      );
+      const workingSources = schemaFiles.map((file) => [file, readRepoFile(file)] as const);
+      const packageLostConstraints = strictTotal(workingSources) < strictTotal(headSources);
+
       for (const file of schemaFiles) {
         const before = readAtRevision('HEAD', file);
         const after = readRepoFile(file);
         if (before === null || after === null) continue;
 
-        // additionalProperties: false is what stops unknown fields creeping in.
         const strictBefore = (before.match(/additionalProperties:\s*false/g) ?? []).length;
         const strictAfter = (after.match(/additionalProperties:\s*false/g) ?? []).length;
-        if (strictAfter < strictBefore) {
+        if (strictAfter < strictBefore && packageLostConstraints) {
           issues.push({
             files: [file],
             expected: `${strictBefore} strict object(s)`,

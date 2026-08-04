@@ -31,6 +31,7 @@ import {
   materializeResolvedProject,
   resolveCharacterAnimationBundle,
 } from '@atc/animation-asset-runtime';
+import { defaultScene, sceneAsWorld } from './scene-compat.ts';
 
 /**
  * The world a legacy project runs as.
@@ -76,14 +77,30 @@ export function legacyInstanceId(character: CharacterDefinition): string {
   return character.id;
 }
 
-/** The project's explicit world, or the synthesized one. Never null. */
+/**
+ * The world this project runs as. Never null.
+ *
+ * Three sources, in descending order of how directly the project said it:
+ * a legacy `world` still on the document, the project's default Scene viewed
+ * through the transitional adapter, and finally the one-instance world
+ * synthesized from `activeCharacterId`.
+ *
+ * The Scene step is what keeps this package's tests meaningful after the demo
+ * project migrated: without it a project that ships two composed characters
+ * would open here as one synthesized instance, and every world test would keep
+ * passing while asserting nothing about the data a human actually opens.
+ */
 export function worldOf(project: ProjectDefinition): WorldDefinition {
-  return project.world ?? synthesizeLegacyWorld(project);
+  if (project.world) return project.world;
+  const scene = defaultScene(project);
+  return (scene && sceneAsWorld(scene)) ?? synthesizeLegacyWorld(project);
 }
 
-/** True when the world came from `synthesizeLegacyWorld`. */
+/** True when the world came from `synthesizeLegacyWorld` — no world *and* no usable scene. */
 export function isSynthesizedWorld(project: ProjectDefinition): boolean {
-  return project.world === undefined;
+  if (project.world) return false;
+  const scene = defaultScene(project);
+  return !scene || sceneAsWorld(scene) === undefined;
 }
 
 /**

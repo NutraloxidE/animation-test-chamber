@@ -492,6 +492,13 @@ export function migrateProjectToAssets(legacy: LegacyProject): MigrationResult {
     schemaVersion: 2,
     characters: [demoCharacter, alternateCharacter],
     activeCharacterId: demoCharacter.id,
+    /*
+     * A v1 project predates both Worlds and Scenes, so it migrates to no
+     * scenes at all. Synthesizing one here to "have something to show" would
+     * persist a Scene the author never composed, and the Rig Editor — the only
+     * thing a freshly migrated v1 project can usefully open — needs none.
+     */
+    scenes: [],
   } as unknown as ProjectDefinition;
 
   notes.push(

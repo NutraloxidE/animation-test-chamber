@@ -78,7 +78,7 @@
             }
           },
           "transform": {
-            "$id": "TransformDefinition",
+            "$id": "LegacyTransformDefinition",
             "additionalProperties": false,
             "type": "object",
             "required": [

@@ -20,10 +20,19 @@ import {
 } from './animation-assets.ts';
 import { SaveAnimationChangesRequest } from './animation-save.ts';
 import {
-  IntentTrackDefinition,
   RuntimeInstanceDefinition,
   WorldDefinition,
 } from './world.ts';
+import { IntentTrackDefinition } from './intent-track.ts';
+import {
+  CameraSceneEntity,
+  CharacterControllerBindingDefinition,
+  CharacterSceneEntity,
+  LightSceneEntity,
+  PropSceneEntity,
+  SceneDefinition,
+  SceneEntityDefinition,
+} from './scene.ts';
 
 export interface ValidationIssue {
   path: string;
@@ -67,6 +76,13 @@ export const SCHEMA_REGISTRY = {
   WorldDefinition,
   RuntimeInstanceDefinition,
   IntentTrackDefinition,
+  SceneDefinition,
+  SceneEntityDefinition,
+  CharacterSceneEntity,
+  PropSceneEntity,
+  LightSceneEntity,
+  CameraSceneEntity,
+  CharacterControllerBindingDefinition,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
@@ -230,7 +246,256 @@ export function validateProjectReferences(project: unknown): ValidationResult {
 
   issues.push(...equipmentIssues(p.equipment ?? [], null));
   issues.push(...worldIssues(project, seenCharacters));
+  issues.push(...scenesIssues(project, seenCharacters));
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Structural checks across a project's Scenes.
+ *
+ * Scene ids are unique *project-wide* rather than merely non-empty, because a
+ * route parameter is the authoritative target identity: two Scenes sharing an
+ * id would make `/edit/scene/x` name two documents, and whichever one the
+ * resolver reached first would be the one that got written.
+ */
+function scenesIssues(project: unknown, characterIds: ReadonlySet<string>): ValidationIssue[] {
+  const p = project as { scenes?: unknown[]; activeSceneId?: string };
+  if (!Array.isArray(p.scenes)) return [];
+
+  const issues: ValidationIssue[] = [];
+  const sceneIds = new Set<string>();
+  for (const scene of p.scenes) {
+    const id = (scene as { id?: string }).id ?? '';
+    if (sceneIds.has(id)) {
+      issues.push({
+        path: `/scenes/${id}`,
+        message: `duplicate scene id "${id}"`,
+        keyword: 'unique',
+      });
+    }
+    sceneIds.add(id);
+    issues.push(...sceneIssues(scene, characterIds, `/scenes/${id}`));
+  }
+
+  if (p.activeSceneId !== undefined && !sceneIds.has(p.activeSceneId)) {
+    issues.push({
+      path: '/activeSceneId',
+      message: `references unknown scene "${p.activeSceneId}"`,
+      keyword: 'reference',
+    });
+  }
+  return issues;
+}
+
+/**
+ * Structural checks on one Scene.
+ *
+ * Exported so a *staged* Scene can be checked before it is ever attached to a
+ * project — the command surface refuses a bad entity at the command, not at
+ * publication, and a refusal that arrives that late is one a caller has already
+ * built a UI on top of.
+ */
+export function validateSceneReferences(
+  scene: unknown,
+  knownCharacterIds: ReadonlySet<string>,
+): ValidationResult {
+  const issues = sceneIssues(scene, knownCharacterIds, '/scene');
+  return { valid: issues.length === 0, issues };
+}
+
+interface RawSceneEntity {
+  id?: string;
+  kind?: string;
+  enabled?: boolean;
+  characterId?: string;
+  controller?: { kind?: string; trackId?: string };
+  targetEntityId?: string;
+  asset?: { kind?: string; assetPath?: string };
+  transform?: {
+    position?: Record<string, number>;
+    rotation?: Record<string, number>;
+    scale?: Record<string, number>;
+  };
+}
+
+function sceneIssues(
+  scene: unknown,
+  characterIds: ReadonlySet<string>,
+  base: string,
+): ValidationIssue[] {
+  const s = scene as {
+    entities?: RawSceneEntity[];
+    intentTracks?: { id: string; durationTicks: number; keyframes: { tick: number }[] }[];
+    activeCameraEntityId?: string;
+  };
+  if (!s || typeof s !== 'object') return [];
+
+  const issues: ValidationIssue[] = [];
+  const entities = s.entities ?? [];
+
+  const trackIds = new Set<string>();
+  for (const track of s.intentTracks ?? []) {
+    if (trackIds.has(track.id)) {
+      issues.push({
+        path: `${base}/intentTracks/${track.id}`,
+        message: `duplicate intent track id "${track.id}"`,
+        keyword: 'unique',
+      });
+    }
+    trackIds.add(track.id);
+
+    /*
+     * Keyframes must be strictly ascending. Out-of-order keyframes are not a
+     * schema error and would still sample *something*, which is worse than
+     * failing: the track would play a different shape than the one the author
+     * can see written down.
+     */
+    let previous = -1;
+    for (const keyframe of track.keyframes ?? []) {
+      if (keyframe.tick <= previous) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe ticks must strictly ascend (saw ${keyframe.tick} after ${previous})`,
+          keyword: 'order',
+        });
+      }
+      previous = keyframe.tick;
+      if (keyframe.tick >= track.durationTicks) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe at tick ${keyframe.tick} is outside durationTicks ${track.durationTicks}`,
+          keyword: 'range',
+        });
+      }
+    }
+  }
+
+  const enabled = new Map<string, boolean>();
+  for (const entity of entities) {
+    const id = entity.id ?? '';
+    const path = `${base}/entities/${id}`;
+    if (enabled.has(id)) {
+      issues.push({ path, message: `duplicate entity id "${id}"`, keyword: 'unique' });
+    }
+    enabled.set(id, entity.enabled ?? false);
+
+    if (entity.kind === 'character') {
+      if (!characterIds.has(entity.characterId ?? '')) {
+        issues.push({
+          path: `${path}/characterId`,
+          message: `entity "${id}" references unknown character "${entity.characterId ?? ''}"`,
+          keyword: 'reference',
+        });
+      }
+      if (entity.controller?.kind === 'script' && !trackIds.has(entity.controller.trackId ?? '')) {
+        issues.push({
+          path: `${path}/controller/trackId`,
+          message: `entity "${id}" references unknown intent track "${entity.controller.trackId ?? ''}"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    /*
+     * A prop whose asset is a `blob:` or `data:` URL resolves exactly once, in
+     * the tab that minted it. Such a scene looks correct to the person who
+     * authored it and is broken for everyone who opens the file afterwards,
+     * which is the failure worth refusing by name rather than discovering as a
+     * missing mesh.
+     */
+    if (entity.kind === 'prop' && entity.asset?.kind === 'model') {
+      const assetPath = entity.asset.assetPath ?? '';
+      if (/^(blob:|data:|https?:)/i.test(assetPath)) {
+        issues.push({
+          path: `${path}/asset/assetPath`,
+          message: `entity "${id}" stores a non-repository asset URL "${assetPath.slice(0, 32)}…"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    issues.push(...transformIssues(entity.transform, path));
+  }
+
+  /*
+   * A camera target — and the scene's active camera — must name an entity that
+   * exists and is enabled. A camera aimed at a disabled entity opens the scene
+   * looking at nothing, which reads as a broken build rather than a broken
+   * document.
+   */
+  for (const entity of entities) {
+    if (entity.kind !== 'camera' || entity.targetEntityId === undefined) continue;
+    if (!enabled.has(entity.targetEntityId)) {
+      issues.push({
+        path: `${base}/entities/${entity.id ?? ''}/targetEntityId`,
+        message: `camera targets unknown entity "${entity.targetEntityId}"`,
+        keyword: 'reference',
+      });
+    }
+  }
+
+  const activeCameraId = s.activeCameraEntityId;
+  if (activeCameraId !== undefined) {
+    const camera = entities.find((entity) => entity.id === activeCameraId);
+    if (!camera) {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `references unknown entity "${activeCameraId}"`,
+        keyword: 'reference',
+      });
+    } else if (camera.kind !== 'camera') {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `entity "${activeCameraId}" is a ${camera.kind}, not a camera`,
+        keyword: 'reference',
+      });
+    } else if (!camera.enabled) {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `references disabled camera "${activeCameraId}"`,
+        keyword: 'enabled',
+      });
+    }
+  }
+
+  return issues;
+}
+
+function transformIssues(
+  transform: RawSceneEntity['transform'],
+  base: string,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const field of ['position', 'rotation', 'scale'] as const) {
+    for (const [axis, value] of Object.entries(transform?.[field] ?? {})) {
+      if (!Number.isFinite(value)) {
+        issues.push({
+          path: `${base}/transform/${field}/${axis}`,
+          message: `transform ${field} ${axis} must be finite`,
+          keyword: 'finite',
+        });
+      }
+    }
+  }
+
+  /*
+   * The schema bounds each quaternion component to [-1, 1], which no JSON
+   * Schema can strengthen into "unit length". An un-normalized rotation is not
+   * garbage — it is a plausible-looking rotation that also scales everything it
+   * is applied to, and it would be discovered as a character that grows.
+   */
+  const rotation = transform?.rotation;
+  if (rotation && ['x', 'y', 'z', 'w'].every((axis) => Number.isFinite(rotation[axis]))) {
+    const magnitude = Math.hypot(rotation.x!, rotation.y!, rotation.z!, rotation.w!);
+    if (Math.abs(magnitude - 1) > 1e-3) {
+      issues.push({
+        path: `${base}/transform/rotation`,
+        message: `rotation quaternion must be unit length (magnitude ${magnitude.toFixed(4)})`,
+        keyword: 'normalized',
+      });
+    }
+  }
+  return issues;
 }
 
 /**

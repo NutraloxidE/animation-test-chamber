@@ -1,16 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "RuntimeInstanceDefinition",
+  "$id": "LightSceneEntity",
   "additionalProperties": false,
   "type": "object",
   "required": [
     "schemaVersion",
     "id",
     "displayName",
-    "source",
+    "enabled",
     "transform",
-    "intentSource",
-    "enabled"
+    "kind",
+    "lightType",
+    "intensity",
+    "color"
   ],
   "properties": {
     "schemaVersion": {
@@ -26,34 +28,17 @@
     "displayName": {
       "type": "string"
     },
-    "source": {
-      "$id": "RuntimeInstanceSource",
-      "additionalProperties": false,
-      "type": "object",
-      "required": [
-        "kind",
-        "characterId"
-      ],
-      "properties": {
-        "kind": {
-          "const": "character",
-          "type": "string"
-        },
-        "characterId": {
-          "pattern": "^[a-z0-9][a-z0-9-]*$",
-          "minLength": 1,
-          "maxLength": 96,
-          "type": "string"
-        }
-      }
+    "enabled": {
+      "type": "boolean"
     },
     "transform": {
-      "$id": "LegacyTransformDefinition",
+      "$id": "TransformDefinition",
       "additionalProperties": false,
       "type": "object",
       "required": [
         "position",
-        "yawRad"
+        "rotation",
+        "scale"
       ],
       "properties": {
         "position": {
@@ -82,118 +67,61 @@
             }
           }
         },
-        "yawRad": {
-          "minimum": -1000,
-          "maximum": 1000,
-          "type": "number"
-        }
-      }
-    },
-    "intentSource": {
-      "$id": "IntentSourceDefinition",
-      "anyOf": [
-        {
+        "rotation": {
           "additionalProperties": false,
           "type": "object",
           "required": [
-            "kind",
-            "playerIndex"
+            "x",
+            "y",
+            "z",
+            "w"
           ],
           "properties": {
-            "kind": {
-              "const": "local-input",
-              "type": "string"
+            "x": {
+              "minimum": -1,
+              "maximum": 1,
+              "type": "number"
             },
-            "playerIndex": {
-              "minimum": 0,
-              "maximum": 7,
-              "type": "integer"
-            }
-          }
-        },
-        {
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "kind",
-            "trackId"
-          ],
-          "properties": {
-            "kind": {
-              "const": "scripted-track",
-              "type": "string"
+            "y": {
+              "minimum": -1,
+              "maximum": 1,
+              "type": "number"
             },
-            "trackId": {
-              "pattern": "^[a-z0-9][a-z0-9-]*$",
-              "minLength": 1,
-              "maxLength": 96,
-              "type": "string"
-            }
-          }
-        },
-        {
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "kind",
-            "replayId"
-          ],
-          "properties": {
-            "kind": {
-              "const": "replay",
-              "type": "string"
+            "z": {
+              "minimum": -1,
+              "maximum": 1,
+              "type": "number"
             },
-            "replayId": {
-              "pattern": "^[a-z0-9][a-z0-9-]*$",
-              "minLength": 1,
-              "maxLength": 96,
-              "type": "string"
+            "w": {
+              "minimum": -1,
+              "maximum": 1,
+              "type": "number"
             }
           }
         },
-        {
+        "scale": {
           "additionalProperties": false,
           "type": "object",
           "required": [
-            "kind"
+            "x",
+            "y",
+            "z"
           ],
           "properties": {
-            "kind": {
-              "const": "none",
-              "type": "string"
-            }
-          }
-        }
-      ]
-    },
-    "enabled": {
-      "type": "boolean"
-    },
-    "overrides": {
-      "$id": "RuntimeInstanceOverrides",
-      "additionalProperties": false,
-      "type": "object",
-      "properties": {
-        "moveSpeedScale": {
-          "minimum": 0,
-          "maximum": 4,
-          "type": "number"
-        },
-        "seed": {
-          "minimum": 0,
-          "maximum": 2147483647,
-          "type": "integer"
-        },
-        "weaponModeId": {
-          "minLength": 1,
-          "maxLength": 96,
-          "type": "string"
-        },
-        "equipped": {
-          "type": "object",
-          "patternProperties": {
-            "^(.*)$": {
-              "type": "boolean"
+            "x": {
+              "minimum": 0.001,
+              "maximum": 1000,
+              "type": "number"
+            },
+            "y": {
+              "minimum": 0.001,
+              "maximum": 1000,
+              "type": "number"
+            },
+            "z": {
+              "minimum": 0.001,
+              "maximum": 1000,
+              "type": "number"
             }
           }
         }
@@ -264,6 +192,45 @@
           }
         }
       }
+    },
+    "kind": {
+      "const": "light",
+      "type": "string"
+    },
+    "lightType": {
+      "anyOf": [
+        {
+          "const": "directional",
+          "type": "string"
+        },
+        {
+          "const": "point",
+          "type": "string"
+        },
+        {
+          "const": "spot",
+          "type": "string"
+        }
+      ]
+    },
+    "intensity": {
+      "minimum": 0,
+      "maximum": 1000,
+      "type": "number"
+    },
+    "color": {
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "type": "string"
+    },
+    "range": {
+      "minimum": 0,
+      "maximum": 10000,
+      "type": "number"
+    },
+    "spotAngleRad": {
+      "minimum": 0,
+      "maximum": 3.141592653589793,
+      "type": "number"
     }
   }
 }
