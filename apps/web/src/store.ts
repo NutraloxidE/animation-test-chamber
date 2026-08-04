@@ -339,6 +339,22 @@ function resolveFor(
 }
 
 /**
+ * Asset-bound patches, provenance excluded.
+ *
+ * `buildStagedDocument` stamps a `provenance` record on the object owning each
+ * staged path — session bookkeeping about *why* a value was changed, which
+ * belongs in the commit report, not in a published asset or a character
+ * override. Sent as a patch it is also simply invalid: a character override
+ * may only set paths the parent asset already has, and the parent has no
+ * provenance to set.
+ */
+function assetPatches(before: unknown, after: unknown): CanonicalPatch[] {
+  return diffToPatches(before, after, '').filter(
+    (patch) => !patch.path.split('/').includes('provenance'),
+  );
+}
+
+/**
  * `diffToPatches(repository.clips, preview.clips, '')` diffs the whole clips
  * array at once, so its output is a flat list of patches rooted at that
  * array — each path's first segment is the clip id the array is keyed by
@@ -869,8 +885,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     stagedChangeSummary() {
       const repository = session.repositoryProject;
       const preview = session.buildStagedDocument();
-      const graphPatches = diffToPatches(repository.graph, preview.graph, '');
-      const clipPatches = diffToPatches(repository.clips, preview.clips, '');
+      const graphPatches = assetPatches(repository.graph, preview.graph);
+      const clipPatches = assetPatches(repository.clips, preview.clips);
       const grouped = groupClipPatches(clipPatches);
       const clipChanges = grouped.map(({ clipId, patches }) => ({
         clipId,
@@ -909,8 +925,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
 
       const repository = session.repositoryProject;
       const preview = session.buildStagedDocument();
-      const graphPatches = diffToPatches(repository.graph, preview.graph, '');
-      const clipPatches = diffToPatches(repository.clips, preview.clips, '');
+      const graphPatches = assetPatches(repository.graph, preview.graph);
+      const clipPatches = assetPatches(repository.clips, preview.clips);
       const clipChangeGroups = groupClipPatches(clipPatches);
       const character = get().project.character;
 
@@ -961,6 +977,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           project: resolution.project,
           assetIssues: resolution.issues,
           revision: get().revision + 1,
+          libraryDialog: null,
           statusMessage: 'Saved as a browser-only character draft. No repository files were changed.',
         });
         return;
@@ -1032,7 +1049,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         // waited for it would often never be seen.
         const message = `Saved. Report: ${payload.reportPath}`;
         persistStatusForReload(message);
-        set({ statusMessage: message });
+        set({ statusMessage: message, libraryDialog: null });
         await get().reloadAssets(payload.project);
       } catch (error) {
         awaitingOwnWrite = false;

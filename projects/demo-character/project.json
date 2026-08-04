@@ -514,7 +514,18 @@
           "version": "1.0.0",
           "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
         },
-        "instanceOverrides": []
+        "instanceOverrides": [
+          {
+            "path": "/graph/states/walk/speed",
+            "op": "set",
+            "value": 1.53
+          },
+          {
+            "path": "/graph/states/run/speed",
+            "op": "set",
+            "value": 1.21
+          }
+        ]
       }
     },
     {
