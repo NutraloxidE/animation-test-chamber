@@ -37,6 +37,7 @@ import { readOnlyRefusal, refusesWrite } from './read-only-guard.ts';
 import { createRepositoryRuntime, type RepositoryRuntime } from './runtime.ts';
 import { animationAssetRoutes } from './routes/animation-assets.ts';
 import { capabilityRoutes, isReadOnlyCommandRequest } from './routes/capabilities.ts';
+import { repositoryApplyRoutes } from './routes/repository-apply.ts';
 import type { ServerContext } from './context.ts';
 
 export interface CreateAppOptions {
@@ -123,6 +124,7 @@ export function createApp(options: CreateAppOptions = {}): {
 
   app.route('/', animationAssetRoutes(runtime));
   app.route('/', capabilityRoutes(runtime));
+  repositoryApplyRoutes(app, repoRoot);
 
   app.get('/api/replays', (c) => c.json({ replays: REPLAY_FIXTURES }));
 
