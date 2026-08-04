@@ -111,7 +111,7 @@ export class ControllableCharacter {
   /** The authored spawn transform, kept so `observe` can report authored scale. */
   readonly spawnTransform: TransformDefinition;
 
-  private readonly simulation: Simulation;
+  private readonly simulationValue: Simulation;
   private source: CharacterIntentSource;
   private tickIndex = 0;
   private lastIntentValue: CharacterIntent = neutralIntent();
@@ -125,7 +125,7 @@ export class ControllableCharacter {
     this.source = options.intentSource;
 
     const overrides = options.overrides ?? {};
-    this.simulation = new Simulation({
+    this.simulationValue = new Simulation({
       project: options.resolvedProject,
       terrain: options.terrain,
       seed: options.seed,
@@ -168,6 +168,22 @@ export class ControllableCharacter {
   }
 
   /**
+   * The underlying `Simulation`.
+   *
+   * Exposed narrowly because `computeMetrics` needs the simulation itself to
+   * read root-motion and foot-contact state that no `TickRecord` carries.
+   * Reimplementing those metrics against the record list would produce a second
+   * definition of "foot sliding" and the two would drift; handing over the
+   * object the metrics were written against does not.
+   *
+   * Not a general escape hatch: stepping this directly bypasses the intent
+   * source, which is the boundary this whole class exists to make unavoidable.
+   */
+  get simulation(): Simulation {
+    return this.simulationValue;
+  }
+
+  /**
    * Swaps the source mid-run, for a host handing control over.
    *
    * `reset()` rebuilds from the constructor options, so a source assigned here
@@ -193,21 +209,21 @@ export class ControllableCharacter {
 
   /** Advances exactly one fixed step. */
   step(tick: number, context: CharacterControlContext): CharacterTickRecord {
-    this.simulation.setCameraYaw(context.cameraYawRad);
+    this.simulationValue.setCameraYaw(context.cameraYawRad);
     const intent = this.source.sample(tick);
     this.lastIntentValue = intent;
-    const record = this.simulation.step(intent);
+    const record = this.simulationValue.step(intent);
     this.lastRecordValue = record;
     this.tickIndex = tick + 1;
     return { tick, intent, record };
   }
 
   layerState(layer: LayerId) {
-    return this.simulation.layerState(layer);
+    return this.simulationValue.layerState(layer);
   }
 
   clipIdFor(layer: LayerId): string | undefined {
-    return this.simulation.clipFor(layer)?.id;
+    return this.simulationValue.clipFor(layer)?.id;
   }
 
   observe(): CharacterObservation {
@@ -225,8 +241,8 @@ export class ControllableCharacter {
       intentSourceKind: this.source.kind,
       intentCursor: this.source.cursor(),
       lastIntent: this.lastIntentValue,
-      locomotionStateId: this.simulation.layerState(LOCOMOTION_LAYER)?.stateId ?? '',
-      actionStateId: this.simulation.layerState(ACTION_LAYER)?.stateId ?? '',
+      locomotionStateId: this.simulationValue.layerState(LOCOMOTION_LAYER)?.stateId ?? '',
+      actionStateId: this.simulationValue.layerState(ACTION_LAYER)?.stateId ?? '',
       clipIds: {
         [LOCOMOTION_LAYER]: this.clipIdFor(LOCOMOTION_LAYER) ?? null,
         [ACTION_LAYER]: this.clipIdFor(ACTION_LAYER) ?? null,

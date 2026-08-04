@@ -16,6 +16,7 @@ export default defineConfig({
       '@atc/replay-runtime': pkg('replay-runtime'),
       '@atc/world-runtime': pkg('world-runtime'),
       '@atc/character-control-runtime': pkg('character-control-runtime'),
+      '@atc/scene-runtime': pkg('scene-runtime'),
       '@atc/capability-runtime': pkg('capability-runtime'),
       '@atc/editor-core': pkg('editor-core'),
       '@atc/git-adapter': pkg('git-adapter'),
