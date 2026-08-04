@@ -664,8 +664,112 @@ export function worldContractGuardStage(): StageResult {
   );
 }
 
+/**
+ * Every workspace package must be resolvable everywhere it is consumed.
+ *
+ * A package's path is written down in four independent places — `tsconfig.base
+ * .json` for the compiler, `vitest.config.ts` for the tests, `apps/web/vite
+ * .config.ts` for the browser, and the package's own directory — and nothing
+ * made them agree. Adding a package to three of them typechecks, lints and
+ * passes every test, then fails at `pnpm dev` with a Vite import error, because
+ * the browser is the one consumer no Node-side check exercises.
+ *
+ * The list of directories under `packages/` is the authority here: a package
+ * that exists and is missing from any alias map is the failure, in whichever
+ * direction it happens.
+ */
+export function workspaceAliasStage(): StageResult {
+  return stage(
+    'every workspace package resolves in every consumer',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'add the package to tsconfig.base.json, vitest.config.ts and apps/web/vite.config.ts — the browser is the consumer no Node-side check catches',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      const packages = listFiles('packages')
+        .filter((file) => file.endsWith('/package.json'))
+        .map((file) => file.slice('packages/'.length, -'/package.json'.length))
+        .filter((name) => !name.includes('/'))
+        .sort();
+
+      /*
+       * The web app deliberately aliases only what reaches the browser — it has
+       * no business resolving the git adapter or the Unity exporter — but that
+       * set is the *transitive* closure of its dependencies, not the declared
+       * list. A package pulled in through another package still has to resolve,
+       * and a direct-dependency rule would miss exactly the case that produced
+       * this stage: `@atc/scene-runtime` arrives via `@atc/world-runtime`, is
+       * imported in the browser, and is named nowhere in apps/web/package.json.
+       *
+       * `tsconfig` and `vitest` compile and run the whole workspace, so they
+       * must carry every package.
+       *
+       * Matched on the alias *key* rather than the path, because vitest builds
+       * its paths through a helper and a path-shaped search would report every
+       * package as missing.
+       */
+      const atcDependencies = (packageJsonPath: string): string[] =>
+        Object.keys(
+          (JSON.parse(readRepoFile(packageJsonPath) ?? '{}') as {
+            dependencies?: Record<string, string>;
+          }).dependencies ?? {},
+        )
+          .filter((name) => name.startsWith('@atc/'))
+          .map((name) => name.slice('@atc/'.length));
+
+      const reachableFromWeb = new Set<string>();
+      const queue = atcDependencies('apps/web/package.json');
+      while (queue.length > 0) {
+        const name = queue.shift()!;
+        if (reachableFromWeb.has(name)) continue;
+        reachableFromWeb.add(name);
+        queue.push(...atcDependencies(`packages/${name}/package.json`));
+      }
+
+      const consumers: { file: string; required: (name: string) => boolean }[] = [
+        { file: 'tsconfig.base.json', required: () => true },
+        { file: 'vitest.config.ts', required: () => true },
+        {
+          file: 'apps/web/vite.config.ts',
+          required: (name) => reachableFromWeb.has(name),
+        },
+      ];
+
+      for (const consumer of consumers) {
+        const source = readRepoFile(consumer.file);
+        if (source === null) {
+          issues.push({
+            files: [consumer.file],
+            expected: 'the alias map to exist',
+            actual: 'file not found',
+            message: `${consumer.file} is missing`,
+          });
+          continue;
+        }
+        for (const name of packages) {
+          if (!consumer.required(name)) continue;
+          if (source.includes(`'@atc/${name}'`) || source.includes(`"@atc/${name}"`)) continue;
+          issues.push({
+            files: [consumer.file, `packages/${name}/package.json`],
+            expected: `an alias for @atc/${name}`,
+            actual: 'no alias',
+            message: `${consumer.file} cannot resolve @atc/${name}`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${packages.length} package(s) checked` };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
+    workspaceAliasStage(),
     protectedValuesStage(),
     testIntegrityStage(),
     schemaConstraintStage(),

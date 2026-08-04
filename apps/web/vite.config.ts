@@ -20,6 +20,8 @@ export default defineConfig({
       '@atc/haptics-runtime': resolve(repoRoot, 'packages/haptics-runtime/src/index.ts'),
       '@atc/replay-runtime': resolve(repoRoot, 'packages/replay-runtime/src/index.ts'),
       '@atc/world-runtime': resolve(repoRoot, 'packages/world-runtime/src/index.ts'),
+      '@atc/character-control-runtime': resolve(repoRoot, 'packages/character-control-runtime/src/index.ts'),
+      '@atc/scene-runtime': resolve(repoRoot, 'packages/scene-runtime/src/index.ts'),
       '@atc/capability-runtime': resolve(repoRoot, 'packages/capability-runtime/src/index.ts'),
       '@atc/editor-core': resolve(repoRoot, 'packages/editor-core/src/index.ts'),
       '@atc/ai-adapter': resolve(repoRoot, 'packages/ai-adapter/src/index.ts'),
