@@ -4,7 +4,7 @@ Work package: `WP_ROUTE_SCOPED_RIG_SCENE_CONTROLLABLE_CHARACTER`
 Branch: `claude/edit-rig-scene-controllable-character`
 Base: `2e5b2a21a269f41aad7f14c00b0cded91233f33f` (see §1)
 
-**Phases 0–5 of 11 are complete. Phases 6–11 are not started.** Nothing in this
+**Phases 0–8 of 11 are complete. Phases 9–11 are not started.** Nothing in this
 document describes work that was not run, and no result below was projected
 from a diff.
 
@@ -12,12 +12,21 @@ from a diff.
 
 ## Summary
 
-The contract layer of the work package is built and tested: Scene schemas, the
-explicit World-to-Scene migration, `ControllableCharacter`, `SceneRuntime`, the
-generic document edit session with typed Scene operations, and the repository
-Apply endpoint. The user-facing half — routing, the Rig Editor extraction and
-the Scene Editor UI — has not been started, so no route in the acceptance
-matrix exists yet.
+Both editors exist as real browser routes and the full Preview → Stage →
+Validate → Apply loop works end to end from the UI to a repository file.
+
+The contract layer: Scene schemas, the explicit World-to-Scene migration,
+`ControllableCharacter`, `SceneRuntime`, the generic document edit session with
+typed Scene operations, and `POST /api/repository/apply`.
+
+The editor layer: `BrowserRouter` with `/edit/rig/:characterId` and
+`/edit/scene/:sceneId`, unforgiving route resolvers, the Rig Editor extracted
+with its chamber tree untouched, and a Scene Editor with hierarchy, contextual
+inspector, asset panel, a 3D viewport with shared selection and transform
+gizmos, typed drag-and-drop placement, and a wired Apply button.
+
+What remains is the capability layer, the Unity Scene contracts, retiring
+`@atc/world-runtime`, and final regression.
 
 ## Files changed
 
@@ -90,7 +99,33 @@ Every harness below was run at the branch tip on this machine.
 | `pnpm harness:one-shot` | **NOT RUN** — gated on the two failures above |
 
 New tests added and passing: 39 (migration) + 22 (controllable character) + 17
-(scene equivalence) + 34 (scene session) + 10 (apply API) = **122**.
+(scene equivalence) + 34 (scene session) + 10 (apply API) + 13 (route identity)
++ 11 (drag payload) = **146**.
+
+### Browser verification
+
+`harness:visual` still cannot run (the installed Playwright expects a browser
+build this image does not have). Rather than claim it passed, the routes and
+the editor were driven directly against the production build with the Chromium
+that *is* present, and the results are recorded as observations:
+
+```text
+/ redirects to /edit/rig/demo-humanoid
+/edit/rig/demo-humanoid           renders ID: demo-humanoid
+/edit/rig/no-such-character       renders not-found, URL intact, no fallback
+/edit/scene/<id>                  renders ID: <id>, canvas mounts, 3 rows
+/edit/scene/nope                  renders not-found
+hierarchy click                   Inspector routes by entity kind
+controller edit                   CLEAN -> PREVIEW
+Stage all                         PREVIEW -> STAGED (1)
+Apply                             STAGED -> APPLIED, project.json 3 -> 4 entities,
+                                  revisionId rev-0008 -> content hash, report written
+drag character to viewport        3 -> 4 rows, lands at (2.83, 0, -0.69), not the origin
+page errors                       none in any run
+```
+
+The Apply run wrote to the real demo fixture; it was restored afterwards. That
+was a test, not a change.
 
 ### The two failures are pre-existing and are not mine
 
@@ -122,39 +157,49 @@ code one.
 
 ## Limitations
 
-- **No routes exist.** `/edit/rig/:characterId` and `/edit/scene/:sceneId` are
-  not implemented; there is still no router, and `vercel.json` still has no SPA
-  rewrite. Every routing row in the acceptance matrix is unmet.
-- **No Scene Editor UI**, no Asset Panel, no gizmos, no drag-and-drop.
-- **The Rig Editor has not been extracted** and `apps/web/src/engine.ts:370`
-  still steps `Simulation` directly from device input, which §10.6 removes.
-- **`@atc/world-runtime` still exists** and is still what the web app and the
-  capability layer use. Its production imports were not removed. Two
-  transitional bridges keep it working and must be deleted with it:
+- **`@atc/world-runtime` still exists** and is still what the chamber's own
+  engine and the capability layer use. Its production imports were not removed.
+  Two transitional bridges keep it working and must be deleted with it:
   `packages/world-runtime/src/scene-compat.ts` (views a Scene as a World) and
   `world-control.ts` (re-exports the moved control track).
+- **The Rig Editor still steps `Simulation` directly from device input**
+  (`apps/web/src/engine.ts:370`). §10.6 replaces that with a
+  `CharacterIntentSource`; the route work did not touch it, so the rig preview
+  is not yet a `ControllableCharacter`.
+- **The chamber still shows a World tab and a World/Focused toggle.** They live
+  inside the component tree the Rig Editor route now wraps, and §2.3 removes
+  them in Phase 10.
 - **The capability layer is unchanged.** There are no `rig.edit`, `scene.edit`
   or `character.control` groups yet; `world.*` commands remain the machine path.
 - **Unity export** emits the migrated project as-is. `IChamberWorld` and the
   World DTOs are unchanged; §19's Scene contracts are not generated.
 - **Apply covers scene targets only.** Character targets are refused explicitly
   with a `400` rather than half-handled, because the existing animation-asset
-  destination flow owns their blast-radius semantics.
+  destination flow owns their blast-radius semantics. The Rig Editor therefore
+  still saves through its existing destination dialog, not through this
+  endpoint.
+- **The Asset Panel offers Character Definitions and built-in Light/Camera
+  entries only.** Browsing repository prop and model assets is not built, so
+  `PropSceneEntity` is reachable by API but not by UI.
+- **No dirty-navigation guard.** Navigating away from a Scene with unstaged work
+  discards it silently. §10.5 requires an explicit prompt or block.
+- **No viewport play/pause/step.** The Scene viewport renders the authored
+  document; it does not run `SceneRuntime`, so §11.7's runtime controls and the
+  Inspector's runtime/debug section are absent.
 - **`moveSpeedScale` is still declared and unread**, exactly as it was on
   `main`. Wiring it would change every existing trace, so it stays a documented
   gap rather than a silent behaviour change smuggled inside a migration.
 
 ## Known follow-up, in the order the work package sequences it
 
-1. Phase 6 — router, route resolvers with no fallback, `vercel.json` rewrite,
-   Rig Editor extraction, `ControllableCharacter` rig preview.
-2. Phase 7–8 — Scene Editor shell, hierarchy, contextual inspector, viewport,
-   gizmos, asset panel, typed drag-and-drop.
-3. Phase 9 — capability groups and the target-aware command context.
-4. Phase 10 — retire `@atc/world-runtime`, migrate its tests, remove
-   `ProjectDefinition.world` and the two transitional bridges, Unity Scene
-   contracts, docs and Decision Records.
-5. Phase 11 — full regression, one-shot twice, independent review.
+1. Finish Phase 6–8 — `ControllableCharacter` rig preview in place of the direct
+   `Simulation.step`, dirty-navigation guard, viewport play/pause/step, and
+   repository prop/model browsing in the Asset Panel.
+2. Phase 9 — capability groups and the target-aware command context.
+3. Phase 10 — retire `@atc/world-runtime`, migrate its tests, remove
+   `ProjectDefinition.world`, the World tab and the two transitional bridges,
+   Unity Scene contracts, docs and Decision Records.
+4. Phase 11 — full regression, one-shot twice, independent review.
 
 ## Protection impact
 
@@ -194,7 +239,7 @@ transform. No Unity artifact was regenerated: §19 is Phase 10 work.
 ## Final declaration
 
 ```text
-Route-Scoped Rig / Scene / Controllable Character WP: INCOMPLETE (phases 0-5 of 11)
+Route-Scoped Rig / Scene / Controllable Character WP: INCOMPLETE (phases 0-8 of 11)
 
 Exact Main Base:                             DEVIATED — declared d4be2df, used 2e5b2a2 (§1), agreed
 Implementation Branch:                       PASS
@@ -218,14 +263,14 @@ Git Separation:                              PASS
 Observation Paths:                           PASS — entity-id-qualified
 Protection Enforcement:                      PASS
 
-Rig Route:                                   NOT IMPLEMENTED
-Scene Route:                                 NOT IMPLEMENTED
-Nested Route Deployment:                     NOT IMPLEMENTED
-Scene Hierarchy:                             NOT IMPLEMENTED
-Contextual Inspector:                        NOT IMPLEMENTED
-Scene Asset Panel:                           NOT IMPLEMENTED
-Typed Drag and Drop:                         NOT IMPLEMENTED
-Transform Gizmos:                            NOT IMPLEMENTED
+Rig Route:                                   PASS
+Scene Route:                                 PASS
+Nested Route Deployment:                     PASS locally; Vercel config written, not deployed
+Scene Hierarchy:                             PASS
+Contextual Inspector:                        PASS
+Scene Asset Panel:                           PARTIAL — no repository prop/model browsing
+Typed Drag and Drop:                         PASS
+Transform Gizmos:                            PASS
 Capability Completeness (new groups):        NOT IMPLEMENTED
 Unity Generation (Scene contracts):          NOT IMPLEMENTED
 
@@ -233,7 +278,8 @@ Typecheck / Lint:                            PASS
 Unit:                                        PASS
 Integration:                                 PASS
 Replay:                                      FAIL — pre-existing baseline (§1)
-Visual:                                      NOT RUN — no browsers in this environment
+Visual:                                      NOT RUN — harness:visual has no matching browser build;
+                                             routes driven manually instead (see above)
 Repo Guard:                                  PASS
 One-Shot Run 1:                              NOT RUN
 One-Shot Run 2:                              NOT RUN
