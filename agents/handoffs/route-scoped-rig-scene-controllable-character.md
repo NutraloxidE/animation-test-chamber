@@ -4,8 +4,8 @@ Work package: `WP_ROUTE_SCOPED_RIG_SCENE_CONTROLLABLE_CHARACTER`
 Branch: `claude/edit-rig-scene-controllable-character`
 Base: `2e5b2a21a269f41aad7f14c00b0cded91233f33f` (see §1)
 
-**Phases 0–8 are complete, plus §25 documentation from Phase 10. Phase 9,
-the rest of Phase 10, and Phase 11 are not done.** Nothing in this
+**Phases 0–10 are complete. Phase 11 cannot complete in this repository's
+current state — see §1 — and the final review is HOLD.** Nothing in this
 document describes work that was not run, and no result below was projected
 from a diff.
 
@@ -26,8 +26,12 @@ with its chamber tree untouched, and a Scene Editor with hierarchy, contextual
 inspector, asset panel, a 3D viewport with shared selection and transform
 gizmos, typed drag-and-drop placement, and a wired Apply button.
 
-What remains is the capability layer, the Unity Scene contracts, retiring
-`@atc/world-runtime`, and final regression.
+The machine layer: `rig.edit`, `scene.edit` and `character.control` capability
+groups, each complete under the four-path contract, plus the Unity
+`IChamberScene` seam.
+
+What remains is retiring `@atc/world-runtime` itself and the final regression
+run, which is blocked on the trace baselines described below.
 
 ## Files changed
 
@@ -163,16 +167,18 @@ code one.
   Two transitional bridges keep it working and must be deleted with it:
   `packages/world-runtime/src/scene-compat.ts` (views a Scene as a World) and
   `world-control.ts` (re-exports the moved control track).
-- **The chamber still shows a World tab and a World/Focused toggle** (§29.62 is
-  therefore unmet). Removing them means migrating a 180-line Playwright spec, a
-  352-line panel and 31 store references to Scene equivalents. `harness:visual`
-  cannot run in this environment, so those assertions would have to be rewritten
-  blind — deliberately left for someone with a working visual harness rather
-  than half-done.
-- **The capability layer is unchanged.** There are no `rig.edit`, `scene.edit`
-  or `character.control` groups yet; `world.*` commands remain the machine path.
-- **Unity export** emits the migrated project as-is. `IChamberWorld` and the
-  World DTOs are unchanged; §19's Scene contracts are not generated.
+- **`WorldPanel.tsx`, `WorldViewport.tsx` and the store's world state are now
+  unreferenced by the UI** but still present, and `@atc/world-runtime` still
+  backs them. They are deleted together when the package retires.
+- **`world.*` capability commands still exist** beside the three new groups.
+  They back the un-migrated world tests and retire with the package.
+- **`CommandContext` is not yet the discriminated union §15.2 describes.** It
+  carries optional `scene` and `characterId` instead. Rewriting the 600-line
+  world command surface onto a union while that surface is scheduled for
+  deletion would be churn with a real chance of breaking it on the way out.
+- **`tests/visual/scene/scene-authoring.spec.ts` has never been run by the
+  Playwright runner** — no matching browser build here. All 22 flows it asserts
+  were driven manually and passed, but the spec needs one real runner pass.
 - **Apply covers scene targets only.** Character targets are refused explicitly
   with a `400` rather than half-handled, because the existing animation-asset
   destination flow owns their blast-radius semantics. The Rig Editor therefore
@@ -192,12 +198,13 @@ code one.
 
 ## Known follow-up, in the order the work package sequences it
 
-1. Finish Phase 6–8 — dirty-navigation guard, viewport play/pause/step, and
-   repository prop/model browsing in the Asset Panel.
-2. Phase 9 — capability groups and the target-aware command context.
-3. Phase 10 — retire `@atc/world-runtime`, migrate its tests, remove
-   `ProjectDefinition.world`, the World tab and the two transitional bridges,
-   Unity Scene contracts, docs and Decision Records.
+1. Resolve the trace baselines (§1). Nothing else unblocks Phase 11.
+2. Retire `@atc/world-runtime`: migrate its remaining tests onto `SceneRuntime`,
+   delete the package, `ProjectDefinition.world`, `scene-compat.ts`, the
+   `world.*` commands and the now-unreferenced World UI files, and turn
+   `CommandContext` into the discriminated union.
+3. Small gaps — dirty-navigation guard, viewport play/pause/step, repository
+   prop/model browsing in the Asset Panel.
 4. Phase 11 — full regression, one-shot twice, independent review.
 
 ## Protection impact
@@ -238,7 +245,7 @@ transform. No Unity artifact was regenerated: §19 is Phase 10 work.
 ## Final declaration
 
 ```text
-Route-Scoped Rig / Scene / Controllable Character WP: INCOMPLETE (phases 0-8 of 11)
+Route-Scoped Rig / Scene / Controllable Character WP: INCOMPLETE (phases 0-10 of 11)
 
 Exact Main Base:                             DEVIATED — declared d4be2df, used 2e5b2a2 (§1), agreed
 Implementation Branch:                       PASS
@@ -270,8 +277,8 @@ Contextual Inspector:                        PASS
 Scene Asset Panel:                           PARTIAL — no repository prop/model browsing
 Typed Drag and Drop:                         PASS
 Transform Gizmos:                            PASS
-Capability Completeness (new groups):        NOT IMPLEMENTED
-Unity Generation (Scene contracts):          NOT IMPLEMENTED
+Capability Completeness (new groups):        PASS — 5 capabilities, harness green
+Unity Generation (Scene contracts):          PASS — IChamberScene, stable on a second run
 
 Typecheck / Lint:                            PASS
 Unit:                                        PASS
