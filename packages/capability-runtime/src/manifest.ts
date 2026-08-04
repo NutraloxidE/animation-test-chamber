@@ -106,8 +106,24 @@ export interface CapabilityManifest {
  */
 export interface CommandContext {
   project: import('@atc/schema').ProjectDefinition;
-  /** The world as it currently stands — explicit or synthesized. */
+  /**
+   * The legacy world as it currently stands — explicit or projected from a
+   * scene. Present for the `world.*` commands only, which retire with the
+   * package that backs them.
+   */
   world: import('@atc/schema').WorldDefinition;
+  /**
+   * The Scene a `scene.*` command targets.
+   *
+   * Optional on the shared context rather than modelled as a discriminated
+   * union today. The union is the right shape and is what §15.2 asks for, but
+   * rewriting the 600-line world command surface onto it while that surface is
+   * scheduled for deletion would be churn with a real chance of breaking the
+   * commands it touched on the way out. It becomes a union when `world.*` goes.
+   */
+  scene?: import('@atc/schema').SceneDefinition;
+  /** The Character a `rig.*` command targets. */
+  characterId?: string;
   /**
    * A runtime the caller already owns. Present for in-process observation (the
    * browser, a test); absent over HTTP, where every request is standalone.
@@ -134,4 +150,9 @@ export interface CommandResult<Output = unknown> {
   stagedWorld?: import('@atc/schema').WorldDefinition;
   /** Canonical paths the staged change touches. */
   changedPaths?: string[];
+  /**
+   * The proposed Scene, for `scene.*` commands. Same contract as `stagedWorld`:
+   * a mutating command returns a document, it does not write one.
+   */
+  stagedScene?: import('@atc/schema').SceneDefinition;
 }

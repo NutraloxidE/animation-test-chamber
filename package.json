@@ -28,6 +28,7 @@
     "harness:animation-assets": "tsx harness/check-animation-assets.ts",
     "harness:world": "tsx harness/check-world.ts",
     "harness:scenes": "tsx harness/check-scenes.ts",
+    "harness:character-control": "vitest run tests/unit/character-control",
     "harness:capabilities": "tsx harness/check-capabilities.ts",
     "harness:build": "tsx harness/build.ts",
     "harness:one-shot": "tsx harness/one-shot.ts",
