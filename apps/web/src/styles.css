@@ -2316,3 +2316,11 @@ button.link {
 }
 
 .scene-toolbar__apply { color: #8fb7ff; font-size: 0.75rem; }
+
+.workspace-switch__link {
+  color: #8fb7ff;
+  text-decoration: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+}
+.workspace-switch__link:hover { background: #22304a; }

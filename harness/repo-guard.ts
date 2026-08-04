@@ -607,7 +607,14 @@ export function worldContractGuardStage(): StageResult {
           { test: /\bfrom\s+['"]three/, label: 'three' },
           { test: /\bfrom\s+['"]hono/, label: 'hono' },
           { test: /\bfrom\s+['"]node:fs/, label: 'node:fs' },
-          { test: /\b(document|window)\./, label: 'a DOM global' },
+          /*
+           * Not preceded by a dot or an identifier character, so `document.`
+           * still fails while `result.document.id` does not. The unqualified
+           * pattern flagged an `OperationResult` field named `document`, which
+           * is a false positive of the kind that teaches people to ignore a
+           * guard.
+           */
+          { test: /(?<![.\w$])(document|window)\./, label: 'a DOM global' },
           { test: /apps\/(web|api)/, label: 'an app import' },
         ]) {
           if (pattern.test.test(code)) {

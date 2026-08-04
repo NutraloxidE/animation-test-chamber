@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { detectTouchDevice } from '@atc/input-runtime';
 import { useChamber, type PanelId } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
-import { WorldViewport } from './components/world/WorldViewport.tsx';
-import { WorldPanel } from './components/world/WorldPanel.tsx';
 import { TransitionInspector } from './panels/TransitionInspector.tsx';
 import { StateGraph } from './panels/StateGraph.tsx';
 import { Timeline } from './panels/Timeline.tsx';
@@ -23,7 +22,6 @@ import { characterPreset, weaponMode } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
-  { id: 'world', label: 'World' },
   { id: 'graph', label: 'Graph' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'timing', label: 'Timing' },
@@ -41,8 +39,6 @@ function PanelBody({ id }: { id: PanelId }) {
   switch (id) {
     case 'inspector':
       return <TransitionInspector />;
-    case 'world':
-      return <WorldPanel />;
     case 'graph':
       return <StateGraph />;
     case 'timeline':
@@ -143,9 +139,6 @@ function DockBar({
 }) {
   const mode = useChamber((state) => state.workspaceMode);
   const setMode = useChamber((state) => state.setWorkspaceMode);
-  const worldMode = useChamber((state) => state.worldMode);
-  const setWorldMode = useChamber((state) => state.setWorldMode);
-  const setPanel = useChamber((state) => state.setPanel);
   const showLibrary = mode === 'asset-library';
   return (
     <nav className="workspace-switch" data-testid="workspace-switch">
@@ -166,17 +159,14 @@ function DockBar({
       >
         Inspector
       </button>
-      <button
-        type="button"
-        className={worldMode === 'world' ? 'is-active' : ''}
-        onClick={() => {
-          setWorldMode(worldMode === 'world' ? 'focused' : 'world');
-          setPanel('world');
-        }}
-        data-testid="toggle-world-mode"
-      >
-        {worldMode === 'world' ? 'World view' : 'Focused view'}
-      </button>
+      {/*
+        Scene composition is a separate page, not a mode of this one. A toggle
+        here meant the chamber had two answers to "which character is this
+        panel about", which is exactly what route identity removed.
+      */}
+      <Link className="workspace-switch__link" to="/scenes" data-testid="open-scenes">
+        Scenes
+      </Link>
       <button
         type="button"
         className={showLibrary ? 'is-active' : ''}
@@ -214,7 +204,6 @@ export function App() {
 
   const workspaceMode = useChamber((state) => state.workspaceMode);
   const libraryDialog = useChamber((state) => state.libraryDialog);
-  const worldMode = useChamber((state) => state.worldMode);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
@@ -285,7 +274,7 @@ export function App() {
         </aside>
       )}
       <div className="app__viewport">
-        {worldMode === 'world' ? <WorldViewport /> : <Viewport />}
+        <Viewport />
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 
