@@ -280,12 +280,83 @@ describe('apply', () => {
     s.stageAll();
     const applied = s.buildStagedDocument().document!;
 
-    s.acceptApplied(applied);
+    s.acceptApplied(applied, 'rev-applied-0001');
+    expect(s.baseRevisionId).toBe('rev-applied-0001');
     expect(s.repositoryDocument.displayName).toBe('Applied');
     expect(s.previewDocument.displayName).toBe('Applied');
     expect(s.stagedPaths).toEqual([]);
     expect(s.isDirty).toBe(false);
     expect(s.canUndo).toBe(false);
+  });
+});
+
+/**
+ * An operation that resolves to the value already there changed nothing, and a
+ * session that recorded it would be claiming otherwise to everything
+ * downstream: the dirty indicator, the undo stack, and — the one that actually
+ * writes — the operation list Apply replays.
+ */
+describe('an operation that changes nothing is not history', () => {
+  it('reports success with no changed paths when a rename is a no-op', () => {
+    const s = session();
+    const result = s.dispatch({ type: 'scene.rename', displayName: s.previewDocument.displayName });
+
+    expect(result.ok).toBe(true);
+    expect(result.changedPaths).toEqual([]);
+  });
+
+  it('creates no history, no pending operation and no dirty state', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: s.previewDocument.displayName });
+
+    expect(s.isDirty).toBe(false);
+    expect(s.canUndo).toBe(false);
+    expect(s.pending).toEqual([]);
+    expect(s.staged).toEqual([]);
+    expect(s.stagedPaths).toEqual([]);
+  });
+
+  it('stages nothing, so Apply would carry no operation at all', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: s.previewDocument.displayName });
+    s.stageAll();
+
+    expect(s.buildApplyRequest('a rename to the same name').operations).toEqual([]);
+  });
+
+  it('treats setting a transform to its current value as a no-op', () => {
+    const s = session();
+    const entity = s.previewDocument.entities.find((entry) => entry.id === CONTROLLED_ENTITY)!;
+
+    // A structurally fresh object carrying identical numbers. Reference
+    // comparison would call this a change; the document did not move.
+    const result = s.dispatch({
+      type: 'scene.set_transform',
+      entityId: CONTROLLED_ENTITY,
+      transform: JSON.parse(JSON.stringify(entity.transform)) as typeof entity.transform,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.changedPaths).toEqual([]);
+    expect(s.isDirty).toBe(false);
+    expect(s.canUndo).toBe(false);
+  });
+
+  it('still records a transform edit that genuinely moves the entity', () => {
+    const s = session();
+    const entity = s.previewDocument.entities.find((entry) => entry.id === CONTROLLED_ENTITY)!;
+    const result = s.dispatch({
+      type: 'scene.set_transform',
+      entityId: CONTROLLED_ENTITY,
+      transform: {
+        ...entity.transform,
+        position: { ...entity.transform.position, x: entity.transform.position.x + 1 },
+      },
+    });
+
+    expect(result.changedPaths).toEqual([`/entities/${CONTROLLED_ENTITY}/transform`]);
+    expect(s.isDirty).toBe(true);
+    expect(s.canUndo).toBe(true);
   });
 });
 
@@ -307,19 +378,109 @@ describe('undo, redo and staging agree', () => {
     expect(s.buildStagedDocument().document!.displayName).not.toBe('Staged then undone');
   });
 
-  it('restores the operation on redo, unstaged, and stages it again on request', () => {
+  /*
+   * Redo restores the staged status the operation had before the Undo. Both
+   * halves matter, and the pair of tests below is the whole point:
+   *
+   * An edit that was never staged comes back unstaged, because staging it would
+   * add work to an Apply the human never approved.
+   *
+   * An edit that *was* staged comes back staged, because silently demoting it
+   * turns Undo/Redo into a way to drop approved work out of an Apply — and the
+   * human has no reason to re-check a staging decision they already made and
+   * then visibly reversed and reinstated.
+   */
+  it('restores an unstaged operation on redo as unstaged', () => {
     const s = session();
     s.dispatch({ type: 'scene.rename', displayName: 'Round trip' });
     s.undo();
     s.redo();
 
     expect(s.previewDocument.displayName).toBe('Round trip');
-    // Redo puts the edit back; staging it again is a separate decision.
     expect(s.staged).toHaveLength(0);
     expect(s.pending).toHaveLength(1);
 
     s.stageAll();
     expect(s.buildStagedDocument().document!.displayName).toBe('Round trip');
+  });
+
+  it('restores a staged operation on redo as staged', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'Staged round trip' });
+    s.stageAll();
+    expect(s.staged).toHaveLength(1);
+
+    s.undo();
+    // Undone means gone from the Apply, whatever it was before.
+    expect(s.staged).toHaveLength(0);
+
+    s.redo();
+    expect(s.previewDocument.displayName).toBe('Staged round trip');
+    expect(s.staged).toHaveLength(1);
+    expect(s.pending).toHaveLength(0);
+    expect(s.stagedPaths).toEqual(['/displayName']);
+    expect(s.buildStagedDocument().document!.displayName).toBe('Staged round trip');
+  });
+
+  it('appears exactly once after undo, redo and stage all', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'Once' });
+    s.undo();
+    s.redo();
+    s.stageAll();
+
+    expect(s.staged).toHaveLength(1);
+    expect(s.buildStagedDocument().document!.displayName).toBe('Once');
+  });
+
+  it('preserves an unrelated staged operation when a later edit is undone', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'A stays' });
+    s.stageAll();
+    s.dispatch({ type: 'scene.rename_entity', entityId: CONTROLLED_ENTITY, displayName: 'B goes' });
+    s.undo();
+
+    // Undoing B must not clear A. Clearing every staged operation on any Undo
+    // would make the invariant hold for the wrong reason.
+    expect(s.staged).toHaveLength(1);
+    const staged = s.buildStagedDocument().document!;
+    expect(staged.displayName).toBe('A stays');
+    expect(staged.entities.find((entry) => entry.id === CONTROLLED_ENTITY)!.displayName).not.toBe(
+      'B goes',
+    );
+  });
+
+  it('discards the redo branch on a new edit without touching staged work', () => {
+    const s = session();
+    s.dispatch({ type: 'scene.rename', displayName: 'A staged' });
+    s.stageAll();
+    s.dispatch({ type: 'scene.rename_entity', entityId: CONTROLLED_ENTITY, displayName: 'B undone' });
+    s.undo();
+    expect(s.canRedo).toBe(true);
+
+    s.dispatch({ type: 'scene.rename_entity', entityId: CONTROLLED_ENTITY, displayName: 'C new' });
+    expect(s.canRedo).toBe(false);
+    expect(s.staged).toHaveLength(1);
+    expect(s.buildStagedDocument().document!.displayName).toBe('A staged');
+  });
+
+  /*
+   * A single semantic edit can touch several paths. Staging one of them stages
+   * the whole operation, because half an operation is not something the Apply
+   * request can describe.
+   */
+  it('stages a multi-path operation atomically from any one of its paths', () => {
+    const s = session();
+    s.dispatch({
+      type: 'scene.place_asset',
+      entityId: 'atomic-light',
+      displayName: 'Atomic light',
+      asset: { kind: 'light', lightType: 'point' },
+    });
+    s.stage('/entities/atomic-light');
+
+    expect(s.staged).toHaveLength(1);
+    expect(s.stagedPaths).toEqual(['/entities/atomic-light']);
   });
 
   it('never stages an operation the preview no longer contains', () => {

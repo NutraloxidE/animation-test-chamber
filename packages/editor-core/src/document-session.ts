@@ -22,6 +22,25 @@ import type { ValidationIssue, ValidationResult } from '@atc/schema';
 import { analyzeDiff, evaluateEdit, type DiffReport, type EditActor } from '@atc/runtime-core';
 import type { RepositoryDocumentTarget } from './repository-target.ts';
 
+/**
+ * A key-order-independent JSON encoding, for comparing two canonical documents.
+ *
+ * `JSON.stringify` alone would report `{a:1,b:2}` and `{b:2,a:1}` as different,
+ * and operation helpers rebuild objects with spread — which preserves insertion
+ * order, but only until one of them stops doing so. Sorting keys makes the
+ * comparison about what the document *says* rather than how it was assembled.
+ */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'undefined';
+  if (Array.isArray(value)) return `[${value.map((entry) => stableStringify(entry)).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    // `undefined` members are absent as far as JSON is concerned, so a document
+    // that carries one and a document that omits it are the same document.
+    .filter(([, member]) => member !== undefined)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+  return `{${entries.map(([key, member]) => `${JSON.stringify(key)}:${stableStringify(member)}`).join(',')}}`;
+}
+
 export interface DocumentOperationResult<TDocument> {
   ok: boolean;
   issues: ValidationIssue[];
@@ -40,21 +59,58 @@ export interface DocumentSessionOptions<TDocument, TOperation> {
   validate: (document: TDocument) => ValidationResult;
 }
 
-interface HistoryEntry<TDocument> {
+/**
+ * One dispatched operation, and everything undo/redo/staging needs to know
+ * about it.
+ *
+ * Previously this was three parallel arrays — an undo stack of documents, a
+ * pending list of operations, and a separate redo list — related to each other
+ * by object identity. That worked until it did not: `rebuildStagedPaths` looked
+ * an operation up in `pendingPaths` by `===`, so an operation that had been
+ * undone (and therefore removed from `pendingPaths`) silently contributed no
+ * paths, and two structurally identical operations were indistinguishable.
+ *
+ * Identity across separate arrays is not a model, it is a coincidence that
+ * holds most of the time. One entry per operation, carrying its own staged
+ * flag, is what lets Redo restore the staged status the operation had before
+ * Undo — which is the declared behaviour and the thing the old shape could not
+ * express at all.
+ */
+interface HistoryEntry<TDocument, TOperation> {
+  operation: TOperation;
   before: TDocument;
   after: TDocument;
   changedPaths: string[];
+  /** Whether this operation is currently staged for Apply. */
+  staged: boolean;
+  /**
+   * The staged flag this operation carried when it was undone.
+   *
+   * Redo restores it. An edit that was staged, undone and redone is back
+   * exactly where it was — not silently demoted to unstaged, which would make
+   * Undo/Redo a way to quietly drop work out of an Apply the human believes
+   * they have already approved.
+   */
+  stagedBeforeUndo: boolean;
 }
 
 /** What Apply is asked to perform, and against which baseline. */
-export interface RepositoryApplyRequest<TOperation> {
+export interface DocumentApplyRequest<TOperation> {
   target: RepositoryDocumentTarget;
   expected: { projectRevisionId: string };
   operations: TOperation[];
   actor: EditActor;
   intent: string;
-  /** Paths this session's human unlocked. Never sent for an AI actor. */
-  unlockedPaths?: string[];
+  /**
+   * A human's exact sign-off on the protected paths this Apply would change.
+   *
+   * Absent unless the caller supplied one. There is deliberately no
+   * `unlockedPaths` here: a session unlock is a local UI gesture, and the
+   * server recomputes which paths are protected anyway, so sending the
+   * session's unlock set would be asking the server for something it must not
+   * grant on a client's say-so.
+   */
+  approval?: { approvedPaths: string[]; reason: string };
 }
 
 export class DocumentEditSession<TDocument, TOperation> {
@@ -71,7 +127,11 @@ export class DocumentEditSession<TDocument, TOperation> {
   private repository: TDocument;
   private preview: TDocument;
   /**
-   * Staged *operations*, in dispatch order — not staged values.
+   * The applied history, in dispatch order, and the redo branch above it.
+   *
+   * `applied` holds the operations currently reflected in the preview; `undone`
+   * holds the ones taken back, most-recent-last, waiting for Redo. Both hold
+   * *operations*, not values.
    *
    * A Scene edit is frequently structural (an entity appeared, the order
    * changed), and a set of leaf paths cannot describe "this entity was created"
@@ -79,16 +139,10 @@ export class DocumentEditSession<TDocument, TOperation> {
    * operations server-side is what lets Apply refuse a write it does not
    * understand instead of trusting a document the client assembled.
    */
-  private readonly stagedOperations: TOperation[] = [];
-  private readonly stagedPathSet = new Set<string>();
-  private readonly undoStack: HistoryEntry<TDocument>[] = [];
-  private readonly redoStack: HistoryEntry<TDocument>[] = [];
+  private readonly applied: HistoryEntry<TDocument, TOperation>[] = [];
+  private readonly undone: HistoryEntry<TDocument, TOperation>[] = [];
   /** Paths a human has unlocked for the duration of this session. */
   private readonly unlocked = new Set<string>();
-  /** Paths each dispatched-but-unstaged operation touched, by operation index. */
-  private readonly pendingPaths: { operation: TOperation; paths: string[] }[] = [];
-  /** Undone operations, kept so redo can put them back where they were. */
-  private readonly redoOperations: { operation: TOperation; paths: string[] }[] = [];
 
   constructor(private readonly options: DocumentSessionOptions<TDocument, TOperation>) {
     this.target = options.target;
@@ -111,17 +165,29 @@ export class DocumentEditSession<TDocument, TOperation> {
     return this.preview;
   }
 
+  /**
+   * Every path the staged operations touched.
+   *
+   * Derived on read from the staged entries rather than maintained as a
+   * separate set that has to be kept in step with them. The set and the list
+   * disagreeing was the shape of the original staging bug.
+   */
   get stagedPaths(): readonly string[] {
-    return [...this.stagedPathSet].sort();
+    const paths = new Set<string>();
+    for (const entry of this.applied) {
+      if (!entry.staged) continue;
+      for (const path of entry.changedPaths) paths.add(path);
+    }
+    return [...paths].sort();
   }
 
   get staged(): readonly TOperation[] {
-    return this.stagedOperations;
+    return this.applied.filter((entry) => entry.staged).map((entry) => entry.operation);
   }
 
   /** Operations dispatched into the preview but not yet staged. */
   get pending(): readonly TOperation[] {
-    return this.pendingPaths.map((entry) => entry.operation);
+    return this.applied.filter((entry) => !entry.staged).map((entry) => entry.operation);
   }
 
   get isDirty(): boolean {
@@ -129,11 +195,11 @@ export class DocumentEditSession<TDocument, TOperation> {
   }
 
   get canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return this.applied.length > 0;
   }
 
   get canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return this.undone.length > 0;
   }
 
   unlock(path: string): void {
@@ -185,16 +251,51 @@ export class DocumentEditSession<TDocument, TOperation> {
     }
     if (refusals.length > 0) return { ok: false, issues: refusals };
 
-    this.undoStack.push({
+    /*
+     * An operation that produces the value already there is a no-op, and a
+     * no-op is not history.
+     *
+     * Recording one would put an entry on the undo stack that Undo cannot
+     * visibly undo, mark the session dirty with nothing to show for it, and —
+     * worst — add an operation to the Apply request that the server will
+     * replay to no effect, so a "no change" Apply would arrive carrying work.
+     *
+     * Compared semantically rather than by reference: the operation helpers
+     * rebuild objects (`{ ...scene, entities: [...] }`) even when every leaf is
+     * unchanged, so a reference comparison would call every no-op a change.
+     */
+    const changedPaths = [...(candidate.changedPaths ?? [])];
+    if (changedPaths.length === 0 || this.isSemanticallyEqual(this.preview, candidate.document)) {
+      return { ok: true, issues: [], document: this.preview, changedPaths: [] };
+    }
+
+    this.applied.push({
+      operation,
       before: this.preview,
       after: candidate.document,
-      changedPaths: [...(candidate.changedPaths ?? [])],
+      changedPaths,
+      staged: false,
+      stagedBeforeUndo: false,
     });
-    this.redoStack.length = 0;
-    this.redoOperations.length = 0;
+    // A new edit after an Undo discards the redo branch: the history is a line,
+    // not a tree, and keeping a branch that can no longer be replayed onto this
+    // preview would let Redo reintroduce an operation built on a document that
+    // no longer exists.
+    this.undone.length = 0;
     this.preview = candidate.document;
-    this.pendingPaths.push({ operation, paths: [...(candidate.changedPaths ?? [])] });
-    return candidate;
+    return { ...candidate, changedPaths };
+  }
+
+  /**
+   * Whether two canonical documents carry the same information.
+   *
+   * Canonical documents are plain JSON by construction — that is what makes
+   * them storable, diffable and hashable — so serialising with sorted keys is
+   * an exact comparison here rather than an approximation of one.
+   */
+  private isSemanticallyEqual(left: TDocument, right: TDocument): boolean {
+    if (left === right) return true;
+    return stableStringify(left) === stableStringify(right);
   }
 
   /**
@@ -208,91 +309,69 @@ export class DocumentEditSession<TDocument, TOperation> {
    * "staged" cannot outlive the edit it describes.
    */
   undo(): boolean {
-    const entry = this.undoStack.pop();
+    const entry = this.applied.pop();
     if (!entry) return false;
     this.preview = entry.before;
-    this.redoStack.push(entry);
-    const undone = this.pendingPaths.pop();
-    if (undone) {
-      const staged = this.stagedOperations.indexOf(undone.operation);
-      if (staged !== -1) {
-        this.stagedOperations.splice(staged, 1);
-        this.rebuildStagedPaths();
-      }
-      this.redoOperations.push(undone);
-    }
+    /*
+     * The staged flag is remembered, then cleared. Cleared because an undone
+     * operation must not travel in the next Apply — "staged" cannot outlive the
+     * edit it describes. Remembered because Redo has to put it back exactly as
+     * it was, and only this entry knows what that was.
+     */
+    entry.stagedBeforeUndo = entry.staged;
+    entry.staged = false;
+    this.undone.push(entry);
     return true;
   }
 
   redo(): boolean {
-    const entry = this.redoStack.pop();
+    const entry = this.undone.pop();
     if (!entry) return false;
     this.preview = entry.after;
-    this.undoStack.push(entry);
-    const restored = this.redoOperations.pop();
-    // Restored unstaged: a redo puts the edit back, and staging it again is a
-    // second, separate decision the human has not made yet.
-    if (restored) this.pendingPaths.push(restored);
+    // Restored to the staged status it had before the Undo — staged if it was
+    // staged, unstaged if it was not. Always restoring it as unstaged would
+    // silently drop approved work out of the next Apply; always restoring it as
+    // staged would stage an edit the human never approved.
+    entry.staged = entry.stagedBeforeUndo;
+    this.applied.push(entry);
     return true;
   }
 
-  /** Recomputes the staged path set from the operations that are still staged. */
-  private rebuildStagedPaths(): void {
-    this.stagedPathSet.clear();
-    for (const operation of this.stagedOperations) {
-      const entry = this.pendingPaths.find((candidate) => candidate.operation === operation);
-      for (const path of entry?.paths ?? []) this.stagedPathSet.add(path);
-    }
-  }
-
-  /** Stages every pending operation that touched `path`. */
+  /**
+   * Stages every operation that touched `path`.
+   *
+   * Whole operations, never individual paths. A single semantic edit can touch
+   * several paths — placing an entity, reordering the list — and staging half
+   * of one would produce an Apply request that cannot describe what the human
+   * approved. So partial path staging stages the complete operation, and every
+   * path it touched then reads as staged.
+   */
   stage(path: string): void {
-    for (const entry of this.pendingPaths) {
-      if (!entry.paths.includes(path)) continue;
-      if (!this.stagedOperations.includes(entry.operation)) {
-        this.stagedOperations.push(entry.operation);
-      }
-      for (const staged of entry.paths) this.stagedPathSet.add(staged);
+    for (const entry of this.applied) {
+      if (entry.changedPaths.includes(path)) entry.staged = true;
     }
   }
 
   stageAll(): void {
-    for (const entry of this.pendingPaths) {
-      if (!this.stagedOperations.includes(entry.operation)) {
-        this.stagedOperations.push(entry.operation);
-      }
-      for (const path of entry.paths) this.stagedPathSet.add(path);
-    }
+    for (const entry of this.applied) entry.staged = true;
   }
 
   unstage(path: string): void {
-    const kept: TOperation[] = [];
-    this.stagedPathSet.clear();
-    for (const operation of this.stagedOperations) {
-      const entry = this.pendingPaths.find((candidate) => candidate.operation === operation);
-      if (entry?.paths.includes(path)) continue;
-      kept.push(operation);
-      for (const staged of entry?.paths ?? []) this.stagedPathSet.add(staged);
+    for (const entry of this.applied) {
+      if (entry.changedPaths.includes(path)) entry.staged = false;
     }
-    this.stagedOperations.length = 0;
-    this.stagedOperations.push(...kept);
   }
 
   /** Throws away every uncommitted change in this session. */
   revert(): void {
     this.preview = this.repository;
-    this.stagedOperations.length = 0;
-    this.stagedPathSet.clear();
-    this.pendingPaths.length = 0;
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
-    this.redoOperations.length = 0;
+    this.applied.length = 0;
+    this.undone.length = 0;
   }
 
   /** Keeps the preview, discards only what was staged. */
   discardStaged(): void {
-    this.stagedOperations.length = 0;
-    this.stagedPathSet.clear();
+    for (const entry of this.applied) entry.staged = false;
   }
 
   diff(): DiffReport {
@@ -307,7 +386,7 @@ export class DocumentEditSession<TDocument, TOperation> {
   buildStagedDocument(): DocumentOperationResult<TDocument> {
     let document = this.repository;
     const changedPaths: string[] = [];
-    for (const operation of this.stagedOperations) {
+    for (const operation of this.staged) {
       const result = this.options.apply(document, operation);
       if (!result.ok || result.document === undefined) return result;
       document = result.document;
@@ -324,18 +403,33 @@ export class DocumentEditSession<TDocument, TOperation> {
     return this.options.validate(staged.document);
   }
 
-  buildApplyRequest(intent: string, actor: EditActor = 'human'): RepositoryApplyRequest<TOperation> {
+  /**
+   * The request Apply will send.
+   *
+   * `approval` is supplied by the caller, not derived from this session's
+   * unlock set. The two are different things: an unlock is a local gesture that
+   * makes a control editable in this browser, while an approval names the exact
+   * paths a human signed off on and why. The server recomputes which paths are
+   * protected and compares against the approval, so a session that quietly
+   * attached its own unlocks would be asking the server to trust the caller
+   * about the one question the caller must not answer.
+   *
+   * Only a human can carry an approval. An AI may prepare the operations, but
+   * an approval an agent attaches to its own request is not an approval, and
+   * the server refuses it.
+   */
+  buildApplyRequest(
+    intent: string,
+    actor: EditActor = 'human',
+    approval?: { approvedPaths: string[]; reason: string },
+  ): DocumentApplyRequest<TOperation> {
     return {
       target: this.target,
       expected: { projectRevisionId: this.currentRevisionId },
-      operations: [...this.stagedOperations],
+      operations: [...this.staged],
       actor,
       intent,
-      // Only a human's unlocks travel; the server refuses them from an AI actor
-      // anyway, and sending them would be asking for something it must not grant.
-      ...(actor === 'human' && this.unlocked.size > 0
-        ? { unlockedPaths: [...this.unlocked] }
-        : {}),
+      ...(actor === 'human' && approval ? { approval } : {}),
     };
   }
 
@@ -347,21 +441,22 @@ export class DocumentEditSession<TDocument, TOperation> {
    * exactly where it was, because the human's next move is usually to fix one
    * issue and apply again — not to redo everything.
    *
-   * `revisionId` is the revision the repository reported *back*. Keeping the
-   * one the session opened at would make the very next Apply declare a baseline
-   * that no longer exists, and it would be refused as a conflict with the
-   * session's own previous write — the first thing a user hits when they apply
-   * twice without reloading the page.
+   * `revisionId` is the revision the repository reported *back*, and it is
+   * mandatory. Keeping the one the session opened at would make the very next
+   * Apply declare a baseline that no longer exists, and it would be refused as
+   * a conflict with the session's own previous write — the first thing a user
+   * hits when they apply twice without reloading the page.
+   *
+   * It was optional once. An optional revision means a caller can forget it and
+   * find out one Apply later, from a conflict that names no cause; required
+   * means they find out at compile time, which is the only time the mistake is
+   * cheap.
    */
-  acceptApplied(document: TDocument, revisionId?: string): void {
-    if (revisionId !== undefined) this.currentRevisionId = revisionId;
+  acceptApplied(document: TDocument, revisionId: string): void {
+    this.currentRevisionId = revisionId;
     this.repository = document;
     this.preview = document;
-    this.stagedOperations.length = 0;
-    this.stagedPathSet.clear();
-    this.pendingPaths.length = 0;
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
-    this.redoOperations.length = 0;
+    this.applied.length = 0;
+    this.undone.length = 0;
   }
 }
