@@ -11,8 +11,9 @@ thing a next session can start from.
 - Repository: `NutraloxidE/animation-test-chamber`
 - Branch: `claude/new-session-j71ojl`
 - Start SHA: `671cce03236de84daa75f80ceaa8d868150d854a`
-- End implementation SHA: see `git log -1` on the branch (two commits: the system,
-  then the decision records and reports)
+- End implementation SHA: `02488a6` plus this commit — five in total: the system,
+  the decision records and adoption planning, the node-local character fix, the
+  ARCHITECTURE section, and the audit report the .gitignore had been swallowing
 - `main` was neither merged nor rebased. Nothing was force-pushed. No published
   asset version was modified in place.
 
@@ -115,11 +116,12 @@ pnpm harness:integration           # 233 tests
 pnpm harness:replay                # 129 tests
 pnpm harness:repo-guard            # 13/13
 pnpm harness:visual                # 201 passed, desktop + narrow
+pnpm harness:one-shot              # 42/42 twice, clean tree both times
 ```
 
-`pnpm harness:one-shot` was not run end-to-end in this session. The visual suite
-that passed is the *existing* one: nothing in it exercises a GameObject
-hierarchy yet, because the Scene Editor still renders entities.
+The visual suite that passed is the *existing* one: nothing in it exercises a
+GameObject hierarchy yet, because the Scene Editor still renders entities. The
+§18.10 visual assertions arrive with that switchover.
 
 ## Two guards changed, and why
 

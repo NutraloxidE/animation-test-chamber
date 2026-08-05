@@ -234,7 +234,7 @@ pnpm harness:replay                       129 tests
 pnpm harness:repo-guard                   13/13
 pnpm build                                PASS (1115 modules)
 pnpm harness:visual                       201 passed, desktop + narrow, 10.9m
-pnpm harness:one-shot                     42/42 stages, 681.5s, clean tree after
+pnpm harness:one-shot                     42/42 twice: 681.5s and 689.1s, clean both times
 ```
 
 `pnpm harness:one-shot` was run twice from a clean tree; see §9.
@@ -312,9 +312,118 @@ later as a GameObject that will not tick.
 | Run | Result | Duration | `git status --short` after |
 | --- | --- | --- | --- |
 | 1 | 42/42 stages passed | 681.5s | clean |
-| 2 | see below | — | — |
+| 2 | 42/42 stages passed | 689.1s | clean |
 
 Both runs started from a committed, clean tree. `reports/one-shot-report.md` is
 gitignored as a harness artifact, so it does not dirty the tree between runs;
 this audit is un-ignored explicitly, matching the convention the repository
 already uses for deliverable reports.
+
+---
+
+## 10. Final declaration
+
+```text
+GameObject Prefab Asset System: HOLD
+
+Start SHA:                                      671cce03236de84daa75f80ceaa8d868150d854a
+Branch Identity:                                PASS
+Merge Base Preserved:                           PASS
+Clean Working Tree:                             PASS
+
+Common Asset Primitives:                        PASS
+Prefab Reference Schema:                        PASS
+Prefab Metadata / Hashing:                      PASS
+Published Prefab Immutability:                  PASS
+Prefab Registry:                                PASS
+Prefab Validation:                              PASS
+Prefab Resolution:                              PASS
+Prefab Usage Graph:                             PASS
+
+Typed Component Union:                          PASS
+Unknown Component Refusal:                      PASS
+Prefab Hierarchy:                               PASS
+Nested Prefab Resolution:                       PASS
+Nested Cycle Refusal:                           PASS
+Base / Variant / Fork:                          PASS
+Stable Override Addressing:                     PASS
+Abstract Prefab Enforcement:                    PASS
+
+Five Character Prefabs:                         PASS
+Humanoid Base Prefab:                           PASS
+Model Equivalence:                              PASS
+Animation Equivalence:                          PASS
+Rig Equivalence:                                PASS
+Socket / Grip Equivalence:                      PASS
+
+Scene GameObject Migration:                     PASS
+No Production Entity-Kind Union:                FAIL  (both views live; §8)
+Controller Binding Migration:                   PASS
+Camera Relation Migration:                      PASS
+Place Prefab Operation:                         PASS  (contract only, unserved)
+Scene Operation Migration:                      PASS  (contract only, unserved)
+Project Character Removal:                      FAIL  (§8)
+Legacy Migration Boundary:                      PASS
+Migration Idempotence:                          PASS
+
+Prefab List Route:                              FAIL  (not built)
+Prefab Editor Route:                            FAIL  (not built)
+Legacy Rig Redirect:                            FAIL  (not built)
+Prefab Overview:                                FAIL  (not built)
+Component Inspector:                            FAIL  (not built)
+Rig as Animator Workspace:                      FAIL  (not built)
+Scene GameObject Hierarchy:                     FAIL  (not built)
+Preview Override Isolation:                     FAIL  (not built)
+
+Asset Library Prefab Browsing:                  FAIL  (not built)
+Prefab Used-By Visibility:                      PASS  (graph only, no UI)
+Prefab Delete Policy:                           PASS  (function only, unserved)
+
+Exact Prefab Target Requests:                   PASS
+Exact Scene Instance Target Requests:           PASS
+UI / Request Target Equality:                   FAIL  (no UI to compare against)
+Request / Transaction Target Equality:          FAIL  (no transaction path yet)
+Non-Target Immutability:                        PASS  (planner; not applied)
+Stale Target Refusal:                           PASS
+Atomic Publication:                             FAIL  (not built)
+
+RuntimeGameObject Layer:                        PASS
+Same-Prefab Instance Isolation:                 PASS
+Shared-Animator Runtime Isolation:              PASS
+GLTF Scene Isolation:                           n/a   (renderer-side, inherited)
+Skeleton Isolation:                             n/a   (renderer-side, inherited)
+Mixer Isolation:                                n/a   (renderer-side, inherited)
+Attachment Isolation:                           PASS  (runtime-side)
+Canonical Runtime-State Guard:                  PASS
+
+Game-Facing Instantiation API:                  PASS
+Unity Prefab Export:                            PASS
+Unity Scene Instance Export:                    PASS
+
+Schema Generate:                                PASS
+Prefab Generate / Check:                        PASS
+Typecheck:                                      PASS
+Lint:                                           PASS
+Build:                                          PASS
+Animation Assets:                               PASS
+Prefabs Harness:                                PASS
+GameObjects Harness:                            PASS
+Scenes Harness:                                 PASS
+Character Control:                              PASS
+Capabilities:                                   PASS
+Unit:                                           PASS
+Integration:                                    PASS
+Replay:                                         PASS
+Repo Guard:                                     PASS  (positive half; negative half blocked, §8)
+Visual Desktop:                                 PASS  (existing suite)
+Visual Narrow:                                  PASS  (existing suite)
+One-Shot Run 1:                                 PASS
+One-Shot Run 2:                                 PASS
+
+Decision:
+GAMEOBJECT PREFAB ASSET SYSTEM: HOLD
+```
+
+The FAILs are not defects in what was built. They are the production switchover
+and the UI/API surface, none of which was started; §8 is the list. Nothing above
+is marked PASS on the strength of an unrun command.
