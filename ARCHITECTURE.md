@@ -205,7 +205,9 @@ item, because a page that always renders something is a page that can render the
 wrong thing while looking entirely correct. See DECISIONS/0012.
 
 The Rig Editor is the chamber that already existed; the route added an identity
-header and reversed the direction `activeCharacterId` travels. The Scene Editor
+header and reversed the direction `activeCharacterId` travels. It is also the
+*only* Character selector: see "One Character selector, one animation graph"
+below for what that had to displace. The Scene Editor
 is a separate page with a Unity-like layout — Hierarchy, viewport, Inspector and
 Asset Panel — because a tab inside the chamber would have had to share the
 chamber's single-character session.
@@ -217,6 +219,62 @@ Preview -> Stage -> Validate -> Apply to Repository
 ```
 
 with git commit a separate action afterwards. See DECISIONS/0014.
+
+## One Character selector, one animation graph
+
+Two things a Character is shown *as* used to live outside the repository, and
+both are canonical data now. See DECISIONS/0019.
+
+**Which model.** `CharacterDefinition.model` is a `CharacterModelBinding`: either
+a procedural appearance named by preset id, or a repository model file with its
+scale, rotation, hand bone and weapon-grip defaults. It replaced a nullable
+`modelAssetPath` whose `null` meant "some procedural character, ask the
+renderer" — and the renderer answered from a web-only `CHARACTER_PRESETS`
+catalog that the route could not reach. That catalog was the app's real
+character list, so navigating between Characters changed the header and the
+document while leaving the model on screen alone.
+
+What remains renderer-side is appearance only: the colours and proportions of
+the procedurally generated meshes, keyed by the preset id the Character
+*authors*.
+
+**Which animation.** `AnimationClipDefinition.externalSource` names one take
+inside one file (`{ assetPath, animationName, positionScale? }`). Visible
+playback resolves through canonical data alone:
+
+```text
+state -> state.motionSlot -> motion set binding -> clip asset -> file + take
+```
+
+Before this there were two animation graphs: the Behavior chose the state, and
+`CLIP_FOR_STATE` / `CharacterPreset.clipMap` / `WeaponMode.clipMap` chose the
+animation. They could drift indefinitely while every gate stayed green, and one
+had — a weapon mode named a take absent from the file it loaded, so the previous
+clip simply stayed on screen. Weapon modes now carry presentation only; which
+clips a mode plays is a `contextualKey` on each Character's motion set.
+
+`resolveRigEditorCharacterPresentation` owns both resolutions, and the renderers
+choose neither a model nor a clip.
+
+### Ownership is computed once
+
+`describeCharacterBindings(project, registry)` is the only implementation of "who
+holds this reference". The Rig Editor's Character Overview, the save dialog's
+blast radius, the audit report and the tests all read it, so a SHARED BY N badge
+and the save it precedes cannot disagree. Holders are keyed by asset type, id
+*and version*, because publishing over a version reaches only that version's
+holders. Tuning ownership is computed like everything else — "tuning is
+per-Character" was true of the two-Character repository and is false now.
+
+### A preview override is not an identity
+
+`previewModelOverrideId` swaps the *appearance* on screen for debugging. It
+defaults to none, may name only a procedural appearance, resets on Character
+navigation, is not persisted, and is never staged or applied. It is labelled
+PREVIEW ONLY and never "Character": the control it replaced was labelled
+"character", which is how five appearances came to be mistaken for five
+Characters. `harness:repo-guard` fails a commit that reintroduces the old
+selector, or that removes the badges and the PREVIEW ONLY label.
 
 ## The production model, in three nouns
 
@@ -266,8 +324,8 @@ Resolution splits in two. `ResolvedAnimationBundle` is the character-independent
 half — graph, clips, motion bindings, skeleton, provenance — and *is* shared by
 reference between every instance whose animation inputs agree. The
 `ResolvedProject` wrapper around it is built fresh per instance and is never
-shared, because it carries the character's own id, display name,
-`modelAssetPath` and capsule dimensions.
+shared, because it carries the character's own id, display name, model binding
+and capsule dimensions.
 
 The first version of this cached the whole `ResolvedProject`, which meant two
 *different* characters referencing one animation set received each other's body

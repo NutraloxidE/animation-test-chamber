@@ -837,10 +837,142 @@ export function characterControlBoundaryStage(): StageResult {
   );
 }
 
+/**
+ * No second Character selector, and no second animation graph (work package §10).
+ *
+ * Both regressions this guards against are *additions that look harmless*. A
+ * `CHARACTER_PRESETS`-style catalog carrying model files reads like renderer
+ * configuration until a selector is pointed at it, at which point the app has two
+ * answers to "which Character is this" and the canonical one loses. A
+ * `stateId -> clip name` map reads like a convenience until it is what playback
+ * uses, at which point the repository's motion set is decoration.
+ *
+ * Neither shows up as a failing test: the route tests still pass, typecheck still
+ * passes, and the screen still renders. So they are checked mechanically here.
+ */
+export function characterSelectorBoundaryStage(): StageResult {
+  return stage(
+    'no second Character selector, and no renderer-side clip map',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'the route is the Character selector (CharacterDefinition.model owns the model); playback resolves state -> motionSlot -> motion set -> clip asset. A preview override must be named previewModelOverride* and labelled PREVIEW ONLY.',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /*
+       * The declared migration adapters and the tests that assert the retirement
+       * are exempt: they must be able to *name* what was retired. Everything else
+       * in the app and the packages may not.
+       */
+      const allowed = [
+        'harness/repo-guard.ts',
+        'harness/generate-imported-character-assets.ts',
+        'packages/schema/src/migration.ts',
+      ];
+
+      const files = [...listFiles('apps'), ...listFiles('packages')].filter(
+        (file) =>
+          (file.endsWith('.ts') || file.endsWith('.tsx')) &&
+          !allowed.includes(file),
+      );
+
+      const forbidden: { pattern: RegExp; message: string; expected: string }[] = [
+        {
+          pattern: /\bCHARACTER_PRESETS\b/,
+          message: 'declares or reads CHARACTER_PRESETS, the retired second Character catalog',
+          expected: 'the route Character and CharacterDefinition.model',
+        },
+        {
+          pattern: /\bsetCharacterPreset\b|\bcharacterPresetId\b/,
+          message:
+            'names a character preset as selection state; a preview override must be previewModelOverride*',
+          expected: 'previewModelOverrideId / setPreviewModelOverride',
+        },
+        {
+          pattern: /\bCLIP_FOR_STATE\b/,
+          message: 'declares a web-only stateId -> clip name map',
+          expected: 'canonical motion-set bindings',
+        },
+        {
+          pattern: /\bclipMap\b/,
+          message: 'carries a clipMap; imported takes belong to clip assets',
+          expected: 'AnimationClipDefinition.externalSource',
+        },
+      ];
+
+      for (const file of files) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const [index, line] of source.split('\n').entries()) {
+          const trimmed = line.trimStart();
+          // Prose may discuss what was retired; code may not reintroduce it.
+          if (trimmed.startsWith('*') || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue;
+          for (const rule of forbidden) {
+            if (!rule.pattern.test(line)) continue;
+            issues.push({
+              files: [file],
+              expected: rule.expected,
+              actual: `${file}:${index + 1}`,
+              message: `${file} ${rule.message}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * The positive half. The rules above can all be satisfied by deleting the
+       * feature, so the guard also insists the replacements are still there — a
+       * Character Overview with ownership badges, and a preview override that says
+       * PREVIEW ONLY.
+       */
+      const required: { file: string; needle: string; message: string }[] = [
+        {
+          file: 'packages/animation-asset-runtime/src/bindings.ts',
+          needle: 'describeCharacterBindings',
+          message: 'the single Character binding inventory is missing',
+        },
+        {
+          file: 'apps/web/src/rig-editor/CharacterOverview.tsx',
+          needle: 'ONLY THIS CHARACTER',
+          message: 'the Character Overview no longer states exclusive ownership',
+        },
+        {
+          file: 'apps/web/src/rig-editor/CharacterOverview.tsx',
+          needle: 'SHARED BY',
+          message: 'the Character Overview no longer states shared ownership',
+        },
+        {
+          file: 'apps/web/src/panels/Hierarchy.tsx',
+          needle: 'PREVIEW ONLY',
+          message: 'the preview model override is no longer labelled PREVIEW ONLY',
+        },
+      ];
+
+      for (const rule of required) {
+        const source = readRepoFile(rule.file);
+        if (source === null || !source.includes(rule.needle)) {
+          issues.push({
+            files: [rule.file],
+            expected: `${rule.file} to contain "${rule.needle}"`,
+            actual: source === null ? 'the file is missing' : 'the text is absent',
+            message: rule.message,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${files.length} file(s) checked` };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     workspaceAliasStage(),
     characterControlBoundaryStage(),
+    characterSelectorBoundaryStage(),
     protectedValuesStage(),
     testIntegrityStage(),
     schemaConstraintStage(),

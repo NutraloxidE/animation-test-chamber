@@ -2,7 +2,8 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type { CharacterPreset, WeaponMode } from '../catalog.ts';
+import type { WeaponMode } from '../catalog.ts';
+import { proceduralAppearance } from '../catalog.ts';
 import { HeldSword } from './HeldSword.tsx';
 
 /**
@@ -30,7 +31,12 @@ interface ProceduralCharacterProps {
   /** Ghost characters are translucent and driven by a stored trace. */
   ghost?: boolean;
   color?: string;
-  character?: CharacterPreset;
+  /**
+   * The authored appearance id from `CharacterModelBinding.presetId`. Absent for
+   * a ghost or a world instance, which are coloured by role rather than by
+   * Character identity.
+   */
+  presetId?: string;
   weapon: WeaponMode;
 }
 
@@ -47,7 +53,7 @@ export function ProceduralCharacter({
   pose,
   ghost = false,
   color,
-  character,
+  presetId,
   weapon,
 }: ProceduralCharacterProps) {
   const root = useRef<THREE.Group>(null);
@@ -155,11 +161,13 @@ export function ProceduralCharacter({
 
   const opacity = ghost ? 0.28 : 1;
 
-  const bodyColor = color ?? character?.color ?? '#7dd3fc';
-  const legsColor = character?.legColor ?? '#38bdf8';
+  // The appearance is looked up from the authored id; it is never chosen here.
+  const appearance = presetId === undefined ? undefined : proceduralAppearance(presetId);
+  const bodyColor = color ?? appearance?.color ?? '#7dd3fc';
+  const legsColor = appearance?.legColor ?? '#38bdf8';
 
   return (
-    <group ref={root} scale={[character?.scale ?? 1, character?.scale ?? 1, character?.scale ?? 1]}>
+    <group ref={root} scale={[appearance?.scale ?? 1, appearance?.scale ?? 1, appearance?.scale ?? 1]}>
       <group ref={hips} position={[0, 0.95, 0]}>
         <mesh ref={torso} position={[0, 0.25, 0]} castShadow={!ghost}>
           <capsuleGeometry args={[0.17, 0.42, 4, 12]} />

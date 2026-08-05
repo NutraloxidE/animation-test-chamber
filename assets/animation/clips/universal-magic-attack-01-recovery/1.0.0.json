@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-magic-attack-01-recovery",
+    "version": "1.0.0",
+    "displayName": "Universal Base attack 01 recovery (magic)",
+    "description": "Universal Base: \"Rig|Spell_Simple_Exit\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's state.attack-01-recovery clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "3bc4386564c52d1d95b618fab6e7b340a3be44fdaaef55e97bc5b3e30bd3d8ff"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-magic-attack-01-recovery",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 0.9666666,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "timeCurve": {
+      "x1": 0.15683372667100695,
+      "y1": 0.43474999999999997,
+      "x2": 0.75,
+      "y2": 0.75
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Spell_Simple_Exit",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

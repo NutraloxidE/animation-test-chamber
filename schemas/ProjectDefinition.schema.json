@@ -53,7 +53,7 @@
           "schemaVersion",
           "id",
           "displayName",
-          "modelAssetPath",
+          "model",
           "capsuleRadius",
           "capsuleHeight",
           "animation"
@@ -72,13 +72,111 @@
           "displayName": {
             "type": "string"
           },
-          "modelAssetPath": {
+          "model": {
+            "$id": "CharacterModelBinding",
             "anyOf": [
               {
-                "type": "string"
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "presetId"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "procedural-humanoid",
+                    "type": "string"
+                  },
+                  "presetId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
+                  }
+                }
               },
               {
-                "type": "null"
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "assetPath",
+                  "scale",
+                  "rotationYRad"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "repository-model",
+                    "type": "string"
+                  },
+                  "assetPath": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "scale": {
+                    "minimum": 0.001,
+                    "maximum": 1000,
+                    "type": "number"
+                  },
+                  "rotationYRad": {
+                    "minimum": -6.283185307179586,
+                    "maximum": 6.283185307179586,
+                    "type": "number"
+                  },
+                  "rightHandBone": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "weaponGrips": {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "position",
+                          "rotation"
+                        ],
+                        "properties": {
+                          "position": {
+                            "type": "array",
+                            "items": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ],
+                            "additionalItems": false,
+                            "minItems": 3,
+                            "maxItems": 3
+                          },
+                          "rotation": {
+                            "type": "array",
+                            "items": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ],
+                            "additionalItems": false,
+                            "minItems": 3,
+                            "maxItems": 3
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             ]
           },

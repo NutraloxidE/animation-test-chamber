@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-shield-attack-01-recovery",
+    "version": "1.0.0",
+    "displayName": "Universal Base attack 01 recovery (shield)",
+    "description": "Universal Base: \"Idle_Shield_Loop\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's state.attack-01-recovery clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "8ff7df0edec21b988b70a8f138e361c298d3163592bb3e72c885bdff49153d74"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-shield-attack-01-recovery",
+    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "durationSec": 0.9666666,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.6
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "timeCurve": {
+      "x1": 0.15683372667100695,
+      "y1": 0.43474999999999997,
+      "x2": 0.75,
+      "y2": 0.75
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+      "animationName": "Idle_Shield_Loop"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

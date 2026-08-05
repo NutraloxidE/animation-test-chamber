@@ -1,0 +1,58 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-land",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight land",
+    "description": "Quaternius Knight: \"HumanArmature|Jump\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's airborne.land clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "86280aa1da793e906d4145b6f3fd7be246e9074b7ad31e44411d10289d98fb9d"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-land",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.35,
+    "loop": false,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "land-impact",
+        "kind": "Landing",
+        "at": 0.05
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Jump"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

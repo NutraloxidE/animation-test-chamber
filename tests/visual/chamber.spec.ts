@@ -22,13 +22,14 @@ async function openPanel(page: Page, id: string): Promise<void> {
 }
 
 /**
- * The Hierarchy dock (character/weapon/equipment) only defaults open above
+ * The Hierarchy dock (weapon/equipment; the Character is the route now) only
+ * defaults open above
  * the 900px breakpoint — below it, it would otherwise overlay and block the
  * rest of the narrow layout (PLAN Part VI, the same overlay-by-default bug
  * fixed for the bottom sheet).
  */
 async function openHierarchy(page: Page): Promise<void> {
-  if (!(await page.getByTestId('character-select').isVisible())) {
+  if (!(await page.getByTestId('weapon-mode-select').isVisible())) {
     await page.getByTestId('toggle-hierarchy').click();
   }
 }
@@ -39,7 +40,7 @@ async function openHierarchy(page: Page): Promise<void> {
  * area other overlays (the bottom sheet, its buttons) also need.
  */
 async function closeHierarchy(page: Page): Promise<void> {
-  if (await page.getByTestId('character-select').isVisible()) {
+  if (await page.getByTestId('weapon-mode-select').isVisible()) {
     await page.getByTestId('toggle-hierarchy').click();
   }
 }
@@ -109,10 +110,16 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('character and weapon presets can be selected', async ({ page }) => {
-  await openHierarchy(page);
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+test('an imported Character plays its canonical takes, and its grip is editable', async ({ page }) => {
+  /*
+   * Switching Character is navigation now. It used to be a preset selector in
+   * the Hierarchy, which is exactly the hidden second selector the work package
+   * removed: it changed the model without changing the Character being edited.
+   */
+  await page.goto('/edit/rig/quaternius-universal-base');
+  await expect(page.getByTestId('rig-target-id')).toContainText('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  await openHierarchy(page);
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );
@@ -130,7 +137,8 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Character, weapon and equipment moved into the Hierarchy dock; only
+  // Weapon and equipment moved into the Hierarchy dock (and the Character is
+  // the route); only
   // viewport-controls' own body (e.g. the grip editor) collapses with it.
   await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
@@ -168,8 +176,9 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
+  await page.goto('/edit/rig/quaternius-universal-base');
+  await expect(page.getByTestId('rig-target-id')).toContainText('quaternius-universal-base');
   await openHierarchy(page);
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   await closeHierarchy(page);
   // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks

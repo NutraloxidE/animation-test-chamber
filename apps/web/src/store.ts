@@ -21,6 +21,8 @@ import type {
 import { resolveWeaponMode } from '@atc/animation-runtime';
 import {
   AnimationAssetRegistry,
+  describeCharacterBinding,
+  describeCharacterBindings,
   diffToPatches,
   isVariantAsset,
   registryFromLibraryIndex,
@@ -28,6 +30,7 @@ import {
   stripGraphPrefix,
 } from '@atc/animation-asset-runtime';
 import { EditSession } from '@atc/editor-core';
+import type { CharacterBindingDescription } from '@atc/animation-asset-runtime';
 import type { DiffReport } from '@atc/runtime-core';
 import { setAtPath } from '@atc/runtime-core';
 import type { AdjustmentProposal } from '@atc/ai-adapter';
@@ -39,8 +42,12 @@ import { worldOf } from '@atc/world-runtime';
 import { createDefaultRegistry } from '@atc/capability-runtime';
 import { WorldChamberEngine } from './world/world-engine.ts';
 import { ChamberEngine } from './engine.ts';
+import {
+  resolveRigEditorCharacterPresentation,
+  type ResolvedCharacterPresentation,
+} from './rig-editor/resolve-character-presentation.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from './backend.ts';
-import { CHARACTER_PRESETS, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
+import { PROCEDURAL_APPEARANCES, WEAPON_MODES, type WeaponGrip } from './three/catalog.ts';
 import seedProject from '@chamber/project';
 import seedAssetIndex from '@chamber/animation-assets';
 
@@ -212,7 +219,18 @@ interface ChamberState {
   selectedStateId: string;
   activePanel: PanelId;
   terrainPresetId: string;
-  characterPresetId: string;
+  /**
+   * A debug-only appearance swap, or `null` — the normal state (§3.6).
+   *
+   * This field replaces `characterPresetId`, which was the app's hidden second
+   * Character selector: the route resolved one Character while the Viewport drew
+   * whatever this held, so navigating between Characters could leave the model
+   * unchanged. The differences are all deliberate. It defaults to `null` rather
+   * than to a preset, it holds only a *procedural appearance* id, it is reset by
+   * route navigation, and it is not persisted — a preview that survived a reload
+   * would be indistinguishable from authored data on the next visit.
+   */
+  previewModelOverrideId: string | null;
   weaponModeId: string;
   /** Equipment slot id → equipped, seeded from each slot's declared default. */
   equipped: Record<string, boolean>;
@@ -308,7 +326,8 @@ interface ChamberActions {
   revertWorldEdits(): void;
   sharedAssetsFor(instanceId: string): CharacterAnimationAssignment | null;
   setTerrainPreset(id: string): void;
-  setCharacterPreset(id: string): void;
+  /** Sets or clears the preview appearance override. Never canonical. */
+  setPreviewModelOverride(presetId: string | null): void;
   setWeaponMode(id: string): void;
   setEquipped(slotId: string, equipped: boolean): void;
   setGripEditorMode(mode: 'translate' | 'rotate' | null): void;
@@ -646,7 +665,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     selectedStateId: 'run',
     activePanel: 'inspector',
     terrainPresetId: canonicalSeed.defaultTerrainPresetId,
-    characterPresetId: CHARACTER_PRESETS[0]!.id,
+    previewModelOverrideId: null,
     weaponModeId: WEAPON_MODES[0]!.id,
     equipped: defaultEquipped(canonicalSeed),
     weaponGripOverrides: {},
@@ -708,6 +727,15 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         project: resolution.project,
         assetIssues: resolution.issues,
         revision: get().revision + 1,
+        /*
+         * The preview override is cleared on every Character switch (§3.6). It
+         * describes "show me this appearance instead", which is a statement about
+         * the Character you were looking at; carrying it across would make the
+         * new Character render as the old one's costume — the exact confusion
+         * that made two different Characters look identical.
+         */
+        previewModelOverrideId: null,
+        gripEditorMode: null,
         statusMessage: `Character: ${resolution.project.character.displayName}`,
       });
     },
@@ -844,8 +872,21 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     graphDestinationOptions() {
       const { project, canonicalProject } = get();
       const behaviorId = project.character.animation.behavior.assetId;
-      const sharing = canonicalProject.characters.filter(
-        (character) => character.animation.behavior.assetId === behaviorId,
+      /*
+       * Holders come from the one binding inventory, not from a second scan
+       * (§7). The count in this dialog and the SHARED BY N badge in the
+       * Character Overview are the same question; computing it twice is how a
+       * badge saying "only this character" ends up beside a save that reaches
+       * four others.
+       */
+      const binding = describeCharacterBinding(
+        canonicalProject,
+        get().registry,
+        project.character.id,
+      );
+      const behaviorHolderNames = (binding?.behavior.usedByCharacterIds ?? [project.character.id]).map(
+        (id) =>
+          canonicalProject.characters.find((character) => character.id === id)?.displayName ?? id,
       );
       const hasTuning = Boolean(project.character.animation.tuning);
       // The server refuses a structural patch aimed at a tuning profile and is
@@ -857,6 +898,12 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       // depend on what the library's search box or type filter currently
       // shows (PLAN Part VI §25): asked directly of the registry, not of
       // `librarySummaries()`, which is exactly the filtered view.
+      const tuningOtherHolderNames = (binding?.tuning?.usedByCharacterIds ?? [])
+        .filter((id) => id !== project.character.id)
+        .map(
+          (id) =>
+            canonicalProject.characters.find((character) => character.id === id)?.displayName ?? id,
+        );
       const behaviorAsset = get().registry.find(project.character.animation.behavior);
       const isVariant =
         behaviorAsset?.metadata.assetType === 'animation-behavior' &&
@@ -872,8 +919,16 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         {
           kind: 'tuning-profile' as const,
           label: 'New version of this character’s tuning profile',
+          /*
+           * Tuning ownership is computed, never assumed to be per-Character
+           * (§7.3). "This character's tuning profile" was a guess that happened
+           * to hold for the demo project; four Characters share one profile now,
+           * so publishing it reaches all four and the dialog has to say so.
+           */
           impact: tuningAvailable
-            ? `Only "${project.character.displayName}", but reusable by other characters that adopt the profile.`
+            ? tuningOtherHolderNames.length > 0
+              ? `All ${tuningOtherHolderNames.length + 1} characters on "${project.character.animation.tuning!.assetId}": ${[project.character.displayName, ...tuningOtherHolderNames].join(', ')}.`
+              : `Only "${project.character.displayName}", but reusable by other characters that adopt the profile.`
             : '',
           available: tuningAvailable,
           ...(tuningAvailable
@@ -901,8 +956,8 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           kind: 'shared-behavior' as const,
           label: 'New version of the shared behaviour',
           impact:
-            sharing.length > 1
-              ? `All ${sharing.length} characters on "${behaviorId}": ${sharing.map((c) => c.displayName).join(', ')}. Replay verification is required.`
+            behaviorHolderNames.length > 1
+              ? `All ${behaviorHolderNames.length} characters on "${behaviorId}": ${behaviorHolderNames.join(', ')}. Replay verification is required.`
               : `"${project.character.displayName}" only, for now — but anything that adopts "${behaviorId}" later inherits it.`,
           available: true,
         },
@@ -910,7 +965,21 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
     },
 
     clipDestinationOptions() {
-      const { project } = get();
+      const { project, canonicalProject } = get();
+      // Motion-set ownership is computed too (§7.2): a new motion-set version
+      // re-points the Characters that hold the current one, and which those are
+      // is not something this dialog gets to assume.
+      const motionSetBinding = describeCharacterBinding(
+        canonicalProject,
+        get().registry,
+        project.character.id,
+      )?.motionSet;
+      const motionSetOtherHolders = (motionSetBinding?.usedByCharacterIds ?? [])
+        .filter((id) => id !== project.character.id)
+        .map(
+          (id) =>
+            canonicalProject.characters.find((character) => character.id === id)?.displayName ?? id,
+        );
       return [
         {
           kind: 'character-override' as const,
@@ -923,7 +992,10 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
           label: 'New clip version(s) + new motion-set version',
           impact:
             'A new version of each changed clip, and a new motion-set version pointing the ' +
-            'affected slots at them. Only this character adopts it.',
+            'affected slots at them. ' +
+            (motionSetOtherHolders.length > 0
+              ? `The current motion set is also held by ${motionSetOtherHolders.join(', ')}; only "${project.character.displayName}" is re-pointed at the new version.`
+              : 'Only this character adopts it.'),
           available: true,
         },
       ];
@@ -1472,12 +1544,17 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       set({ terrainPresetId: id });
     },
 
-    setCharacterPreset(id) {
-      if (!CHARACTER_PRESETS.some((preset) => preset.id === id)) return;
+    setPreviewModelOverride(presetId) {
+      if (presetId !== null && !PROCEDURAL_APPEARANCES.some((entry) => entry.id === presetId)) return;
       set({
-        characterPresetId: id,
+        previewModelOverrideId: presetId,
         gripEditorMode: null,
-        statusMessage: `Character: ${CHARACTER_PRESETS.find((preset) => preset.id === id)!.label}`,
+        // Named as a preview, never as "Character: X". The old message said the
+        // latter, which is precisely how a preview came to look authoritative.
+        statusMessage:
+          presetId === null
+            ? 'Preview model override cleared. Showing the Character\'s canonical model.'
+            : `Preview model override: ${PROCEDURAL_APPEARANCES.find((entry) => entry.id === presetId)!.label}. Not saved to the Character.`,
       });
     },
 
@@ -1525,7 +1602,7 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
       delete weaponGripOverrides[`${characterId}:${weaponId}`];
       set({
         weaponGripOverrides,
-        statusMessage: 'Grip reset to the catalog default.',
+        statusMessage: "Grip reset to the Character's authored default.",
       });
     },
 
@@ -1903,7 +1980,6 @@ export const useChamber = create<ChamberState & ChamberActions>()(
       selectedStateId: state.selectedStateId,
       activePanel: state.activePanel,
       terrainPresetId: state.terrainPresetId,
-      characterPresetId: state.characterPresetId,
       weaponModeId: state.weaponModeId,
       equipped: state.equipped,
       weaponGripOverrides: state.weaponGripOverrides,
@@ -1952,4 +2028,44 @@ export function useWeaponProject(): ResolvedProject {
   const project = useChamber((state) => state.project);
   const weaponModeId = useChamber((state) => state.weaponModeId);
   return useMemo(() => resolveWeaponMode(project, weaponModeId), [project, weaponModeId]);
+}
+
+/**
+ * What the Viewport draws, and what it plays.
+ *
+ * One hook, so every consumer reads the same presentation. The Viewport, the
+ * Hierarchy's model row and the Character Overview all need "which model is this
+ * Character wearing right now, and is that the authored answer or a preview" —
+ * and if each derived it independently, they could disagree, which is the class
+ * of bug this whole package closes.
+ */
+export function useCharacterPresentation(): ResolvedCharacterPresentation {
+  const project = useChamber((state) => state.project);
+  const weaponModeId = useChamber((state) => state.weaponModeId);
+  const previewModelOverrideId = useChamber((state) => state.previewModelOverrideId);
+  return useMemo(
+    () =>
+      resolveRigEditorCharacterPresentation({
+        project,
+        weaponModeId,
+        previewModelOverridePresetId: previewModelOverrideId,
+      }),
+    [project, weaponModeId, previewModelOverrideId],
+  );
+}
+
+/**
+ * The binding inventory for every Character in the repository.
+ *
+ * Reads `canonicalProject`, never the preview document: ownership is a property
+ * of what is committed. Deriving it from the edit session would make a badge say
+ * "only this character" because an unsaved edit had not reached the others yet.
+ */
+export function useCharacterBindings(): CharacterBindingDescription[] {
+  const canonicalProject = useChamber((state) => state.canonicalProject);
+  const registry = useChamber((state) => state.registry);
+  return useMemo(
+    () => describeCharacterBindings(canonicalProject, registry),
+    [canonicalProject, registry],
+  );
 }

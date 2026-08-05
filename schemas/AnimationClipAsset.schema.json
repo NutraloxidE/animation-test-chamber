@@ -367,6 +367,30 @@
         "proceduralGenerator": {
           "type": "string"
         },
+        "externalSource": {
+          "$id": "ExternalAnimationSource",
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "assetPath",
+            "animationName"
+          ],
+          "properties": {
+            "assetPath": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "animationName": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "positionScale": {
+              "minimum": 0.0001,
+              "maximum": 10000,
+              "type": "number"
+            }
+          }
+        },
         "durationSec": {
           "minimum": 0.01,
           "maximum": 120,

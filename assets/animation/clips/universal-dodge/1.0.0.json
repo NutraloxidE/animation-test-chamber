@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-dodge",
+    "version": "1.0.0",
+    "displayName": "Universal Base dodge",
+    "description": "Universal Base: \"Rig|Roll\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's mobility.dodge clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "3223edf80d67881ba4aa4f5015aeddc6f3d94c64465489bd42e2d11c49233a7f"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-dodge",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 1.4666667,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.3,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 10
+    },
+    "rootMotionMode": "RootMotion",
+    "rootMotionCurve": "FastInSlowOut",
+    "recoveryTransitionStartNormalized": 0.62,
+    "events": [
+      {
+        "id": "dodge-start",
+        "kind": "DodgeStart",
+        "at": 0.05
+      },
+      {
+        "id": "dodge-end",
+        "kind": "DodgeEnd",
+        "at": 0.85
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0.2406111111111111,
+      "y1": 0.3670833333333333,
+      "x2": 0.4887222222222222,
+      "y2": 0.6860833333333334
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Roll",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

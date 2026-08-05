@@ -2,12 +2,13 @@ import { useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber, useCharacterPresentation } from '../store.ts';
 import type { ChamberEngine } from '../engine.ts';
 import { Character } from './Character.tsx';
 import { TerrainMesh } from './TerrainMesh.tsx';
 import { DebugOverlays } from './DebugOverlays.tsx';
-import { characterPreset, weaponMode } from './catalog.ts';
+import { weaponMode } from './catalog.ts';
+import { resolveWeaponGrip } from '../rig-editor/resolve-character-presentation.ts';
 
 /** Advances the simulation from render deltas and keeps the camera behind the character. */
 function ChamberLoop({ engine }: { engine: ChamberEngine }) {
@@ -46,16 +47,25 @@ export function Viewport() {
   const terrainPresetId = useChamber((state) => state.terrainPresetId);
   const ghostEnabled = useChamber((state) => state.ghostEnabled);
   const refreshCapability = useChamber((state) => state.refreshCapability);
-  const characterPresetId = useChamber((state) => state.characterPresetId);
   const weaponModeId = useChamber((state) => state.weaponModeId);
   const weaponGripOverrides = useChamber((state) => state.weaponGripOverrides);
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const saveWeaponGrip = useChamber((state) => state.saveWeaponGrip);
-  const character = characterPreset(characterPresetId);
+  /*
+   * The route Character's presentation — model binding and canonical takes. The
+   * Viewport used to read `characterPresetId` here, which is why navigating to
+   * another Character could leave the previous model on screen: the header and
+   * the document changed, and this line did not.
+   */
+  const presentation = useCharacterPresentation();
   const weapon = weaponMode(weaponModeId);
-  const grip =
-    weaponGripOverrides[`${character.id}:${weapon.id}`] ??
-    character.weaponGrips?.[weapon.id];
+  const grip = resolveWeaponGrip({
+    model: presentation.model.effective,
+    weaponModeId: weapon.id,
+    // Grip overrides are keyed by canonical Character id, not by preset id: a
+    // grip belongs to the Character whose hand it is in.
+    sessionOverride: weaponGripOverrides[`${presentation.characterId}:${weapon.id}`],
+  });
 
   useEffect(() => {
     engine.attachInput();
@@ -105,13 +115,19 @@ export function Viewport() {
 
       <ChamberLoop engine={engine} />
       <TerrainMesh key={terrainPresetId} preset={engine.terrainPreset} engine={engine} />
+      {/*
+        Keyed by Character id *and* effective model, so switching either builds a
+        fresh renderer rather than reusing the previous one's mixer, cloned
+        skeleton and attachment state (§9.2).
+      */}
       <Character
+        key={`${presentation.characterId}:${presentation.model.effective.kind === 'repository-model' ? presentation.model.effective.assetPath : presentation.model.effective.presetId}`}
         engine={engine}
-        character={character}
+        presentation={presentation}
         weapon={weapon}
         grip={grip}
         gripEditorMode={gripEditorMode}
-        onGripChange={(nextGrip) => saveWeaponGrip(character.id, weapon.id, nextGrip)}
+        onGripChange={(nextGrip) => saveWeaponGrip(presentation.characterId, weapon.id, nextGrip)}
       />
       {ghostEnabled && <Character engine={engine} ghost color="#f472b6" weapon={weapon} />}
       <DebugOverlays engine={engine} />

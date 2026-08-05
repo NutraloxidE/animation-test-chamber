@@ -1,0 +1,639 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "humanoid-rig",
+    "id": "quaternius-universal-rig",
+    "version": "1.0.0",
+    "displayName": "Quaternius Universal rig",
+    "description": "The 65-bone UE-style armature the Quaternius universal animation libraries were authored against.",
+    "tags": [
+      "humanoid",
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "10fc68780d556ab1d75ab2e3387b7711cd049a79808d5985485d670ba2a5956e"
+  },
+  "skeleton": {
+    "schemaVersion": 2,
+    "id": "quaternius-universal-rig",
+    "height": 1.355119,
+    "bones": [
+      {
+        "name": "root",
+        "parent": null,
+        "restPosition": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      {
+        "name": "pelvis",
+        "parent": "root",
+        "restPosition": {
+          "x": 0,
+          "y": 0.0457,
+          "z": 0.9318
+        },
+        "humanoid": "Hips"
+      },
+      {
+        "name": "spine_01",
+        "parent": "pelvis",
+        "restPosition": {
+          "x": 0,
+          "y": 0.172255,
+          "z": 0.9318
+        },
+        "humanoid": "Spine"
+      },
+      {
+        "name": "spine_02",
+        "parent": "spine_01",
+        "restPosition": {
+          "x": 0,
+          "y": 0.2826,
+          "z": 0.9318
+        }
+      },
+      {
+        "name": "spine_03",
+        "parent": "spine_02",
+        "restPosition": {
+          "x": 0,
+          "y": 0.409001,
+          "z": 0.9318
+        },
+        "humanoid": "Chest"
+      },
+      {
+        "name": "neck_01",
+        "parent": "spine_03",
+        "restPosition": {
+          "x": 0,
+          "y": 0.607157,
+          "z": 0.9318
+        }
+      },
+      {
+        "name": "Head",
+        "parent": "neck_01",
+        "restPosition": {
+          "x": 0,
+          "y": 0.678348,
+          "z": 0.9318
+        },
+        "humanoid": "Head"
+      },
+      {
+        "name": "clavicle_l",
+        "parent": "spine_03",
+        "restPosition": {
+          "x": 0.0293,
+          "y": 0.542704,
+          "z": 0.976619
+        }
+      },
+      {
+        "name": "upperarm_l",
+        "parent": "clavicle_l",
+        "restPosition": {
+          "x": 0.027695,
+          "y": 0.68377,
+          "z": 0.964333
+        }
+      },
+      {
+        "name": "lowerarm_l",
+        "parent": "upperarm_l",
+        "restPosition": {
+          "x": 0.027695,
+          "y": 0.924112,
+          "z": 0.964333
+        }
+      },
+      {
+        "name": "hand_l",
+        "parent": "lowerarm_l",
+        "restPosition": {
+          "x": 0.027695,
+          "y": 1.173416,
+          "z": 0.964333
+        },
+        "humanoid": "LeftHand"
+      },
+      {
+        "name": "index_01_l",
+        "parent": "hand_l",
+        "restPosition": {
+          "x": 0.031895,
+          "y": 1.261653,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_02_l",
+        "parent": "index_01_l",
+        "restPosition": {
+          "x": 0.031895,
+          "y": 1.293363,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_03_l",
+        "parent": "index_02_l",
+        "restPosition": {
+          "x": 0.031895,
+          "y": 1.320475,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_04_leaf_l",
+        "parent": "index_03_l",
+        "restPosition": {
+          "x": 0.031895,
+          "y": 1.343986,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "middle_01_l",
+        "parent": "hand_l",
+        "restPosition": {
+          "x": 0.029595,
+          "y": 1.259758,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_02_l",
+        "parent": "middle_01_l",
+        "restPosition": {
+          "x": 0.029595,
+          "y": 1.296185,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_03_l",
+        "parent": "middle_02_l",
+        "restPosition": {
+          "x": 0.029595,
+          "y": 1.325499,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_04_leaf_l",
+        "parent": "middle_03_l",
+        "restPosition": {
+          "x": 0.029595,
+          "y": 1.355119,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "pinky_01_l",
+        "parent": "hand_l",
+        "restPosition": {
+          "x": 0.031495,
+          "y": 1.243364,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_02_l",
+        "parent": "pinky_01_l",
+        "restPosition": {
+          "x": 0.031495,
+          "y": 1.274196,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_03_l",
+        "parent": "pinky_02_l",
+        "restPosition": {
+          "x": 0.031495,
+          "y": 1.300828,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_04_leaf_l",
+        "parent": "pinky_03_l",
+        "restPosition": {
+          "x": 0.031495,
+          "y": 1.321747,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "ring_01_l",
+        "parent": "hand_l",
+        "restPosition": {
+          "x": 0.029895,
+          "y": 1.253846,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_02_l",
+        "parent": "ring_01_l",
+        "restPosition": {
+          "x": 0.029895,
+          "y": 1.288847,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_03_l",
+        "parent": "ring_02_l",
+        "restPosition": {
+          "x": 0.029895,
+          "y": 1.316447,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_04_leaf_l",
+        "parent": "ring_03_l",
+        "restPosition": {
+          "x": 0.029895,
+          "y": 1.344749,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "thumb_01_l",
+        "parent": "hand_l",
+        "restPosition": {
+          "x": 0.037695,
+          "y": 1.17054,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_02_l",
+        "parent": "thumb_01_l",
+        "restPosition": {
+          "x": 0.037695,
+          "y": 1.206361,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_03_l",
+        "parent": "thumb_02_l",
+        "restPosition": {
+          "x": 0.037695,
+          "y": 1.241981,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_04_leaf_l",
+        "parent": "thumb_03_l",
+        "restPosition": {
+          "x": 0.037695,
+          "y": 1.273254,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "clavicle_r",
+        "parent": "spine_03",
+        "restPosition": {
+          "x": -0.0293,
+          "y": 0.542704,
+          "z": 0.976619
+        }
+      },
+      {
+        "name": "upperarm_r",
+        "parent": "clavicle_r",
+        "restPosition": {
+          "x": -0.027695,
+          "y": 0.68377,
+          "z": 0.964333
+        }
+      },
+      {
+        "name": "lowerarm_r",
+        "parent": "upperarm_r",
+        "restPosition": {
+          "x": -0.027695,
+          "y": 0.924112,
+          "z": 0.964333
+        }
+      },
+      {
+        "name": "hand_r",
+        "parent": "lowerarm_r",
+        "restPosition": {
+          "x": -0.027695,
+          "y": 1.173416,
+          "z": 0.964333
+        },
+        "humanoid": "RightHand"
+      },
+      {
+        "name": "index_01_r",
+        "parent": "hand_r",
+        "restPosition": {
+          "x": -0.031895,
+          "y": 1.261653,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_02_r",
+        "parent": "index_01_r",
+        "restPosition": {
+          "x": -0.031895,
+          "y": 1.293363,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_03_r",
+        "parent": "index_02_r",
+        "restPosition": {
+          "x": -0.031895,
+          "y": 1.320475,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "index_04_leaf_r",
+        "parent": "index_03_r",
+        "restPosition": {
+          "x": -0.031895,
+          "y": 1.343986,
+          "z": 1.000538
+        }
+      },
+      {
+        "name": "middle_01_r",
+        "parent": "hand_r",
+        "restPosition": {
+          "x": -0.029595,
+          "y": 1.259758,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_02_r",
+        "parent": "middle_01_r",
+        "restPosition": {
+          "x": -0.029595,
+          "y": 1.296185,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_03_r",
+        "parent": "middle_02_r",
+        "restPosition": {
+          "x": -0.029595,
+          "y": 1.325499,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "middle_04_leaf_r",
+        "parent": "middle_03_r",
+        "restPosition": {
+          "x": -0.029595,
+          "y": 1.355119,
+          "z": 0.975005
+        }
+      },
+      {
+        "name": "pinky_01_r",
+        "parent": "hand_r",
+        "restPosition": {
+          "x": -0.031495,
+          "y": 1.243364,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_02_r",
+        "parent": "pinky_01_r",
+        "restPosition": {
+          "x": -0.031495,
+          "y": 1.274196,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_03_r",
+        "parent": "pinky_02_r",
+        "restPosition": {
+          "x": -0.031495,
+          "y": 1.300828,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "pinky_04_leaf_r",
+        "parent": "pinky_03_r",
+        "restPosition": {
+          "x": -0.031495,
+          "y": 1.321747,
+          "z": 0.930339
+        }
+      },
+      {
+        "name": "ring_01_r",
+        "parent": "hand_r",
+        "restPosition": {
+          "x": -0.029895,
+          "y": 1.253846,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_02_r",
+        "parent": "ring_01_r",
+        "restPosition": {
+          "x": -0.029895,
+          "y": 1.288847,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_03_r",
+        "parent": "ring_02_r",
+        "restPosition": {
+          "x": -0.029895,
+          "y": 1.316447,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "ring_04_leaf_r",
+        "parent": "ring_03_r",
+        "restPosition": {
+          "x": -0.029895,
+          "y": 1.344749,
+          "z": 0.950508
+        }
+      },
+      {
+        "name": "thumb_01_r",
+        "parent": "hand_r",
+        "restPosition": {
+          "x": -0.037695,
+          "y": 1.17054,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_02_r",
+        "parent": "thumb_01_r",
+        "restPosition": {
+          "x": -0.037695,
+          "y": 1.206361,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_03_r",
+        "parent": "thumb_02_r",
+        "restPosition": {
+          "x": -0.037695,
+          "y": 1.241981,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thumb_04_leaf_r",
+        "parent": "thumb_03_r",
+        "restPosition": {
+          "x": -0.037695,
+          "y": 1.273254,
+          "z": 0.994291
+        }
+      },
+      {
+        "name": "thigh_l",
+        "parent": "pelvis",
+        "restPosition": {
+          "x": 0.1114,
+          "y": 0.05616,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "calf_l",
+        "parent": "thigh_l",
+        "restPosition": {
+          "x": 0.1114,
+          "y": 0.466024,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "foot_l",
+        "parent": "calf_l",
+        "restPosition": {
+          "x": 0.1114,
+          "y": 0.932124,
+          "z": 0.922907
+        },
+        "humanoid": "LeftFoot"
+      },
+      {
+        "name": "ball_l",
+        "parent": "foot_l",
+        "restPosition": {
+          "x": 0.1114,
+          "y": 1.081294,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "ball_leaf_l",
+        "parent": "ball_l",
+        "restPosition": {
+          "x": 0.1114,
+          "y": 1.149394,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "thigh_r",
+        "parent": "pelvis",
+        "restPosition": {
+          "x": -0.1114,
+          "y": 0.05616,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "calf_r",
+        "parent": "thigh_r",
+        "restPosition": {
+          "x": -0.1114,
+          "y": 0.466024,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "foot_r",
+        "parent": "calf_r",
+        "restPosition": {
+          "x": -0.1114,
+          "y": 0.932124,
+          "z": 0.922907
+        },
+        "humanoid": "RightFoot"
+      },
+      {
+        "name": "ball_r",
+        "parent": "foot_r",
+        "restPosition": {
+          "x": -0.1114,
+          "y": 1.081294,
+          "z": 0.922907
+        }
+      },
+      {
+        "name": "ball_leaf_r",
+        "parent": "ball_r",
+        "restPosition": {
+          "x": -0.1114,
+          "y": 1.149394,
+          "z": 0.922907
+        }
+      }
+    ],
+    "hipsBone": "pelvis",
+    "leftFootBone": "foot_l",
+    "rightFootBone": "foot_r"
+  },
+  "compatibilityKey": "quaternius-universal",
+  "coordinateSystem": {
+    "upAxis": "Y",
+    "forwardAxis": "+Z",
+    "handedness": "right",
+    "unitMeters": 1
+  },
+  "humanoidBones": {
+    "hips": "pelvis",
+    "spine": "spine_01",
+    "chest": "spine_03",
+    "head": "Head",
+    "leftFoot": "foot_l",
+    "rightFoot": "foot_r",
+    "leftHand": "hand_l",
+    "rightHand": "hand_r"
+  },
+  "retargetStatus": "retarget-compatible"
+}

@@ -1,0 +1,72 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-dodge",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight dodge",
+    "description": "Quaternius Knight: \"HumanArmature|Roll\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's mobility.dodge clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "735601eff881e16e1b4a450ebb903447c0b44d0000e63d9953b451e09762b253"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-dodge",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 1.4666667,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.3,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 10
+    },
+    "rootMotionMode": "RootMotion",
+    "rootMotionCurve": "FastInSlowOut",
+    "recoveryTransitionStartNormalized": 0.62,
+    "events": [
+      {
+        "id": "dodge-start",
+        "kind": "DodgeStart",
+        "at": 0.05
+      },
+      {
+        "id": "dodge-end",
+        "kind": "DodgeEnd",
+        "at": 0.85
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0.7,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0.2406111111111111,
+      "y1": 0.3670833333333333,
+      "x2": 0.4887222222222222,
+      "y2": 0.6860833333333334
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Roll"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

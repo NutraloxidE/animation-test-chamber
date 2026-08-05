@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-attack-01-recovery",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight attack 01 recovery",
+    "description": "Quaternius Knight: \"HumanArmature|Idle_swordRight\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's state.attack-01-recovery clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "832a46bccc8cd7accd3f010c9b9cdb6b36e8735236783584fbd35b132edff81b"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-attack-01-recovery",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.9666666,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.6
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "timeCurve": {
+      "x1": 0.15683372667100695,
+      "y1": 0.43474999999999997,
+      "x2": 0.75,
+      "y2": 0.75
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Idle_swordRight"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

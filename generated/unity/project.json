@@ -490,8 +490,11 @@
       {
         "schemaVersion": 2,
         "id": "demo-humanoid",
-        "displayName": "Procedural Humanoid",
-        "modelAssetPath": null,
+        "displayName": "Navigator",
+        "model": {
+          "kind": "procedural-humanoid",
+          "presetId": "navigator"
+        },
         "capsuleRadius": 0.3,
         "capsuleHeight": 1.8,
         "animation": {
@@ -536,8 +539,11 @@
       {
         "schemaVersion": 2,
         "id": "alternate-humanoid-character",
-        "displayName": "Alternate humanoid",
-        "modelAssetPath": null,
+        "displayName": "Relay",
+        "model": {
+          "kind": "procedural-humanoid",
+          "presetId": "relay"
+        },
         "capsuleRadius": 0.3,
         "capsuleHeight": 1.8,
         "animation": {
@@ -564,6 +570,154 @@
             "assetId": "alternate-humanoid-tuning",
             "version": "1.0.0",
             "contentHash": "1fe0d91cbb0ca1f8879b9e20c9ff07010da7d0e62300b6cb16679355c4156588"
+          },
+          "instanceOverrides": []
+        }
+      },
+      {
+        "schemaVersion": 2,
+        "id": "sentinel",
+        "displayName": "Sentinel",
+        "model": {
+          "kind": "procedural-humanoid",
+          "presetId": "sentinel"
+        },
+        "capsuleRadius": 0.3,
+        "capsuleHeight": 1.8,
+        "animation": {
+          "behavior": {
+            "assetType": "animation-behavior",
+            "assetId": "humanoid-third-person-base",
+            "version": "1.0.0",
+            "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+          },
+          "motionSet": {
+            "assetType": "animation-motion-set",
+            "assetId": "demo-humanoid-motion-set",
+            "version": "1.0.0",
+            "contentHash": "973c67a41ed1ee36ea096111e8a84d00c15a3ba48372884b1ed28108541b750c"
+          },
+          "rig": {
+            "assetType": "humanoid-rig",
+            "assetId": "demo-humanoid-rig",
+            "version": "1.0.0",
+            "contentHash": "2f8c7909d85613f6872337d287261ea1f4ef5a43649be0c5a270736bb6d91f6d"
+          },
+          "tuning": {
+            "assetType": "animation-tuning",
+            "assetId": "demo-default-tuning",
+            "version": "1.0.0",
+            "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
+          },
+          "instanceOverrides": []
+        }
+      },
+      {
+        "schemaVersion": 2,
+        "id": "quaternius-knight",
+        "displayName": "Quaternius Knight",
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+          "scale": 0.3,
+          "rotationYRad": 0,
+          "rightHandBone": "Palm.R",
+          "weaponGrips": {
+            "sword": {
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        "capsuleRadius": 0.3,
+        "capsuleHeight": 1.8,
+        "animation": {
+          "behavior": {
+            "assetType": "animation-behavior",
+            "assetId": "humanoid-third-person-base",
+            "version": "1.0.0",
+            "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+          },
+          "motionSet": {
+            "assetType": "animation-motion-set",
+            "assetId": "quaternius-knight-motion-set",
+            "version": "1.0.0",
+            "contentHash": "0f5cdff2290de16e37bbd5239c1dcfb326cf20802cd1244b8350a7ce0b983b6b"
+          },
+          "rig": {
+            "assetType": "humanoid-rig",
+            "assetId": "quaternius-knight-rig",
+            "version": "1.0.0",
+            "contentHash": "a43a0ebd54713409ad97c2681fb3319397d553dc28dec1a9aa8667759e453e59"
+          },
+          "tuning": {
+            "assetType": "animation-tuning",
+            "assetId": "demo-default-tuning",
+            "version": "1.0.0",
+            "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
+          },
+          "instanceOverrides": []
+        }
+      },
+      {
+        "schemaVersion": 2,
+        "id": "quaternius-universal-base",
+        "displayName": "Universal Base Superhero",
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/characters/quaternius-universal-base/Superhero_Female_FullBody.gltf",
+          "scale": 1,
+          "rotationYRad": 0,
+          "rightHandBone": "hand_r",
+          "weaponGrips": {
+            "sword": {
+              "position": [
+                0,
+                -0.035,
+                0
+              ],
+              "rotation": [
+                0,
+                1.5707963267948966,
+                -0.18
+              ]
+            }
+          }
+        },
+        "capsuleRadius": 0.3,
+        "capsuleHeight": 1.8,
+        "animation": {
+          "behavior": {
+            "assetType": "animation-behavior",
+            "assetId": "humanoid-third-person-base",
+            "version": "1.0.0",
+            "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+          },
+          "motionSet": {
+            "assetType": "animation-motion-set",
+            "assetId": "quaternius-universal-motion-set",
+            "version": "1.0.0",
+            "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
+          },
+          "rig": {
+            "assetType": "humanoid-rig",
+            "assetId": "quaternius-universal-rig",
+            "version": "1.0.0",
+            "contentHash": "10fc68780d556ab1d75ab2e3387b7711cd049a79808d5985485d670ba2a5956e"
+          },
+          "tuning": {
+            "assetType": "animation-tuning",
+            "assetId": "demo-default-tuning",
+            "version": "1.0.0",
+            "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
           },
           "instanceOverrides": []
         }
@@ -716,8 +870,11 @@
     "character": {
       "schemaVersion": 2,
       "id": "demo-humanoid",
-      "displayName": "Procedural Humanoid",
-      "modelAssetPath": null,
+      "displayName": "Navigator",
+      "model": {
+        "kind": "procedural-humanoid",
+        "presetId": "navigator"
+      },
       "capsuleRadius": 0.3,
       "capsuleHeight": 1.8,
       "animation": {

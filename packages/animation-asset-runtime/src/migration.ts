@@ -32,6 +32,7 @@ import type {
   StateCompletionPolicy,
   StateDefinition,
 } from '@atc/schema';
+import { migrateCharacterModelBinding } from '@atc/schema';
 import { computeContentHash, sealAsset } from './hashing.ts';
 import type { StoredAsset } from './registry.ts';
 
@@ -452,7 +453,12 @@ export function migrateProjectToAssets(legacy: LegacyProject): MigrationResult {
     schemaVersion: 2,
     id: legacy.character.id,
     displayName: legacy.character.displayName,
-    modelAssetPath: legacy.character.modelAssetPath,
+    // The v1 document had only `modelAssetPath`, so the model binding comes
+    // from the one declared adapter rather than being re-derived here.
+    model: migrateCharacterModelBinding({
+      id: legacy.character.id,
+      modelAssetPath: legacy.character.modelAssetPath,
+    } as unknown as CharacterDefinition).model,
     capsuleRadius: legacy.character.capsuleRadius,
     capsuleHeight: legacy.character.capsuleHeight,
     animation: {
@@ -468,7 +474,10 @@ export function migrateProjectToAssets(legacy: LegacyProject): MigrationResult {
     schemaVersion: 2,
     id: ALTERNATE_CHARACTER_ID,
     displayName: 'Alternate humanoid',
-    modelAssetPath: null,
+    model: migrateCharacterModelBinding({
+      id: ALTERNATE_CHARACTER_ID,
+      modelAssetPath: null,
+    } as unknown as CharacterDefinition).model,
     capsuleRadius: legacy.character.capsuleRadius,
     capsuleHeight: legacy.character.capsuleHeight,
     animation: {

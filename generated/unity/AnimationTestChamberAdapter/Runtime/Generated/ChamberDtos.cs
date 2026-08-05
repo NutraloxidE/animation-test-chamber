@@ -89,12 +89,26 @@ namespace AnimationTestChamber.Generated
         public int schemaVersion;
         public string id;
         public string displayName;
-        public string modelAssetPath;
+        public CharacterModelBinding model;
         public float capsuleRadius;
         public float capsuleHeight;
         public CharacterAnimationAssignment animation;
         // optional
         public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class CharacterModelBinding
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string presetId;
+        public string assetPath;
+        public float scale;
+        public float rotationYRad;
+        public string rightHandBone;
+        public string weaponGrips;
     }
 
     [Serializable]

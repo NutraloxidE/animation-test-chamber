@@ -15,6 +15,7 @@
     "dev:api": "pnpm --filter @atc/api dev",
     "schema:generate": "tsx harness/generate-schemas.ts",
     "assets:animation:index": "tsx harness/generate-animation-asset-index.ts",
+    "assets:animation:imported": "tsx harness/generate-imported-character-assets.ts",
     "assets:animation:migrate": "tsx harness/migrate-animation-assets.ts",
     "scenes:migrate": "tsx harness/migrate-scenes.ts",
     "traces:generate": "tsx harness/generate-legacy-traces.ts",

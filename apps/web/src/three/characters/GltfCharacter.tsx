@@ -1,37 +1,61 @@
+/**
+ * An imported model, animated by the canonical document.
+ *
+ * Two things changed here, and they are the point of the work package.
+ *
+ * **Which clip plays is no longer this component's decision.** It used to hold a
+ * `CLIP_FOR_STATE` map, merge a preset's `clipMap` over it, merge a weapon
+ * mode's on top of that, and look up the resulting name by state id. So the
+ * canonical Behavior chose the state and a renderer-side table chose the
+ * animation — two graphs, either free to drift. (One had: the sword mode named
+ * `Rig|Sword_Idle`, a take that is not in the file that mode loaded. Nothing
+ * failed; the previous clip just stayed on screen.) Now the resolved
+ * presentation hands over `stateId -> {file, take}`, derived from
+ * `state -> motionSlot -> motion set -> clip asset`, and this file plays what it
+ * is given.
+ *
+ * **Nothing shared is mutated.** `useGLTF` caches per URL, so the scene and its
+ * clips are shared input — and the previous code scaled position tracks *in
+ * place* on those cached clips and drove a mixer built on the cached scene. Two
+ * Characters using one file therefore shared a skeleton, a mixer and a set of
+ * progressively re-scaled tracks. Each Character now clones the scene, its
+ * materials and the clips it plays, so a grip nudged on the Knight cannot move
+ * the Universal Base (§9.2).
+ */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal, useFrame } from '@react-three/fiber';
 import { TransformControls, useGLTF } from '@react-three/drei';
+import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {
   DODGE_RECOVERY_BLEND_SEC,
   isDodgeRecoveryTransition,
 } from '@atc/animation-runtime';
 import type { RootMotionTrack } from '@atc/replay-runtime';
+import type { CharacterModelBinding, ExternalAnimationSource } from '@atc/schema';
 import * as THREE from 'three';
 import type { ChamberEngine } from '../../engine.ts';
-import type { CharacterPreset, WeaponGrip, WeaponMode } from '../catalog.ts';
+import type { ResolvedCharacterPresentation } from '../../rig-editor/resolve-character-presentation.ts';
+import type { WeaponGrip, WeaponMode } from '../catalog.ts';
 import { HeldSword } from './HeldSword.tsx';
 
-const CLIP_FOR_STATE: Record<string, string> = {
-  idle: 'HumanArmature|Idle',
-  walk: 'HumanArmature|Walking',
-  run: 'HumanArmature|Run',
-  jump: 'HumanArmature|Jump',
-  fall: 'HumanArmature|Jump',
-  dodge: 'HumanArmature|Roll',
-  'attack-01': 'HumanArmature|Run_swordAttack',
-  'attack-02': 'HumanArmature|swordAttackJump',
-};
+/** A take's identity: the file it lives in plus its name inside that file. */
+function takeKey(source: ExternalAnimationSource): string {
+  return `${source.assetPath}|${source.animationName}`;
+}
 
 export function GltfCharacter({
   engine,
-  character,
+  model,
+  presentation,
   weapon,
   grip,
   gripEditorMode,
   onGripChange,
 }: {
   engine: ChamberEngine;
-  character: CharacterPreset;
+  /** The authored `repository-model` binding. Narrowed by `Character`. */
+  model: Extract<CharacterModelBinding, { kind: 'repository-model' }>;
+  presentation: ResolvedCharacterPresentation;
   weapon: WeaponMode;
   grip?: WeaponGrip;
   gripEditorMode?: 'translate' | 'rotate' | null;
@@ -39,80 +63,96 @@ export function GltfCharacter({
 }) {
   const root = useRef<THREE.Group>(null);
   const [heldWeapon, setHeldWeapon] = useState<THREE.Group | null>(null);
-  const { scene: model } = useGLTF(character.modelUrl!);
-  const baseAnimationUrl = character.animationUrl ?? character.modelUrl!;
-  const weaponCompatible = Boolean(
-    weapon.animationUrl && weapon.rigId === character.rigId,
-  );
-  const weaponAnimationUrl = weaponCompatible
-    ? weapon.animationUrl!
-    : baseAnimationUrl;
-  const { animations: baseAnimations } = useGLTF(baseAnimationUrl);
-  const { animations: weaponAnimations } = useGLTF(weaponAnimationUrl);
-  const baseClipMap = character.clipMap ?? CLIP_FOR_STATE;
-  const clipMap = {
-    ...baseClipMap,
-    ...(weaponCompatible ? weapon.clipMap : undefined),
-  };
-  const animations = useMemo(() => {
-    const sourceAnimations =
-      baseAnimationUrl === weaponAnimationUrl
-        ? baseAnimations
-        : [...baseAnimations, ...weaponAnimations];
-    if (baseAnimationUrl === character.modelUrl && !weaponCompatible) {
-      return sourceAnimations;
-    }
 
-    const wanted = new Set(Object.values(clipMap));
-    return sourceAnimations
-      .filter((clip) => wanted.has(clip.name))
-      .map((sourceClip) => {
-        const retargeted = sourceClip.clone();
-        // Chamber movement owns the world root, but bone-local translation is
-        // pose data: Quaternius' pelvis track keeps the roll on the ground.
-        retargeted.tracks = retargeted.tracks.filter(
-          (track) => track.name !== 'root.position',
-        );
-        for (const track of retargeted.tracks) {
-          if (
-            !(track instanceof THREE.VectorKeyframeTrack) ||
-            !track.name.endsWith('.position')
-          ) {
-            continue;
+  const { scene: cachedScene } = useGLTF(model.assetPath);
+  /*
+   * A skinned clone, not the cached scene. `SkeletonUtils.clone` is the
+   * documented way to copy a skinned hierarchy so the copy owns its bones — a
+   * plain `.clone()` keeps pointing at the original skeleton, which is how "one
+   * Character's pose moved another's" happens.
+   */
+  const modelScene = useMemo(() => cloneSkinnedScene(cachedScene), [cachedScene]);
+
+  /*
+   * Every file the canonical takes live in. A Character's own model file may
+   * contain none of them — the Universal Base's animation lives in two separate
+   * libraries — and one file may supply takes for many slots, so this is the
+   * deduplicated set the presentation resolver computed.
+   */
+  const filesToLoad = useMemo(
+    () => (presentation.sourceFiles.length > 0 ? presentation.sourceFiles : [model.assetPath]),
+    [presentation.sourceFiles, model.assetPath],
+  );
+  const loaded = useGLTF(filesToLoad);
+  const animationsByFile = useMemo(() => {
+    const byFile = new Map<string, THREE.AnimationClip[]>();
+    filesToLoad.forEach((file, index) => {
+      byFile.set(file, loaded[index]?.animations ?? []);
+    });
+    return byFile;
+  }, [filesToLoad, loaded]);
+
+  /**
+   * The clips this Character plays, cloned and scaled per take.
+   *
+   * The clone is what makes `positionScale` safe. Scaling a cached clip's tracks
+   * in place mutated shared state, so the second Character to render found the
+   * tracks already scaled — and scaled them again.
+   */
+  const clipsByTake = useMemo(() => {
+    const byTake = new Map<string, THREE.AnimationClip>();
+    for (const source of Object.values(presentation.takeByStateId)) {
+      const key = takeKey(source);
+      if (byTake.has(key)) continue;
+      const found = animationsByFile
+        .get(source.assetPath)
+        ?.find((animation) => animation.name === source.animationName);
+      if (!found) continue;
+
+      const clip = found.clone();
+      // Chamber movement owns the world root, but bone-local translation is
+      // pose data: Quaternius' pelvis track keeps the roll on the ground.
+      clip.tracks = clip.tracks.filter((track) => track.name !== 'root.position');
+      const scale = source.positionScale ?? 1;
+      if (scale !== 1) {
+        clip.tracks = clip.tracks.map((track) => {
+          if (!(track instanceof THREE.VectorKeyframeTrack) || !track.name.endsWith('.position')) {
+            return track;
           }
-          const scale =
-            weaponAnimationUrl !== baseAnimationUrl &&
-            weaponAnimations.includes(sourceClip)
-              ? (weapon.animationPositionScale ?? 1)
-              : (character.animationPositionScale ?? 1);
-          for (let index = 0; index < track.values.length; index += 1) {
-            track.values[index] = track.values[index]! * scale;
+          const scaled = track.clone() as THREE.VectorKeyframeTrack;
+          for (let index = 0; index < scaled.values.length; index += 1) {
+            scaled.values[index] = scaled.values[index]! * scale;
           }
-        }
-        return retargeted;
-      });
-  }, [
-    baseAnimationUrl,
-    baseAnimations,
-    character.animationPositionScale,
-    character.modelUrl,
-    clipMap,
-    weaponAnimationUrl,
-    weapon.animationPositionScale,
-    weaponAnimations,
-    weaponCompatible,
-  ]);
+          return scaled;
+        });
+      }
+      byTake.set(key, clip);
+    }
+    return byTake;
+  }, [animationsByFile, presentation.takeByStateId]);
+
+  /**
+   * Root displacement sampled from the takes, per state.
+   *
+   * Read from the *source* animation rather than the playback clone, because the
+   * clone deliberately drops `root.position`: that track is movement, and the
+   * simulation consumes it instead of the skeleton.
+   */
   const actionRootMotionTracks = useMemo(() => {
-    if (!weaponCompatible || !weapon.usesAttackRootMotion) return {};
+    if (!weapon.usesAttackRootMotion) return {};
     const tracks: Record<string, RootMotionTrack> = {};
-    for (const [stateId, clipName] of Object.entries(weapon.clipMap ?? {})) {
-      const clip = weaponAnimations.find((animation) => animation.name === clipName);
+    for (const [stateId, source] of Object.entries(presentation.takeByStateId)) {
+      // Straight from the cache, read-only: the playback clone below drops
+      // `root.position`, and this is the track that survives it.
+      const clip = animationsByFile
+        .get(source.assetPath)
+        ?.find((animation) => animation.name === source.animationName);
       const rootTrack = clip?.tracks.find(
         (track): track is THREE.VectorKeyframeTrack =>
           track instanceof THREE.VectorKeyframeTrack && track.name === 'root.position',
       );
       if (!clip || !rootTrack || rootTrack.times.length === 0) continue;
-      const scale = weapon.animationPositionScale ?? 1;
+      const scale = source.positionScale ?? 1;
       const origin = {
         x: rootTrack.values[0]!,
         y: rootTrack.values[1]!,
@@ -128,42 +168,48 @@ export function GltfCharacter({
       };
     }
     return tracks;
-  }, [
-    weapon.animationPositionScale,
-    weapon.clipMap,
-    weapon.usesAttackRootMotion,
-    weaponAnimations,
-    weaponCompatible,
-  ]);
+  }, [animationsByFile, presentation.takeByStateId, weapon.usesAttackRootMotion]);
+
   useEffect(() => {
     engine.setActionRootMotionTracks(actionRootMotionTracks);
     return () => engine.setActionRootMotionTracks({});
   }, [actionRootMotionTracks, engine]);
-  const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
-  const currentClip = useRef('');
+
+  // One mixer per cloned scene, so mixer time is this Character's alone.
+  const mixer = useMemo(() => new THREE.AnimationMixer(modelScene), [modelScene]);
+  const currentTake = useRef('');
   const currentAction = useRef<THREE.AnimationAction | null>(null);
   /** Whether the clip on screen came from the action layer, so fading *out* of an
    * action uses that action transition's duration, not a stale locomotion one. */
   const currentClipIsAction = useRef(false);
 
   useEffect(() => {
-    model.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.castShadow = true;
-        object.receiveShadow = true;
-        const materials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
-        for (const material of materials) material.side = THREE.DoubleSide;
-      }
+    modelScene.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      object.castShadow = true;
+      object.receiveShadow = true;
+      /*
+       * Cloned meshes share their materials with the cache, and `side` is a
+       * visible property — so it is set on this Character's own copy. Setting it
+       * on the cached material would be a debug-visible change to every other
+       * Character using the same file.
+       */
+      const withDoubleSide = (material: THREE.Material): THREE.Material => {
+        const copy = material.clone();
+        copy.side = THREE.DoubleSide;
+        return copy;
+      };
+      object.material = Array.isArray(object.material)
+        ? object.material.map(withDoubleSide)
+        : withDoubleSide(object.material as THREE.Material);
     });
     return () => {
       mixer.stopAllAction();
       currentAction.current = null;
-      currentClip.current = '';
+      currentTake.current = '';
       currentClipIsAction.current = false;
     };
-  }, [mixer, model]);
+  }, [mixer, modelScene]);
 
   useFrame((_, delta) => {
     const group = root.current;
@@ -171,7 +217,7 @@ export function GltfCharacter({
     const state = engine.simulationState;
     const record = engine.lastRecord;
     group.position.set(state.position.x, state.position.y, state.position.z);
-    group.rotation.y = state.yawRad + (character.modelRotationY ?? 0);
+    group.rotation.y = state.yawRad + model.rotationYRad;
 
     const project = engine.currentProject;
     const actionState = project.graph.states.find((entry) => entry.id === record?.actionState);
@@ -198,14 +244,21 @@ export function GltfCharacter({
     const normalizedTime = actionActive
       ? record.actionNormalizedTime
       : (record?.locomotionNormalizedTime ?? 0);
-    const clipName = clipMap[stateId] ?? clipMap.idle ?? CLIP_FOR_STATE.idle!;
-    if (clipName !== currentClip.current) {
-      const clip = animations.find((animation) => animation.name === clipName);
+
+    /*
+     * The canonical binding for this state, and no fallback chain. If the motion
+     * set binds nothing here there is nothing honest to play, so the previous
+     * clip stays and the gap stays visible rather than being filled with an idle
+     * borrowed from another slot.
+     */
+    const source = presentation.takeByStateId[stateId];
+    const key = source ? takeKey(source) : '';
+    if (key !== '' && key !== currentTake.current) {
+      const clip = clipsByTake.get(key);
       if (clip) {
-        const loop =
-          project.graph.states.find((state) => state.id === stateId)?.loop ?? true;
+        const loop = presentation.loopByStateId[stateId] ?? true;
         const nextAction = mixer
-          .clipAction(clip, model)
+          .clipAction(clip, modelScene)
           .reset()
           .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
           .play();
@@ -219,27 +272,24 @@ export function GltfCharacter({
           false,
         );
         currentAction.current = nextAction;
-        currentClip.current = clipName;
+        currentTake.current = key;
         currentClipIsAction.current = actionActive;
       }
     }
     mixer.update(delta);
-    if (currentAction.current && currentClip.current === clipName) {
+    if (currentAction.current && currentTake.current === key) {
       currentAction.current.time =
         normalizedTime * currentAction.current.getClip().duration;
       mixer.update(0);
     }
   });
 
-  const scale = character.modelScale ?? 1;
-  const hand = character.rightHandBone
-    ? model.getObjectByName(character.rightHandBone)
-    : undefined;
+  const hand = model.rightHandBone ? modelScene.getObjectByName(model.rightHandBone) : undefined;
   return (
     <>
       <group ref={root}>
-        <group scale={[scale, scale, scale]}>
-          <primitive object={model} />
+        <group scale={[model.scale, model.scale, model.scale]}>
+          <primitive object={modelScene} />
         </group>
         {weapon.heldItem === 'sword' &&
           hand &&

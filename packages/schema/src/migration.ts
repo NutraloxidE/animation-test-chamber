@@ -15,7 +15,11 @@
  * migrated; persisting it is an explicit Stage/Apply the human performs.
  */
 import { CURRENT_SCHEMA_VERSION } from './constants.ts';
-import type { ProjectDefinition } from './project.ts';
+import type {
+  CharacterDefinition,
+  CharacterModelBinding,
+  ProjectDefinition,
+} from './project.ts';
 import type { SceneDefinition, SceneEntityDefinition } from './scene.ts';
 import { UNIT_SCALE, yawToQuaternion } from './scene.ts';
 import type { RuntimeInstanceDefinition, WorldDefinition } from './world.ts';
@@ -69,16 +73,90 @@ export function isLegacyProjectDocument(
  */
 export function loadProjectDocument(raw: unknown): LoadedProjectDocument {
   if (!isLegacyProjectDocument(raw)) {
-    const project = raw as ProjectDefinition;
-    return { project, migrated: false, migratedSceneIds: [] };
+    const project = migrateCharacterModelBindings(raw as ProjectDefinition);
+    return {
+      project,
+      migrated: project !== raw,
+      migratedSceneIds: [],
+    };
   }
 
-  const project = migrateWorldToScenes(raw);
+  const project = migrateCharacterModelBindings(migrateWorldToScenes(raw));
   return {
     project,
     migrated: true,
     migratedSceneIds: project.scenes.map((scene) => scene.id),
   };
+}
+
+/**
+ * The declared `modelAssetPath` -> `model` migration adapter (work package §3.2).
+ *
+ * There is exactly one of these, and this is it. The alternative — a
+ * `character.model ?? presetFor(character.id)` fallback at each render site — is
+ * the Character-ID-to-preset conditional §10 forbids: scattered, it becomes a
+ * second answer to "which model is this?", and the first site to answer it
+ * differently does so invisibly.
+ *
+ * `modelAssetPath: null` used to mean "the procedural fallback", which named no
+ * particular appearance. The mapping below supplies the missing name, so a
+ * legacy document migrates to a *specific* authored appearance rather than to
+ * "whatever the renderer lists first".
+ */
+export const LEGACY_PROCEDURAL_PRESET_BY_CHARACTER_ID: Readonly<Record<string, string>> = {
+  'demo-humanoid': 'navigator',
+  'alternate-humanoid-character': 'relay',
+};
+
+/** The appearance a legacy Character with no model file migrates to. */
+export const LEGACY_DEFAULT_PROCEDURAL_PRESET = 'navigator';
+
+type LegacyCharacterModelFields = {
+  model?: CharacterModelBinding;
+  modelAssetPath?: string | null;
+};
+
+/** True when this Character predates `CharacterDefinition.model`. */
+function needsModelBindingMigration(character: CharacterDefinition): boolean {
+  const legacy = character as CharacterDefinition & LegacyCharacterModelFields;
+  return legacy.model === undefined;
+}
+
+export function migrateCharacterModelBinding(
+  character: CharacterDefinition,
+): CharacterDefinition {
+  if (!needsModelBindingMigration(character)) return character;
+  const { modelAssetPath, ...rest } = character as CharacterDefinition &
+    LegacyCharacterModelFields;
+  return {
+    ...(rest as CharacterDefinition),
+    model:
+      typeof modelAssetPath === 'string' && modelAssetPath.length > 0
+        ? {
+            kind: 'repository-model',
+            assetPath: modelAssetPath,
+            scale: 1,
+            rotationYRad: 0,
+          }
+        : {
+            kind: 'procedural-humanoid',
+            presetId:
+              LEGACY_PROCEDURAL_PRESET_BY_CHARACTER_ID[character.id] ??
+              LEGACY_DEFAULT_PROCEDURAL_PRESET,
+          },
+  };
+}
+
+/**
+ * Returns the project unchanged — by identity — when no Character needed
+ * migrating, so "was this document migrated?" stays answerable with `!==`
+ * rather than by re-deriving the question.
+ */
+export function migrateCharacterModelBindings(
+  project: ProjectDefinition,
+): ProjectDefinition {
+  if (!project.characters.some(needsModelBindingMigration)) return project;
+  return { ...project, characters: project.characters.map(migrateCharacterModelBinding) };
 }
 
 /**

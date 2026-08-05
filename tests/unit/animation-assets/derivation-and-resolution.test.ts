@@ -576,7 +576,16 @@ describe('dependencies', () => {
   it('used-by finds the characters holding a reference', () => {
     const holders = usedBy(registry, behaviorRef, [project]);
     const characters = holders.filter((entry) => 'kind' in entry.holder);
-    expect(characters.length).toBe(2);
+    // All five canonical Characters share this Behavior deliberately, so the
+    // count is the sharing matrix, not an incidental number.
+    expect(characters.length).toBe(5);
+    expect(characters.map((entry) => (entry.holder as { characterId: string }).characterId).sort()).toEqual([
+      'alternate-humanoid-character',
+      'demo-humanoid',
+      'quaternius-knight',
+      'quaternius-universal-base',
+      'sentinel',
+    ]);
   });
 
   it('refuses to delete an asset a character still references', () => {

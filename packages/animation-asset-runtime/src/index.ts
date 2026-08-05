@@ -4,6 +4,7 @@ export * from './registry.ts';
 export * from './variant.ts';
 export * from './compatibility.ts';
 export * from './dependencies.ts';
+export * from './bindings.ts';
 export * from './resolver.ts';
 export * from './migration.ts';
 export * from './library-index.ts';

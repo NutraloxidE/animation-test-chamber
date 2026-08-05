@@ -35,14 +35,14 @@ test.describe('client-side navigation', () => {
   test('a plain router Link moves the route target, not only the URL', async ({ page }) => {
     await openRigEditor(page, CHARACTER_A);
 
-    await page.getByRole('link', { name: 'Alternate humanoid' }).click();
+    await page.getByRole('link', { name: 'Relay' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/edit/rig/${CHARACTER_B}$`));
     // The assertion that actually failed: the URL moved and this did not.
     await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
     // And the switcher now offers the character we came *from*, which it can
     // only do if the page rebuilt its target from the new route parameter.
-    await expect(page.getByRole('link', { name: 'Procedural Humanoid' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Navigator' })).toBeVisible();
   });
 
   test('the Asset Library character select navigates and the library follows', async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('client-side navigation', () => {
 
   test('browser Back returns to the previous route target', async ({ page }) => {
     await openRigEditor(page, CHARACTER_A);
-    await page.getByRole('link', { name: 'Alternate humanoid' }).click();
+    await page.getByRole('link', { name: 'Relay' }).click();
     await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
 
     // Back is the same subscription by a different route in: a popstate the
@@ -71,6 +71,36 @@ test.describe('client-side navigation', () => {
 
     await expect(page).toHaveURL(new RegExp(`/edit/rig/${CHARACTER_A}$`));
     await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_A);
+  });
+
+  /*
+   * Back and Forward have to restore the *model* too, not only the target id.
+   * That is a distinct assertion: the model used to come from a store field the
+   * route never touched, so history navigation moved the header while leaving
+   * the previous Character on screen.
+   */
+  test('Back and Forward restore the model, not only the route target', async ({ page }) => {
+    test.setTimeout(90_000);
+    const modelOf = async (): Promise<string> => {
+      const overview = page.getByTestId('overview-body');
+      if (!(await overview.isVisible())) await page.getByTestId('overview-toggle').click();
+      return (await page.getByTestId('overview-model').textContent()) ?? '';
+    };
+
+    await openRigEditor(page, CHARACTER_A);
+    expect(await modelOf()).toContain('navigator');
+
+    await page.getByRole('link', { name: 'Relay' }).click();
+    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
+    expect(await modelOf()).toContain('relay');
+
+    await page.goBack();
+    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_A);
+    expect(await modelOf()).toContain('navigator');
+
+    await page.goForward();
+    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
+    expect(await modelOf()).toContain('relay');
   });
 
   test('navigating between the scene list and a scene editor rebuilds the page', async ({ page }) => {

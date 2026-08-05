@@ -20,6 +20,7 @@ import { useChamber } from '../store.ts';
 import { routeId, rigEditorPath } from '../app/routes.ts';
 import { NotFoundPage } from '../app/NotFoundPage.tsx';
 import { resolveRigEditorTarget } from './resolve-rig-editor-target.ts';
+import { CharacterOverview } from './CharacterOverview.tsx';
 
 export function RigEditorPage(): JSX.Element {
   const characterId = routeId(useParams().characterId);
@@ -95,6 +96,13 @@ export function RigEditorPage(): JSX.Element {
             ))}
         </nav>
       </header>
+      {/*
+        The Overview is persistent, and above the chamber rather than inside a
+        panel the user has to go looking for (§6). "Which assets does this
+        Character share, and with whom" is context for every edit made below it,
+        not a report to consult afterwards.
+      */}
+      {ready && <CharacterOverview />}
       {ready ? <App /> : <p className="target-header__loading">Loading {target.characterId}…</p>}
     </div>
   );

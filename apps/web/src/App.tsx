@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { detectTouchDevice } from '@atc/input-runtime';
-import { useChamber, type PanelId } from './store.ts';
+import { useCharacterPresentation, useChamber, type PanelId } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
 import { TransitionInspector } from './panels/TransitionInspector.tsx';
 import { StateGraph } from './panels/StateGraph.tsx';
@@ -18,7 +18,7 @@ import { Hierarchy } from './panels/Hierarchy.tsx';
 import { AssetLibrary } from './asset-library/AssetLibrary.tsx';
 import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
-import { characterPreset, weaponMode } from './three/catalog.ts';
+import { weaponMode } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
@@ -194,8 +194,8 @@ export function App() {
   const redo = useChamber((state) => state.redo);
   const exportUnity = useChamber((state) => state.exportUnity);
   const project = useChamber((state) => state.project);
-  const characterPresetId = useChamber((state) => state.characterPresetId);
   const weaponModeId = useChamber((state) => state.weaponModeId);
+  const presentation = useCharacterPresentation();
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
   const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
@@ -215,9 +215,16 @@ export function App() {
   const [padAuto] = useState(() => detectTouchDevice());
   const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
   const [paused, setPaused] = useState(() => engine.isPaused);
+  /*
+   * A grip is editable when this Character's *authored* model declares one for
+   * the mode. Asking the model binding rather than a preview preset means the
+   * gizmo appears for the Character being edited, not for whatever the Viewport
+   * last happened to draw.
+   */
   const gripSupported = Boolean(
-    characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
-    weaponMode(weaponModeId).heldItem,
+    presentation.model.effective.kind === 'repository-model' &&
+      presentation.model.effective.weaponGrips?.[weaponModeId] &&
+      weaponMode(weaponModeId).heldItem,
   );
 
   const toggleMouseLookMode = (): void => {
@@ -306,7 +313,7 @@ export function App() {
               {gripEditorMode && (
                 <button
                   type="button"
-                  onClick={() => resetWeaponGrip(characterPresetId, weaponModeId)}
+                  onClick={() => resetWeaponGrip(presentation.characterId, weaponModeId)}
                   data-testid="reset-grip"
                 >
                   Reset grip

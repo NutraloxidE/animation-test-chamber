@@ -92,13 +92,23 @@ export function buildUnityBundle(
         ...marker,
         character: {
           id: project.character.id,
-          modelAssetPath: project.character.modelAssetPath,
+          /*
+           * The binding, not a flattened path. A procedural appearance has no
+           * file to import, and emitting `null` for it told the Unity side
+           * "some character" — the same ambiguity the web catalog used to
+           * carry. `kind` makes the importer's two cases explicit.
+           */
+          model: project.character.model,
           skeletonId: project.character.skeleton.id,
         },
         clips: project.clips.map((clip) => ({
           id: clip.id,
           assetPath: clip.assetPath,
           proceduralGenerator: clip.proceduralGenerator ?? null,
+          // An imported clip is a *take* inside a file. Exporting the path
+          // without the take name would leave the Unity importer guessing
+          // which of forty animations this clip meant.
+          externalSource: clip.externalSource ?? null,
           durationSec: clip.durationSec,
           rootMotionMode: clip.rootMotionMode,
           rootMotionCurve: clip.rootMotionCurve ?? 'Linear',

@@ -1,138 +1,92 @@
-import { QUATERNIUS_KNIGHT } from './characters/quaterniusKnight.ts';
-import { QUATERNIUS_UNIVERSAL_BASE } from './characters/quaterniusUniversalBase.ts';
+/**
+ * Renderer-side presentation data. Deliberately *not* a Character catalog.
+ *
+ * This file used to export `CHARACTER_PRESETS`: five records that were, in
+ * practice, the app's real character list — they carried the model file, its
+ * scale and rotation, the right-hand bone, the weapon grips and a
+ * `stateId -> GLTF clip name` map. The route resolved a canonical Character; the
+ * Viewport drew one of these. Two selectors, one of them invisible, and the
+ * canonical one lost.
+ *
+ * All of that is now authored data: `CharacterDefinition.model` owns the model
+ * binding and its grips, and motion sets own the takes. What is left here is the
+ * part that genuinely is code:
+ *
+ *   - the *appearance* of the procedural characters — colours and proportions of
+ *     meshes generated in code. Which appearance a Character wears is authored
+ *     (`model.presetId`); what that appearance looks like is this file;
+ *   - weapon-mode presentation: the label, whether a sword is held, and whether
+ *     the mode's attacks drive root motion.
+ *
+ * Nothing here selects a Character, and nothing here names an animation clip.
+ * `harness/repo-guard.ts` enforces both.
+ */
 
 export interface WeaponGrip {
   position: [number, number, number];
   rotation: [number, number, number];
 }
 
-export interface CharacterPreset {
+/**
+ * How a procedural humanoid is drawn. Referenced by
+ * `CharacterModelBinding.presetId`, which is the authored half of this pair.
+ */
+export interface ProceduralAppearance {
   id: string;
   label: string;
   color: string;
   legColor: string;
   scale: number;
-  modelUrl?: string;
-  modelScale?: number;
-  modelRotationY?: number;
-  animationUrl?: string;
-  /** Converts external animation position keys into the model rig's local scale. */
-  animationPositionScale?: number;
-  clipMap?: Record<string, string>;
-  rigId?: string;
-  rightHandBone?: string;
-  weaponGrips?: Record<string, WeaponGrip>;
 }
+
+export const PROCEDURAL_APPEARANCES: ProceduralAppearance[] = [
+  { id: 'navigator', label: 'Navigator (neutral)', color: '#7dd3fc', legColor: '#38bdf8', scale: 1 },
+  { id: 'relay', label: 'Relay', color: '#c4b5fd', legColor: '#8b5cf6', scale: 0.92 },
+  { id: 'sentinel', label: 'Sentinel', color: '#fbbf24', legColor: '#f97316', scale: 1.08 },
+];
+
+/**
+ * The appearance for a preset id.
+ *
+ * Falls back to the first appearance so an unknown id still renders *something*
+ * — but note what this fallback is and is not: it decides how an authored
+ * Character is coloured, never *which* Character is shown. The route resolver
+ * has no fallback at all, which is the guarantee that matters.
+ */
+export const proceduralAppearance = (id: string): ProceduralAppearance =>
+  PROCEDURAL_APPEARANCES.find((appearance) => appearance.id === id) ?? PROCEDURAL_APPEARANCES[0]!;
 
 export interface WeaponMode {
   id: string;
   label: string;
   heldItem?: 'sword';
+  /**
+   * Whether this mode's action clips drive the character's root.
+   *
+   * A feel decision about the mode, not a clip reference: which clip plays comes
+   * from the motion set, and the displacement itself comes from the canonical
+   * clip's `rootMotionMode`. This flag only says whether the imported take's
+   * root track is sampled at all.
+   */
   usesAttackRootMotion?: boolean;
-  rigId?: string;
-  animationUrl?: string;
-  animationPositionScale?: number;
-  clipMap?: Record<string, string>;
 }
 
-/** Keep selectable preview variants in one small catalog. */
-export const CHARACTER_PRESETS: CharacterPreset[] = [
-  { id: 'navigator', label: 'Navigator (neutral)', color: '#7dd3fc', legColor: '#38bdf8', scale: 1 },
-  { id: 'relay', label: 'Relay', color: '#c4b5fd', legColor: '#8b5cf6', scale: 0.92 },
-  { id: 'sentinel', label: 'Sentinel', color: '#fbbf24', legColor: '#f97316', scale: 1.08 },
-  QUATERNIUS_KNIGHT,
-  QUATERNIUS_UNIVERSAL_BASE,
-];
-
+/**
+ * Weapon modes as *presentation*. The clips each mode plays are contextual
+ * bindings on every Character's motion set (`contextualKey`), so a Character
+ * whose motion set binds nothing for a mode keeps its unarmed takes instead of
+ * silently half-playing another rig's animation.
+ */
 export const WEAPON_MODES: WeaponMode[] = [
   { id: 'unarmed', label: 'Unarmed' },
-  {
-    id: 'sword',
-    label: 'Sword (CC0)',
-    heldItem: 'sword',
-    usesAttackRootMotion: true,
-    rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
-    animationPositionScale: 1,
-    clipMap: {
-      idle: 'Rig|Sword_Idle',
-      guard: 'Rig|Sword_Idle',
-      // Reached only while the shield slot is equipped; the graph routes guard
-      // to `guard-shield` on that condition alone.
-      'guard-shield': 'Idle_Shield_Loop',
-      'attack-01': 'Sword_Regular_A',
-      'attack-01-recovery': 'Sword_Regular_A_Rec',
-      'attack-02': 'Sword_Regular_B',
-      'attack-02-recovery': 'Sword_Regular_B_Rec',
-    },
-  },
-  {
-    id: 'magic',
-    // The Spell_Simple clips cast from the left hand and leave the right hand
-    // open, so this mode holds nothing.
-    label: 'Magic, unarmed (CC0)',
-    rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
-    animationPositionScale: 100,
-    clipMap: {
-      idle: 'Rig|Spell_Simple_Idle_Loop',
-      guard: 'Rig|Spell_Simple_Idle_Loop',
-      'attack-01': 'Rig|Spell_Simple_Shoot',
-      'attack-01-recovery': 'Rig|Spell_Simple_Exit',
-      'attack-02': 'Rig|Spell_Simple_Enter',
-      'attack-02-recovery': 'Rig|Spell_Simple_Exit',
-    },
-  },
-  {
-    id: 'pistol',
-    label: 'Pistol, unarmed (CC0)',
-    rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb',
-    animationPositionScale: 100,
-    clipMap: {
-      idle: 'Rig|Pistol_Idle_Loop',
-      guard: 'Rig|Pistol_Aim_Neutral',
-      'attack-01': 'Rig|Pistol_Shoot',
-      'attack-01-recovery': 'Rig|Pistol_Idle_Loop',
-      'attack-02': 'Rig|Pistol_Reload',
-      'attack-02-recovery': 'Rig|Pistol_Idle_Loop',
-    },
-  },
-  {
-    id: 'shield',
-    label: 'Shield, unarmed (CC0)',
-    rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
-    animationPositionScale: 1,
-    clipMap: {
-      idle: 'Idle_Shield_Loop',
-      guard: 'Idle_Shield_Loop',
-      'guard-shield': 'Idle_Shield_Loop',
-      'attack-01': 'Shield_OneShot',
-      'attack-01-recovery': 'Idle_Shield_Loop',
-      'attack-02': 'Shield_Dash',
-      'attack-02-recovery': 'Idle_Shield_Loop',
-    },
-  },
-  {
-    id: 'throw',
-    label: 'Throw, unarmed (CC0)',
-    rigId: 'quaternius-universal',
-    animationUrl: '/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb',
-    animationPositionScale: 1,
-    clipMap: {
-      idle: 'Idle_No_Loop',
-      guard: 'Idle_No_Loop',
-      'attack-01': 'OverhandThrow',
-      'attack-01-recovery': 'Idle_No_Loop',
-      'attack-02': 'OverhandThrow',
-      'attack-02-recovery': 'Idle_No_Loop',
-    },
-  },
+  { id: 'sword', label: 'Sword (CC0)', heldItem: 'sword', usesAttackRootMotion: true },
+  // The Spell_Simple clips cast from the left hand and leave the right hand
+  // open, so this mode holds nothing.
+  { id: 'magic', label: 'Magic, unarmed (CC0)' },
+  { id: 'pistol', label: 'Pistol, unarmed (CC0)' },
+  { id: 'shield', label: 'Shield, unarmed (CC0)' },
+  { id: 'throw', label: 'Throw, unarmed (CC0)' },
 ];
-
-export const characterPreset = (id: string): CharacterPreset =>
-  CHARACTER_PRESETS.find((preset) => preset.id === id) ?? CHARACTER_PRESETS[0]!;
 
 export const weaponMode = (id: string): WeaponMode =>
   WEAPON_MODES.find((mode) => mode.id === id) ?? WEAPON_MODES[0]!;

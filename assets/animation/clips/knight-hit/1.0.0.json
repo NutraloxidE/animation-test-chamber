@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-hit",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight hit",
+    "description": "Quaternius Knight: \"HumanArmature|Death\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's state.hit clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "3c78fb769730ee869286734e9b8cc95a9143639d150a3ce845e43f2d735beba7"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-hit",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.45,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.9,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "hit-damage",
+        "kind": "DamageReceived",
+        "at": 0.05
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Death"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}
