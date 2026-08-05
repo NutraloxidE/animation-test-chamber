@@ -1,9 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-
-const here = dirname(fileURLToPath(import.meta.url));
+import { PROJECT_PATH } from './repository.ts';
 
 /**
  * These tests drive the chamber the way a human does: open a panel, move a
@@ -326,10 +323,15 @@ test('the AI panel returns three proposals with no API key configured', async ({
 });
 
 test.describe('committing', () => {
-  // This test performs a real commit, and the API writes the result back to the
-  // canonical file. Snapshot and restore it so running the suite does not leave
-  // an extra revision in the working tree.
-  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
+  /*
+   * This test performs a real commit, and the API writes the result back to the
+   * canonical file — so the assertion has to read the checkout the *server* is
+   * writing to, not the one this spec file happens to sit in. Those are
+   * different directories under `pnpm harness:visual`.
+   *
+   * Snapshot and restore anyway: within one run the tests share a checkout, and
+   * an extra revision left behind changes what the next one opens against.
+   */
   let original: string;
 
   test.beforeAll(() => {
@@ -417,7 +419,6 @@ test.describe('committing', () => {
 });
 
 test.describe('static character drafts', () => {
-  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
 
   /**
    * A character-override save never publishes an asset, so it is the one

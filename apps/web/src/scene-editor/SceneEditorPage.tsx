@@ -73,7 +73,20 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
         <span className="target-header__kind">Scene Editor</span>
         <span data-testid="scene-target-name">{handle.scene.displayName}</span>
         <span data-testid="scene-target-id">ID: {scene.id}</span>
-        <span>Base revision: {handle.session.baseRevisionId}</span>
+        <span data-testid="scene-base-revision">Base revision: {handle.session.baseRevisionId}</span>
+        {/*
+          The repository's revision, beside the session's own.
+
+          These two disagreeing *is* the defect this pair exists to make
+          visible: an Apply used to move the session's private baseline and
+          leave the application's canonical project behind, which nothing on
+          screen revealed until a route change rebuilt the page from the stale
+          one. Two numbers that must always match are much harder to get wrong
+          than one number nobody can see.
+        */}
+        <span data-testid="scene-repository-revision">
+          Repository revision: {project.revisionId}
+        </span>
         {(['translate', 'rotate', 'scale'] as const).map((tool) => (
           <button
             key={tool}

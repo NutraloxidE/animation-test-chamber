@@ -152,56 +152,81 @@ Windows, and both are fixed here.
 
 `pnpm harness:visual` had never produced output before (the previous container
 could not start the browser; see §3.1 of the finalization handoff). With the
-`localhost` fix above it runs:
+`localhost` fix above it ran:
 
 ```text
 144 passed, 3 failed (14.9m)   desktop / mobile-landscape / narrow
 ```
 
 `tests/visual/scene/scene-authoring.spec.ts` — new on this branch and never
-executed by the runner before — **passes on all three projects**.
+executed by the runner before — **passed on all three projects**.
 
-The three failures are the same test on all three projects:
+The three failures were the same test on all three projects:
 `animation-assets.spec.ts:172 switching the active character changes which
-clips resolve`. Two separate things sit behind it.
+clips resolve`. Two separate things sat behind it.
 
 1. **A real regression, fixed here.** The library's character `<select>` called
    `setActiveCharacter` directly, but the library is docked *inside* the rig
    editor route, and `RigEditorPage` re-asserts its URL's character whenever the
    store disagrees (DECISION 0012). The control was therefore dead: the store
    switched and was reverted on the next render. It now navigates
-   (`rigEditorPath`), which is what the route-scoped model requires. Verified by
-   hand in a browser: the URL changes, the store follows, and the `used by
-   active character` facet then lists the alternate character's motion set and
-   tuning.
+   (`rigEditorPath`), which is what the route-scoped model requires.
 
-2. **An open finding, not fixed.** The test still fails **under the
-   Playwright-managed Chromium only**, because *client-side navigation does not
-   re-render the route there at all*. `location.pathname` updates and the route
-   component keeps rendering the previous character indefinitely (sampled every
-   500 ms for 3 s). This is not specific to the select — clicking the rig
-   header's plain `<Link>` behaves identically — and it is therefore not caused
-   by any change in this work package. In an ordinary browser, driven by hand
-   against the same dev server, both the `<Link>` and the select navigate and
-   re-render correctly.
+2. **An open finding at the time, now diagnosed and fixed.** See below.
 
-   Everything else in the visual suite navigates with `page.goto`, which is a
-   full document load, so this is the only test that exercises client-side
-   navigation and the only one affected. Worth a focused follow-up (React
-   Router v7 + React 18 transitions under that specific Chromium build is the
-   most likely direction); it should not be recorded as an application defect
-   without reproducing it in a browser a human would use.
+---
 
-**Visual Desktop / Visual 320px are therefore not recorded as PASS.**
+# Superseded by the Phase 11B acceptance closure
 
-## One thing worth a decision, not fixed here
+Everything above describes the state at `0b40706`. Two claims in it no longer
+hold, and both are corrected here rather than edited away, because the record of
+what was believed at the time is part of the evidence.
 
-`tests/visual/**` applies edits against the **real repository**, so a visual run
-leaves `projects/demo-character/project.json` modified (`/clips/dodge/
-rootDisplacement/z = 6.2` in the observed run) and turns `harness:replay` and
-`harness:animation-assets` red until the file is restored. That is not a test
-failure — it is the visual suite doing exactly what it says — but it means the
-visual suite cannot be run before those two harnesses without a
-`git checkout -- projects/demo-character/project.json` in between. Pointing the
-visual suite at a temporary checkout is the obvious fix and is out of scope for
-11B.
+## The client-side navigation failure was an application defect
+
+The section above suggested it "should not be recorded as an application defect
+without reproducing it in a browser a human would use." That was the wrong
+conclusion, and the reasoning that produced it — manual clicking worked, so the
+runner must be at fault — is exactly the reasoning the failure was shaped to
+survive.
+
+It is a real defect, and the reason manual verification kept clearing it is the
+reason it was hard to see: React Router v7 commits the location inside
+`React.startTransition`, and this app polls the engine into React state every
+100 ms while a chamber render under software-rendered WebGL takes longer than
+that. Each poll preempted the in-flight transition and restarted it, so the
+location never committed. On a fast machine the render finishes inside one poll
+interval and it works.
+
+Full diagnosis in `DECISIONS/0018-the-location-is-a-default-priority-update.md`.
+Covered by `tests/visual/routing/client-side-navigation.spec.ts`, which asserts
+the rendered route target rather than the pathname — asserting the pathname
+alone passes against the bug.
+
+## The visual suite no longer writes to the source checkout
+
+The section above recorded this as "one thing worth a decision, not fixed here",
+and it was correct that it made the visual suite unrunnable as a gate. It is
+fixed: `pnpm harness:visual` runs `harness/visual.ts`, which builds a disposable
+checkout, starts the API against it with `ATC_REPO_ROOT`, and proves the source
+checkout did not move.
+
+## The six gaps, restated
+
+The six gaps this report describes were closed, and remain closed. They were
+not, however, the whole of Phase 11B — the continuation work package named
+fourteen further discrepancies, and the statement that Phase 11B was complete
+did not hold at `0b40706`.
+
+Those are addressed in `reports/phase-11b-acceptance-closure.md`, which is the
+current record. Three mechanisms described above have since been strengthened:
+
+- **§1 (runtime request schema)** covered each `SceneOperation` only. The
+  complete request — target, expected, actor, intent, approval — is now schema
+  validated with every object boundary closed.
+- **§2/§3 (protection)** honoured a client-supplied `unlockedPaths` and a bare
+  `approved: true`. Neither can be checked against what the operations actually
+  changed. Both are removed from the wire; approval is now exact-path and
+  reasoned, computed server-side.
+- **§4/§5 (transaction)** passed `validatePreparedView: () => ({ issues: [] })`.
+  It now reads and cross-checks the prepared bytes.
