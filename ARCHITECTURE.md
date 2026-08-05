@@ -276,6 +276,50 @@ PREVIEW ONLY and never "Character": the control it replaced was labelled
 Characters. `harness:repo-guard` fails a commit that reintroduces the old
 selector, or that removes the badges and the PREVIEW ONLY label.
 
+## GameObject Prefabs
+
+The three nouns above are being replaced by four, for a reason the entity union
+could not fix by getting better types: `kind` admits exactly one answer, so a
+character that also casts light had nowhere to live and every new capability
+needed a new top-level entity kind. See DECISIONS/0020, 0021 and 0022.
+
+```text
+GameObjectPrefabAsset          versioned, content-hashed, immutable
+  ↓ resolveGameObjectPrefab      variant chain → patches → nested expansion
+ResolvedGameObjectPrefab       deep-owned immutable
+  ↓ + GameObjectInstanceDefinition
+ResolvedGameObjectDefinition   one Prefab as one Scene placement sees it
+  ↓ instantiateGameObject
+RuntimeGameObject              every mutable byte, never serialized
+```
+
+What a thing *is* comes from its Components, not from a kind:
+
+```text
+Character                 ModelRenderer + Animator + CharacterMotor
+Camera                    Camera
+Light                     Light
+Animated prop             ModelRenderer + Animator
+Character with a lantern  the first row, plus Light
+```
+
+`GameObjectComponentDefinition` is a **closed** discriminated union with
+`additionalProperties: false` throughout, so an unknown component type and a
+misspelled field are both refusals. That is what keeps the objection this
+project raised against a general ECS answered: "what fields does this have?"
+still has exactly one answer, from the schema, for every consumer.
+
+`@atc/prefab-runtime` owns the registry, validation, resolution and the single
+usage graph every holder list reads. `@atc/game-object-runtime` owns the runtime
+layer and is engine-agnostic — it reads no browser global and composes the
+existing `ControllableCharacter` rather than duplicating the animation engine.
+
+**This is a seam, not a finished replacement.** `SceneDefinition` currently
+carries both `entities` and a derived `gameObjects`; the renderer, the Scene
+runtime, the editor routes and the API still read the first.
+`harness:game-objects` compares the two on every run so they cannot drift.
+`reports/gameobject-prefab-migration-audit.md` lists what remains.
+
 ## The production model, in three nouns
 
 ```text
