@@ -13,10 +13,12 @@
  * values, it never *decides* any. Nothing here infers a model or a clip from an
  * id (§11.2, §10.2).
  */
-import type { CharacterDefinition, ProjectDefinition } from '@atc/schema';
+import type {
+  CharacterDefinition,
+  GameObjectComponentDefinition,
+  ProjectDefinition,
+} from '@atc/schema';
 import { componentOfType } from '@atc/schema';
-import type { ResolvedPrefabNode } from '@atc/prefab-runtime';
-import { resolvedComponents } from '@atc/prefab-runtime';
 
 /**
  * The capsule a character falls back to when its Prefab declares no collider.
@@ -45,9 +47,10 @@ export interface CharacterViewOfGameObject {
 export function characterViewOfGameObject(input: {
   gameObjectId: string;
   displayName: string;
-  root: ResolvedPrefabNode;
+  /** The components of one node. Not a subtree — see `RuntimeGameObject`. */
+  components: readonly GameObjectComponentDefinition[];
 }): CharacterViewOfGameObject | undefined {
-  const components = resolvedComponents(input.root);
+  const { components } = input;
   const animator = componentOfType(components, 'animator');
   if (!animator) return undefined;
 

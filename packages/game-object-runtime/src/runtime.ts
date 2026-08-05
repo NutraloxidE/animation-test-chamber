@@ -31,7 +31,7 @@ import {
   seedOf,
   type CharacterIntentSource,
 } from '@atc/character-control-runtime';
-import { resolvedComponents, type ResolvedPrefabNode } from '@atc/prefab-runtime';
+import type { ResolvedPrefabNode } from '@atc/prefab-runtime';
 import { characterViewOfGameObject, projectForGameObjectResolution } from './character-adapter.ts';
 import {
   ComponentRuntimeRegistry,
@@ -107,13 +107,23 @@ export class RuntimeGameObject {
       );
     }
 
-    const components = resolvedComponents(definition.root);
-    const motor = componentOfType(components, 'character-motor');
+    /*
+     * The node's *own* components, not the subtree's.
+     *
+     * Each child node becomes its own `RuntimeGameObject` above, so asking the
+     * whole subtree here would build two characters for one motor: once on the
+     * child that declares it, and again on every ancestor that can see it.
+     * `isCharacterGameObject` deliberately still asks the tree-wide question —
+     * "does this Prefab contain a character?" is what the Prefab list filters
+     * on, and it is a different question from "does this node drive one?".
+     */
+    const ownComponents = definition.root.components;
+    const motor = componentOfType(ownComponents, 'character-motor');
     const view = motor
       ? characterViewOfGameObject({
           gameObjectId: definition.gameObjectId,
           displayName: definition.displayName,
-          root: definition.root,
+          components: ownComponents,
         })
       : undefined;
 

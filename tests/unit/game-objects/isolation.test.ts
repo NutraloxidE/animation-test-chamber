@@ -11,9 +11,19 @@ import { describe, expect, it } from 'vitest';
 import { TERRAIN_PRESETS } from '@atc/terrain-runtime';
 import {
   RuntimeScene,
+  instantiateGameObject,
   instantiateScene,
+  resolveGameObjectInstance,
   type GameObjectRuntimeServices,
 } from '@atc/game-object-runtime';
+import {
+  animatorComponent,
+  basePrefab,
+  modelComponent,
+  node,
+  referenceTo,
+  registryOf,
+} from '../prefabs/fixtures.ts';
 import { loadAssetRegistry, loadCanonicalProject } from '../../../harness/animation-assets.ts';
 import { loadPrefabRegistry } from '../../../harness/prefabs.ts';
 
@@ -194,5 +204,68 @@ describe('runtime spawn and despawn', () => {
       }),
     ).toThrow(/abstract-prefab-placed/);
     scene.dispose();
+  });
+});
+
+describe('a Prefab with a hierarchy', () => {
+  /**
+   * A root that is only a mount point, and a child that is the character.
+   *
+   * The runtime builds one `RuntimeGameObject` per node, so the character
+   * decision has to be node-local: reading the whole subtree would build a
+   * simulation on the child *and* another on the root that can see it, and the
+   * two would then fight over the same authored motor.
+   */
+  const mount = basePrefab(
+    'rider-mount',
+    node('root', [modelComponent('relay')], [
+      {
+        kind: 'inline',
+        node: node('rider', [
+          modelComponent('navigator'),
+          animatorComponent(),
+          {
+            schemaVersion: 1,
+            componentId: 'character-motor',
+            componentType: 'character-motor',
+            enabled: true,
+            intentChannel: 'primary',
+            movementScale: 1,
+            turnScale: 1,
+          },
+        ]),
+      },
+    ]),
+  );
+
+  it('builds exactly one character, on the node that declares the motor', () => {
+    const runtime = instantiateGameObject({
+      definition: resolveGameObjectInstance({
+        prefabRegistry: registryOf(mount),
+        instance: {
+          schemaVersion: 2,
+          id: 'mounted',
+          displayName: 'mounted',
+          enabled: true,
+          prefab: referenceTo(mount),
+          transform: {
+            position: { x: 0, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          componentOverrides: [],
+          bindings: {},
+          relations: {},
+        },
+      }).definition,
+      services: services(),
+      project,
+      terrain,
+    });
+
+    expect(runtime.character).toBeUndefined();
+    expect(runtime.children).toHaveLength(1);
+    expect(runtime.children[0]!.character).toBeDefined();
+    runtime.dispose();
   });
 });
