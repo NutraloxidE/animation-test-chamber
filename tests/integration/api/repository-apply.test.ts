@@ -25,6 +25,7 @@ import {
   type SceneOperation,
 } from '@atc/editor-core';
 import { createApp } from '../../../apps/api/src/app.ts';
+import { revisionOf } from '../../../apps/api/src/routes/repository-apply.ts';
 
 const SOURCE_REPO = resolve(__dirname, '../../..');
 const PROJECT_PATH = 'projects/demo-character/project.json';
@@ -688,6 +689,38 @@ describe('server-side validation', () => {
     // The issue names which operation failed, not just that something did.
     expect(issuesOf(body)[0]!.path).toMatch(/^\/operations\/0\//);
     expect(projectBytes()).toBe(before);
+  });
+});
+
+/**
+ * The revision is a function of the document's content and nothing else.
+ *
+ * Both properties below are load-bearing in opposite directions, and getting
+ * either wrong breaks something that looks unrelated.
+ */
+describe('content revision identity', () => {
+  it('excludes the previous revisionId from the hash', () => {
+    const project = projectOf();
+
+    // Same content, two different stored revisions. If `revisionId` were an
+    // input, each id would be a function of the previous one — so identical
+    // content reached by two routes would carry two different revisions, and
+    // "has this actually changed?" would become unanswerable.
+    expect(revisionOf({ ...project, revisionId: 'rev-one' })).toBe(
+      revisionOf({ ...project, revisionId: 'rev-two' }),
+    );
+  });
+
+  it('gives identical content an identical revision, and changed content a different one', () => {
+    const project = projectOf();
+    const copy = JSON.parse(JSON.stringify(project)) as ProjectDefinition;
+    expect(revisionOf(copy)).toBe(revisionOf(project));
+
+    const changed: ProjectDefinition = {
+      ...project,
+      scenes: [{ ...project.scenes[0]!, displayName: 'Something else' }, ...project.scenes.slice(1)],
+    };
+    expect(revisionOf(changed)).not.toBe(revisionOf(project));
   });
 });
 
