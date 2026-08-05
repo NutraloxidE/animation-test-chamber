@@ -2,82 +2,93 @@
  * `POST /api/repository/apply` — the one validated write for a route target.
  *
  * Apply is the only step in Preview → Stage → Validate → Apply that touches the
- * repository, and five things about it are load-bearing:
+ * repository, and six things about it are load-bearing:
  *
- *   1. It replays the *typed operations* server-side, after checking each one
- *      against a runtime schema. A full-document request would ask the server to
- *      trust a document the client assembled, and a client that mis-assembled
- *      one would be indistinguishable from a client that meant it. A TypeScript
- *      union is not a check: this endpoint receives JSON.
+ *   1. The *whole request* is checked against a runtime schema before anything
+ *      else happens. Not just each operation — the target, the expected
+ *      revision, the actor, the intent and the approval too, with every object
+ *      boundary closed. This endpoint receives JSON; a TypeScript interface is
+ *      a claim about a client, made on that client's behalf, and `curl` never
+ *      agreed to it.
  *
- *   2. It enforces protection itself. The browser session checks it too, but a
- *      check that only exists in the browser is not a rule — it is a habit of
- *      one client, and `curl` does not have it.
+ *   2. It replays the *typed operations* server-side. A full-document request
+ *      would ask the server to trust a document the client assembled, and a
+ *      client that mis-assembled one would be indistinguishable from a client
+ *      that meant it.
  *
- *   3. It refuses on a stale baseline rather than overwriting. Two people (or a
+ *   3. It computes which changed paths are protected, itself, and compares them
+ *      against an exact human approval. The browser session checks protection
+ *      too, but a check that only exists in the browser is not a rule — it is a
+ *      habit of one client.
+ *
+ *   4. It refuses on a stale baseline rather than overwriting. Two people (or a
  *      human and an agent) editing one scene must not have the second write
  *      silently erase the first, and "last writer wins" is exactly what makes
  *      that invisible.
  *
- *   4. It writes the project and its report as one transaction. Two sequential
- *      writes are two outcomes, and the pair that survives a failure between
- *      them is a repository whose revision no report describes.
+ *   5. It writes the project and its report as one transaction, and validates
+ *      the *prepared bytes* that transaction is about to promote. Two
+ *      sequential writes are two outcomes, and the pair that survives a failure
+ *      between them is a repository whose revision no report describes.
  *
- *   5. It does not create a Git commit. Committing is a separate, separately
+ *   6. It does not create a Git commit. Committing is a separate, separately
  *      invocable action; an Apply that quietly committed would make every
  *      exploratory save a public change.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Hono } from 'hono';
-import type { ProjectDefinition, SceneDefinition, ValidationIssue } from '@atc/schema';
-import { validateProject, validateProjectReferences } from '@atc/schema';
-import { evaluateEdit, type EditActor } from '@atc/runtime-core';
+import type {
+  ProjectDefinition,
+  ProtectionApproval,
+  RepositoryApplyRequest,
+  RepositoryApplyServerStatus,
+  SceneDefinition,
+  ValidationIssue,
+} from '@atc/schema';
+import { validateProject, validateProjectReferences, validateSceneReferences } from '@atc/schema';
+import { resolveProtection, type EditActor } from '@atc/runtime-core';
 import {
   applySceneOperation,
-  parseSceneOperation,
-  type RepositoryDocumentTarget,
+  parseRepositoryApplyRequest,
   type SceneOperation,
 } from '@atc/editor-core';
 import {
   runRepositoryTransaction,
   sha256Hex,
   type PlannedFileWrite,
+  type PreparedRepositoryView,
+  type RepositoryTransactionState,
+  type TransactionIssue,
 } from '@atc/repository-transaction';
 import { loadProject, PROJECT_PATH } from '../context.ts';
-import { repositoryReportFile } from '../reports.ts';
+import { repositoryReportFile, type RepositoryApplyReport } from '../reports.ts';
 import { markRepositoryFatal } from '../repository-health.ts';
 import type { RepositoryRuntime } from '../runtime.ts';
 
-export interface RepositoryApplyRequestBody {
-  target: RepositoryDocumentTarget;
-  expected: { projectRevisionId: string };
-  operations: SceneOperation[];
-  actor: EditActor;
-  intent: string;
-  /**
-   * Paths a human unlocked for the duration of their session.
-   *
-   * Honoured for `actor: 'human'` only. An unlock is a human gesture in front of
-   * a specific value; letting a request declare its own unlocks for an AI actor
-   * would make `locked` mean nothing at all, since the caller that wants past
-   * the lock is exactly the caller filling in this field.
-   */
-  unlockedPaths?: string[];
-  /** A human's explicit sign-off on an approval-required change. */
-  approved?: boolean;
-}
-
 export interface RepositoryApplyResponseBody {
   ok: boolean;
+  /**
+   * The outcome, as a stable discriminator.
+   *
+   * The client used to infer its state from an HTTP code plus the shape of the
+   * body — `409` meant conflict, anything else non-2xx meant "invalid", and a
+   * 200 with a `unchanged` flag meant no change. That collapses genuinely
+   * different outcomes together: a rolled-back transaction and a refused
+   * validation are not the same event, and a repository that has gone read-only
+   * is not a conflict the user can resolve by reloading.
+   */
+  status: RepositoryApplyServerStatus;
   issues: ValidationIssue[];
   project?: ProjectDefinition;
   targetDocument?: SceneDefinition;
   changedPaths?: string[];
   reportPath?: string;
-  /** Present when the applied operations produced no change at all. */
-  unchanged?: boolean;
+  /** This Apply's own identity. Absent for no-change, which writes no report. */
+  applyId?: string;
+  /** Present when a transaction ran, so an operator can find its journal. */
+  transactionId?: string;
 }
 
 function issue(path: string, message: string, keyword: string): ValidationIssue {
@@ -92,6 +103,11 @@ function issue(path: string, message: string, keyword: string): ValidationIssue 
  * id a function of the previous one, so identical content reached by two routes
  * would carry two different revisions — and a no-op Apply would mint a new
  * revision, invalidating every other open session in exchange for no change.
+ *
+ * The Apply's `applyId` and the report's timestamps are deliberately *not*
+ * inputs here either, for the same reason from the other direction: they are
+ * facts about the event, not about the document, and folding them in would make
+ * identical content hash differently every time it was reached.
  */
 export function revisionOf(project: ProjectDefinition): string {
   const { revisionId: _ignored, ...content } = project;
@@ -102,59 +118,163 @@ function projectContent(project: ProjectDefinition): string {
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
+/** HTTP status for each outcome. Distinct outcomes get distinct codes. */
+const HTTP_STATUS: Record<RepositoryApplyServerStatus, 200 | 409 | 422 | 500 | 503> = {
+  applied: 200,
+  'no-change': 200,
+  conflict: 409,
+  invalid: 422,
+  // Non-success, and explicitly its own code: the caller's write did not land,
+  // but — unlike a refusal — the repository was touched and put back.
+  'rolled-back': 500,
+  'repository-read-only': 503,
+};
+
+/**
+ * Which transaction states mean what to a caller.
+ *
+ * Every nonfatal result used to become a 409. That told a user to reload and
+ * retry when the real answer might have been "your scene is invalid" (retrying
+ * cannot help) or "the repository needs a human" (retrying makes it worse).
+ */
+type FailedApplyStatus = Exclude<RepositoryApplyServerStatus, 'applied' | 'no-change'>;
+
+function outcomeForTransaction(state: RepositoryTransactionState): FailedApplyStatus {
+  switch (state) {
+    case 'committed':
+      // Unreachable: `committed` only ever accompanies `ok: true`. Mapped to a
+      // conflict rather than asserted away, because a transaction engine that
+      // reported both at once is exactly the case where the caller must not be
+      // told their write landed.
+      return 'conflict';
+    case 'validation-refused':
+      return 'invalid';
+    case 'conflict-refused':
+      return 'conflict';
+    case 'rolled-back':
+      return 'rolled-back';
+    case 'fatal':
+      return 'repository-read-only';
+    case 'recovered':
+      // A transaction the engine resolved during recovery: nothing this caller
+      // asked for landed, and its baseline may have moved underneath it.
+      return 'conflict';
+  }
+}
+
+/**
+ * The paths this operation changed that a human has to sign off on.
+ *
+ * "Protected" here means the resolved protection level requires an unlock or an
+ * approval — `locked` and `approval-required`. `invariant` is not in this set
+ * because it is not approvable by anyone; it is refused separately and
+ * unconditionally. `editable` needs nothing.
+ *
+ * Resolved against the document as it stood *before* the operation ran, because
+ * that is where the protection metadata the human set actually lives — an
+ * operation that removed a lock would otherwise be judged against the
+ * unprotected document it just produced.
+ */
+function classifyPaths(
+  document: unknown,
+  changedPaths: readonly string[],
+): { protectedPaths: string[]; invariantPaths: string[] } {
+  const protectedPaths: string[] = [];
+  const invariantPaths: string[] = [];
+  for (const path of changedPaths) {
+    const { level } = resolveProtection(document, path);
+    if (level === 'invariant') invariantPaths.push(path);
+    else if (level === 'locked' || level === 'approval-required') protectedPaths.push(path);
+  }
+  return { protectedPaths, invariantPaths };
+}
+
+/** Sorted and deduplicated, so two equal sets compare equal however they arrived. */
+function normalizePaths(paths: readonly string[]): string[] {
+  return [...new Set(paths)].sort();
+}
+
+function samePathSet(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((path, index) => path === right[index]);
+}
+
 export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): void {
   const root = runtime.repoRoot;
 
   app.post('/api/repository/apply', async (c) => {
+    function refuse(
+      status: Exclude<RepositoryApplyServerStatus, 'applied' | 'no-change'>,
+      issues: ValidationIssue[],
+      extra: Partial<RepositoryApplyResponseBody> = {},
+    ) {
+      return c.json<RepositoryApplyResponseBody>(
+        { ok: false, status, issues, ...extra },
+        HTTP_STATUS[status],
+      );
+    }
+
+    /**
+     * A protection or approval refusal.
+     *
+     * `403`, not the `422` that carries every other `invalid`. The document is
+     * fine and the operations are fine — what is missing is permission, and a
+     * caller told "unprocessable" would go looking for a malformed scene they
+     * do not have. The `status` discriminator stays `invalid` because the
+     * client's next move is the same for both: read the issues, fix, resubmit.
+     */
+    function refuseProtection(issues: ValidationIssue[]) {
+      return c.json<RepositoryApplyResponseBody>({ ok: false, status: 'invalid', issues }, 403);
+    }
+
     let raw: unknown;
     try {
       raw = await c.req.json();
     } catch {
       return c.json<RepositoryApplyResponseBody>(
-        { ok: false, issues: [issue('/', 'request body is not valid JSON', 'shape')] },
-        400,
-      );
-    }
-    const body = raw as Partial<RepositoryApplyRequestBody>;
-
-    if (!body.target || !body.expected || !Array.isArray(body.operations)) {
-      return c.json<RepositoryApplyResponseBody>(
-        { ok: false, issues: [issue('/', 'target, expected and operations are required', 'shape')] },
-        400,
-      );
-    }
-
-    const actor: EditActor = body.actor ?? 'human';
-    if (actor !== 'human' && actor !== 'ai') {
-      return c.json<RepositoryApplyResponseBody>(
-        { ok: false, issues: [issue('/actor', `unknown actor "${String(body.actor)}"`, 'enum')] },
+        {
+          ok: false,
+          status: 'invalid',
+          issues: [issue('/', 'request body is not valid JSON', 'shape')],
+        },
         400,
       );
     }
 
     /*
-     * An AI request may never carry its own approval or its own unlocks.
-     *
-     * `approval-required` exists so a human decides; a flag the AI sets itself
-     * is the AI deciding, with a field named as if a human had. Refused rather
-     * than ignored: a caller that believed it was approving something needs to
-     * be told it was not, and an ignored field looks exactly like an honoured
-     * one from the outside.
+     * The entire request is proven well-formed before a single canonical byte
+     * is read. A malformed request should never reach the code that loads
+     * mutable state, let alone the code that writes it — and a caller whose
+     * request was going to be refused anyway should not have cost a file read.
      */
-    if (actor === 'ai' && (body.approved === true || (body.unlockedPaths?.length ?? 0) > 0)) {
+    const parsed = parseRepositoryApplyRequest(raw);
+    if (!parsed.ok) {
       return c.json<RepositoryApplyResponseBody>(
-        {
-          ok: false,
-          issues: [
-            issue(
-              '/approved',
-              'an AI actor cannot carry its own approval or unlocks; a human must apply the approved change',
-              'protection',
-            ),
-          ],
-        },
-        403,
+        { ok: false, status: 'invalid', issues: parsed.issues },
+        400,
       );
+    }
+    const request: RepositoryApplyRequest = parsed.request;
+    const actor: EditActor = request.actor;
+    const operations = request.operations as SceneOperation[];
+
+    /*
+     * An AI request may never carry an approval.
+     *
+     * `approval-required` exists so a *human* decides; an approval the agent
+     * attaches to its own request is the agent deciding, in a field named as
+     * though a human had. Refused rather than ignored: a caller that believed
+     * it was approving something needs to be told it was not, and an ignored
+     * field looks exactly like an honoured one from the outside.
+     */
+    if (actor === 'ai' && request.approval !== undefined) {
+      return refuseProtection([
+        issue(
+          '/approval',
+          'an AI actor cannot carry its own approval; a human must apply the approved change',
+          'protection',
+        ),
+      ]);
     }
 
     const project = loadProject(root);
@@ -166,30 +286,27 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
      * spent the replay deciding what to refuse — and, worse, would report
      * issues from a document nobody is going to keep.
      */
-    if (body.expected.projectRevisionId !== project.revisionId) {
-      return c.json<RepositoryApplyResponseBody>(
-        {
-          ok: false,
-          issues: [
-            issue(
-              '/revisionId',
-              `Apply refused: target revision changed (session opened at "${body.expected.projectRevisionId}", repository is at "${project.revisionId}")`,
-              'conflict',
-            ),
-          ],
-        },
-        409,
-      );
+    if (request.expected.projectRevisionId !== project.revisionId) {
+      return refuse('conflict', [
+        issue(
+          '/revisionId',
+          `Apply refused: target revision changed (session opened at "${request.expected.projectRevisionId}", repository is at "${project.revisionId}")`,
+          'conflict',
+        ),
+      ]);
     }
 
-    if (body.target.kind !== 'scene') {
+    if (request.target.kind !== 'scene') {
+      // Structurally valid, semantically unsupported here — which is a
+      // different thing from malformed, and says so.
       return c.json<RepositoryApplyResponseBody>(
         {
           ok: false,
+          status: 'invalid',
           issues: [
             issue(
               '/target/kind',
-              `target kind "${body.target.kind}" is not applied through this endpoint yet; character-owned and animation-asset edits keep their existing destination flow`,
+              `target kind "${request.target.kind}" is not applied through this endpoint yet; character-owned and animation-asset edits keep their existing destination flow`,
               'unsupported',
             ),
           ],
@@ -200,82 +317,120 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
 
     // The server resolves the target by id from canonical data. It does not
     // trust a client-supplied label, and never an array position.
-    const index = project.scenes.findIndex((scene) => scene.id === (body.target as { id: string }).id);
+    const targetId = request.target.id;
+    const index = project.scenes.findIndex((scene) => scene.id === targetId);
     if (index === -1) {
       return c.json<RepositoryApplyResponseBody>(
-        { ok: false, issues: [issue('/target/id', `no scene "${body.target.id}"`, 'reference')] },
+        {
+          ok: false,
+          status: 'invalid',
+          issues: [issue('/target/id', `no scene "${targetId}"`, 'reference')],
+        },
         404,
       );
     }
 
-    // Every operation is parsed before any of them is applied. A request whose
-    // fourth operation is unrecognisable must not have its first three replayed
-    // and then be refused — that is a partial edit the caller never asked for.
-    const operations: SceneOperation[] = [];
-    for (const [position, candidate] of body.operations.entries()) {
-      const parsed = parseSceneOperation(candidate);
-      if (!parsed.ok) {
-        return c.json<RepositoryApplyResponseBody>(
-          {
-            ok: false,
-            issues: parsed.issues.map((entry) => ({
-              ...entry,
-              path: `/operations/${position}${entry.path === '/' ? '' : entry.path}`,
-            })),
-          },
-          400,
-        );
-      }
-      operations.push(parsed.operation);
-    }
-
-    const unlocked = new Set(actor === 'human' ? (body.unlockedPaths ?? []) : []);
-
     let scene = project.scenes[index]!;
     const changedPaths: string[] = [];
+    const protectedChangedPaths: string[] = [];
+
     for (const [position, operation] of operations.entries()) {
       const result = applySceneOperation(scene, operation, project);
       if (!result.ok || result.document === undefined) {
-        return c.json<RepositoryApplyResponseBody>(
-          {
-            ok: false,
-            issues: result.issues.map((entry) => ({
-              ...entry,
-              path: `/operations/${position}${entry.path}`,
-            })),
-          },
-          422,
+        return refuse(
+          'invalid',
+          result.issues.map((entry) => ({
+            ...entry,
+            path: `/operations/${position}${entry.path}`,
+          })),
         );
       }
 
-      /*
-       * Protection is evaluated against the paths the operation actually
-       * touched, on the document as it stood before it — the same evaluation,
-       * against the same root, that `DocumentEditSession.dispatch` performs in
-       * the browser. Two implementations of "which paths does this touch" is how
-       * the two answers start to differ.
-       */
-      const refusals: ValidationIssue[] = [];
-      for (const path of result.changedPaths ?? []) {
-        const decision = evaluateEdit(scene, {
-          path,
-          actor,
-          ...(body.approved === true && actor === 'human' ? { approved: true } : {}),
-          unlocked: unlocked.has(path),
-        });
-        if (decision.allowed) continue;
-        refusals.push({
-          path: `/operations/${position}${path}`,
-          message: decision.reason || `protection refuses this edit by ${actor}`,
-          keyword: decision.requiresApproval ? 'approval-required' : 'protection',
-        });
+      const touched = result.changedPaths ?? [];
+      const { protectedPaths, invariantPaths } = classifyPaths(scene, touched);
+
+      if (invariantPaths.length > 0) {
+        // Not approvable, by anyone, with any reason. An invariant that a
+        // sufficiently insistent caller can talk past is not an invariant.
+        return refuseProtection(
+          invariantPaths.map((path) =>
+            issue(
+              `/operations/${position}${path}`,
+              resolveProtection(scene, path).reason ||
+                'value is a project invariant and cannot be changed by tooling',
+              'protection',
+            ),
+          ),
+        );
       }
-      if (refusals.length > 0) {
-        return c.json<RepositoryApplyResponseBody>({ ok: false, issues: refusals }, 403);
+
+      if (actor === 'ai' && protectedPaths.length > 0) {
+        return refuseProtection(
+          protectedPaths.map((path) => {
+            const { level, reason } = resolveProtection(scene, path);
+            return issue(
+              `/operations/${position}${path}`,
+              reason ||
+                (level === 'locked'
+                  ? 'value is locked; a human must unlock it first'
+                  : 'requires human approval before an AI change is applied'),
+              level === 'approval-required' ? 'approval-required' : 'protection',
+            );
+          }),
+        );
       }
 
       scene = result.document;
-      changedPaths.push(...(result.changedPaths ?? []));
+      changedPaths.push(...touched);
+      protectedChangedPaths.push(...protectedPaths);
+    }
+
+    /*
+     * The approval is compared against paths the *server* computed by replaying
+     * the operations, never against anything the request declared. Exact set
+     * equality, on normalized lists:
+     *
+     *   a missing path   — a protected value would move unapproved
+     *   an extra path    — the human approved something this Apply does not do,
+     *                      so the record of what they agreed to is wrong
+     *   a wildcard       — cannot be exact, by construction
+     *
+     * A duplicate path is refused earlier, by the schema's `uniqueItems`.
+     */
+    const expectedApproval = normalizePaths(protectedChangedPaths);
+    const approval: ProtectionApproval | undefined = request.approval;
+
+    if (expectedApproval.length === 0) {
+      if (approval !== undefined) {
+        return refuseProtection([
+          issue(
+            '/approval',
+            'this Apply changes no protected path, so it must not carry an approval; ' +
+              'an approval that approves nothing records a decision that was never needed',
+            'protection',
+          ),
+        ]);
+      }
+    } else {
+      if (approval === undefined) {
+        return refuseProtection([
+          issue(
+            '/approval',
+            `this Apply changes protected path(s) ${expectedApproval.join(', ')} and requires an explicit human approval naming exactly those paths`,
+            'approval-required',
+          ),
+        ]);
+      }
+      const approved = normalizePaths(approval.approvedPaths);
+      if (!samePathSet(approved, expectedApproval)) {
+        return refuseProtection([
+          issue(
+            '/approval/approvedPaths',
+            `approval does not match the protected paths this Apply changes; approved [${approved.join(', ')}], this Apply changes [${expectedApproval.join(', ')}]`,
+            'approval-mismatch',
+          ),
+        ]);
+      }
     }
 
     const scenes = [...project.scenes];
@@ -290,44 +445,53 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
     if (issues.length > 0) {
       // Nothing was written: the repository is exactly as it was, and the
       // caller's staged work is still theirs to fix and resubmit.
-      return c.json<RepositoryApplyResponseBody>({ ok: false, issues }, 422);
+      return refuse('invalid', issues);
     }
 
     /*
-     * An Apply whose operations cancel out writes nothing.
+     * An Apply whose operations cancel out writes nothing, and says so.
      *
-     * Reported as success, because it is one — the repository holds exactly what
-     * the caller asked for — but with `unchanged: true` and no report, so the
-     * history does not accumulate entries for edits that changed no byte. The
-     * content-derived revision is what makes this detectable at all — compared
-     * against the *recomputed* revision of what is on disk, never against its
-     * stored `revisionId`, which was minted by whatever wrote it last.
+     * Reported as its own status rather than as `applied` with an empty change
+     * list. "Applied" and "nothing happened" are different answers to "what did
+     * my button do", and a UI that renders the second as the first teaches the
+     * user that Apply sometimes silently does nothing — after which they stop
+     * trusting the times it says it worked.
+     *
+     * No project write, no report, no transaction directory, no revision bump.
+     * The content-derived revision is what makes this detectable at all —
+     * compared against the *recomputed* revision of what is on disk, never
+     * against its stored `revisionId`, which was minted by whatever wrote it
+     * last.
      */
     if (proposed.revisionId === revisionOf(project)) {
       return c.json<RepositoryApplyResponseBody>({
         ok: true,
+        status: 'no-change',
         issues: [],
         project,
         targetDocument: scene,
         changedPaths: [],
-        unchanged: true,
       });
     }
 
-    const report = repositoryReportFile({
-      target: body.target,
+    const applyId = randomUUID();
+    const report: RepositoryApplyReport = {
+      applyId,
+      target: { kind: request.target.kind, id: targetId },
       baseRevisionId: project.revisionId,
       newRevisionId: proposed.revisionId,
       actor,
-      intent: body.intent ?? '',
+      intent: request.intent,
       changedPaths,
       operations: operations.map((operation) => operation.type),
       files: [PROJECT_PATH],
-    });
+      ...(approval ? { protectionApproval: approval } : {}),
+    };
+    const reportFile = repositoryReportFile(report);
 
     const writes: PlannedFileWrite[] = [
       { repositoryPath: PROJECT_PATH, mode: 'replace', content: projectContent(proposed) },
-      { repositoryPath: report.path, mode: 'create', content: report.contents },
+      { repositoryPath: reportFile.path, mode: 'create', content: reportFile.contents },
     ];
 
     // Optimistic concurrency the transaction engine re-checks under its own
@@ -337,7 +501,7 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
     const result = await runRepositoryTransaction(
       root,
       {
-        intent: body.intent ?? `apply to ${body.target.kind} ${body.target.id}`,
+        intent: request.intent,
         expected: {
           projectRevisionId: project.revisionId,
           files: [
@@ -348,16 +512,15 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
           ],
         },
         writes,
-        // The candidate was fully validated above, against the same documents
-        // the engine is about to promote. Re-deriving it from the prepared view
-        // would be a second implementation of "is this project valid".
-        validatePreparedView: () => ({ issues: [] }),
+        validatePreparedView: (view) =>
+          validatePrepared(view, { proposed, report, reportPath: reportFile.path, targetId }),
       },
       runtime.transactionOptions,
     );
 
     if (!result.ok) {
-      if (result.state === 'fatal') {
+      const status = outcomeForTransaction(result.state);
+      if (status === 'repository-read-only') {
         markRepositoryFatal(
           runtime.health,
           result.transactionId,
@@ -367,25 +530,174 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
       const transactionIssues = result.issues.map((entry) =>
         issue(entry.path ?? '/', entry.message, entry.code),
       );
-      return c.json<RepositoryApplyResponseBody>(
-        {
-          ok: false,
-          issues:
-            transactionIssues.length > 0
-              ? transactionIssues
-              : [issue('/', `apply transaction ${result.state}`, result.state)],
-        },
-        result.state === 'fatal' ? 503 : 409,
+      return refuse(
+        status,
+        transactionIssues.length > 0
+          ? transactionIssues
+          : [issue('/', `apply transaction ${result.state}`, result.state)],
+        { transactionId: result.transactionId },
       );
     }
 
     return c.json<RepositoryApplyResponseBody>({
       ok: true,
+      status: 'applied',
       issues: [],
       project: proposed,
       targetDocument: scene,
       changedPaths,
-      reportPath: report.path,
+      reportPath: reportFile.path,
+      applyId,
+      transactionId: result.transactionId,
     });
   });
+}
+
+/**
+ * Validates the bytes the transaction is about to promote.
+ *
+ * This used to be `() => ({ issues: [] })`, justified on the grounds that the
+ * in-memory candidate had already been validated against the same documents.
+ * That reasoning has a hole in it: what was validated is the object this
+ * process holds, and what gets promoted is the bytes that were serialised,
+ * written to `prepared/`, and fsynced. Those are the same thing right up until
+ * they are not — a truncated write, a serialisation that dropped a field, a
+ * report describing a different revision than the project beside it — and the
+ * whole reason for a prepared phase is to have somewhere to catch that *before*
+ * the point of no return.
+ *
+ * So everything here reads through `view`. Closing over `proposed` and
+ * returning success would re-assert what is already known and check nothing.
+ */
+function validatePrepared(
+  view: PreparedRepositoryView,
+  context: {
+    proposed: ProjectDefinition;
+    report: RepositoryApplyReport;
+    reportPath: string;
+    targetId: string;
+  },
+): { issues: TransactionIssue[] } {
+  const issues: TransactionIssue[] = [];
+  const error = (code: string, message: string, path?: string) => {
+    issues.push({ code, severity: 'error', message, ...(path ? { path } : {}) });
+  };
+
+  let prepared: ProjectDefinition;
+  try {
+    prepared = JSON.parse(view.readText(PROJECT_PATH)) as ProjectDefinition;
+  } catch (failure) {
+    error(
+      'prepared-project-unreadable',
+      `prepared ${PROJECT_PATH} is not readable JSON: ${failure instanceof Error ? failure.message : String(failure)}`,
+      PROJECT_PATH,
+    );
+    // Nothing below can say anything useful about a document that did not
+    // parse, and every check would report the same failure again.
+    return { issues };
+  }
+
+  for (const entry of validateProject(prepared).issues) {
+    error('prepared-project-invalid', `${entry.path}: ${entry.message}`, PROJECT_PATH);
+  }
+  for (const entry of validateProjectReferences(prepared).issues) {
+    error('prepared-project-references-invalid', `${entry.path}: ${entry.message}`, PROJECT_PATH);
+  }
+
+  // The changed target, resolved from the prepared bytes by stable id — not by
+  // the array position it happened to occupy when the candidate was built.
+  const preparedScene = prepared.scenes?.find((entry) => entry.id === context.targetId);
+  if (!preparedScene) {
+    error(
+      'prepared-target-missing',
+      `prepared project does not contain the scene "${context.targetId}" this Apply targets`,
+      PROJECT_PATH,
+    );
+  } else {
+    const characterIds = new Set((prepared.characters ?? []).map((entry) => entry.id));
+    for (const entry of validateSceneReferences(preparedScene, characterIds).issues) {
+      error('prepared-scene-references-invalid', `${entry.path}: ${entry.message}`, PROJECT_PATH);
+    }
+  }
+
+  if (prepared.revisionId !== context.proposed.revisionId) {
+    error(
+      'prepared-revision-mismatch',
+      `prepared project carries revision "${prepared.revisionId}" but this Apply promised "${context.proposed.revisionId}"`,
+      PROJECT_PATH,
+    );
+  }
+
+  let preparedReport: RepositoryApplyReport;
+  try {
+    preparedReport = JSON.parse(view.readText(context.reportPath)) as RepositoryApplyReport;
+  } catch (failure) {
+    error(
+      'prepared-report-unreadable',
+      `prepared ${context.reportPath} is not readable JSON: ${failure instanceof Error ? failure.message : String(failure)}`,
+      context.reportPath,
+    );
+    return { issues };
+  }
+
+  /*
+   * The report and the project have to describe the same event. A report whose
+   * `newRevisionId` disagrees with the project beside it is worse than no
+   * report: it is the artifact someone will later use to reconstruct what
+   * happened, and it would tell them a revision existed that never did.
+   */
+  if (preparedReport.newRevisionId !== prepared.revisionId) {
+    error(
+      'prepared-report-revision-mismatch',
+      `prepared report names new revision "${preparedReport.newRevisionId}" but the prepared project is "${prepared.revisionId}"`,
+      context.reportPath,
+    );
+  }
+  if (preparedReport.baseRevisionId !== context.report.baseRevisionId) {
+    error(
+      'prepared-report-base-mismatch',
+      `prepared report names base revision "${preparedReport.baseRevisionId}" but this Apply was built on "${context.report.baseRevisionId}"`,
+      context.reportPath,
+    );
+  }
+  if (preparedReport.target?.id !== context.targetId) {
+    error(
+      'prepared-report-target-mismatch',
+      `prepared report names target "${String(preparedReport.target?.id)}" but this Apply targets "${context.targetId}"`,
+      context.reportPath,
+    );
+  }
+  if (preparedReport.applyId !== context.report.applyId) {
+    error(
+      'prepared-report-identity-mismatch',
+      'prepared report does not carry this Apply\'s identity',
+      context.reportPath,
+    );
+  }
+
+  /*
+   * The report must name the canonical files this transaction actually writes.
+   * A report that under-claims leaves a changed file undocumented; one that
+   * over-claims names a file this Apply never touched, and both make the report
+   * useless for the audit it exists to serve.
+   */
+  const promoted = new Set(view.writtenPaths());
+  for (const named of preparedReport.files ?? []) {
+    if (!promoted.has(named)) {
+      error(
+        'prepared-report-file-unwritten',
+        `prepared report names "${named}", which this transaction does not write`,
+        context.reportPath,
+      );
+    }
+  }
+  if (!promoted.has(PROJECT_PATH)) {
+    error(
+      'prepared-project-unwritten',
+      `this transaction does not write ${PROJECT_PATH}, so there is nothing for the report to describe`,
+      PROJECT_PATH,
+    );
+  }
+
+  return { issues };
 }
