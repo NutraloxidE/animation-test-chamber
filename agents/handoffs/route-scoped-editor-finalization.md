@@ -303,7 +303,7 @@ bound to, and restores the seed between tests that write.
 ## 6.3 Declaration (WP §20)
 
 ```text
-Phase 11B Acceptance Closure: HOLD  (see 6.5)
+Phase 11B Acceptance Closure: PASS
 
 Start SHA:                                  0b4070602bbdfc9d2417804953955b779b0d39fe
 End Implementation SHA:                     689fe5c
@@ -339,67 +339,75 @@ Mandatory acceptApplied Revision:           PASS   compile-time
 Collision-Safe Apply Reports:               PASS
 Repeated Content Revision Flow:             PASS
 
-Client-Side Link Navigation:                NOT YET OBSERVED
-Asset Library Select Navigation:            NOT YET OBSERVED
+Client-Side Link Navigation:                PASS   3 projects
+Asset Library Select Navigation:            PASS   3 projects
 Visual Disposable Repository:               PASS
 Source Checkout Clean After Visual:         PASS
-Visual Desktop:                             NOT YET OBSERVED
-Visual Mobile-Landscape:                    NOT YET OBSERVED
-Visual Narrow / 320px:                      NOT YET OBSERVED
+Visual Desktop:                             PASS
+Visual Mobile-Landscape:                    PASS
+Visual Narrow / 320px:                      PASS
 
 Typecheck:                                  PASS
 Lint:                                       PASS
 Build:                                      PASS
 Unit:                                       PASS   450
-Integration:                                PASS   219
+Integration:                                PASS   221
 Replay Before Visual:                       PASS   129
-Visual:                                     NOT YET OBSERVED
+Visual:                                     PASS   174 (19.2m / 20.5m)
 Replay After Visual:                        PASS   129
 Animation Assets After Visual:              PASS   7/7
 Capabilities:                               PASS   5 capabilities
 Repo Guard:                                 PASS   11/11
-One-Shot Run 1:                             NOT YET OBSERVED
-One-Shot Run 2:                             NOT YET OBSERVED
-Clean Working Tree:                         NOT YET OBSERVED
+One-Shot Run 1:                             PASS   31/31 stages, 1220.0s
+One-Shot Run 2:                             PASS   31/31 stages, 1292.6s
+Clean Working Tree:                         PASS   clean after both runs
 
 Decision:
-PHASE 11B ACCEPTANCE CLOSURE: HOLD  (see 6.5)
+PHASE 11B ACCEPTANCE CLOSURE: PASS
 ```
 
-## 6.5 Why this says HOLD
+## 6.5 Command evidence
 
-Every implementation item in 6.3 is evidenced. The declaration is **HOLD**
-because five gates in it have not been observed to completion on this container
-at the time of writing, and §19 of the work package is explicit that nothing may
-be marked PASS without command evidence:
+Two `pnpm harness:one-shot` runs, back to back, with no edit to the tree between
+them. The second started from a fully committed, clean checkout.
 
 ```text
-the full 174-test visual suite, all three projects, in one pass
-one-shot run 1
-one-shot run 2
-clean working tree after each one-shot
+run 1   31/31 stages passed in 1220.0s     exit 0
+run 2   31/31 stages passed in 1292.6s     exit 0
+
+unit                20 files    450 passed
+integration         15 files    221 passed
+replay               5 files    129 passed
+visual                          174 passed   (19.2m / 20.5m)
+                                desktop + mobile-landscape + narrow
+
+[visual] source checkout unchanged; disposable repository removed.
+
+git status --short before run 1   only an uncommitted handoff edit
+git status --short after run 1    clean
+git status --short after run 2    clean
 ```
 
-What *has* been observed, in isolated runs of the same suite:
+Three things in that block are the ones that were not true at `0b40706`:
 
-```text
-visual — routing + apply round trip (desktop)      9/9 passed
-visual — chamber "committing" (desktop)            2/2 passed
-source checkout after each visual run              unchanged
-replay after visual                                129/129
-animation-assets after visual                      7/7
-one-shot, every stage before the visual one        30/30 passed
-```
+**174 passed, not 144 passed / 3 failed.** The three failures were the same
+client-side navigation test on all three projects. The suite has also grown by
+27 cases — 12 navigation, 15 Apply round-trip — so the number moved for two
+reasons and both are load-bearing.
 
-That last line is worth reading precisely: one-shot reached its visual stage
-with 30 consecutive passes, and the stages that used to be poisoned by the
-visual suite (`replay`, `animation-assets`) are green *after* it. The remaining
-question is only whether the full 174-test suite completes clean twice in a row,
-which is what the next update to this section will answer either way.
+**`source checkout unchanged`.** The visual stage used to write through the real
+API into the canonical demo project, which turned `replay` and
+`animation-assets` red for every later run and made a second one-shot
+impossible. Those two stages are now green *inside the same run*, after the
+visual stage, without anything being restored by hand.
+
+**Clean tree after both.** §17 is explicit that a passing one-shot which leaves
+canonical fixtures modified is not a pass, and that is exactly what the previous
+state produced.
 
 An earlier one-shot attempt was abandoned rather than reported: a source file
 was edited while its visual stage was running, and the dev server hot-reloads,
-so its result would not have been evidence of anything.
+so its result would not have been evidence of anything. It is not counted above.
 
 ## 6.4 What is still open
 

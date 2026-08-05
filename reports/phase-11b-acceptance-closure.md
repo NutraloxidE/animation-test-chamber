@@ -236,9 +236,51 @@ in the code, covered indirectly. **manual** = observed by hand only.
 
 ## 3. Command evidence
 
-See `agents/handoffs/route-scoped-editor-finalization.md` for the final
-declaration matrix. Raw counts are recorded there against the exact command that
-produced them.
+Two `pnpm harness:one-shot` runs, back to back, no edit to the tree between
+them. The second started from a fully committed, clean checkout.
+
+```text
+run 1   31/31 stages passed in 1220.0s     exit 0
+run 2   31/31 stages passed in 1292.6s     exit 0
+
+typecheck / lint                          pass
+schema generation drift                   pass   (4 new schemas committed)
+canonical data validity                   pass
+transaction recovery                      pass
+world contract / capability completeness  pass
+unit                20 files    450 passed
+integration         15 files    221 passed
+replay               5 files    129 passed
+repo guard                      11/11
+web build                       pass
+visual                          174 passed   (19.2m / 20.5m)
+                                desktop + mobile-landscape + narrow
+
+[visual] source checkout unchanged; disposable repository removed.
+
+git status --short after run 1    clean
+git status --short after run 2    clean
+```
+
+Three lines there were not true at `0b40706`:
+
+- **174 passed**, where it was 144 passed / 3 failed. The three failures were
+  the same client-side navigation test on all three projects. The suite also
+  grew by 27 cases (12 navigation, 15 Apply round-trip), so the number moved for
+  two reasons.
+- **`source checkout unchanged`.** The visual stage used to write through the
+  real API into the canonical demo project, turning `replay` and
+  `animation-assets` red for every later run. Both are green *inside the same
+  one-shot*, after the visual stage, with nothing restored by hand.
+- **Clean tree after both runs.** §17 is explicit that a passing one-shot which
+  leaves canonical fixtures modified is not a pass.
+
+An earlier one-shot attempt was abandoned rather than reported: a source file
+was edited while its visual stage was running, and the dev server hot-reloads,
+so the result would not have been evidence of anything. It is not counted above.
+
+The full declaration matrix is in
+`agents/handoffs/route-scoped-editor-finalization.md` §6.3.
 
 ---
 
