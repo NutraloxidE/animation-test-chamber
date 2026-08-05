@@ -11,6 +11,7 @@ export * from './replay.ts';
 export * from './acquisition.ts';
 export * from './intent-track.ts';
 export * from './scene.ts';
+export * from './repository-apply.ts';
 export * from './world.ts';
 export * from './migration.ts';
 export * from './project.ts';

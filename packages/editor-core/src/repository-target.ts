@@ -8,11 +8,16 @@
  * `activeCharacterId`, a library selection, a preview id, a route param — a
  * panel that reads the wrong one edits the wrong document while looking
  * entirely correct.
+ *
+ * The type itself is the `Static<>` derivation of the runtime schema, not a
+ * second hand-written copy of it. A target arrives over HTTP as JSON, so the
+ * shape the server validates and the shape the editor passes around have to be
+ * the same shape or the compile-time one is describing a document the runtime
+ * one would refuse.
  */
+export type { RepositoryDocumentTarget } from '@atc/schema';
 
-export type RepositoryDocumentTarget =
-  | { kind: 'character'; id: string }
-  | { kind: 'scene'; id: string };
+import type { RepositoryDocumentTarget } from '@atc/schema';
 
 /** A stable, human-readable key for one target. Used in draft keys and logs. */
 export function targetKey(target: RepositoryDocumentTarget): string {

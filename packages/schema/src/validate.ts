@@ -34,6 +34,12 @@ import {
   SceneEntityDefinition,
   SceneOperation,
 } from './scene.ts';
+import {
+  ProtectionApproval,
+  RepositoryApplyExpected,
+  RepositoryApplyRequest,
+  RepositoryDocumentTarget,
+} from './repository-apply.ts';
 
 export interface ValidationIssue {
   path: string;
@@ -85,6 +91,10 @@ export const SCHEMA_REGISTRY = {
   CameraSceneEntity,
   CharacterControllerBindingDefinition,
   SceneOperation,
+  RepositoryDocumentTarget,
+  RepositoryApplyExpected,
+  ProtectionApproval,
+  RepositoryApplyRequest,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
