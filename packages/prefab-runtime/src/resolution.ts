@@ -378,6 +378,7 @@ function expandNested(
     }
     const nestedResolved = resolveInContext(child.prefab, context);
     if (!nestedResolved) continue;
+    context.dependencies.set(dependencyKey(child.prefab), child.prefab);
 
     context.issues.push(
       ...applyComponentOverrides(nestedResolved, child.overrides, child.prefab),

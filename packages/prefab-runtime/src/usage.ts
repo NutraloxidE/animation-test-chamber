@@ -20,8 +20,9 @@ import type {
   SceneDefinition,
 } from '@atc/schema';
 import { prefabHasStoredRoot, referenceKey } from '@atc/schema';
-import { type PrefabAssetRegistry, directDependencies } from './registry.ts';
-import { nestedPrefabReferences, walkStoredNodes } from './validation.ts';
+import type { PrefabAssetRegistry } from './registry.ts';
+import { resolveGameObjectPrefab, resolvedComponents } from './resolution.ts';
+import { nestedPrefabReferences } from './validation.ts';
 
 /** One Scene instance of one Prefab, named exactly. */
 export interface PrefabSceneInstanceUse {
@@ -107,21 +108,26 @@ export function describePrefabUsage(
   return prefabRegistry.all().map((stored) => {
     const reference = selfReference(prefabRegistry, stored.document);
     const key = `${stored.id}@${stored.version}`;
-    const animationReferences = directDependencies(stored.document).filter(
+    /*
+     * Resolved, not stored. A variant stores no payload at all, so reading its
+     * *document* for animation references reports nothing — which would make
+     * "who holds this Behavior?" answer "only the abstract base" while five
+     * concrete Prefabs inherit it. A holder list that is wrong in that
+     * direction is the exact failure §14 exists to prevent: it would draw a
+     * blast radius smaller than the truth.
+     */
+    const resolution = resolveGameObjectPrefab(prefabRegistry, reference);
+    const animationReferences = resolution.prefab.dependencies.filter(
       (dependency): dependency is AssetReference =>
         dependency.assetType !== 'game-object-prefab',
     );
     const modelAssetPaths: string[] = [];
-    if (prefabHasStoredRoot(stored.document)) {
-      for (const node of walkStoredNodes(stored.document.root)) {
-        for (const component of node.components) {
-          if (
-            component.componentType === 'model-renderer' &&
-            component.model.kind === 'repository-model'
-          ) {
-            modelAssetPaths.push(component.model.assetPath);
-          }
-        }
+    for (const component of resolvedComponents(resolution.prefab.root)) {
+      if (
+        component.componentType === 'model-renderer' &&
+        component.model.kind === 'repository-model'
+      ) {
+        modelAssetPaths.push(component.model.assetPath);
       }
     }
     return {

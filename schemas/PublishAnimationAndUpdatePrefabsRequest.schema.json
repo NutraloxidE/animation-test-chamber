@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "PublishAnimationAndUpdatePrefabsRequest",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "source",
+    "expected",
+    "targetPrefabIds"
+  ],
+  "properties": {
+    "source": {
+      "$id": "AssetReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "AnimationAssetType",
+          "anyOf": [
+            {
+              "const": "animation-behavior",
+              "type": "string"
+            },
+            {
+              "const": "animation-motion-set",
+              "type": "string"
+            },
+            {
+              "const": "animation-clip",
+              "type": "string"
+            },
+            {
+              "const": "humanoid-rig",
+              "type": "string"
+            },
+            {
+              "const": "animation-tuning",
+              "type": "string"
+            }
+          ]
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "expected": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "sourceContentHash",
+        "projectRevisionId",
+        "prefabReferences"
+      ],
+      "properties": {
+        "sourceContentHash": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "projectRevisionId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "prefabReferences": {
+          "type": "array",
+          "items": {
+            "$id": "GameObjectPrefabReference",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "assetType",
+              "assetId",
+              "version",
+              "contentHash"
+            ],
+            "properties": {
+              "assetType": {
+                "$id": "GameObjectPrefabAssetType",
+                "const": "game-object-prefab",
+                "type": "string"
+              },
+              "assetId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "version": {
+                "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                "type": "string"
+              },
+              "contentHash": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "targetPrefabIds": {
+      "type": "array",
+      "items": {
+        "pattern": "^[a-z0-9][a-z0-9-]*$",
+        "minLength": 1,
+        "maxLength": 96,
+        "type": "string"
+      }
+    }
+  }
+}

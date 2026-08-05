@@ -40,6 +40,10 @@ import {
   SceneOperation,
 } from './scene.ts';
 import {
+  PublishAnimationAndUpdatePrefabsRequest,
+  PublishPrefabAndUpdateInstancesRequest,
+} from './prefab-save.ts';
+import {
   BaseGameObjectPrefabAsset,
   ForkGameObjectPrefabAsset,
   GameObjectComponentDefinition,
@@ -127,6 +131,8 @@ export const SCHEMA_REGISTRY = {
   GameObjectInstanceRelations,
   PlaceablePrefabAsset,
   GameObjectSceneOperation,
+  PublishAnimationAndUpdatePrefabsRequest,
+  PublishPrefabAndUpdateInstancesRequest,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;

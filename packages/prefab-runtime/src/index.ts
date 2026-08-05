@@ -5,5 +5,6 @@ export * from './validation.ts';
 export * from './registry.ts';
 export * from './resolution.ts';
 export * from './usage.ts';
+export * from './adoption.ts';
 export * from './derivation.ts';
 export * from './library-index.ts';

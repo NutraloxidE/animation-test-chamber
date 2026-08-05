@@ -13,6 +13,7 @@ export * from './acquisition.ts';
 export * from './intent-track.ts';
 export * from './transform.ts';
 export * from './prefab.ts';
+export * from './prefab-save.ts';
 export * from './scene.ts';
 export * from './repository-apply.ts';
 export * from './world.ts';
