@@ -113,8 +113,15 @@ export async function applyToRepository(request: ApplyRequestBody): Promise<Appl
    * client stops guessing.
    */
   switch (body.status) {
+    /*
+     * The two success cases additionally require a successful response and the
+     * documents that prove the claim. The server only sends these with a 200,
+     * so the check costs nothing when things are working — and when they are
+     * not, reporting a write on a body alone is the one failure mode with no
+     * recovery: the user believes their work is saved and stops keeping it.
+     */
     case 'no-change':
-      if (!body.project || !body.targetDocument) break;
+      if (!response.ok || !body.project || !body.targetDocument) break;
       return { status: 'no-change', project: body.project, targetDocument: body.targetDocument };
     case 'conflict':
       return { status: 'conflict', issues };
@@ -131,7 +138,7 @@ export async function applyToRepository(request: ApplyRequestBody): Promise<Appl
         ...(body.transactionId ? { transactionId: body.transactionId } : {}),
       };
     case 'applied':
-      if (!body.project || !body.targetDocument) break;
+      if (!response.ok || !body.project || !body.targetDocument) break;
       return {
         status: 'applied',
         project: body.project,
