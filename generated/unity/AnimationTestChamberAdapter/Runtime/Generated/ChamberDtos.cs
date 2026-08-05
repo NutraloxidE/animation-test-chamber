@@ -183,9 +183,13 @@ namespace AnimationTestChamber.Generated
         public string id;
         public string displayName;
         public List<SceneEntityDefinition> entities;
+        // optional
+        public List<GameObjectInstanceDefinition> gameObjects;
         public List<IntentTrackDefinition> intentTracks;
         // optional
         public string activeCameraEntityId;
+        // optional
+        public string activeCameraGameObjectId;
         // optional
         public ProtectionMetadata protection;
     }
@@ -284,6 +288,53 @@ namespace AnimationTestChamber.Generated
         public string assetPath;
         public string assetId;
         public string version;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public bool enabled;
+        public GameObjectPrefabReference prefab;
+        public TransformDefinition transform;
+        public List<PrefabComponentOverride> componentOverrides;
+        public GameObjectInstanceBindings bindings;
+        public GameObjectInstanceRelations relations;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class GameObjectPrefabReference
+    {
+        public string assetType;
+        public string assetId;
+        public string version;
+        public string contentHash;
+    }
+
+    [Serializable]
+    public class PrefabComponentOverride
+    {
+        public string nodeId;
+        public string componentId;
+        public List<CanonicalPatch> patches;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceBindings
+    {
+        // optional
+        public CharacterControllerBindingDefinition characterIntent;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceRelations
+    {
+        // optional
+        public string cameraTargetGameObjectId;
     }
 
     [Serializable]
@@ -822,7 +873,7 @@ namespace AnimationTestChamber.Generated
     public class TransitionCondition
     {
         public string parameter;
-        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ operator;
+        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ @operator;
         public string value;
     }
 
@@ -913,6 +964,139 @@ namespace AnimationTestChamber.Generated
         public float lookX;
         public float lookY;
         public int buttons;
+    }
+
+    [Serializable]
+    public class BaseGameObjectPrefabAsset
+    {
+        public GameObjectPrefabMetadata metadata;
+        public BaseGameObjectPrefabAssetDerivation derivation;
+        public bool @abstract;
+        public PrefabNodeDefinition root;
+    }
+
+    [Serializable]
+    public class GameObjectPrefabMetadata
+    {
+        public int schemaVersion;
+        public string assetType;
+        public string id;
+        public string version;
+        public string displayName;
+        public string description;
+        public List<string> tags;
+        public string createdAt;
+        public string createdBy;
+        public string contentHash;
+        // optional
+        public ProtectionMetadata protection;
+        // optional
+        public ValueProvenance provenance;
+        // optional
+        public PrefabDerivationProvenance assetProvenance;
+    }
+
+    [Serializable]
+    public class PrefabDerivationProvenance
+    {
+        // optional
+        public GameObjectPrefabReference forkedFrom;
+        // optional
+        public GameObjectPrefabReference duplicatedFrom;
+        // optional
+        public string promotedFromCandidateId;
+        // optional
+        public int migratedFromSchemaVersion;
+        // optional
+        public string note;
+    }
+
+    [Serializable]
+    public class BaseGameObjectPrefabAssetDerivation
+    {
+        public string mode;
+    }
+
+    [Serializable]
+    public class PrefabNodeDefinition
+    {
+        public string nodeId;
+        public string displayName;
+        public bool enabled;
+        public TransformDefinition transform;
+        public List<GameObjectComponentDefinition> components;
+        public List<PrefabNodeDefinitionChildrenItem> children;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class GameObjectComponentDefinition
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public int schemaVersion;
+        public string componentId;
+        public string componentType;
+        public bool enabled;
+        public ProtectionMetadata protection;
+        public RenderableModelBinding model;
+        public bool castShadow;
+        public bool receiveShadow;
+        public CharacterAnimationAssignment assignment;
+        public string defaultContextKey;
+        public string intentChannel;
+        public float movementScale;
+        public float turnScale;
+        public float radius;
+        public float height;
+        public Vec3 center;
+        public List<EquipmentSocketDefinition> sockets;
+        public string /* perspective | orthographic */ projection;
+        public float fieldOfViewDeg;
+        public float orthographicSize;
+        public string /* directional | point | spot */ lightType;
+        public float intensity;
+        public string color;
+        public float range;
+        public float spotAngleRad;
+        public List<string> tags;
+    }
+
+    [Serializable]
+    public class RenderableModelBinding
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string presetId;
+        public string assetPath;
+        public float scale;
+        public float rotationYRad;
+    }
+
+    [Serializable]
+    public class EquipmentSocketDefinition
+    {
+        public string socketId;
+        // optional
+        public string boneName;
+        public List<string> localPosition;
+        public List<string> localRotation;
+        public List<string> acceptedItemTags;
+    }
+
+    [Serializable]
+    public class PrefabNodeDefinitionChildrenItem
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string node;
+        public string instanceId;
+        public GameObjectPrefabReference prefab;
+        public TransformDefinition transform;
+        public List<PrefabComponentOverride> overrides;
     }
 
 }

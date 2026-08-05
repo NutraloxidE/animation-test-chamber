@@ -1,0 +1,83 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "relay",
+      "version": "1.0.0",
+      "displayName": "Relay",
+      "description": "Migrated from Character \"alternate-humanoid-character\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "createdAt": "2026-08-06T00:00:00.000Z",
+      "createdBy": "prefabs:migrate",
+      "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635"
+    },
+    "derivation": {
+      "mode": "variant",
+      "parent": {
+        "assetType": "game-object-prefab",
+        "assetId": "humanoid-character-base",
+        "version": "1.0.0",
+        "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+      },
+      "patches": [
+        {
+          "kind": "add-component",
+          "nodeId": "root",
+          "component": {
+            "schemaVersion": 1,
+            "componentId": "model",
+            "componentType": "model-renderer",
+            "enabled": true,
+            "model": {
+              "kind": "procedural-humanoid",
+              "presetId": "relay"
+            },
+            "castShadow": true,
+            "receiveShadow": true
+          }
+        },
+        {
+          "kind": "patch-component",
+          "nodeId": "root",
+          "componentId": "animator",
+          "patches": [
+            {
+              "path": "/assignment/motionSet",
+              "op": "set",
+              "value": {
+                "assetType": "animation-motion-set",
+                "assetId": "alternate-humanoid-motion-set",
+                "version": "1.0.0",
+                "contentHash": "796f61d6c797150a14eb510ba6a766c4df41dda261cefc51203f79e325233545"
+              }
+            },
+            {
+              "path": "/assignment/tuning",
+              "op": "set",
+              "value": {
+                "assetType": "animation-tuning",
+                "assetId": "alternate-humanoid-tuning",
+                "version": "1.0.0",
+                "contentHash": "1fe0d91cbb0ca1f8879b9e20c9ff07010da7d0e62300b6cb16679355c4156588"
+              }
+            },
+            {
+              "path": "/assignment/instanceOverrides",
+              "op": "set",
+              "value": []
+            }
+          ]
+        }
+      ]
+    },
+    "abstract": false
+  }
+}

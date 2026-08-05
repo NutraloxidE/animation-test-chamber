@@ -190,6 +190,24 @@ export function schemaConstraintStage(): StageResult {
       const issues: StageIssue[] = [];
       const schemaFiles = listFiles('packages/schema/src').filter((file) => file.endsWith('.ts'));
 
+      /** Property names declared as `name: Type.Optional(...)`. */
+      const optionalFieldNames = (source: string): Set<string> =>
+        new Set(
+          [...source.matchAll(/^\s*([A-Za-z_$][\w$]*):\s*Type\.Optional\(/gm)].map(
+            (match) => match[1]!,
+          ),
+        );
+
+      /** Property names declared with any other value — i.e. required ones. */
+      const requiredFieldNames = (source: string): Set<string> => {
+        const optional = optionalFieldNames(source);
+        return new Set(
+          [...source.matchAll(/^\s*([A-Za-z_$][\w$]*):\s*\S/gm)]
+            .map((match) => match[1]!)
+            .filter((name) => !optional.has(name)),
+        );
+      };
+
       /*
        * `additionalProperties: false` is what stops unknown fields creeping in,
        * and the count of them across the package must never fall.
@@ -229,15 +247,26 @@ export function schemaConstraintStage(): StageResult {
           });
         }
 
-        const requiredBefore = (before.match(/Type\.Optional\(/g) ?? []).length;
-        const requiredAfter = (after.match(/Type\.Optional\(/g) ?? []).length;
-        if (requiredAfter > requiredBefore + 2) {
-          issues.push({
-            files: [file],
-            expected: 'required fields to stay required',
-            actual: `${requiredAfter - requiredBefore} more fields became optional`,
-            message: `${file} made several fields optional at once`,
-          });
+        /*
+         * A required field that became optional, named.
+         *
+         * This used to compare raw `Type.Optional(` counts and fire whenever a
+         * file gained more than two of them — which reports "several fields
+         * became optional" for a file that added a *new type* with optional
+         * members, and says nothing at all when one existing field is quietly
+         * relaxed while another is deleted. Neither number is the question. The
+         * question is whether a field that was required at HEAD is optional
+         * now, so that is what is compared, by name.
+         */
+        for (const name of optionalFieldNames(after)) {
+          if (requiredFieldNames(before).has(name)) {
+            issues.push({
+              files: [file],
+              expected: `"${name}" to stay required`,
+              actual: 'it is now optional',
+              message: `${file} relaxed "${name}" from required to optional`,
+            });
+          }
         }
       }
 
@@ -968,6 +997,126 @@ export function characterSelectorBoundaryStage(): StageResult {
   );
 }
 
+/**
+ * The GameObject Prefab system exists, and canonical documents stay canonical
+ * (work package §17).
+ *
+ * Two halves, and the positive half is the unusual one. A guard that only
+ * forbids things cannot tell "the Prefab system was never built" from "the
+ * Prefab system is fine", so this one also asserts that each load-bearing piece
+ * is present by name: a refactor that deletes the resolver fails here rather
+ * than passing quietly because nothing forbidden was added.
+ *
+ * The negative half — forbidding production reads of `Project.characters`,
+ * `SceneEntityDefinition.kind` and the rest of the retired vocabulary — is
+ * deliberately *not* here yet. Those are still the fields the renderer, the
+ * Scene runtime and the API read, so a guard forbidding them today would fail
+ * on the code it is meant to protect. It lands with the production switchover;
+ * `reports/gameobject-prefab-migration-audit.md` records that as the open item.
+ */
+export function prefabSystemGuardStage(): StageResult {
+  return stage(
+    'gameobject prefab system present and canonical',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'a missing piece means the Prefab spine was removed; a runtime field means a tick wrote itself into a document',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /** Each load-bearing symbol, and the file that must still declare it. */
+      const required: { file: string; symbols: string[] }[] = [
+        {
+          file: 'packages/schema/src/prefab.ts',
+          symbols: [
+            'GameObjectPrefabReference',
+            'BaseGameObjectPrefabAsset',
+            'VariantGameObjectPrefabAsset',
+            'GameObjectComponentDefinition',
+            'GAME_OBJECT_COMPONENT_TYPES',
+            'PrefabNodeDefinition',
+            'PrefabComponentOverride',
+            'isCharacterComposition',
+          ],
+        },
+        {
+          file: 'packages/schema/src/scene.ts',
+          symbols: ['GameObjectInstanceDefinition', 'PlaceablePrefabAsset', 'GameObjectSceneOperation'],
+        },
+        { file: 'packages/prefab-runtime/src/registry.ts', symbols: ['PrefabAssetRegistry'] },
+        { file: 'packages/prefab-runtime/src/resolution.ts', symbols: ['resolveGameObjectPrefab'] },
+        { file: 'packages/prefab-runtime/src/usage.ts', symbols: ['describePrefabUsage'] },
+        { file: 'packages/game-object-runtime/src/runtime.ts', symbols: ['RuntimeGameObject'] },
+        { file: 'packages/game-object-runtime/src/scene.ts', symbols: ['instantiateScene'] },
+      ];
+
+      for (const entry of required) {
+        const source = readRepoFile(entry.file);
+        if (source === null) {
+          issues.push({
+            files: [entry.file],
+            expected: 'the file to exist',
+            actual: 'it does not',
+            message: `${entry.file} is missing; the Prefab spine is incomplete`,
+          });
+          continue;
+        }
+        for (const symbol of entry.symbols) {
+          if (!source.includes(symbol)) {
+            issues.push({
+              files: [entry.file],
+              expected: `${entry.file} to declare ${symbol}`,
+              actual: 'it does not',
+              message: `${symbol} has been removed from ${entry.file}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * Runtime state is never canonical (§3.6). Checked against the files on
+       * disk rather than against the schema, because the schema can only refuse
+       * what it describes — and `CanonicalPatch.value` is `unknown` by
+       * necessity, which is exactly the hole a mixer handle would fit through.
+       */
+      const RUNTIME_FIELDS = [
+        'animationTime',
+        'velocity',
+        'mixer',
+        'activeState',
+        'transitionProgress',
+        'runtimeHandle',
+        'inputBuffer',
+      ];
+      const canonicalFiles = [
+        ...listFiles('assets/prefabs').filter((file) => file.endsWith('.json')),
+        ...listFiles('projects').filter((file) => file.endsWith('.json')),
+      ];
+      for (const file of canonicalFiles) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const field of RUNTIME_FIELDS) {
+          if (new RegExp(`"${field}"\\s*:`).test(source)) {
+            issues.push({
+              files: [file],
+              expected: 'a canonical document with no runtime state',
+              actual: `it contains "${field}"`,
+              message: `${file} stores runtime state in a canonical document`,
+            });
+          }
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${required.length} module(s) and ${canonicalFiles.length} canonical file(s) checked`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     workspaceAliasStage(),
@@ -982,6 +1131,7 @@ export function repoGuardStages(): StageResult[] {
     publishedAssetImmutabilityStage(),
     stateNameDependenceStage(),
     worldContractGuardStage(),
+    prefabSystemGuardStage(),
   ];
 }
 

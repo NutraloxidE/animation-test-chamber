@@ -1,6 +1,15 @@
-import type { ResolvedProject, ReplayDefinition } from '@atc/schema';
+import type {
+  GameObjectPrefabAsset,
+  ReplayDefinition,
+  ResolvedProject,
+  SceneDefinition,
+} from '@atc/schema';
 import {
   ACTION_NAMES,
+  BaseGameObjectPrefabAsset,
+  GameObjectComponentDefinition,
+  GameObjectInstanceDefinition,
+  prefabAssetFilePath,
   AnimationGraphDefinition,
   CameraProfile,
   HapticProfile,
@@ -61,10 +70,17 @@ function json(value: unknown): string {
  * nothing in this bundle is ever read back as a source of truth, which is why
  * each file carries a `_generated` marker and the adapter README says so.
  */
+export interface UnityPrefabExport {
+  id: string;
+  version: string;
+  document: GameObjectPrefabAsset;
+}
+
 export function buildUnityBundle(
   project: ResolvedProject,
   replays: ReplayDefinition[],
   generatedAt = new Date().toISOString(),
+  prefabs: readonly UnityPrefabExport[] = [],
 ): ExportFile[] {
   const marker = {
     _generated: true,
@@ -130,6 +146,46 @@ export function buildUnityBundle(
     files.push({ path: `replays/${replay.id}.json`, content: json({ ...marker, replay }) });
   }
 
+  /*
+   * Prefabs and Scene instances travel as the same split the canonical data
+   * uses (§16): one reusable asset per Prefab version, and Scene GameObjects
+   * that *reference* one. The adapter turns the first into a Unity prefab and
+   * the second into an instantiation — and gets no special path per former
+   * entity kind, because there are no longer any kinds to special-case.
+   *
+   * Ids and versions are preserved exactly. A Unity-side rename would break
+   * the one property that makes this bundle checkable against the repository.
+   */
+  for (const prefab of prefabs) {
+    files.push({
+      path: `prefabs/${prefab.id}/${prefab.version}.json`,
+      content: json({ ...marker, prefab: prefab.document }),
+    });
+  }
+  files.push({
+    path: 'prefabs/manifest.json',
+    content: json({
+      ...marker,
+      prefabs: prefabs.map((prefab) => ({
+        id: prefab.id,
+        version: prefab.version,
+        contentHash: prefab.document.metadata.contentHash,
+        abstract: prefab.document.abstract,
+        derivation: prefab.document.derivation.mode,
+        canonicalPath: prefabAssetFilePath(prefab.id, prefab.version),
+        sourcePath: `prefabs/${prefab.id}/${prefab.version}.json`,
+      })),
+      scenes: project.scenes.map((scene: SceneDefinition) => ({
+        id: scene.id,
+        activeCameraGameObjectId: scene.activeCameraGameObjectId ?? null,
+        gameObjects: (scene.gameObjects ?? []).map((gameObject) => ({
+          id: gameObject.id,
+          prefab: gameObject.prefab,
+        })),
+      })),
+    }),
+  });
+
   const dtos = generateCSharpDtos(
     {
       ProjectDefinition: ProjectSchema,
@@ -142,6 +198,9 @@ export function buildUnityBundle(
       CameraProfile,
       HapticProfile,
       ReplayDefinition: ReplaySchema,
+      GameObjectPrefabAsset: BaseGameObjectPrefabAsset,
+      GameObjectComponentDefinition,
+      GameObjectInstanceDefinition,
     },
     {
       Action: [...ACTION_NAMES],

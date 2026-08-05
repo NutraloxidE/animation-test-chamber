@@ -329,8 +329,21 @@ export function worldContractStage(): StageResult {
        * that the project did not receive still fails here.
        */
       const migratedFixture = JSON.stringify(migrateWorldDefinition(world));
-      const shippedScene = project.scenes.find((scene) => scene.id === world.id);
-      if (JSON.stringify(shippedScene ?? null) !== migratedFixture) {
+      const shipped = project.scenes.find((scene) => scene.id === world.id);
+      /*
+       * The GameObject view is *derived* from the entity view by
+       * `pnpm prefabs:migrate`, so it is stripped before the comparison rather
+       * than added to the fixture. Baking it into the fixture would make this
+       * check assert that two derived documents agree, which is a question
+       * `harness:game-objects` already answers directly — and would give the
+       * fixture a second thing to drift on.
+       */
+      const shippedScene =
+        shipped === undefined
+          ? null
+          : (({ gameObjects: _gameObjects, activeCameraGameObjectId: _activeCamera, ...rest }) =>
+              rest)(shipped);
+      if (JSON.stringify(shippedScene) !== migratedFixture) {
         issues.push(
           issue(
             'projects/demo-character/project.json does not carry the acceptance scene',

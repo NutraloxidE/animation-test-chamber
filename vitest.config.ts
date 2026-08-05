@@ -24,6 +24,8 @@ export default defineConfig({
       '@atc/acquisition-core': pkg('acquisition-core'),
       '@atc/unity-export': pkg('unity-export'),
       '@atc/repository-transaction': pkg('repository-transaction'),
+      '@atc/prefab-runtime': pkg('prefab-runtime'),
+      '@atc/game-object-runtime': pkg('game-object-runtime'),
     },
   },
   test: {

@@ -1,6 +1,7 @@
 export * from './constants.ts';
 export * from './common.ts';
 export * from './animation.ts';
+export * from './assets.ts';
 export * from './animation-assets.ts';
 export * from './animation-save.ts';
 export * from './input.ts';
@@ -10,6 +11,8 @@ export * from './haptics.ts';
 export * from './replay.ts';
 export * from './acquisition.ts';
 export * from './intent-track.ts';
+export * from './transform.ts';
+export * from './prefab.ts';
 export * from './scene.ts';
 export * from './repository-apply.ts';
 export * from './world.ts';

@@ -37,7 +37,9 @@
       "@atc/ai-adapter": ["packages/ai-adapter/src/index.ts"],
       "@atc/acquisition-core": ["packages/acquisition-core/src/index.ts"],
       "@atc/unity-export": ["packages/unity-export/src/index.ts"],
-      "@atc/repository-transaction": ["packages/repository-transaction/src/index.ts"]
+      "@atc/repository-transaction": ["packages/repository-transaction/src/index.ts"],
+      "@atc/prefab-runtime": ["packages/prefab-runtime/src/index.ts"],
+      "@atc/game-object-runtime": ["packages/game-object-runtime/src/index.ts"]
     }
   }
 }

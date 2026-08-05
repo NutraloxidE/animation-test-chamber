@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "assets/prefabs",
+  "prefabs": [
+    {
+      "id": "default-scene-camera",
+      "version": "1.0.0",
+      "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e",
+      "displayName": "Scene Camera",
+      "description": "Generated from a migrated Scene camera entity.",
+      "tags": [
+        "camera"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "camera"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "default-scene-camera",
+        "Scene Camera",
+        "Generated from a migrated Scene camera entity.",
+        "camera",
+        "root",
+        "Camera"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "humanoid-character-base",
+      "version": "1.0.0",
+      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0",
+      "displayName": "Humanoid Character Base",
+      "description": "The shared humanoid composition: an Animator on the project behaviour, a CharacterMotor, and a capsule. Abstract — it carries no model, so it is a shape to inherit rather than a thing to place.",
+      "tags": [
+        "character",
+        "humanoid",
+        "base"
+      ],
+      "derivation": "base",
+      "abstract": true,
+      "componentTypes": [
+        "animator",
+        "capsule-collider",
+        "character-motor",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "humanoid-character-base",
+        "Humanoid Character Base",
+        "The shared humanoid composition: an Animator on the project behaviour, a CharacterMotor, and a capsule. Abstract — it carries no model, so it is a shape to inherit rather than a thing to place.",
+        "character",
+        "humanoid",
+        "base",
+        "root",
+        "Humanoid",
+        "animator",
+        "humanoid-third-person-base",
+        "demo-humanoid-motion-set",
+        "demo-humanoid-rig",
+        "character-motor",
+        "capsule-collider",
+        "capsule",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "navigator",
+      "version": "1.0.0",
+      "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7",
+      "displayName": "Navigator",
+      "description": "Migrated from Character \"demo-humanoid\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "navigator",
+        "Navigator",
+        "Migrated from Character \"demo-humanoid\".",
+        "character",
+        "humanoid",
+        "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "quaternius-knight",
+      "version": "1.0.0",
+      "contentHash": "c7a7366ec8f73a27980948a5eeecc36f673575f0f3c0f44992fa04f05bddda78",
+      "displayName": "Quaternius Knight",
+      "description": "Migrated from Character \"quaternius-knight\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "quaternius-knight",
+        "Quaternius Knight",
+        "Migrated from Character \"quaternius-knight\".",
+        "character",
+        "humanoid",
+        "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "quaternius-universal-base",
+      "version": "1.0.0",
+      "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be",
+      "displayName": "Universal Base Superhero",
+      "description": "Migrated from Character \"quaternius-universal-base\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "quaternius-universal-base",
+        "Universal Base Superhero",
+        "Migrated from Character \"quaternius-universal-base\".",
+        "character",
+        "humanoid",
+        "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "relay",
+      "version": "1.0.0",
+      "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635",
+      "displayName": "Relay",
+      "description": "Migrated from Character \"alternate-humanoid-character\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "relay",
+        "Relay",
+        "Migrated from Character \"alternate-humanoid-character\".",
+        "character",
+        "humanoid",
+        "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "sentinel",
+      "version": "1.0.0",
+      "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183",
+      "displayName": "Sentinel",
+      "description": "Migrated from Character \"sentinel\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "sentinel",
+        "Sentinel",
+        "Migrated from Character \"sentinel\".",
+        "character",
+        "humanoid",
+        "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    }
+  ]
+}

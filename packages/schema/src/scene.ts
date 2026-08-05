@@ -19,92 +19,31 @@
 import { Type, type Static } from '@sinclair/typebox';
 import { Id, ProtectionMetadata, SchemaVersion } from './common.ts';
 import { IntentTrackDefinition } from './intent-track.ts';
-
-/** Bounds keep a transform finite *and* inside a space a camera can find. */
-const SCENE_COORD = Type.Number({ minimum: -10000, maximum: 10000 });
-
-/**
- * A unit quaternion component.
- *
- * Bounded to [-1, 1] because that is the only range a unit quaternion can
- * occupy. The bound does not prove the quaternion is normalized — nothing a
- * JSON Schema can say does — so `validateSceneReferences` checks the magnitude
- * separately. Both exist: the bound catches garbage cheaply, the magnitude
- * check catches the plausible-looking rotation that would silently scale
- * everything it touches.
- */
-const QUAT_COMPONENT = Type.Number({ minimum: -1, maximum: 1 });
-
-/** Scale is positive and bounded; a zero or negative axis flips or erases geometry. */
-const SCALE_COMPONENT = Type.Number({ minimum: 0.001, maximum: 1000 });
+import { GameObjectPrefabReference, PrefabComponentOverride } from './prefab.ts';
+import {
+  DEFAULT_SCENE_TRANSFORM,
+  IDENTITY_ROTATION,
+  IDENTITY_TRANSFORM,
+  TransformDefinition,
+  UNIT_SCALE,
+  quaternionToYaw,
+  yawToQuaternion,
+} from './transform.ts';
 
 /**
- * A full scene-composition transform.
- *
- * Wider than the World contract's position-plus-yaw, deliberately. The old
- * transform was yaw-only because the *runtime* is yaw-only, which conflated
- * what a character can do with what a scene can express — a prop that cannot be
- * tilted and a light that cannot be aimed are not modelling decisions, they are
- * a locomotion constraint that leaked into the document.
- *
- * The runtime stays yaw-only. `SceneRuntime` derives yaw from this quaternion
- * when it constructs a `Simulation`; the authored rotation is never discarded
- * to make that easier.
+ * The transform contract moved to `transform.ts` when Prefabs gained nodes that
+ * also need one. Re-exported here so that every existing `from './scene.ts'`
+ * and `from '@atc/schema'` import keeps resolving to the same declaration.
  */
-export const TransformDefinition = Type.Object(
-  {
-    position: Type.Object(
-      { x: SCENE_COORD, y: SCENE_COORD, z: SCENE_COORD },
-      { additionalProperties: false },
-    ),
-    rotation: Type.Object(
-      { x: QUAT_COMPONENT, y: QUAT_COMPONENT, z: QUAT_COMPONENT, w: QUAT_COMPONENT },
-      { additionalProperties: false },
-    ),
-    scale: Type.Object(
-      { x: SCALE_COMPONENT, y: SCALE_COMPONENT, z: SCALE_COMPONENT },
-      { additionalProperties: false },
-    ),
-  },
-  { $id: 'TransformDefinition', additionalProperties: false },
-);
-export type TransformDefinition = Static<typeof TransformDefinition>;
-
-export const IDENTITY_ROTATION: TransformDefinition['rotation'] = { x: 0, y: 0, z: 0, w: 1 };
-export const UNIT_SCALE: TransformDefinition['scale'] = { x: 1, y: 1, z: 1 };
-
-/** The transform a newly created or migrated entity opens at. */
-export const DEFAULT_SCENE_TRANSFORM: TransformDefinition = {
-  position: { x: 0, y: 2, z: 0 },
-  rotation: { ...IDENTITY_ROTATION },
-  scale: { ...UNIT_SCALE },
+export {
+  DEFAULT_SCENE_TRANSFORM,
+  IDENTITY_ROTATION,
+  IDENTITY_TRANSFORM,
+  TransformDefinition,
+  UNIT_SCALE,
+  quaternionToYaw,
+  yawToQuaternion,
 };
-
-/**
- * A rotation about world Y, as a unit quaternion.
- *
- * The migration path from the World contract's `yawRad`, and the only one: a
- * legacy yaw must land on exactly one quaternion or the migration is not
- * deterministic, and two callers rounding it differently is precisely how
- * "idempotent" quietly stops being true.
- */
-export function yawToQuaternion(yawRad: number): TransformDefinition['rotation'] {
-  const half = yawRad / 2;
-  return { x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) };
-}
-
-/**
- * The yaw a runtime should spawn at, recovered from an authored quaternion.
- *
- * Exact inverse of `yawToQuaternion` for rotations about Y, and a best-effort
- * projection for any other rotation: a prop tilted on X has no yaw a yaw-only
- * locomotion runtime can honour, and reporting the Y component of its swing is
- * a more useful answer than refusing to spawn it.
- */
-export function quaternionToYaw(rotation: TransformDefinition['rotation']): number {
-  const { x, y, z, w } = rotation;
-  return Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
-}
 
 /**
  * Where an entity's normalized intent comes from.
@@ -289,6 +228,89 @@ export const SceneEntityDefinition = Type.Union(
 );
 export type SceneEntityDefinition = Static<typeof SceneEntityDefinition>;
 
+/* -------------------------------------------------------------------------- */
+/* GameObject instances (work package §6)                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How this instance connects to the Scene and the runtime.
+ *
+ * A binding is authored configuration, not a live connection — the same
+ * reasoning as `CharacterControllerBindingDefinition`, which it wraps. It sits
+ * on the *instance* rather than in the Prefab because "player one drives this
+ * one" is a fact about one placement in one Scene, and a Prefab that carried it
+ * could be placed exactly once.
+ *
+ * Only an object whose resolved Prefab contains a `character-motor` may carry
+ * `characterIntent` (§6.1); the registry refuses the rest.
+ */
+export const GameObjectInstanceBindings = Type.Object(
+  {
+    characterIntent: Type.Optional(CharacterControllerBindingDefinition),
+  },
+  { $id: 'GameObjectInstanceBindings', additionalProperties: false },
+);
+export type GameObjectInstanceBindings = Static<typeof GameObjectInstanceBindings>;
+
+/**
+ * How this instance points at *other* instances.
+ *
+ * Stable GameObject ids, never indexes (§6.2): an index relation breaks the
+ * moment anything is reordered, and reordering is a first-class Scene
+ * operation. Only an object with a Camera Component may carry a camera target.
+ */
+export const GameObjectInstanceRelations = Type.Object(
+  {
+    cameraTargetGameObjectId: Type.Optional(Id),
+  },
+  { $id: 'GameObjectInstanceRelations', additionalProperties: false },
+);
+export type GameObjectInstanceRelations = Static<typeof GameObjectInstanceRelations>;
+
+/**
+ * One placement of one Prefab version in one Scene.
+ *
+ * This single type replaces the four-branch entity union. There is no `kind`:
+ * what the object *is* comes from the Components its resolved Prefab carries,
+ * so a Camera, a Light, an animated prop and a character carrying a lantern are
+ * all this shape, and adding the next capability adds a Component rather than a
+ * fifth branch here.
+ *
+ * The Prefab reference is exact (§3.5) — type, id, version and content hash —
+ * so a Scene cannot drift onto a Prefab version nobody approved.
+ */
+export const GameObjectInstanceDefinition = Type.Object(
+  {
+    schemaVersion: SchemaVersion,
+    id: Id,
+    displayName: Type.String(),
+    /** A disabled object does not tick and is not rendered. It stays inspectable. */
+    enabled: Type.Boolean(),
+    prefab: GameObjectPrefabReference,
+    transform: TransformDefinition,
+    /** Instance-scoped component overrides, addressed by stable node/component id. */
+    componentOverrides: Type.Array(PrefabComponentOverride),
+    bindings: GameObjectInstanceBindings,
+    relations: GameObjectInstanceRelations,
+    protection: Type.Optional(ProtectionMetadata),
+  },
+  { $id: 'GameObjectInstanceDefinition', additionalProperties: false },
+);
+export type GameObjectInstanceDefinition = Static<typeof GameObjectInstanceDefinition>;
+
+/**
+ * What the Scene Asset Panel can place (§6.4).
+ *
+ * One thing, not four. "Place a Light" and "place a Character" were different
+ * actions producing different entity kinds; they are now the same action
+ * producing the same instance type, differing only in which Prefab it names.
+ */
+export const PlaceablePrefabAsset = Type.Object(
+  { kind: Type.Literal('prefab'), prefab: GameObjectPrefabReference },
+  { $id: 'PlaceablePrefabAsset', additionalProperties: false },
+);
+export type PlaceablePrefabAsset = Static<typeof PlaceablePrefabAsset>;
+
 export const SceneDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -298,11 +320,26 @@ export const SceneDefinition = Type.Object(
      * Declaration order is tick order (DECISION 0009). Sorting by id would be
      * equally deterministic and much harder to author against: a human who
      * renamed an entity would silently reorder the scene.
+     *
+     * @deprecated The entity-kind union is superseded by `gameObjects`
+     * (DECISION 0020). It is still the field the current runtime, renderer and
+     * Unity exporter read; see the migration audit for what remains to move.
      */
     entities: Type.Array(SceneEntityDefinition),
+    /**
+     * Every GameObject instance in the Scene, in declaration order.
+     *
+     * Optional *only* for the length of the migration: `pnpm prefabs:migrate`
+     * derives it from `entities`, and the two are checked against each other by
+     * `harness:game-objects` so a Scene cannot be edited through one view and
+     * silently disagree with the other.
+     */
+    gameObjects: Type.Optional(Type.Array(GameObjectInstanceDefinition)),
     intentTracks: Type.Array(IntentTrackDefinition),
     /** Which camera entity the scene plays through. Optional: an editor viewport suffices. */
     activeCameraEntityId: Type.Optional(Id),
+    /** The GameObject-instance spelling of `activeCameraEntityId`. */
+    activeCameraGameObjectId: Type.Optional(Id),
     protection: Type.Optional(ProtectionMetadata),
   },
   { $id: 'SceneDefinition', additionalProperties: false },
@@ -414,6 +451,129 @@ export const SceneOperation = Type.Union(
   { $id: 'SceneOperation' },
 );
 export type SceneOperation = Static<typeof SceneOperation>;
+
+/**
+ * The GameObject-based repository operations (§6.5).
+ *
+ * Every kind-specific operation collapses: `scene.place_asset` with a
+ * four-branch payload becomes `scene.place_prefab`, and
+ * `scene.set_character_source` plus `scene.bind_controller` become
+ * `scene.set_prefab_source` and `scene.set_instance_binding` — which work for a
+ * light and a camera too, because there is nothing character-shaped about
+ * "point this instance at a different Prefab".
+ *
+ * `additionalProperties: false` throughout, for the same reason as
+ * `SceneOperation`: a typo'd field must be a refusal, not a silently ignored
+ * intent.
+ */
+export const GameObjectSceneOperation = Type.Union(
+  [
+    Type.Object(
+      {
+        type: Type.Literal('scene.place_prefab'),
+        gameObjectId: Id,
+        displayName: DisplayName,
+        prefab: GameObjectPrefabReference,
+        transform: Type.Optional(TransformDefinition),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.delete_game_object'), gameObjectId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.duplicate_game_object'), gameObjectId: Id },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.rename_game_object'),
+        gameObjectId: Id,
+        displayName: DisplayName,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_transform'),
+        gameObjectId: Id,
+        transform: TransformDefinition,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { type: Type.Literal('scene.set_enabled'), gameObjectId: Id, enabled: Type.Boolean() },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_prefab_source'),
+        gameObjectId: Id,
+        prefab: GameObjectPrefabReference,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_component_override'),
+        gameObjectId: Id,
+        override: PrefabComponentOverride,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.clear_component_override'),
+        gameObjectId: Id,
+        nodeId: Id,
+        componentId: Id,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_instance_binding'),
+        gameObjectId: Id,
+        bindings: GameObjectInstanceBindings,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_relation'),
+        gameObjectId: Id,
+        relations: GameObjectInstanceRelations,
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.reorder_game_object'),
+        gameObjectId: Id,
+        toIndex: Type.Integer({ minimum: 0 }),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        type: Type.Literal('scene.set_active_camera'),
+        gameObjectId: Type.Union([Id, Type.Null()]),
+      },
+      { additionalProperties: false },
+    ),
+  ],
+  { $id: 'GameObjectSceneOperation' },
+);
+export type GameObjectSceneOperation = Static<typeof GameObjectSceneOperation>;
+
+/** The GameObject instance with this id, or undefined. Never an index lookup. */
+export function sceneGameObject(
+  scene: SceneDefinition,
+  gameObjectId: string,
+): GameObjectInstanceDefinition | undefined {
+  return scene.gameObjects?.find((gameObject) => gameObject.id === gameObjectId);
+}
 
 /** Narrowing helper; used wherever only character entities are relevant. */
 export function isCharacterEntity(

@@ -863,7 +863,121 @@
             ]
           }
         ],
-        "activeCameraEntityId": "scene-camera"
+        "activeCameraEntityId": "scene-camera",
+        "gameObjects": [
+          {
+            "schemaVersion": 2,
+            "id": "controlled-humanoid",
+            "displayName": "Controlled humanoid",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": -1.5,
+                "y": 2,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "navigator",
+              "version": "1.0.0",
+              "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            },
+            "bindings": {
+              "characterIntent": {
+                "kind": "human",
+                "playerIndex": 0
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scripted-humanoid",
+            "displayName": "Scripted humanoid",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": 1.5,
+                "y": 2,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "navigator",
+              "version": "1.0.0",
+              "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            },
+            "bindings": {
+              "characterIntent": {
+                "kind": "script",
+                "trackId": "scripted-locomotion-cycle"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scene-camera",
+            "displayName": "Scene Camera",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 2,
+                "z": 6
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "default-scene-camera",
+              "version": "1.0.0",
+              "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+            },
+            "bindings": {},
+            "relations": {
+              "cameraTargetGameObjectId": "controlled-humanoid"
+            }
+          }
+        ],
+        "activeCameraGameObjectId": "scene-camera"
       }
     ],
     "activeSceneId": "two-humanoids-shared-animation",

@@ -36,6 +36,18 @@ export interface ResolveRequest {
   project: ProjectDefinition;
   /** Defaults to the project's active character. */
   characterId?: string;
+  /**
+   * An explicit character to resolve, for callers whose definition does not
+   * live in `project.characters`.
+   *
+   * A Prefab's Animator component carries the same `CharacterAnimationAssignment`
+   * a `CharacterDefinition` does, and resolving it must run the *same* engine —
+   * a second resolver for Prefabs would be a second answer to "what does this
+   * behaviour do". This field is how the GameObject runtime borrows this one
+   * without inventing a character in the project document to hold the
+   * assignment. Wins over `characterId` when both are given.
+   */
+  character?: CharacterDefinition;
   /** Unsaved chamber edits, applied last so the preview shows them. */
   previewOverrides?: readonly CanonicalPatch[];
 }
@@ -239,6 +251,7 @@ export function resolveCharacterAnimation(request: ResolveRequest): ResolveResul
 /** The character a request resolves for: the named one, or the active one. */
 export function characterFor(request: ResolveRequest): CharacterDefinition {
   return (
+    request.character ??
     request.project.characters.find((entry) => entry.id === request.characterId) ??
     activeCharacter(request.project)
   );

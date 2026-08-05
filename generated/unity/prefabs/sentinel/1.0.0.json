@@ -1,0 +1,63 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "sentinel",
+      "version": "1.0.0",
+      "displayName": "Sentinel",
+      "description": "Migrated from Character \"sentinel\".",
+      "tags": [
+        "character",
+        "humanoid"
+      ],
+      "createdAt": "2026-08-06T00:00:00.000Z",
+      "createdBy": "prefabs:migrate",
+      "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183"
+    },
+    "derivation": {
+      "mode": "variant",
+      "parent": {
+        "assetType": "game-object-prefab",
+        "assetId": "humanoid-character-base",
+        "version": "1.0.0",
+        "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+      },
+      "patches": [
+        {
+          "kind": "add-component",
+          "nodeId": "root",
+          "component": {
+            "schemaVersion": 1,
+            "componentId": "model",
+            "componentType": "model-renderer",
+            "enabled": true,
+            "model": {
+              "kind": "procedural-humanoid",
+              "presetId": "sentinel"
+            },
+            "castShadow": true,
+            "receiveShadow": true
+          }
+        },
+        {
+          "kind": "patch-component",
+          "nodeId": "root",
+          "componentId": "animator",
+          "patches": [
+            {
+              "path": "/assignment/instanceOverrides",
+              "op": "set",
+              "value": []
+            }
+          ]
+        }
+      ]
+    },
+    "abstract": false
+  }
+}

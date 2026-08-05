@@ -28,12 +28,27 @@ import {
   CameraSceneEntity,
   CharacterControllerBindingDefinition,
   CharacterSceneEntity,
+  GameObjectInstanceBindings,
+  GameObjectInstanceDefinition,
+  GameObjectInstanceRelations,
+  GameObjectSceneOperation,
   LightSceneEntity,
+  PlaceablePrefabAsset,
   PropSceneEntity,
   SceneDefinition,
   SceneEntityDefinition,
   SceneOperation,
 } from './scene.ts';
+import {
+  BaseGameObjectPrefabAsset,
+  ForkGameObjectPrefabAsset,
+  GameObjectComponentDefinition,
+  GameObjectPrefabReference,
+  PrefabComponentOverride,
+  PrefabPatch,
+  RenderableModelBinding,
+  VariantGameObjectPrefabAsset,
+} from './prefab.ts';
 import {
   ProtectionApproval,
   RepositoryApplyExpected,
@@ -95,6 +110,23 @@ export const SCHEMA_REGISTRY = {
   RepositoryApplyExpected,
   ProtectionApproval,
   RepositoryApplyRequest,
+  GameObjectPrefabReference,
+  RenderableModelBinding,
+  GameObjectComponentDefinition,
+  PrefabComponentOverride,
+  PrefabPatch,
+  // The three stored Prefab shapes are registered individually rather than as
+  // their union: each embeds the recursive `PrefabNodeDefinition`, whose `$id`
+  // is the target of a `$ref`, and one compiled schema cannot carry that `$id`
+  // twice. `derivation.mode` selects which name to validate against.
+  BaseGameObjectPrefabAsset,
+  ForkGameObjectPrefabAsset,
+  VariantGameObjectPrefabAsset,
+  GameObjectInstanceDefinition,
+  GameObjectInstanceBindings,
+  GameObjectInstanceRelations,
+  PlaceablePrefabAsset,
+  GameObjectSceneOperation,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
@@ -104,22 +136,47 @@ const ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true });
 
 const compiled = new Map<string, ValidateFunction>();
 
+/** Every `$ref` target named anywhere inside a schema. */
+function referencedIds(schema: unknown, into: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(schema)) {
+    for (const entry of schema) referencedIds(entry, into);
+    return into;
+  }
+  if (schema && typeof schema === 'object') {
+    for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+      if (key === '$ref' && typeof value === 'string') into.add(value);
+      else referencedIds(value, into);
+    }
+  }
+  return into;
+}
+
 /**
  * TypeBox inlines shared sub-schemas rather than emitting $refs, so a building
  * block like ProtectionMetadata appears many times inside one document, each
  * copy carrying the same $id. Ajv rejects that as an ambiguous reference. The
  * $id values are useful when emitting standalone JSON Schema files, so they stay
  * in the definitions and are stripped here instead.
+ *
+ * One kind of `$id` must survive: the one a `$ref` inside the same schema
+ * resolves against. `PrefabNodeDefinition` is recursive — a node's children may
+ * be nodes — and recursion is expressible only as a reference, so stripping its
+ * `$id` would leave a dangling `$ref` and Ajv would refuse to compile at all.
+ * Referenced ids are kept; every other id still goes.
  */
 export function stripSchemaIds<T>(schema: T): T {
+  return stripUnreferencedIds(schema, referencedIds(schema));
+}
+
+function stripUnreferencedIds<T>(schema: T, keep: Set<string>): T {
   if (Array.isArray(schema)) {
-    return schema.map((entry) => stripSchemaIds(entry)) as unknown as T;
+    return schema.map((entry) => stripUnreferencedIds(entry, keep)) as unknown as T;
   }
   if (schema && typeof schema === 'object') {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
-      if (key === '$id') continue;
-      out[key] = stripSchemaIds(value);
+      if (key === '$id' && !(typeof value === 'string' && keep.has(value))) continue;
+      out[key] = stripUnreferencedIds(value, keep);
     }
     return out as T;
   }

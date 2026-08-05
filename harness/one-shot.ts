@@ -9,6 +9,8 @@
  */
 import { staticStages } from './check-static.ts';
 import { animationAssetStages } from './check-animation-assets.ts';
+import { prefabStages } from './check-prefabs.ts';
+import { gameObjectStages } from './check-game-objects.ts';
 import { transactionRecoveryStage } from './check-transaction-recovery.ts';
 import { worldStages } from './check-world.ts';
 import { capabilityStages } from './check-capabilities.ts';
@@ -149,6 +151,19 @@ async function main(): Promise<void> {
   // Asset integrity before the tests: a stale index or an unresolvable
   // reference makes every later failure a symptom rather than a cause.
   for (const result of animationAssetStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  // Prefabs after the animation assets they reference and before the runtime
+  // that instantiates them: a Prefab whose Animator names a missing Motion Set
+  // would otherwise surface as a GameObject that will not tick, which is the
+  // symptom rather than the cause.
+  for (const result of prefabStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  for (const result of gameObjectStages()) {
     printStage(result);
     results.push(result);
   }

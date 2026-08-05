@@ -16,19 +16,42 @@
  *   Tuning     — numeric adjustments layered over a behavior.
  */
 import { Type, type Static } from '@sinclair/typebox';
+import { Id, NormalizedTime } from './common.ts';
 import {
-  Id,
-  NormalizedTime,
-  ProtectionMetadata,
-  SchemaVersion,
-  ValueProvenance,
-} from './common.ts';
+  AssetVersion,
+  CanonicalPatch,
+  DraftContentHash,
+  NEW_ASSET_VERSION,
+  PublishedContentHash,
+  assetDerivationProvenanceFields,
+  assetMetadataFields,
+  bumpAssetVersion,
+  compareAssetVersions,
+  parseAssetVersion,
+} from './assets.ts';
 import {
   AnimationClipDefinition,
   AnimationGraphDefinition,
   SemanticEventKind,
   SkeletonDefinition,
 } from './animation.ts';
+
+/**
+ * The versioned-asset primitives now live in `assets.ts`, shared with every
+ * other asset family. They are re-exported here unchanged so that no existing
+ * `from '@atc/schema'`, and no existing deep import of this module, has to
+ * move (work package §4).
+ */
+export {
+  AssetVersion,
+  CanonicalPatch,
+  DraftContentHash,
+  NEW_ASSET_VERSION,
+  PublishedContentHash,
+  bumpAssetVersion,
+  compareAssetVersions,
+  parseAssetVersion,
+};
 
 export const ANIMATION_ASSET_TYPES = [
   'animation-behavior',
@@ -49,27 +72,6 @@ export const AnimationAssetType = Type.Union(
   { $id: 'AnimationAssetType' },
 );
 export type AnimationAssetType = Static<typeof AnimationAssetType>;
-
-/** SemVer, exactly three numeric components. Asset files are named after it. */
-export const AssetVersion = Type.String({ pattern: '^\\d+\\.\\d+\\.\\d+$' });
-
-/**
- * Lowercase hex SHA-256 of a *published* asset version. Never empty: a
- * reference with no hash is indistinguishable from one nobody checked, which
- * is exactly the bypass PLAN Part III closes. Anything that points at a
- * published asset — `AssetReference`, a character's animation assignment, a
- * motion set binding, a variant's parent — carries this type.
- */
-export const PublishedContentHash = Type.String({ pattern: '^[a-f0-9]{64}$' });
-
-/**
- * Lowercase hex SHA-256, or the empty string on a draft that has not been
- * sealed yet. Only `AnimationAssetMetadata.contentHash` uses this — an asset
- * still being authored in memory or inside a prepared transaction view has no
- * hash until `sealAsset()` computes one, and that is fine precisely because
- * nothing else has been allowed to reference it yet.
- */
-export const DraftContentHash = Type.String({ pattern: '^([a-f0-9]{64})?$' });
 
 /**
  * Motion slot ids are dotted (`locomotion.idle`), which the plain `Id` pattern
@@ -99,56 +101,22 @@ export const AssetReference = Type.Object(
 );
 export type AssetReference = Static<typeof AssetReference>;
 
-/** Where a derived asset came from. Kept even when the link is severed. */
+/** Where a derived animation asset came from. Kept even when the link is severed. */
 export const AssetDerivationProvenance = Type.Object(
-  {
-    forkedFrom: Type.Optional(AssetReference),
-    duplicatedFrom: Type.Optional(AssetReference),
-    promotedFromCandidateId: Type.Optional(Type.String()),
-    migratedFromSchemaVersion: Type.Optional(SchemaVersion),
-    note: Type.Optional(Type.String()),
-  },
+  assetDerivationProvenanceFields(AssetReference),
   { $id: 'AssetDerivationProvenance', additionalProperties: false },
 );
 export type AssetDerivationProvenance = Static<typeof AssetDerivationProvenance>;
 
 export const AnimationAssetMetadata = Type.Object(
-  {
-    schemaVersion: SchemaVersion,
+  assetMetadataFields({
     assetType: AnimationAssetType,
     id: Id,
-    version: AssetVersion,
-    displayName: Type.String(),
-    description: Type.String(),
-    tags: Type.Array(Type.String()),
-    createdAt: Type.String(),
-    createdBy: Type.String(),
-    /** SHA-256 of this document with `contentHash` itself blanked out. Empty until sealed. */
-    contentHash: DraftContentHash,
-    protection: Type.Optional(ProtectionMetadata),
-    provenance: Type.Optional(ValueProvenance),
-    assetProvenance: Type.Optional(AssetDerivationProvenance),
-  },
+    assetProvenance: AssetDerivationProvenance,
+  }),
   { $id: 'AnimationAssetMetadata', additionalProperties: false },
 );
 export type AnimationAssetMetadata = Static<typeof AnimationAssetMetadata>;
-
-/**
- * A single override addressed by canonical path, relative to the asset it
- * patches. `remove` is what lets a variant drop a state without copying the
- * parent; `value` is ignored for it.
- */
-export const CanonicalPatch = Type.Object(
-  {
-    path: Type.String({ minLength: 1 }),
-    op: Type.Union([Type.Literal('set'), Type.Literal('append'), Type.Literal('remove')]),
-    value: Type.Optional(Type.Unknown()),
-    reason: Type.Optional(Type.String()),
-    provenance: Type.Optional(ValueProvenance),
-  },
-  { $id: 'CanonicalPatch', additionalProperties: false },
-);
-export type CanonicalPatch = Static<typeof CanonicalPatch>;
 
 export const AnimationParameterDefinition = Type.Object(
   {
@@ -523,35 +491,6 @@ export interface AnimationAssetSummary {
   searchTerms: string[];
   valid: boolean;
   issueCodes: AssetIssueCode[];
-}
-
-export const NEW_ASSET_VERSION = '1.0.0';
-
-export function parseAssetVersion(version: string): [number, number, number] {
-  const parts = version.split('.').map((part) => Number.parseInt(part, 10));
-  if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part) || part < 0)) {
-    throw new Error(`not a semantic version: "${version}"`);
-  }
-  return [parts[0]!, parts[1]!, parts[2]!];
-}
-
-export function compareAssetVersions(left: string, right: string): number {
-  const a = parseAssetVersion(left);
-  const b = parseAssetVersion(right);
-  for (let i = 0; i < 3; i += 1) {
-    if (a[i] !== b[i]) return a[i]! - b[i]!;
-  }
-  return 0;
-}
-
-export function bumpAssetVersion(
-  version: string,
-  level: 'major' | 'minor' | 'patch',
-): string {
-  const [major, minor, patch] = parseAssetVersion(version);
-  if (level === 'major') return `${major + 1}.0.0`;
-  if (level === 'minor') return `${major}.${minor + 1}.0`;
-  return `${major}.${minor}.${patch + 1}`;
 }
 
 /** Repository location of one published asset version. */
