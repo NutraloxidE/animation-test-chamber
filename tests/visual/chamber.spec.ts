@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { PROJECT_PATH } from './repository.ts';
+import { PROJECT_PATH, resetRepositoryProject } from './repository.ts';
 
 /**
  * These tests drive the chamber the way a human does: open a panel, move a
@@ -333,6 +333,16 @@ test.describe('committing', () => {
    * an extra revision left behind changes what the next one opens against.
    */
   let original: string;
+
+  /*
+   * Each committing test starts from the seed. Both tests here write, and the
+   * second one opens a page that seeds from the pristine source project — so
+   * without this it declares a baseline the first test already replaced and is
+   * refused as a conflict.
+   */
+  test.beforeEach(() => {
+    resetRepositoryProject();
+  });
 
   test.beforeAll(() => {
     original = readFileSync(PROJECT_PATH, 'utf8');

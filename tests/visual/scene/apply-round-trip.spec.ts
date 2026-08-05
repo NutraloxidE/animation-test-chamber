@@ -1,8 +1,7 @@
-import { cpSync, existsSync, rmSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import { REPOSITORY_IS_DISPOSABLE, REPOSITORY_ROOT } from '../repository.ts';
+import { REPOSITORY_IS_DISPOSABLE, REPOSITORY_ROOT, resetRepositoryProject } from '../repository.ts';
 
 /**
  * The Apply round-trip, in a real browser, against a real repository.
@@ -29,8 +28,6 @@ const SCENE_ID = 'two-humanoids-shared-animation';
 const CONTROLLED = 'controlled-humanoid';
 const PROJECT_PATH = 'projects/demo-character/project.json';
 
-const SOURCE_REPO = fileURLToPath(new URL('../../..', import.meta.url));
-
 test.skip(
   !REPOSITORY_IS_DISPOSABLE,
   'writes to the repository; run `pnpm harness:visual` so it targets a disposable checkout',
@@ -50,10 +47,7 @@ test.skip(
  * only way these assertions mean what they say.
  */
 test.beforeEach(() => {
-  cpSync(join(SOURCE_REPO, PROJECT_PATH), join(REPOSITORY_ROOT, PROJECT_PATH));
-  for (const path of ['reports/apply', '.chamber-transactions']) {
-    rmSync(join(REPOSITORY_ROOT, path), { recursive: true, force: true });
-  }
+  resetRepositoryProject();
   expect(existsSync(join(REPOSITORY_ROOT, PROJECT_PATH))).toBe(true);
 });
 
