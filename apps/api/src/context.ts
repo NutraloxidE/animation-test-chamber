@@ -32,7 +32,24 @@ function findRepoRoot(start: string): string {
   return process.cwd();
 }
 
-export const REPO_ROOT = findRepoRoot(dirname(fileURLToPath(import.meta.url)));
+/**
+ * The checkout this server reads and writes.
+ *
+ * `ATC_REPO_ROOT` wins when set, and it exists for one reason: the visual suite
+ * drives the real API through a real browser, which means it performs real
+ * writes. Pointed at the developer's checkout, those writes land on the
+ * canonical demo project — so a visual run left `projects/demo-character/
+ * project.json` modified, and the deterministic replay and animation-asset
+ * harnesses stayed red until someone remembered to restore it by hand. A suite
+ * that requires cleanup by memory cannot be part of a one-shot gate.
+ *
+ * Walking up to `pnpm-workspace.yaml` stays the default, so a server started
+ * from anywhere in the workspace still finds canonical data with no
+ * configuration.
+ */
+export const REPO_ROOT = process.env.ATC_REPO_ROOT
+  ? resolve(process.env.ATC_REPO_ROOT)
+  : findRepoRoot(dirname(fileURLToPath(import.meta.url)));
 export const PROJECT_PATH = 'projects/demo-character/project.json';
 export const ASSET_ROOT = 'assets/animation';
 

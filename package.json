@@ -25,7 +25,7 @@
     "harness:unit": "vitest run tests/unit",
     "harness:integration": "vitest run tests/integration",
     "harness:replay": "vitest run tests/replay",
-    "harness:visual": "playwright test",
+    "harness:visual": "tsx harness/visual.ts",
     "harness:repo-guard": "tsx harness/repo-guard.ts",
     "harness:animation-assets": "tsx harness/check-animation-assets.ts",
     "harness:world": "tsx harness/check-world.ts",

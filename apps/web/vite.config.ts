@@ -31,14 +31,20 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    /*
+     * Both ports are overridable so an isolated visual run can bind its own
+     * pair and proxy to its own API. Fixed ports would make that run reuse
+     * whatever API happened to be listening on 8787 — which, during an isolated
+     * run, is precisely the one pointed at the developer's real checkout.
+     */
+    port: Number(process.env.WEB_PORT ?? 5173),
     fs: {
       // Needed because sources and canonical data live above apps/web.
       allow: [repoRoot],
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8787',
+        target: `http://127.0.0.1:${process.env.API_PORT ?? 8787}`,
         changeOrigin: true,
       },
     },

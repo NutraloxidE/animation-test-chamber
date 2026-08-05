@@ -51,12 +51,19 @@ function playwrightStage(): StageResult {
   return stage(
     'visual (playwright)',
     {
-      reproduce: 'npx playwright test',
+      reproduce: 'pnpm harness:visual',
       blocksCommit: true,
       suggestion: 'run `npx playwright test --ui` to inspect the failing view',
     },
     () => {
-      const { code, output } = run('npx', ['playwright', 'test', '--reporter=line']);
+      /*
+       * Through the isolating wrapper, never `playwright test` directly. The
+       * visual suite performs real writes through the real API, and run against
+       * the source checkout it modified the canonical demo project — leaving
+       * replay and animation-assets red for every later run. A one-shot stage
+       * that corrupts the inputs of the stages before it is worse than no stage.
+       */
+      const { code, output } = run('npx', ['tsx', 'harness/visual.ts']);
       if (code === 0) {
         return { ok: true, issues: [], output: output.split('\n').slice(-4).join('\n') };
       }
