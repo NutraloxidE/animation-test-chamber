@@ -10,6 +10,7 @@ reports/*.md
 !reports/.gitkeep
 # The completion report is a deliverable, not a harness run artifact: it records
 # what was built and what was left, and is meant to be read from the repository.
+!reports/gameobject-prefab-migration-audit.md
 !reports/animation-assets-one-shot-report.md
 !reports/animation-asset-hardening-baseline.md
 !reports/animation-asset-published-baseline.json
