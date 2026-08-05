@@ -23,6 +23,7 @@ import {
   type SceneOperation,
 } from '@atc/editor-core';
 import { applyToRepository, type ApplyOutcome } from '../editor/apply-client.ts';
+import { useChamber } from '../store.ts';
 
 export interface SceneSessionHandle {
   session: DocumentEditSession<SceneDefinition, SceneOperation>;
@@ -50,6 +51,7 @@ export function useSceneSession(
   const [lastIssues, setLastIssues] = useState<OperationResult<SceneDefinition>['issues']>([]);
   const [lastApply, setLastApply] = useState<ApplyOutcome | null>(null);
   const [applying, setApplying] = useState(false);
+  const adoptAppliedProject = useChamber((state) => state.adoptAppliedProject);
   const characterIds = useMemo(
     () => new Set(project.characters.map((entry) => entry.id)),
     [project],
@@ -124,9 +126,33 @@ export function useSceneSession(
          * the next move is usually to fix one issue and apply again.
          */
         if (outcome.status === 'applied') {
-          // The revision the repository reported back, not the one this session
-          // opened at: applying twice without a reload is the ordinary case, and
-          // the second Apply has to declare the first one's result.
+          /*
+           * Both baselines move in the same turn, and neither is allowed to
+           * move without the other.
+           *
+           * `acceptApplied` moves the session's private revision — which is
+           * what lets a second Apply from this page succeed instead of being
+           * refused as a conflict with the first. `adoptAppliedProject` moves
+           * the application's canonical state — which is what makes the applied
+           * scene survive navigating away and back.
+           *
+           * Doing only the first was the defect: the open session could apply
+           * repeatedly while every other reader of the repository still saw
+           * pre-Apply content. Both calls are synchronous, so no render
+           * observes one without the other.
+           */
+          session.acceptApplied(outcome.targetDocument, outcome.project.revisionId);
+          adoptAppliedProject(outcome.project);
+          setLastIssues([]);
+        } else if (outcome.status === 'no-change') {
+          /*
+           * Nothing was written, so there is no new revision to adopt and the
+           * session's baseline is still correct. The staged operations are
+           * cleared against the unchanged document because they *were* applied
+           * — the server replayed them and they produced what was already
+           * there. Leaving them staged would offer the human a pending write
+           * that can only ever be another no-change.
+           */
           session.acceptApplied(outcome.targetDocument, outcome.project.revisionId);
           setLastIssues([]);
         } else {
@@ -137,7 +163,7 @@ export function useSceneSession(
         bump();
         return outcome;
       },
-      [session, bump],
+      [session, bump, adoptAppliedProject],
     ),
     lastApply,
     applying,

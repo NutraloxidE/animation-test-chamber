@@ -225,9 +225,21 @@ function stateLabel(handle: SceneSessionHandle, stagedCount: number): string {
   const outcome = handle.lastApply;
   if (outcome?.status === 'conflict') return 'CONFLICT';
   if (outcome?.status === 'invalid') return 'INVALID';
+  if (outcome?.status === 'rolled-back') return 'ROLLED BACK';
+  if (outcome?.status === 'repository-read-only') return 'REPOSITORY READ-ONLY';
+  if (outcome?.status === 'unavailable') return 'UNAVAILABLE';
   if (stagedCount > 0) return `STAGED (${stagedCount})`;
   if (handle.session.isDirty) return 'PREVIEW';
   if (outcome?.status === 'applied') return 'APPLIED';
+  /*
+   * NO CHANGE is its own word, and never APPLIED.
+   *
+   * The request succeeded and the repository holds exactly what was asked for,
+   * but nothing was written — no revision, no report, no file. Rendering that
+   * as APPLIED teaches the user that Apply sometimes claims a write it did not
+   * make, and once they have seen that they cannot trust the times it did.
+   */
+  if (outcome?.status === 'no-change') return 'NO CHANGE';
   return 'CLEAN';
 }
 
@@ -235,12 +247,22 @@ function applyLabel(outcome: NonNullable<SceneSessionHandle['lastApply']>): stri
   switch (outcome.status) {
     case 'applied':
       return `Applied ${outcome.changedPaths.length} path(s)${outcome.reportPath ? ` · ${outcome.reportPath}` : ''}`;
+    case 'no-change':
+      return 'No change: the staged operations produce the document already in the repository. Nothing was written.';
     case 'conflict':
       // Named as a conflict rather than a generic failure: the next move is
       // reload-and-reapply, not edit-and-retry.
       return 'Apply refused: the repository moved on. Reload and reapply.';
     case 'invalid':
       return 'Apply refused: the repository rejected the staged operations.';
+    case 'rolled-back':
+      // Distinct from a refusal: canonical files were touched and put back, so
+      // the honest thing to report is that it was undone, not that it never
+      // started.
+      return `Apply failed part-way and was rolled back; the repository is unchanged.${outcome.transactionId ? ` Transaction ${outcome.transactionId}.` : ''}`;
+    case 'repository-read-only':
+      // Retrying is the wrong move here and the message has to say so.
+      return `Apply failed and the repository could not be certified as restored. It is read-only until a human resolves it.${outcome.transactionId ? ` Transaction ${outcome.transactionId}.` : ''}`;
     case 'unavailable':
       // Never dressed up as a success, and never silently downgraded to a
       // browser-local save.

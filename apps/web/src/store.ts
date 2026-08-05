@@ -256,6 +256,21 @@ interface ChamberState {
 interface ChamberActions {
   setWorkspaceMode(mode: WorkspaceMode): void;
   setActiveCharacter(characterId: string): void;
+  /**
+   * Adopts the exact `ProjectDefinition` the repository returned from an Apply.
+   *
+   * The one authoritative result of a write is the document the server sent
+   * back, and it has to become the application's canonical state — not just the
+   * revision on the session that happened to perform the Apply.
+   *
+   * Updating only that session left `canonicalProject` holding pre-Apply data,
+   * which is invisible right up until anything re-reads it: navigate away and
+   * back and the stale project rebuilds the *old* scene over the applied one;
+   * any other panel resolving `canonicalProject` shows content that is no
+   * longer on disk; and a session reconstructed from it declares a dead
+   * baseline and is refused with a 409 caused entirely by the client.
+   */
+  adoptAppliedProject(project: ProjectDefinition): void;
   discardStaleCharacterDraft(characterId: string, revisionId: string): void;
   selectLibraryAsset(selection: { assetType: string; assetId: string; version: string } | null): void;
   setLibraryTypeFilter(assetType: string): void;
@@ -694,6 +709,44 @@ const createChamber: StateCreator<ChamberState & ChamberActions> = (set, get) =>
         assetIssues: resolution.issues,
         revision: get().revision + 1,
         statusMessage: `Character: ${resolution.project.character.displayName}`,
+      });
+    },
+
+    /**
+     * The repository moved, and this is where the application learns it.
+     *
+     * One synchronous `set`. Zustand commits it before the call returns, so
+     * there is no render between "Apply reported success" and "canonicalProject
+     * is the applied project" — a window in which the UI would say APPLIED
+     * beside a revision that no longer exists.
+     *
+     * The resolved `project` is rebuilt in the same turn, because it is derived
+     * from the canonical one: leaving it behind would replace one stale
+     * document with a different stale document. If the new canonical project
+     * cannot be resolved for the active character, the canonical adoption still
+     * happens — the repository really did move, and refusing to record that
+     * would leave the app claiming a revision that is gone — and the resolution
+     * issues are surfaced instead of being swallowed.
+     */
+    adoptAppliedProject(project) {
+      const resolution = resolveFor(project, get().activeCharacterId, get().registry);
+      const errors = resolution.issues.filter((issue) => issue.severity === 'error');
+      if (errors.length > 0) {
+        set({
+          canonicalProject: project,
+          assetIssues: resolution.issues,
+          revision: get().revision + 1,
+          statusMessage: `Applied, but the result cannot be resolved: ${errors[0]!.message}`,
+        });
+        return;
+      }
+      session.acceptCommitted(resolution.project);
+      engine.setProject(resolution.project);
+      set({
+        canonicalProject: project,
+        project: resolution.project,
+        assetIssues: resolution.issues,
+        revision: get().revision + 1,
       });
     },
 
