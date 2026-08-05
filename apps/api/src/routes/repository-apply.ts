@@ -519,7 +519,15 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
     );
 
     if (!result.ok) {
-      const status = outcomeForTransaction(result.state);
+      /*
+       * `repository-unresolved` arrives as a `conflict-refused` because that is
+       * how the lock reports a takeover it will not perform. It is not a
+       * conflict: nobody can say what the previous transaction left behind, so
+       * the repository needs a human rather than a reload. Reporting it as a
+       * 409 would tell the one user who must stop to try again.
+       */
+      const unresolved = result.issues.some((entry) => entry.code === 'repository-unresolved');
+      const status = unresolved ? 'repository-read-only' : outcomeForTransaction(result.state);
       if (status === 'repository-read-only') {
         markRepositoryFatal(
           runtime.health,
