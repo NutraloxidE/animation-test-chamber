@@ -9,6 +9,29 @@
  * routing state machine in Zustand is explicitly forbidden (§5.2), and for a
  * concrete reason: it would need its own history handling, and browser Back
  * would then disagree with the app's idea of where it is.
+ *
+ * `useTransitions={false}` is load-bearing, and the reason is worth recording
+ * because the symptom was so misleading.
+ *
+ * React Router v7 commits the location inside `React.startTransition`. That is
+ * the right default for an app whose routes suspend — the previous screen stays
+ * up instead of flashing a fallback — but it makes the location a *low
+ * priority* update, and this app has no lazy routes and no route-level Suspense
+ * to benefit from it. Meanwhile the chamber polls the engine into React state
+ * every 100ms (`App.tsx`), and a full chamber render under software-rendered
+ * WebGL takes longer than that. Each poll preempted the in-flight transition
+ * and restarted it, so the location update was perpetually re-rendered and
+ * never committed — while `history.pushState` had already moved the address bar
+ * synchronously.
+ *
+ * The result was a URL and a screen that disagreed indefinitely: `/edit/rig/b`
+ * in the address bar, character `a` still rendered, and no error anywhere. It
+ * reproduced on every Playwright project and stayed invisible on a fast machine,
+ * where the render finished inside one poll interval.
+ *
+ * The URL is this app's selector (DECISION 0012). A selector that applies only
+ * when the renderer happens to be idle is not a selector, so the location moves
+ * at default priority.
  */
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useChamber } from '../store.ts';
@@ -43,7 +66,7 @@ function RootRedirect(): JSX.Element {
 
 export function AppRouter(): JSX.Element {
   return (
-    <BrowserRouter>
+    <BrowserRouter useTransitions={false}>
       <Routes>
         <Route path={ROUTES.root} element={<RootRedirect />} />
         <Route path={ROUTES.rigEditor} element={<RigEditorPage />} />
