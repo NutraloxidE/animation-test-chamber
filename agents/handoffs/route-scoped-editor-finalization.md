@@ -5,14 +5,16 @@ Branch: `claude/edit-rig-scene-controllable-character`
 
 ```text
 Continuation start SHA:  d126b93db3a98664d2c3bba13b33a4a3f7c7642c
-Current SHA:             4aa107c   (22 commits ahead of origin/main, 0 behind)
+Current SHA:             see section 6 — this document has been continued twice
 Base preserved:          yes — merge-base with origin/main is still 2e5b2a2
 removed-world-alt:       never fetched, merged or read
 ```
 
-**Implementation state: HOLD.** Phase 11A is done. 11B–11F are not started.
+**Sections 1–5 describe the state at `4aa107c` and are kept as written.**
+Phase 11B has since been completed; **section 6 is the current record** and
+supersedes the declaration in section 4.
 
-Written to be picked up on another machine. **Section 3 is the part to read first.**
+Written to be picked up on another machine.
 
 ---
 
@@ -245,3 +247,169 @@ NOT PERFORMED BY IMPLEMENTATION AGENT
   reports would be worse than their absence.
 - `reports/*.md` is gitignored in this repository while every existing report is
   tracked; new reports need `git add -f`.
+
+---
+
+# 6. Phase 11B acceptance closure — current record
+
+Work package: `WP_PHASE_11B_ACCEPTANCE_CLOSURE_AND_VISUAL_GATE_RECOVERY.md`
+Full report: `reports/phase-11b-acceptance-closure.md`
+Decision added: `DECISIONS/0018-the-location-is-a-default-priority-update.md`
+
+```text
+Start SHA:               0b4070602bbdfc9d2417804953955b779b0d39fe
+End SHA:                 689fe5c
+Base preserved:          yes — merge-base with origin/main is still 2e5b2a2
+removed-world-alt:       never fetched, merged or read
+main:                    never merged or rebased into this branch
+```
+
+## 6.1 What section 4 got wrong
+
+Two entries in the declaration above were recorded on reasoning that did not
+hold, and both are corrected here rather than quietly overwritten.
+
+**"Visual Desktop: NOT RUN — client-side navigation is an environment
+artifact."** It was an application defect. React Router v7 commits the location
+inside `React.startTransition`, and this app polls the engine into React state
+every 100 ms while a chamber render under software-rendered WebGL takes longer
+than that — so every poll preempted the in-flight transition and it never
+committed. Manual clicking kept clearing it because on a fast machine the render
+finishes inside one poll interval. "It works when I do it by hand" was exactly
+the evidence the failure was shaped to produce.
+
+**"The visual suite writing to the real repository is out of scope."** It was
+the reason the gate could not be run at all: the visual stage corrupted the
+canonical project that `harness:replay` and `harness:animation-assets` had
+already validated, so a one-shot could never pass twice. Fixed by running the
+suite against a disposable checkout.
+
+## 6.2 Two couplings the isolation exposed
+
+Neither was known before the API stopped writing to the source checkout, and
+both had been silently load-bearing:
+
+1. `chamber.spec.ts` resolved the canonical project from its own file location,
+   so it asserted against the developer's checkout while the server wrote to the
+   disposable one.
+2. While the API wrote to the source `project.json`, **Vite's watcher reloaded
+   the page**, so the browser re-synced after every write. Nothing documented
+   that. Without it, the second write in any spec is refused as a stale-revision
+   conflict — the server being correct about a baseline that really had moved.
+
+Both are now explicit: `tests/visual/repository.ts` resolves the root the API is
+bound to, and restores the seed between tests that write.
+
+## 6.3 Declaration (WP §20)
+
+```text
+Phase 11B Acceptance Closure: HOLD  (see 6.5)
+
+Start SHA:                                  0b4070602bbdfc9d2417804953955b779b0d39fe
+End Implementation SHA:                     689fe5c
+Branch Identity:                            PASS
+
+Complete Apply Request Schema:              PASS
+Closed Object Boundaries:                   PASS
+Exact Human Protection Approval:            PASS
+AI Approval Refusal:                        PASS
+Approval Report Evidence:                   PASS
+
+Prepared Project Validation:                PASS
+Prepared Report Validation:                 PASS
+Atomic Project + Report:                    PASS
+Apply Endpoint Fault Injection:             PASS   16 cases
+Rollback Outcome:                           PASS
+Fatal Read-Only Outcome:                    PASS
+
+Content Revision Identity:                  PASS
+No-Change Server Status:                    PASS
+No-Change Browser Status:                   PASS
+No-Op Local History:                        PASS
+Browser Canonical Project Adoption:         PASS
+Repeated Apply Without Reload:              PASS
+Route Re-entry After Apply:                 PASS
+External Conflict Refusal:                  PASS
+
+Undo Removes Staged Operation:              PASS
+Redo Restores Prior Staged Status:          PASS
+Unrelated Stage Preservation:               PASS
+Mandatory acceptApplied Revision:           PASS   compile-time
+
+Collision-Safe Apply Reports:               PASS
+Repeated Content Revision Flow:             PASS
+
+Client-Side Link Navigation:                NOT YET OBSERVED
+Asset Library Select Navigation:            NOT YET OBSERVED
+Visual Disposable Repository:               PASS
+Source Checkout Clean After Visual:         PASS
+Visual Desktop:                             NOT YET OBSERVED
+Visual Mobile-Landscape:                    NOT YET OBSERVED
+Visual Narrow / 320px:                      NOT YET OBSERVED
+
+Typecheck:                                  PASS
+Lint:                                       PASS
+Build:                                      PASS
+Unit:                                       PASS   450
+Integration:                                PASS   219
+Replay Before Visual:                       PASS   129
+Visual:                                     NOT YET OBSERVED
+Replay After Visual:                        PASS   129
+Animation Assets After Visual:              PASS   7/7
+Capabilities:                               PASS   5 capabilities
+Repo Guard:                                 PASS   11/11
+One-Shot Run 1:                             NOT YET OBSERVED
+One-Shot Run 2:                             NOT YET OBSERVED
+Clean Working Tree:                         NOT YET OBSERVED
+
+Decision:
+PHASE 11B ACCEPTANCE CLOSURE: HOLD  (see 6.5)
+```
+
+## 6.5 Why this says HOLD
+
+Every implementation item in 6.3 is evidenced. The declaration is **HOLD**
+because five gates in it have not been observed to completion on this container
+at the time of writing, and §19 of the work package is explicit that nothing may
+be marked PASS without command evidence:
+
+```text
+the full 174-test visual suite, all three projects, in one pass
+one-shot run 1
+one-shot run 2
+clean working tree after each one-shot
+```
+
+What *has* been observed, in isolated runs of the same suite:
+
+```text
+visual — routing + apply round trip (desktop)      9/9 passed
+visual — chamber "committing" (desktop)            2/2 passed
+source checkout after each visual run              unchanged
+replay after visual                                129/129
+animation-assets after visual                      7/7
+one-shot, every stage before the visual one        30/30 passed
+```
+
+That last line is worth reading precisely: one-shot reached its visual stage
+with 30 consecutive passes, and the stages that used to be poisoned by the
+visual suite (`replay`, `animation-assets`) are green *after* it. The remaining
+question is only whether the full 174-test suite completes clean twice in a row,
+which is what the next update to this section will answer either way.
+
+An earlier one-shot attempt was abandoned rather than reported: a source file
+was edited while its visual stage was running, and the dev server hot-reloads,
+so its result would not have been evidence of anything.
+
+## 6.4 What is still open
+
+- **The browser seeds `canonicalProject` from a compile-time import.** A reload
+  returns to the bundled snapshot rather than to the repository, and a change
+  applied by someone else is invisible until something triggers `reloadAssets`.
+  Pre-existing, out of scope for 11B, and worth its own decision.
+- **`routes/animation-assets.ts` calls `loadProject()` with no root.** Correct
+  under `ATC_REPO_ROOT`, wrong for a test that constructs an app with an
+  explicit `repoRoot`. No acceptance item depends on it.
+- **Phase 11C (World retirement) is not started**, and per §0 must not begin
+  until this package is green.
+- The independent final architecture review (Task I) is **not** performed here.
