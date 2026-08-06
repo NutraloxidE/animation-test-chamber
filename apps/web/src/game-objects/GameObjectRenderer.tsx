@@ -185,7 +185,6 @@ function RenderedNode({
             castShadow={node.model.castShadow}
             receiveShadow={node.model.receiveShadow}
             animator={node.animator}
-            model={node.model}
             gameObjectId={node.gameObjectId}
             displayName={node.displayName}
             {...(onIssue ? { onIssue } : {})}

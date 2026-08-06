@@ -429,10 +429,33 @@ interface SceneMigrationContext {
 function migrateScene(scene: SceneDefinition, context: SceneMigrationContext): SceneDefinition {
   const gameObjects: GameObjectInstanceDefinition[] = [];
 
+  /*
+   * The walk runs unconditionally, because it is what *emits the generated
+   * Prefabs* — the shared camera and light Prefabs are keyed by their component
+   * payload and produced as a side effect of visiting the entities that need
+   * them. Skipping the walk on an already-migrated Scene would mean a fresh
+   * checkout could never regenerate `assets/prefabs/default-scene-camera`.
+   */
   for (const entity of scene.entities) {
     const instance = migrateEntity(entity, context);
     if (instance) gameObjects.push(instance);
   }
+
+  /*
+   * The *result* is adopted only by a Scene that has no GameObject view yet.
+   *
+   * This is the one-way valve the Scene cutover needs (DECISION 0025).
+   * Production writes `gameObjects` directly now, so overwriting them from
+   * `entities` would silently revert every Scene edit made since the migration
+   * last ran — under a command whose name suggests it only touches Prefabs. The
+   * migration's job is to *create* the GameObject view for a Scene that has
+   * none; once one exists, `entities` is the stale half and is in no position
+   * to overwrite anything.
+   *
+   * `--check` stays meaningful, and gets stronger: "the migration is
+   * idempotent" now includes "it does not clobber production data".
+   */
+  if (scene.gameObjects !== undefined) return scene;
 
   const migrated: SceneDefinition = {
     ...scene,

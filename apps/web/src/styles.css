@@ -2313,12 +2313,136 @@ button.link {
   grid-area: viewport;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 0.5rem;
-  padding: 2rem;
+  padding: 0;
   text-align: center;
   color: #7c8494;
   background: #101319;
+  /*
+   * `min-height: 0` on a flex child in a grid row is what lets the canvas
+   * shrink to the space that is actually available. Without it the canvas keeps
+   * its intrinsic height, the column grows past the row, and the transport row
+   * below it is pushed off-screen — visible only as a control the tests cannot
+   * click.
+   */
+  min-height: 0;
+}
+
+/* The canvas takes whatever the transport row leaves. */
+.scene-viewport > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.scene-viewport__transport {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #262a33;
+  font-size: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.scene-viewport__transport button {
+  background: #1a1f28;
+  border: 1px solid #2b313d;
+  border-radius: 3px;
+  color: inherit;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+}
+
+/*
+ * A hierarchy row is a row, not a stack.
+ *
+ * Its buttons were full-width when a row held exactly one; a row now holds an
+ * expand toggle, the row itself and a badge per Component, and full-width
+ * children would put each on its own line and make "click the row" mean
+ * whichever fragment happened to be under the cursor.
+ */
+.scene-hierarchy li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.scene-hierarchy li > ul {
+  flex: 1 0 100%;
+  padding-left: 0.75rem;
+}
+
+.scene-hierarchy button[data-testid^='scene-hierarchy-expand-'] {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.25rem 0.2rem;
+  color: #7c8494;
+}
+
+.scene-hierarchy button[data-testid^='scene-hierarchy-row-'],
+.scene-hierarchy button[data-testid^='scene-hierarchy-node-'] {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.scene-hierarchy code {
+  font-size: 0.68rem;
+  color: #8b93a4;
+}
+
+.scene-hierarchy .badge,
+.scene-inspector .badge {
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: #1c2531;
+  color: #93a2b8;
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  white-space: nowrap;
+}
+
+.scene-hierarchy button.badge {
+  width: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+
+.scene-assets__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.scene-assets__filters button {
+  background: #1a1f28;
+  border: 1px solid #2b313d;
+  border-radius: 3px;
+  color: inherit;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+}
+
+.scene-assets__filters button.is-active {
+  background: #22304a;
+}
+
+.scene-inspector__note {
+  color: #7c8494;
+  font-size: 0.72rem;
+}
+
+/*
+ * The unavailable state needs the padding the canvas does not: it is prose, and
+ * prose flush against a panel edge reads as a rendering failure of its own.
+ */
+[data-testid='scene-viewport-unavailable'],
+[data-testid='scene-gizmo-refused'] {
+  padding: 1rem 2rem;
+  margin: 0;
 }
 
 .scene-inspector { grid-area: inspector; overflow: auto; border-left: 1px solid #262a33; padding: 0.5rem; font-size: 0.8rem; }

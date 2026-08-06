@@ -90,6 +90,11 @@ export interface SceneViewportProps {
  * advances in whole simulation ticks rather than by however long the last frame
  * happened to take. `advanced` is what tells React to re-read the projection;
  * without it the runtime would move and the picture would not.
+ *
+ * It is *one* clock for the whole viewport: a `requestAnimationFrame` loop
+ * inside each `GameObjectRenderer` would give every object its own idea of what
+ * time it is, and two objects animating off two clocks is exactly how a
+ * "deterministic" Scene stops being one.
  */
 function SceneClock({
   runtime,
@@ -231,6 +236,14 @@ export function SceneViewport({
   onRenderIssues,
 }: SceneViewportProps): JSX.Element {
   const [target, setTarget] = useState<THREE.Object3D | null>(null);
+  /*
+   * The per-frame counter, deliberately owned here rather than by the session
+   * hook. A counter one level up would sit at the *page* level and re-render
+   * the hierarchy, the Inspector and the Asset Panel sixty times a second to
+   * redraw a canvas none of them appear in.
+   */
+  const [frame, setFrame] = useState(0);
+  const advanced = useCallback(() => setFrame((value) => value + 1), []);
   const [dragging, setDragging] = useState(false);
   const [ghost, setGhost] = useState<{ point: THREE.Vector3; valid: boolean } | null>(null);
   const instanceId = selectedInstanceId(selection);
@@ -243,16 +256,16 @@ export function SceneViewport({
 
   /*
    * The projection, re-read whenever the runtime advanced or the document
-   * changed. `runtime.frame` is in the dependency list precisely so a moving
-   * simulation produces a moving picture — the runtime mutates in place, so
-   * nothing else about it would tell React to look again.
+   * changed. `frame` is in the dependency list precisely so a moving simulation
+   * produces a moving picture — the runtime mutates in place, so nothing else
+   * about it would tell React to look again.
    */
   const projection = useMemo(
     () =>
       runtime.runtime
         ? projectRuntimeScene(runtime.runtime, scene.activeCameraGameObjectId)
         : undefined,
-    [runtime.runtime, runtime.frame, scene.activeCameraGameObjectId],
+    [runtime.runtime, frame, scene.activeCameraGameObjectId],
   );
 
   const [rendererIssues, setRendererIssues] = useState<RenderProjectionIssue[]>([]);
@@ -390,7 +403,7 @@ export function SceneViewport({
           <SceneClock
             runtime={runtime.runtime}
             playing={runtime.playing && !dragging}
-            advanced={runtime.advanced}
+            advanced={advanced}
           />
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 8, 4]} intensity={1.1} />

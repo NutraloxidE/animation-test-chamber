@@ -2,10 +2,10 @@
  * GameObject harness stages (§19).
  *
  * The Prefab stages check documents. These check what happens when the
- * documents are *run*: that every migrated Scene instance resolves, that
- * capability is derived from Components rather than a kind, that the migrated
- * GameObject view still says exactly what the entity view said, and that two
- * instances of one Prefab share nothing mutable.
+ * documents are *run*: that every Scene instance resolves against its exact
+ * Prefab version, that every Scene is complete in GameObject terms without
+ * consulting the legacy entity mirror, and that two instances of one Prefab
+ * share nothing mutable.
  */
 import { TERRAIN_PRESETS } from '@atc/terrain-runtime';
 import {
@@ -60,117 +60,147 @@ export function gameObjectResolutionStage(): StageResult {
 }
 
 /**
- * The migrated GameObject view says exactly what the entity view said.
+ * Every Scene carries a complete, self-sufficient GameObject view (§12).
  *
- * This is the stage that makes it safe for both fields to exist during the
- * migration. Two views of one Scene that are allowed to disagree are two Scenes.
+ * This replaces the *agreement* check that stood here until the Scene cutover.
+ * That check asserted `gameObjects` said exactly what `entities` said, and it
+ * was the right check for as long as `gameObjects` was derived from `entities`
+ * by `pnpm prefabs:migrate`. It is the wrong check now, and keeping it would be
+ * actively harmful in two directions:
+ *
+ *   - production writes `gameObjects` directly (DECISION 0025), so the first
+ *     Scene edit makes the two views disagree by design. An agreement check
+ *     would turn every ordinary edit into a harness failure;
+ *   - the only way to satisfy it would be to regenerate `entities` from
+ *     `gameObjects` after each write — which is precisely the reverse
+ *     generation §9.2 forbids, and which would make the dual source of truth
+ *     permanent instead of temporary.
+ *
+ * What is checked instead is the property the new arrangement actually needs:
+ * every Scene has a `gameObjects` collection, every instance in it resolves,
+ * and everything the Scene *itself* names — its active camera, its relations —
+ * is named in GameObject terms. A Scene that still depended on `entities` to be
+ * complete would fail here.
+ *
+ * The entity mirror is deliberately not inspected. It may be stale; nothing
+ * reads it; the final-deletion package removes it.
  */
-export function gameObjectParityStage(): StageResult {
+export function gameObjectSelfSufficiencyStage(): StageResult {
   return stage(
-    'GameObject instances agree with the entities they replaced',
+    'every Scene is complete in GameObject terms alone',
     {
       reproduce: 'npx tsx harness/check-game-objects.ts',
-      suggestion: 'run `pnpm prefabs:migrate` — the GameObject view is derived, never hand-edited',
+      suggestion:
+        'a Scene with no gameObjects, or one whose active camera is only named in entity terms, still depends on the legacy mirror',
     },
     () => {
       const project = loadCanonicalProject();
       const prefabRegistry = loadPrefabRegistry();
       const issues: StageIssue[] = [];
-      let compared = 0;
+      let checked = 0;
 
       for (const scene of project.scenes) {
-        const gameObjects = scene.gameObjects ?? [];
-        if (gameObjects.length !== scene.entities.length) {
+        const gameObjects = scene.gameObjects;
+        const complain = (expected: string, actual: string, message: string): void => {
           issues.push({
             files: ['projects/demo-character/project.json'],
-            expected: `${scene.entities.length} GameObject(s) in scene "${scene.id}"`,
-            actual: `${gameObjects.length}`,
-            message: `scene "${scene.id}" has a different number of GameObjects than entities`,
+            expected,
+            actual,
+            message: `scene "${scene.id}": ${message}`,
           });
+        };
+
+        if (gameObjects === undefined) {
+          complain(
+            'a gameObjects collection',
+            'the field is absent',
+            'has no GameObject view, so production has nothing to read',
+          );
           continue;
         }
-        const resolved = resolveSceneGameObjects({ prefabRegistry, scene });
-        for (const [index, entity] of scene.entities.entries()) {
-          const gameObject = gameObjects[index]!;
-          const definition = resolved.definitions.find(
-            (candidate) => candidate.gameObjectId === gameObject.id,
-          );
-          const complain = (field: string, expected: unknown, actual: unknown): void => {
-            issues.push({
-              files: ['projects/demo-character/project.json'],
-              expected: JSON.stringify(expected).slice(0, 160),
-              actual: JSON.stringify(actual).slice(0, 160),
-              message: `${scene.id}/${entity.id}: ${field} differs between the two views`,
-            });
-          };
-          compared += 1;
 
-          if (entity.id !== gameObject.id) complain('id', entity.id, gameObject.id);
-          if (JSON.stringify(entity.transform) !== JSON.stringify(gameObject.transform)) {
-            complain('transform', entity.transform, gameObject.transform);
-          }
-          if (entity.enabled !== gameObject.enabled) {
-            complain('enabled', entity.enabled, gameObject.enabled);
-          }
+        const resolved = resolveSceneGameObjects({ prefabRegistry, scene });
+        for (const instance of gameObjects) {
+          checked += 1;
+          const definition = resolved.definitions.find(
+            (candidate) => candidate.gameObjectId === instance.id,
+          );
           if (!definition) {
-            complain('resolution', 'a resolved definition', 'none');
+            complain(
+              `a resolved definition for "${instance.id}"`,
+              'resolution produced none',
+              `GameObject "${instance.id}" does not resolve`,
+            );
             continue;
           }
-          const components = resolvedComponents(definition.root);
 
-          if (entity.kind === 'character') {
-            if (
-              JSON.stringify(entity.controller) !==
-              JSON.stringify(gameObject.bindings.characterIntent)
-            ) {
-              complain('controller binding', entity.controller, gameObject.bindings.characterIntent);
-            }
-            if (!isCharacterGameObject(definition)) {
-              complain('composition', 'Animator + CharacterMotor', 'neither');
-            }
+          /*
+           * A binding or a relation must be supported by the resolved
+           * Components. The resolver already refuses these, so reaching them
+           * here means a Scene was written that the resolver would reject —
+           * which is a document nobody can open.
+           */
+          const components = resolvedComponents(definition.root);
+          if (
+            instance.bindings.characterIntent &&
+            !componentOfType(components, 'character-motor')
+          ) {
+            complain(
+              'a character-motor to drive the intent binding',
+              'the resolved Prefab has none',
+              `GameObject "${instance.id}" binds an intent it cannot use`,
+            );
           }
-          if (entity.kind === 'camera') {
-            const camera = componentOfType(components, 'camera');
-            if (!camera) complain('composition', 'a Camera Component', 'none');
-            else if (camera.projection !== entity.projection) {
-              complain('projection', entity.projection, camera.projection);
-            }
-            if (
-              (entity.targetEntityId ?? undefined) !==
-              (gameObject.relations.cameraTargetGameObjectId ?? undefined)
-            ) {
-              complain(
-                'camera target',
-                entity.targetEntityId,
-                gameObject.relations.cameraTargetGameObjectId,
-              );
-            }
+          if (
+            instance.bindings.characterIntent &&
+            !isCharacterGameObject(definition)
+          ) {
+            complain(
+              'Animator + CharacterMotor on an intent-bound object',
+              'the composition is incomplete',
+              `GameObject "${instance.id}" is driven but not animated`,
+            );
           }
-          if (entity.kind === 'light') {
-            const light = componentOfType(components, 'light');
-            if (!light) complain('composition', 'a Light Component', 'none');
-            else if (light.lightType !== entity.lightType || light.intensity !== entity.intensity) {
-              complain(
-                'light',
-                { lightType: entity.lightType, intensity: entity.intensity },
-                { lightType: light.lightType, intensity: light.intensity },
-              );
-            }
+          if (
+            instance.relations.cameraTargetGameObjectId !== undefined &&
+            !componentOfType(components, 'camera')
+          ) {
+            complain(
+              'a Camera Component behind the camera relation',
+              'the resolved Prefab has none',
+              `GameObject "${instance.id}" aims a camera it does not have`,
+            );
           }
         }
-        if (
-          (scene.activeCameraEntityId ?? undefined) !==
-          (scene.activeCameraGameObjectId ?? undefined)
-        ) {
-          issues.push({
-            files: ['projects/demo-character/project.json'],
-            expected: String(scene.activeCameraEntityId),
-            actual: String(scene.activeCameraGameObjectId),
-            message: `scene "${scene.id}": the two views name different active cameras`,
-          });
+
+        // The Scene's own active camera is named in GameObject terms, and
+        // resolves through a Camera Component rather than through a kind.
+        const activeId = scene.activeCameraGameObjectId;
+        if (activeId !== undefined) {
+          const active = resolved.definitions.find(
+            (candidate) => candidate.gameObjectId === activeId,
+          );
+          if (!active) {
+            complain(
+              `the active camera "${activeId}" to be a resolved GameObject`,
+              'it is not in the GameObject view',
+              'names an active camera the GameObject view does not have',
+            );
+          } else if (!componentOfType(resolvedComponents(active.root), 'camera')) {
+            complain(
+              'the active camera to carry a Camera Component',
+              'it carries none',
+              `active camera "${activeId}" has no camera to play through`,
+            );
+          }
         }
       }
-      return { ok: issues.length === 0, issues, output: `${compared} instance(s) compared` };
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${checked} GameObject instance(s) checked across ${project.scenes.length} scene(s)`,
+      };
     },
   );
 }
@@ -269,7 +299,11 @@ export function gameObjectIsolationStage(): StageResult {
 }
 
 export function gameObjectStages(): StageResult[] {
-  return [gameObjectResolutionStage(), gameObjectParityStage(), gameObjectIsolationStage()];
+  return [
+    gameObjectResolutionStage(),
+    gameObjectSelfSufficiencyStage(),
+    gameObjectIsolationStage(),
+  ];
 }
 
 function main(): void {

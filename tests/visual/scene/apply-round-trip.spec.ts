@@ -64,13 +64,15 @@ function revisions(page: Page) {
   };
 }
 
-/** Places a camera, stages it, and applies. */
+/** Places a camera Prefab, stages it, and applies. */
 async function placeAndApply(page: Page): Promise<void> {
-  await page.getByTestId('scene-place-camera').click();
+  await page.getByTestId('scene-place-prefab-default-scene-camera').click();
   await page.getByTestId('scene-stage-all').click();
   await expect(page.getByTestId('scene-apply')).toBeEnabled();
   await page.getByTestId('scene-apply').click();
 }
+
+const PLACED = 'scene-hierarchy-row-default-scene-camera';
 
 test.describe('apply round trip', () => {
   test('the repository revision and the session baseline agree after Apply', async ({ page }) => {
@@ -106,7 +108,7 @@ test.describe('apply round trip', () => {
      * redirect `replace`s, so one Back returns to the Scene.
      */
     await page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`).click();
-    await page.getByRole('link', { name: /Open .* in the Rig Editor/ }).click();
+    await page.getByTestId('scene-open-prefab').click();
     await expect(page).toHaveURL(/\/edit\/prefab\//);
     await expect(page.getByTestId('prefab-target-id')).toBeVisible();
 
@@ -116,7 +118,7 @@ test.describe('apply round trip', () => {
 
     // Rebuilt from the store. A stale project here recreates the pre-Apply
     // scene, silently, and looks exactly like a scene that was never edited.
-    await expect(page.getByTestId('scene-hierarchy-row-camera')).toBeVisible();
+    await expect(page.getByTestId(PLACED)).toBeVisible();
     await expect(revisions(page).repository).toHaveText(applied);
   });
 
@@ -127,15 +129,15 @@ test.describe('apply round trip', () => {
 
     // A stale baseline here is refused as a conflict with this page's own
     // previous write — the first thing a user hits when they apply twice.
-    await page.getByTestId('scene-hierarchy-row-camera').click();
-    await page.getByTestId('scene-place-camera').click();
+    await page.getByTestId(PLACED).click();
+    await page.getByTestId('scene-place-prefab-default-scene-camera').click();
     await page.getByTestId('scene-stage-all').click();
     await page.getByTestId('scene-apply').click();
 
     await expect(page.getByTestId('scene-dirty-state')).toHaveText('APPLIED');
     // Both changes are in the repository, not just the second.
-    await expect(page.getByTestId('scene-hierarchy-row-camera')).toBeVisible();
-    await expect(page.getByTestId('scene-hierarchy-row-camera-2')).toBeVisible();
+    await expect(page.getByTestId(PLACED)).toBeVisible();
+    await expect(page.getByTestId('scene-hierarchy-row-default-scene-camera-2')).toBeVisible();
   });
 
   test('an Apply that changes nothing reports NO CHANGE, not APPLIED', async ({ page }) => {
@@ -143,13 +145,12 @@ test.describe('apply round trip', () => {
     const before = (await revisions(page).repository.textContent())!;
 
     /*
-     * Renaming the scene to the name it already has. The operation is real, the
-     * server replays it, and it produces the document already on disk — so
+     * Renaming a GameObject to the name it already has. The operation is real,
+     * the server replays it, and it produces the document already on disk — so
      * nothing is written and no revision is minted.
      */
-    // The root inspector's display-name field. No `type` attribute on it, so a
-    // `input[type=text]` selector matches nothing.
-    const name = page.getByTestId('scene-root-inspector').locator('input').first();
+    await page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`).click();
+    const name = page.getByTestId('scene-inspector-rename');
     const current = await name.inputValue();
     await name.fill(`${current} temporarily`);
     await name.fill(current);
@@ -180,7 +181,7 @@ test.describe('apply round trip', () => {
     expect(scene).toContain(SCENE_ID);
 
     // Stage a local edit, but do not apply it yet.
-    await page.getByTestId('scene-place-camera').click();
+    await page.getByTestId('scene-place-prefab-default-scene-camera').click();
     await page.getByTestId('scene-stage-all').click();
     await expect(page.getByTestId('scene-dirty-state')).toContainText('STAGED');
 
@@ -197,7 +198,13 @@ test.describe('apply round trip', () => {
       data: {
         target: { kind: 'scene', id: SCENE_ID },
         expected: { projectRevisionId: project.revisionId },
-        operations: [{ type: 'scene.rename', displayName: 'Renamed by someone else' }],
+        operations: [
+          {
+            type: 'scene.rename_game_object',
+            gameObjectId: CONTROLLED,
+            displayName: 'Renamed by someone else',
+          },
+        ],
         actor: 'human',
         intent: 'an external writer moves the repository',
       },
@@ -211,8 +218,10 @@ test.describe('apply round trip', () => {
     await expect(page.getByTestId('scene-dirty-state')).toHaveText('CONFLICT');
 
     // The external content was not silently adopted into this page...
-    await expect(page.getByTestId('scene-target-name')).not.toHaveText('Renamed by someone else');
+    await expect(page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`)).not.toContainText(
+      'Renamed by someone else',
+    );
     // ...and the staged work is still here to inspect and resubmit.
-    await expect(page.getByTestId('scene-hierarchy-row-camera')).toBeVisible();
+    await expect(page.getByTestId(PLACED)).toBeVisible();
   });
 });

@@ -12,6 +12,7 @@ import { animationAssetStages } from './check-animation-assets.ts';
 import { prefabStages } from './check-prefabs.ts';
 import { gameObjectStages } from './check-game-objects.ts';
 import { gameObjectRendererStages } from './check-game-object-renderer.ts';
+import { sceneGameObjectCutoverStages } from './check-scene-gameobject-cutover.ts';
 import { transactionRecoveryStage } from './check-transaction-recovery.ts';
 import { worldStages } from './check-world.ts';
 import { capabilityStages } from './check-capabilities.ts';
@@ -172,6 +173,18 @@ async function main(): Promise<void> {
   // production Viewport draws, and it can only mean anything once the objects
   // it draws are known to resolve and to run.
   for (const result of gameObjectRendererStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  /*
+   * The production Scene cutover, after the renderer projection it depends on.
+   * These are the stages that can tell a Scene Editor running on GameObjects
+   * from one still reading `entities` and merely agreeing with them — which is
+   * a distinction no earlier stage can make, because while the two views agree
+   * every assertion passes either way.
+   */
+  for (const result of sceneGameObjectCutoverStages()) {
     printStage(result);
     results.push(result);
   }

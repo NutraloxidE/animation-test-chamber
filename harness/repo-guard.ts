@@ -1117,6 +1117,209 @@ export function prefabSystemGuardStage(): StageResult {
   );
 }
 
+/**
+ * The production Scene path reads and writes GameObjects (work package §16).
+ *
+ * Two halves, and both are needed for the same reason the Prefab guard needs
+ * both: a guard that only forbids cannot tell "the cutover was never done" from
+ * "the cutover is fine", and a guard that only requires cannot tell "the cutover
+ * was done" from "the cutover was done and then something quietly reintroduced
+ * the entity path beside it".
+ *
+ * The negative half is scoped to the *production* Scene modules by name. The
+ * entity vocabulary is not forbidden repository-wide — the migration still reads
+ * `entities` to produce a GameObject view from a Scene that has none, the legacy
+ * operation engine still exists so its tests can exercise it, and the Unity
+ * exporter has not been cut over yet. What must not happen is a Scene Editor, a
+ * Scene viewport or an apply path reaching for it again.
+ *
+ * The canonical schema deletion is deliberately *not* required here: it is the
+ * next package's job, and requiring it now would fail on the very documents this
+ * guard is meant to protect.
+ */
+export function sceneCutoverGuardStage(): StageResult {
+  return stage(
+    'the production Scene path reads and writes gameObjects',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'a forbidden symbol in a production Scene module means the entity path is being reintroduced; a missing required one means the cutover was undone',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /**
+       * The retired vocabulary, and the modules that may no longer name it.
+       *
+       * Matched as whole words so a comment *about* the migration — of which
+       * these files contain many, deliberately — does not trip the guard on a
+       * substring. What is being detected is a production module reaching for
+       * the collection, not a module explaining why it does not.
+       */
+      const FORBIDDEN = [
+        'scene\\.entities',
+        'SceneEntityDefinition',
+        'CharacterSceneEntity',
+        'PropSceneEntity',
+        'LightSceneEntity',
+        'CameraSceneEntity',
+        'entity\\.kind',
+        'activeCameraEntityId',
+        'scene\\.place_asset',
+        'scene\\.delete_entity',
+        'scene\\.duplicate_entity',
+        'scene\\.rename_entity',
+        'scene\\.set_character_source',
+        'scene\\.bind_controller',
+        'scene\\.reorder_entity',
+        'applySceneOperation',
+        'validateSceneReferences',
+      ];
+
+      /**
+       * Production Scene modules.
+       *
+       * Everything under the Scene Editor, the production renderer projection
+       * it draws through, and the repository apply path that writes what it
+       * edits. Legacy migration, legacy fixtures and legacy compatibility tests
+       * are outside this set by construction — they are not in these
+       * directories.
+       */
+      const productionFiles = [
+        ...listFiles('apps/web/src/scene-editor'),
+        ...listFiles('apps/web/src/game-objects'),
+        'apps/api/src/routes/repository-apply.ts',
+        'packages/editor-core/src/game-object-operations.ts',
+        'packages/editor-core/src/apply-request.ts',
+      ].filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'));
+
+      for (const file of productionFiles) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        /*
+         * Comments are stripped before matching. These files explain the
+         * cutover at length — "it does not iterate scene.entities" is a
+         * sentence worth keeping — and a guard that could not tell an
+         * explanation from a read would push the explanations out of the code.
+         */
+        const code = source
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/(^|[^:])\/\/.*$/gm, '$1');
+        for (const symbol of FORBIDDEN) {
+          if (new RegExp(`\\b${symbol}\\b`).test(code)) {
+            issues.push({
+              files: [file],
+              expected: `${file} to address GameObjects only`,
+              actual: `it references ${symbol.replace(/\\/g, '')}`,
+              message: `${file} reaches for the retired entity path`,
+            });
+          }
+        }
+      }
+
+      /** What the cutover must still contain, by name. */
+      const required: { file: string; symbols: string[] }[] = [
+        {
+          file: 'apps/web/src/scene-editor/use-scene-runtime.ts',
+          symbols: ['instantiateScene', 'RuntimeScene'],
+        },
+        {
+          file: 'apps/web/src/scene-editor/viewport/SceneViewport.tsx',
+          symbols: ['GameObjectRenderer', 'projectRuntimeScene'],
+        },
+        {
+          file: 'apps/web/src/scene-editor/use-scene-session.ts',
+          symbols: ['applySceneGameObjectOperation'],
+        },
+        {
+          file: 'apps/api/src/routes/repository-apply.ts',
+          symbols: ['applySceneGameObjectOperation', 'changedGameObjectIds'],
+        },
+        {
+          file: 'packages/editor-core/src/game-object-operations.ts',
+          symbols: [
+            'scene.place_prefab',
+            'scene.delete_game_object',
+            'scene.duplicate_game_object',
+            'scene.rename_game_object',
+            'scene.set_prefab_source',
+            'scene.set_component_override',
+            'scene.clear_component_override',
+            'scene.set_instance_binding',
+            'scene.set_relation',
+            'scene.reorder_game_object',
+          ],
+        },
+        {
+          file: 'harness/check-scene-gameobject-cutover.ts',
+          symbols: ['sceneGameObjectCutoverStages'],
+        },
+        {
+          file: 'harness/one-shot.ts',
+          symbols: ['sceneGameObjectCutoverStages'],
+        },
+        {
+          file: 'apps/web/src/game-objects/AnimatedRepositoryModel.tsx',
+          symbols: ['AnimationMixer', 'cloneSkinnedScene'],
+        },
+      ];
+
+      for (const entry of required) {
+        const source = readRepoFile(entry.file);
+        if (source === null) {
+          issues.push({
+            files: [entry.file],
+            expected: 'the file to exist',
+            actual: 'it does not',
+            message: `${entry.file} is missing; the Scene cutover is incomplete`,
+          });
+          continue;
+        }
+        for (const symbol of entry.symbols) {
+          if (!source.includes(symbol)) {
+            issues.push({
+              files: [entry.file],
+              expected: `${entry.file} to reference ${symbol}`,
+              actual: 'it does not',
+              message: `${symbol} has been removed from ${entry.file}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * No reverse generation, anywhere (§9.2). A production write that
+       * regenerated `entities` from `gameObjects` would make the dual source of
+       * truth permanent — so the assignment is forbidden outright rather than
+       * scoped, and the migration is exempted by name because it goes the other
+       * way and only for a Scene that has no GameObject view at all.
+       */
+      const REVERSE_GENERATION = /entities\s*:\s*\(?\s*(scene|document)\??\.gameObjects/;
+      for (const file of [
+        ...listFiles('apps/web/src'),
+        ...listFiles('apps/api/src'),
+        ...listFiles('packages/editor-core/src'),
+      ].filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'))) {
+        const source = readRepoFile(file);
+        if (source !== null && REVERSE_GENERATION.test(source)) {
+          issues.push({
+            files: [file],
+            expected: 'gameObjects never to be reverse-generated into entities',
+            actual: 'it derives entities from gameObjects',
+            message: `${file} reverse-generates the legacy entity mirror`,
+          });
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${productionFiles.length} production Scene file(s) and ${required.length} required module(s) checked`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
     workspaceAliasStage(),
@@ -1132,6 +1335,7 @@ export function repoGuardStages(): StageResult[] {
     stateNameDependenceStage(),
     worldContractGuardStage(),
     prefabSystemGuardStage(),
+    sceneCutoverGuardStage(),
   ];
 }
 

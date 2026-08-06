@@ -44,7 +44,7 @@ import { useGLTF } from '@react-three/drei';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import * as THREE from 'three';
 import type { ExternalAnimationSource } from '@atc/schema';
-import type { RenderAnimatorFact, RenderModelFact, RenderProjectionIssue } from './render-projection.ts';
+import type { RenderAnimatorFact, RenderProjectionIssue } from './render-projection.ts';
 
 /** A take's identity: the file it lives in plus its name inside that file. */
 function takeKey(source: ExternalAnimationSource): string {
@@ -56,7 +56,6 @@ export interface AnimatedRepositoryModelProps {
   castShadow: boolean;
   receiveShadow: boolean;
   animator: RenderAnimatorFact;
-  model: RenderModelFact;
   gameObjectId: string;
   displayName: string;
   onIssue?: (issue: RenderProjectionIssue) => void;

@@ -13,6 +13,7 @@ reports/*.md
 !reports/gameobject-prefab-migration-audit.md
 !reports/gameobject-prefab-production-switchover-audit.md
 !reports/gameobject-prefab-production-cutover-final-audit.md
+!reports/scene-gameobject-production-cutover-audit.md
 !reports/animation-assets-one-shot-report.md
 !reports/animation-asset-hardening-baseline.md
 !reports/animation-asset-published-baseline.json

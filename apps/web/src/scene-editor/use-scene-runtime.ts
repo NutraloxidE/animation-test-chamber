@@ -31,6 +31,13 @@
  *
  * The rebuild key is a signature of what the runtime actually reads, so renaming
  * the *Scene* does not throw away a running simulation.
+ *
+ * ## What this hook deliberately does not own
+ *
+ * The per-frame counter that makes a moving runtime produce a moving picture.
+ * It lives inside `SceneViewport`, because a counter here would live at the
+ * *page* level and re-render the hierarchy, the Inspector and the Asset Panel
+ * sixty times a second to redraw a canvas none of them appear in.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectDefinition, SceneDefinition, TerrainPreset } from '@atc/schema';
@@ -60,22 +67,10 @@ export interface SceneRuntimeHandle {
   runtime: RuntimeScene | null;
   /** Resolver and runtime problems, shown rather than rendered around (§4.4). */
   issues: SceneRuntimeIssue[];
-  /** Bumped once per frame that advanced, so the projection is re-read. */
-  frame: number;
   playing: boolean;
   setPlaying: (playing: boolean) => void;
   /** Rebuilds every object at tick 0 from the same canonical Scene. */
   reset: () => void;
-  /**
-   * Called by the one in-canvas clock after it has stepped the runtime.
-   *
-   * The clock lives inside the `<Canvas>` because that is where `useFrame` is,
-   * and it is *one* clock for the whole viewport (§4.3): a
-   * `requestAnimationFrame` loop inside each `GameObjectRenderer` would give
-   * every object its own idea of what time it is, and two objects animating
-   * off two clocks is exactly how a "deterministic" scene stops being one.
-   */
-  advanced: () => void;
 }
 
 /**
@@ -106,7 +101,6 @@ export function useSceneRuntime(
   const animationRegistry = useChamber((state) => state.registry);
   const prefabRegistry = browserPrefabRegistry();
   const [playing, setPlaying] = useState(true);
-  const [frame, setFrame] = useState(0);
   const [generation, setGeneration] = useState(0);
   const [handle, setHandle] = useState<{
     runtime: RuntimeScene | null;
@@ -168,10 +162,8 @@ export function useSceneRuntime(
   return {
     runtime: handle.runtime,
     issues: handle.issues,
-    frame,
     playing,
     setPlaying,
     reset: () => setGeneration((value) => value + 1),
-    advanced: () => setFrame((value) => value + 1),
   };
 }

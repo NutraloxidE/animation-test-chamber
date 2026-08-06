@@ -37,6 +37,7 @@
     "harness:prefabs": "tsx harness/check-prefabs.ts",
     "harness:game-objects": "tsx harness/check-game-objects.ts",
     "harness:game-object-renderer": "tsx harness/check-game-object-renderer.ts",
+    "harness:scene-gameobject-cutover": "tsx harness/check-scene-gameobject-cutover.ts",
     "harness:character-control": "vitest run tests/unit/character-control",
     "harness:capabilities": "tsx harness/check-capabilities.ts",
     "harness:build": "tsx harness/build.ts",
