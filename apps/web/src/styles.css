@@ -2582,3 +2582,98 @@ button.link {
     z-index: 26;
   }
 }
+
+/*
+ * The Prefab surfaces.
+ *
+ * Everything here exists to keep wide content — a component's JSON, a long
+ * asset path, a row of badges — inside its own box. A page that scrolls
+ * horizontally hides the right-hand edge of every panel at once, and on a
+ * narrow viewport that is where the identity of what you are editing sits.
+ */
+.prefab-editor,
+.prefab-list {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.prefab-editor__panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.prefab-editor__panels > section {
+  flex: 1 1 20rem;
+  min-width: 0;
+  border: 1px solid #262a33;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+/* The one element that genuinely cannot wrap: it scrolls itself instead of
+   pushing the document sideways. */
+.prefab-editor pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.prefab-editor code,
+.prefab-list code,
+.prefab-overview dd {
+  overflow-wrap: anywhere;
+}
+
+.prefab-overview dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.prefab-overview dt {
+  color: #8b93a3;
+}
+
+.prefab-overview dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.prefab-list__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.prefab-list ul li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.prefab-viewport {
+  height: 18rem;
+  max-width: 100%;
+}
+
+/*
+ * The workspace sits outside the panel grid, at full width and with no padding
+ * of its own. The chamber's layout already fits a viewport exactly; nesting it
+ * inside a padded flex cell is what pushed the narrow layout sideways.
+ */
+.prefab-editor__workspace {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.prefab-editor__workspace > h3 {
+  margin: 0.5rem 0.75rem;
+}

@@ -250,25 +250,6 @@ export function PrefabEditorPage(): JSX.Element {
           <ComponentInspector component={selectedComponent} />
         </section>
 
-        {workspaceOpen && (
-          /*
-           * The authoring workspace, mounted in place. It still runs off the
-           * animation subject the store holds — the Component's assignment is
-           * what names the assets it edits — so opening it here is a link into
-           * one workspace, not a second one.
-           */
-          <section data-testid="prefab-animation-workspace">
-            <h3>Animation workspace</h3>
-            <AnimationWorkspace subjectId={animationSubjectId(target.prefabId)} />
-          </section>
-        )}
-
-        {/*
-          One viewport at a time. The animation workspace brings its own — two
-          live WebGL canvases on one page compete for the same software
-          rasteriser, and the Prefab preview has nothing to add while the
-          workspace is showing the same composition animating.
-        */}
         {!workspaceOpen && (
           <section data-testid="prefab-viewport-panel">
             <h3>Viewport</h3>
@@ -312,6 +293,26 @@ export function PrefabEditorPage(): JSX.Element {
           </p>
         </section>
       </div>
+
+      {workspaceOpen && (
+        /*
+         * The authoring workspace, mounted in place. It still runs off the
+         * animation subject the store holds — the Component's assignment is
+         * what names the assets it edits — so opening it here is a link into
+         * one workspace, not a second one.
+         */
+        <section className="prefab-editor__workspace" data-testid="prefab-animation-workspace">
+          <h3>Animation workspace</h3>
+          <AnimationWorkspace subjectId={animationSubjectId(target.prefabId)} />
+        </section>
+        )}
+
+        {/*
+        One viewport at a time. The animation workspace brings its own — two
+        live WebGL canvases on one page compete for the same software
+        rasteriser, and the Prefab preview has nothing to add while the
+        workspace is showing the same composition animating.
+        */}
     </div>
   );
 }
