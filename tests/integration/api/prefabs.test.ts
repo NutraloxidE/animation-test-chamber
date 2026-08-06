@@ -497,7 +497,7 @@ describe('Animation to Prefab exact-target adoption', () => {
     ['base', 'behavior'], ['base', 'motionSet'], ['base', 'rig'], ['base', 'tuning'],
     ['fork', 'behavior'], ['fork', 'motionSet'], ['fork', 'rig'], ['fork', 'tuning'],
     ['variant', 'behavior'], ['variant', 'motionSet'], ['variant', 'rig'], ['variant', 'tuning'],
-  ] as const)('adopts %s Ã— %s through stored files and the real resolver', async (derivation, slot) => {
+  ] as const)('adopts %s × %s through stored files and the real resolver', async (derivation, slot) => {
     const fixture = addMatrixFixture(derivation, slot);
     const request = exactAnimationRequest(fixture.source, fixture.targetId);
     const projectBefore = readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8');
