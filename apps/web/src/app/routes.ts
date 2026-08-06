@@ -22,9 +22,25 @@ export const ROUTES = {
   root: '/',
   characters: '/characters',
   scenes: '/scenes',
+  prefabs: '/prefabs',
+  prefabEditor: '/edit/prefab/:prefabId',
   rigEditor: '/edit/rig/:characterId',
   sceneEditor: '/edit/scene/:sceneId',
 } as const;
+
+/**
+ * `/edit/prefab/<id>`. The id is encoded here and nowhere else.
+ *
+ * `component` is transient view state — which Component's Inspector is open —
+ * and nothing canonical may depend on it, which is why it is a query parameter
+ * rather than a second path segment.
+ */
+export function prefabEditorPath(prefabId: string, componentType?: string): string {
+  const base = `/edit/prefab/${encodeURIComponent(prefabId)}`;
+  return componentType === undefined
+    ? base
+    : `${base}?component=${encodeURIComponent(componentType)}`;
+}
 
 /** `/edit/rig/<id>`. The id is encoded here and nowhere else. */
 export function rigEditorPath(characterId: string): string {

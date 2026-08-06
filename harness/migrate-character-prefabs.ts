@@ -46,7 +46,9 @@ import type {
   SceneDefinition,
   SceneEntityDefinition,
 } from '@atc/schema';
-import { IDENTITY_TRANSFORM, prefabAssetFilePath } from '@atc/schema';
+import { IDENTITY_TRANSFORM, prefabAssetFilePath,
+  LEGACY_CHARACTER_PREFAB_IDS,
+} from '@atc/schema';
 import { createBasePrefab, createPrefabVariant } from '@atc/prefab-runtime';
 import { computeContentHash } from '@atc/animation-asset-runtime';
 import { loadCanonicalProject, PROJECT_PATH } from './animation-assets.ts';
@@ -62,14 +64,13 @@ import { readRepoFile, writeRepoFile } from './lib.ts';
 const MIGRATION_TIMESTAMP = '2026-08-06T00:00:00.000Z';
 const MIGRATION_AUTHOR = 'prefabs:migrate';
 
-/** Old Character id → new Prefab id (§11.3). */
-export const LEGACY_CHARACTER_PREFAB_IDS: Record<string, string> = {
-  'demo-humanoid': 'navigator',
-  'alternate-humanoid-character': 'relay',
-  sentinel: 'sentinel',
-  'quaternius-knight': 'quaternius-knight',
-  'quaternius-universal-base': 'quaternius-universal-base',
-};
+/**
+ * Old Character id → new Prefab id (§11.3).
+ *
+ * Re-exported, not redeclared: the table lives in the schema package so the
+ * migration and the legacy route redirect read the same one.
+ */
+export { LEGACY_CHARACTER_PREFAB_IDS };
 
 export const HUMANOID_BASE_PREFAB_ID = 'humanoid-character-base';
 export const DEFAULT_SCENE_CAMERA_PREFAB_ID = 'default-scene-camera';

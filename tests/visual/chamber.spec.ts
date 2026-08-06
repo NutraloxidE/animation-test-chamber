@@ -116,8 +116,8 @@ test('an imported Character plays its canonical takes, and its grip is editable'
    * the Hierarchy, which is exactly the hidden second selector the work package
    * removed: it changed the model without changing the Character being edited.
    */
-  await page.goto('/edit/rig/quaternius-universal-base');
-  await expect(page.getByTestId('rig-target-id')).toContainText('quaternius-universal-base');
+  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
+  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
   await openHierarchy(page);
   const swordAsset = page.waitForResponse((response) =>
@@ -176,8 +176,8 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
-  await page.goto('/edit/rig/quaternius-universal-base');
-  await expect(page.getByTestId('rig-target-id')).toContainText('quaternius-universal-base');
+  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
+  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
   await openHierarchy(page);
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   await closeHierarchy(page);

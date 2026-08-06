@@ -132,8 +132,8 @@ test.describe('scene authoring', () => {
   });
 
   test('the rig editor still opens and identifies its exact character', async ({ page }) => {
-    await page.goto('/edit/rig/demo-humanoid');
-    await expect(page.getByTestId('rig-target-id')).toContainText('demo-humanoid');
+    await page.goto('/edit/prefab/navigator?component=animator');
+    await expect(page.getByTestId('prefab-target-id')).toContainText('navigator');
     // The chamber itself is unchanged underneath the route.
     await expect(page.getByTestId('hud')).toBeVisible();
   });
@@ -141,6 +141,6 @@ test.describe('scene authoring', () => {
   test('an unknown character id does not fall back to another character', async ({ page }) => {
     await page.goto('/edit/rig/no-such-character');
     await expect(page.getByTestId('route-not-found')).toBeVisible();
-    await expect(page.getByTestId('rig-target-id')).toHaveCount(0);
+    await expect(page.getByTestId('prefab-target-id')).toHaveCount(0);
   });
 });

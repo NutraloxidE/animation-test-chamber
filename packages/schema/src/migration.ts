@@ -111,6 +111,27 @@ export const LEGACY_PROCEDURAL_PRESET_BY_CHARACTER_ID: Readonly<Record<string, s
 /** The appearance a legacy Character with no model file migrates to. */
 export const LEGACY_DEFAULT_PROCEDURAL_PRESET = 'navigator';
 
+/**
+ * Legacy Character id → Prefab id. The only table (§10).
+ *
+ * The migration writes Prefabs with it and the legacy `/edit/rig/:id` redirect
+ * reads it, so a bookmark cannot resolve to a different Prefab than the one the
+ * Character actually became. Two copies of this map would agree right up until
+ * somebody added a Character to one of them.
+ */
+export const LEGACY_CHARACTER_PREFAB_IDS: Readonly<Record<string, string>> = {
+  'demo-humanoid': 'navigator',
+  'alternate-humanoid-character': 'relay',
+  sentinel: 'sentinel',
+  'quaternius-knight': 'quaternius-knight',
+  'quaternius-universal-base': 'quaternius-universal-base',
+};
+
+/** The Prefab a legacy Character id became, or nothing. Never a guess. */
+export function prefabIdForLegacyCharacterId(characterId: string): string | undefined {
+  return LEGACY_CHARACTER_PREFAB_IDS[characterId];
+}
+
 type LegacyCharacterModelFields = {
   model?: CharacterModelBinding;
   modelAssetPath?: string | null;

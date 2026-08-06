@@ -107,7 +107,7 @@ test.describe('apply round trip', () => {
     await page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`).click();
     await page.getByRole('link', { name: /Open .* in the Rig Editor/ }).click();
     await expect(page).toHaveURL(/\/edit\/rig\//);
-    await expect(page.getByTestId('rig-target-id')).toBeVisible();
+    await expect(page.getByTestId('prefab-target-id')).toBeVisible();
 
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`/edit/scene/${SCENE_ID}$`));

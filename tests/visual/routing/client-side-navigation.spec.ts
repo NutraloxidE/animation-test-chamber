@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Client-side navigation, under the real runner (work package §12).
+ * Client-side navigation, under the real runner (work package §12, §14).
  *
  * These exist because a navigation bug survived every other gate. The pathname
  * changed, no error was logged, the unit tests passed, and manual clicking in a
@@ -21,86 +21,93 @@ import { expect, test, type Page } from '@playwright/test';
  * load re-reads the URL from scratch and cannot fail the way this did, so a
  * test that navigated with `goto` would assert nothing about the contract that
  * broke.
+ *
+ * The targets are Prefabs now rather than Characters. The contract is the same
+ * one — what is on screen must come from the route — and it is worth more here,
+ * because a Prefab's model comes from its own ModelRenderer rather than from a
+ * store field a route could fail to touch.
  */
 
-const CHARACTER_A = 'demo-humanoid';
-const CHARACTER_B = 'alternate-humanoid-character';
+const PREFAB_A = 'navigator';
+const PREFAB_B = 'relay';
 
-async function openRigEditor(page: Page, characterId: string): Promise<void> {
-  await page.goto(`/edit/rig/${characterId}`);
-  await expect(page.getByTestId('rig-target-id')).toContainText(characterId);
+async function openPrefabEditor(page: Page, prefabId: string): Promise<void> {
+  await page.goto(`/edit/prefab/${prefabId}`);
+  await expect(page.getByTestId('prefab-target-id')).toContainText(prefabId);
 }
 
 test.describe('client-side navigation', () => {
   test('a plain router Link moves the route target, not only the URL', async ({ page }) => {
-    await openRigEditor(page, CHARACTER_A);
+    await page.goto('/prefabs');
 
-    await page.getByRole('link', { name: 'Relay' }).click();
+    await page.getByTestId('prefab-row-relay').getByRole('link').click();
 
-    await expect(page).toHaveURL(new RegExp(`/edit/rig/${CHARACTER_B}$`));
+    await expect(page).toHaveURL(new RegExp(`/edit/prefab/${PREFAB_B}$`));
     // The assertion that actually failed: the URL moved and this did not.
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
-    // And the switcher now offers the character we came *from*, which it can
-    // only do if the page rebuilt its target from the new route parameter.
-    await expect(page.getByRole('link', { name: 'Navigator' })).toBeVisible();
-  });
-
-  test('the Asset Library character select navigates and the library follows', async ({ page }) => {
-    await openRigEditor(page, CHARACTER_A);
-    await page.getByTestId('workspace-asset-library').click();
-    await expect(page.getByTestId('asset-library')).toBeVisible();
-
-    await page.getByTestId('library-character-select').selectOption(CHARACTER_B);
-
-    await expect(page).toHaveURL(new RegExp(`/edit/rig/${CHARACTER_B}$`));
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
-    // The library is docked inside the route, so its resolved data has to move
-    // with the route rather than keeping the character it was opened on.
-    await expect(page.getByTestId('library-character-select')).toHaveValue(CHARACTER_B);
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_B);
+    // And the page rebuilt its whole target from the new route parameter, not
+    // only its header.
+    await expect(page.getByTestId('prefab-overview-models')).toContainText('relay');
   });
 
   test('browser Back returns to the previous route target', async ({ page }) => {
-    await openRigEditor(page, CHARACTER_A);
-    await page.getByRole('link', { name: 'Relay' }).click();
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
+    await openPrefabEditor(page, PREFAB_A);
+    await page.getByRole('link', { name: 'All Prefabs' }).click();
+    await page.getByTestId('prefab-row-relay').getByRole('link').click();
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_B);
 
     // Back is the same subscription by a different route in: a popstate the
     // router has to hear. It was equally dead while the location update was a
     // starved transition.
     await page.goBack();
+    await page.goBack();
 
-    await expect(page).toHaveURL(new RegExp(`/edit/rig/${CHARACTER_A}$`));
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_A);
+    await expect(page).toHaveURL(new RegExp(`/edit/prefab/${PREFAB_A}$`));
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_A);
   });
 
   /*
    * Back and Forward have to restore the *model* too, not only the target id.
    * That is a distinct assertion: the model used to come from a store field the
    * route never touched, so history navigation moved the header while leaving
-   * the previous Character on screen.
+   * the previous target on screen.
    */
   test('Back and Forward restore the model, not only the route target', async ({ page }) => {
     test.setTimeout(90_000);
-    const modelOf = async (): Promise<string> => {
-      const overview = page.getByTestId('overview-body');
-      if (!(await overview.isVisible())) await page.getByTestId('overview-toggle').click();
-      return (await page.getByTestId('overview-model').textContent()) ?? '';
-    };
+    const modelOf = async (): Promise<string> =>
+      (await page.getByTestId('prefab-overview-models').textContent()) ?? '';
 
-    await openRigEditor(page, CHARACTER_A);
+    await openPrefabEditor(page, PREFAB_A);
     expect(await modelOf()).toContain('navigator');
 
-    await page.getByRole('link', { name: 'Relay' }).click();
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
+    await page.getByRole('link', { name: 'All Prefabs' }).click();
+    await page.getByTestId('prefab-row-relay').getByRole('link').click();
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_B);
     expect(await modelOf()).toContain('relay');
 
     await page.goBack();
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_A);
+    await page.goBack();
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_A);
     expect(await modelOf()).toContain('navigator');
 
     await page.goForward();
-    await expect(page.getByTestId('rig-target-id')).toContainText(CHARACTER_B);
+    await page.goForward();
+    await expect(page.getByTestId('prefab-target-id')).toContainText(PREFAB_B);
     expect(await modelOf()).toContain('relay');
+  });
+
+  /*
+   * Component selection is view state in the query string, so it must survive
+   * Back the same way the target does — and must not leak across Prefabs.
+   */
+  test('the selected Component lives in the URL and resets across targets', async ({ page }) => {
+    test.setTimeout(90_000);
+    await openPrefabEditor(page, PREFAB_A);
+    await page.getByTestId('prefab-component-model-renderer').click();
+    await expect(page).toHaveURL(/component=model-renderer/);
+
+    await page.goto(`/edit/prefab/${PREFAB_B}`);
+    await expect(page).not.toHaveURL(/component=/);
   });
 
   test('navigating between the scene list and a scene editor rebuilds the page', async ({ page }) => {
