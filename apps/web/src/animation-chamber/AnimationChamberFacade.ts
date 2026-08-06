@@ -19,21 +19,22 @@
  * Prefab node Animator, and the document is built from it.
  */
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { AnimationSubjectDefinition, ValidationResult } from '@atc/schema';
+import type {
+  AnimationSubjectDefinition,
+  CapabilityProfile,
+  ValidationResult,
+} from '@atc/schema';
 import type { CanonicalPath } from '@atc/runtime-core';
 import { EditSession } from '@atc/editor-core';
 import type { AnimationAuthoringSession } from '../prefab-editor/animation-authoring-session.ts';
 import type { ChamberEngine } from '../engine.ts';
+import { detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
 import {
   materializeAnimationChamberDocument,
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
 } from './AnimationChamberDocument.ts';
-import {
-  createIdleLivePreview,
-  type AnimationLivePreview,
-  type AnimationPreviewControls,
-} from './AnimationLivePreview.ts';
+
 
 export type AnimationPanelId =
   | 'inspector'
@@ -71,19 +72,24 @@ export interface AnimationChamberState {
   previewDocument: AnimationChamberDocument;
 
   session: EditSession<AnimationChamberDocument>;
-  engine: AnimationLivePreview;
-  /** Absent when the subject has no running simulation to drive. */
-  controls: AnimationPreviewControls | null;
   /**
-   * The concrete engine, for the viewport only.
+   * The running preview.
    *
-   * The panels read `engine` — the narrow port — and must keep doing so. The
-   * viewport genuinely needs more than four members (terrain mesh, debug
-   * overlays and the camera all reach into the simulation), and pretending
-   * otherwise would mean widening the port every panel shares to satisfy one
-   * consumer.
+   * An earlier revision handed the panels a four-member read port with an idle
+   * stand-in behind it, because the workspace had no engine yet. It does now,
+   * and the stand-in turned out to be unreachable: the simulation never needed
+   * a presentation, so every subject that resolves at all can run one. A
+   * subject that does not resolve has no chamber to put an engine in.
+   *
+   * So there is one engine, always, and the panels read it exactly as they did
+   * in the donor.
    */
-  previewEngine: ChamberEngine | null;
+  engine: ChamberEngine;
+
+  /** Terrain preset the preview stands on. Session-local (§10.1). */
+  terrainPresetId: string;
+  /** Device haptics, refreshed when a gamepad announces itself. */
+  capability: CapabilityProfile;
 
   /** Bumped on every edit, undo, redo or revert, so controls re-read. */
   revision: number;
@@ -99,6 +105,8 @@ export interface AnimationChamberState {
 
 export interface AnimationChamberActions {
   setPanel(panel: AnimationPanelId): void;
+  setTerrainPreset(id: string): void;
+  refreshCapability(capability: CapabilityProfile): void;
   selectState(id: string): void;
   selectTransition(id: string): void;
   selectReplay(id: string): void;
@@ -146,20 +154,10 @@ function validateChamberDocument(): ValidationResult {
   return { valid: true, issues: [] };
 }
 
-/** Whether the supplied preview can be driven, not merely read. */
-function isPreviewControls(
-  preview: (AnimationLivePreview & Partial<AnimationPreviewControls>) | undefined,
-): preview is AnimationLivePreview & AnimationPreviewControls {
-  return typeof preview?.advance === 'function';
-}
-
 export function createAnimationChamberFacade(input: {
   authoring: AnimationAuthoringSession;
   repository: AnimationChamberRepositoryDefaults;
-  /** Omitted when the subject cannot run a simulation; an idle port is used. */
-  livePreview?: AnimationLivePreview & Partial<AnimationPreviewControls>;
-  /** The same engine as `livePreview`, when there is one, typed for the viewport. */
-  previewEngine?: ChamberEngine;
+  engine: ChamberEngine;
   initialPanel?: AnimationPanelId;
 }): AnimationChamberFacade {
   const { authoring, repository } = input;
@@ -168,14 +166,7 @@ export function createAnimationChamberFacade(input: {
     repository,
   });
   const session = new EditSession<AnimationChamberDocument>(document, validateChamberDocument);
-  const engine =
-    input.livePreview ??
-    createIdleLivePreview({
-      missing: 'engine',
-      reason:
-        'No live preview is attached to this subject yet, so state highlighting is idle. ' +
-        'Graph, Timeline and Timing editing are unaffected.',
-    });
+  const { engine } = input;
 
   const firstState = document.graph.states[0]?.id ?? '';
   const firstTransition = document.graph.transitions[0]?.id ?? '';
@@ -207,8 +198,9 @@ export function createAnimationChamberFacade(input: {
 
       session,
       engine,
-      controls: isPreviewControls(input.livePreview) ? input.livePreview : null,
-      previewEngine: input.previewEngine ?? null,
+
+      terrainPresetId: engine.terrainPreset.id,
+      capability: detectCapability(readActiveGamepad()),
 
       revision: 0,
 
@@ -219,6 +211,11 @@ export function createAnimationChamberFacade(input: {
       motionContextId: document.motionContextKeys[0] ?? '',
 
       setPanel: (panel) => set({ activePanel: panel }),
+      setTerrainPreset: (id) => {
+        engine.setTerrainPreset(id);
+        set({ terrainPresetId: id });
+      },
+      refreshCapability: (capability) => set({ capability }),
       selectState: (id) => set({ selectedStateId: id }),
       selectTransition: (id) => set({ selectedTransitionId: id }),
       selectReplay: (id) => set({ selectedReplayId: id }),

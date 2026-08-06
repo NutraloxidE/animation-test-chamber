@@ -31,6 +31,7 @@ import {
   presentationAvailability,
   groundingAvailability,
   gripAvailability,
+  viewportOwnsSimulation,
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
 } from '../../../apps/web/src/animation-chamber/AnimationChamberDocument.ts';
@@ -38,12 +39,6 @@ import {
   ANIMATION_PANELS,
   ANIMATION_PANEL_IDS,
 } from '../../../apps/web/src/animation-chamber/AnimationPanelRegistry.ts';
-import {
-  createIdleLivePreview,
-  isIdleLivePreview,
-  type AnimationLivePreview,
-  type AnimationPreviewControls,
-} from '../../../apps/web/src/animation-chamber/AnimationLivePreview.ts';
 import { ChamberEngine } from '../../../apps/web/src/engine.ts';
 import { resolveAnimationSubjectPresentation } from '../../../apps/web/src/animation-chamber/resolve-subject-presentation.ts';
 import {
@@ -270,24 +265,11 @@ describe('the panel registry', () => {
 
   it('wires exactly the first vertical slice so far', () => {
     const wired = ANIMATION_PANELS.filter((panel) => panel.implemented).map((panel) => panel.id);
-    expect(wired).toEqual(['inspector', 'graph', 'timeline', 'timing']);
+    expect(wired).toEqual(['inspector', 'graph', 'timeline', 'timing', 'terrain', 'capability']);
   });
 
   it('keeps every unwired panel registered rather than hidden', () => {
     expect(ANIMATION_PANELS).toHaveLength(11);
-  });
-});
-
-describe('the idle live preview', () => {
-  it('answers every reader without a simulation', () => {
-    const preview = createIdleLivePreview({ missing: 'engine', reason: 'no engine' });
-    expect(isIdleLivePreview(preview)).toBe(true);
-    expect(preview.snapshot().tick).toBe(0);
-    expect(preview.snapshot().stateMachine).toEqual({});
-    expect(preview.lastRecord).toBeNull();
-    expect(preview.graphLayers).toEqual({});
-    // Subscribing hands back a working unsubscribe even though nothing fires.
-    expect(() => preview.subscribe(() => {})()).not.toThrow();
   });
 });
 
@@ -392,16 +374,6 @@ describe('the subject-native preview engine', () => {
     expect(engine.snapshot().tick).toBe(0);
   });
 
-  it('is the live-preview port the panels read', () => {
-    const engine = new ChamberEngine(materialize());
-    // Structural, not nominal: the panels never import ChamberEngine.
-    const port: AnimationLivePreview = engine;
-    const controls: AnimationPreviewControls = engine;
-
-    expect(isIdleLivePreview(port)).toBe(false);
-    expect(typeof controls.advance).toBe('function');
-    expect(port.graphLayers).toBeDefined();
-  });
 });
 
 describe('the subject presentation the viewport draws', () => {
@@ -470,5 +442,33 @@ describe('the subject presentation the viewport draws', () => {
     });
     expect(presentation.model.canonical).toEqual(document.presentation.model);
     expect(presentation.model.isPreviewOverridden).toBe(true);
+  });
+});
+
+describe('one driver advances the simulation', () => {
+  it('gives the viewport the clock exactly when there is a body to draw', () => {
+    // The same fact decides whether a canvas exists and whether `useFrame`
+    // runs, so both must come from here rather than being decided twice.
+    expect(viewportOwnsSimulation(materialize())).toBe(true);
+    expect(viewportOwnsSimulation(materialize({ withModel: false }))).toBe(false);
+  });
+
+  it('still runs a simulation for a subject with no body', () => {
+    // The shell's clock covers this case. A bodiless Animator is still worth
+    // tuning, and a frozen graph beside "no ModelRenderer" would be a worse
+    // answer than a running one.
+    const engine = new ChamberEngine(materialize({ withModel: false }));
+    for (let i = 0; i < 20; i += 1) engine.advance(1 / 60);
+
+    expect(engine.snapshot().tick).toBeGreaterThan(0);
+    expect(engine.snapshot().locomotionState).not.toBe('');
+  });
+
+  it('exposes terrain and haptics state the newly wired panels read', () => {
+    const engine = new ChamberEngine(materialize());
+    // TerrainPanel reads these two; CapabilityPanel reads the haptic player.
+    expect(engine.terrainPreset.id).toBeTruthy();
+    expect(typeof engine.subscribe).toBe('function');
+    expect(engine.hapticPlayer).toBeDefined();
   });
 });

@@ -123,11 +123,11 @@ export function AnimationWorkspaceRoute(): JSX.Element {
           return { dispose: () => engine.detachInput() };
         },
       });
+      if (!held.engine) throw new Error('the authoring session did not create a preview engine');
       created = createAnimationChamberFacade({
         authoring,
         repository,
-        livePreview: held.engine,
-        previewEngine: held.engine,
+        engine: held.engine,
       });
       setFailure(null);
       setFacade(created);

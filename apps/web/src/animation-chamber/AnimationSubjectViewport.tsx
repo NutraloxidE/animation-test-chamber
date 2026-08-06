@@ -57,7 +57,7 @@ function SubjectLoop({ engine }: { engine: ChamberEngine }): null {
 }
 
 export function AnimationSubjectViewport(): JSX.Element | null {
-  const engine = useAnimationChamber((state) => state.previewEngine);
+  const engine = useAnimationChamber((state) => state.engine);
   const document = useAnimationChamber((state) => state.project);
   const motionContextId = useAnimationChamber((state) => state.motionContextId);
 
@@ -68,7 +68,6 @@ export function AnimationSubjectViewport(): JSX.Element | null {
     : undefined;
 
   useEffect(() => {
-    if (!engine) return undefined;
     const update = (): void => {
       engine.refreshHapticCapability();
       detectCapability(readActiveGamepad());
@@ -82,9 +81,9 @@ export function AnimationSubjectViewport(): JSX.Element | null {
     };
   }, [engine]);
 
-  // No engine, or no body to draw: the header already states which, and an
-  // empty canvas would say it worse.
-  if (!engine || !presentation) return null;
+  // No body to draw: the header already says which requirement is missing, and
+  // an empty canvas would say it worse.
+  if (!presentation) return null;
 
   const effective = presentation.model.effective;
   return (

@@ -1,5 +1,5 @@
 import { resolveBinding } from '@atc/haptics-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 import { Field } from './Field.tsx';
 
 /**

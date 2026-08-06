@@ -152,6 +152,18 @@ export function presentationAvailability(
   return { available: true };
 }
 
+/**
+ * Whether the viewport, rather than the shell's clock, advances the simulation.
+ *
+ * Exactly one of them must. The viewport drives from `useFrame`, which only
+ * runs when there is a canvas, which only exists when there is a body to draw —
+ * so the same fact decides both, and deriving it in one named place is what
+ * stops the two from disagreeing and running every tick twice.
+ */
+export function viewportOwnsSimulation(document: AnimationChamberDocument): boolean {
+  return presentationAvailability(document).available;
+}
+
 /** Whether grounding and foot-IK diagnostics can run for this subject. */
 export function groundingAvailability(
   document: AnimationChamberDocument,

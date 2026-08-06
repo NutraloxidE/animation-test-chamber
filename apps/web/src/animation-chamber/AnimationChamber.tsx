@@ -18,11 +18,12 @@ import { TransitionInspector } from '../panels/TransitionInspector.tsx';
 import { StateGraph } from '../panels/StateGraph.tsx';
 import { Timeline } from '../panels/Timeline.tsx';
 import { MotionTimingPanel } from '../panels/MotionTimingPanel.tsx';
+import { TerrainPanel } from '../panels/TerrainPanel.tsx';
+import { CapabilityPanel } from '../panels/CapabilityPanel.tsx';
 import { ANIMATION_PANELS } from './AnimationPanelRegistry.ts';
 import type { AnimationPanelId } from './AnimationChamberFacade.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
-import { isIdleLivePreview } from './AnimationLivePreview.ts';
-import { presentationAvailability } from './AnimationChamberDocument.ts';
+import { presentationAvailability, viewportOwnsSimulation } from './AnimationChamberDocument.ts';
 import { useAnimationPreviewClock } from './useAnimationPreviewClock.ts';
 import { AnimationSubjectViewport } from './AnimationSubjectViewport.tsx';
 
@@ -36,6 +37,10 @@ function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
       return <Timeline />;
     case 'timing':
       return <MotionTimingPanel />;
+    case 'terrain':
+      return <TerrainPanel />;
+    case 'capability':
+      return <CapabilityPanel />;
     default:
       return <PanelNotYetNative id={id} />;
   }
@@ -148,11 +153,10 @@ function Hud(): JSX.Element {
 }
 
 /** Pause, frame-step, slow motion and reset, preserved from the donor. */
-function PreviewControls(): JSX.Element | null {
-  const controls = useAnimationChamber((state) => state.controls);
-  const [paused, setPaused] = useState(() => controls?.isPaused ?? false);
+function PreviewControls(): JSX.Element {
+  const controls = useAnimationChamber((state) => state.engine);
+  const [paused, setPaused] = useState(() => controls.isPaused);
   const [slow, setSlow] = useState(false);
-  if (!controls) return null;
 
   return (
     <div className="viewport-controls" data-testid="viewport-controls">
@@ -207,8 +211,6 @@ export function AnimationChamber(): JSX.Element {
   const activePanel = useAnimationChamber((state) => state.activePanel);
   const setPanel = useAnimationChamber((state) => state.setPanel);
   const engine = useAnimationChamber((state) => state.engine);
-  const controls = useAnimationChamber((state) => state.controls);
-  const previewEngine = useAnimationChamber((state) => state.previewEngine);
   const document = useAnimationChamber((state) => state.project);
   const statusMessage = useAnimationChamber((state) => state.statusMessage);
 
@@ -220,28 +222,20 @@ export function AnimationChamber(): JSX.Element {
    * ModelRenderer still shows live state in Graph and Timeline instead of a
    * frozen graph beside an explanation of why nothing is moving.
    */
-  const viewportDrives = previewEngine !== null && presentationAvailability(document).available;
-  useAnimationPreviewClock(controls, { enabled: !viewportDrives });
+  const viewportDrives = viewportOwnsSimulation(document);
+  useAnimationPreviewClock(engine, { enabled: !viewportDrives });
 
   return (
     <div className="animation-chamber" data-testid="animation-chamber">
       <SubjectHeader />
 
-      {isIdleLivePreview(engine) ? (
-        <p className="muted" data-testid="animation-preview-idle">
-          {engine.idleReason.reason}
-        </p>
-      ) : (
-        <>
-          {viewportDrives && (
-            <div className="animation-viewport" data-testid="animation-viewport">
-              <AnimationSubjectViewport />
-            </div>
-          )}
-          <Hud />
-          <PreviewControls />
-        </>
+      {viewportDrives && (
+        <div className="animation-viewport" data-testid="animation-viewport">
+          <AnimationSubjectViewport />
+        </div>
       )}
+      <Hud />
+      <PreviewControls />
 
       <nav className="panel-tabs" data-testid="animation-panel-tabs">
         {ANIMATION_PANELS.map((panel) => (
