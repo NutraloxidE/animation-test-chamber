@@ -70,12 +70,14 @@ async function advanceTicksUntil(
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
+  // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator?component=animator');
   await expect(page.getByTestId('hud')).toBeVisible();
 });
 
 test('boots with the demo project and a running simulation', async ({ page }) => {
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.getByTestId('viewport-canvas').locator('canvas')).toBeVisible();
 
   // The tick counter proves the fixed-step loop is actually advancing.
   const hud = page.getByTestId('hud');
@@ -452,7 +454,9 @@ test.describe('static character drafts', () => {
     context,
   }) => {
     await context.route('**/api/health', (route) => route.abort());
-    await page.goto('/');
+    // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator?component=animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     await openPanel(page, 'inspector');
@@ -511,7 +515,9 @@ test.describe('static character drafts', () => {
         }),
       );
     });
-    await page.goto('/');
+    // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator?component=animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     const banner = page.getByTestId('stale-character-draft-banner');

@@ -101,12 +101,13 @@ test.describe('apply round trip', () => {
      * Client-side navigation, both ways, and deliberately not `page.goto`: a
      * full document load re-seeds the store from scratch, so it cannot fail the
      * way a stale in-memory project does — which is the only thing this test is
-     * for. Out through the entity inspector's Rig Editor link, back through
-     * browser history.
+     * for. Out through the inspector's editor link — which now redirects to the
+     * Prefab the Character became — and back through browser history. The
+     * redirect `replace`s, so one Back returns to the Scene.
      */
     await page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`).click();
     await page.getByRole('link', { name: /Open .* in the Rig Editor/ }).click();
-    await expect(page).toHaveURL(/\/edit\/rig\//);
+    await expect(page).toHaveURL(/\/edit\/prefab\//);
     await expect(page.getByTestId('prefab-target-id')).toBeVisible();
 
     await page.goBack();

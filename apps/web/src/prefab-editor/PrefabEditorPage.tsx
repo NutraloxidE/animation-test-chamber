@@ -172,6 +172,14 @@ export function PrefabEditorPage(): JSX.Element {
     selectedNode.components.find(
       (component) => component.componentType === selectedComponentType,
     ) ?? selectedNode.components[0];
+  /*
+   * The workspace opens only when the URL *names* the Animator, not merely when
+   * an Animator happens to be the node's first Component. Opening a Prefab
+   * should show the Prefab; the workspace is somewhere you navigate to, and the
+   * legacy rig redirect is what navigates there.
+   */
+  const workspaceOpen =
+    selectedComponentType === 'animator' && selectedComponent?.componentType === 'animator';
 
   const select = (patch: Record<string, string>): void => {
     const next = new URLSearchParams(search);
@@ -242,7 +250,7 @@ export function PrefabEditorPage(): JSX.Element {
           <ComponentInspector component={selectedComponent} />
         </section>
 
-        {selectedComponent?.componentType === 'animator' && (
+        {workspaceOpen && (
           /*
            * The authoring workspace, mounted in place. It still runs off the
            * animation subject the store holds — the Component's assignment is
@@ -255,10 +263,18 @@ export function PrefabEditorPage(): JSX.Element {
           </section>
         )}
 
-        <section data-testid="prefab-viewport-panel">
-          <h3>Viewport</h3>
-          <PrefabViewport reference={target.reference} />
-        </section>
+        {/*
+          One viewport at a time. The animation workspace brings its own — two
+          live WebGL canvases on one page compete for the same software
+          rasteriser, and the Prefab preview has nothing to add while the
+          workspace is showing the same composition animating.
+        */}
+        {!workspaceOpen && (
+          <section data-testid="prefab-viewport-panel">
+            <h3>Viewport</h3>
+            <PrefabViewport reference={target.reference} />
+          </section>
+        )}
 
         <section data-testid="prefab-usage-panel">
           <h3>Usage</h3>
