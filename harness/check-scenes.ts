@@ -64,6 +64,19 @@ export function sceneContractStage(): StageResult {
         for (const problem of schema.issues) {
           issues.push(issue(`scene ${scene.id} ${problem.path}: ${problem.message}`, 'a valid scene', problem.message));
         }
+        /*
+         * The *entity* view of a committed Scene, which since the Scene cutover
+         * is the legacy mirror (DECISION 0025). It is still checked here, and
+         * that is not a leftover: the mirror is what the migration produced, and
+         * "the migration produced a valid entity view" stays a true and
+         * checkable claim about every document that carries one.
+         *
+         * It is not an *agreement* check. A production edit writes `gameObjects`
+         * and leaves `entities` exactly as it found them, so the mirror is
+         * neither more nor less internally valid after one. The production view
+         * of the same Scenes is checked by `harness:game-objects`, which asks
+         * whether each Scene is complete in GameObject terms alone.
+         */
         for (const problem of validateSceneReferences(scene, characterIds).issues) {
           issues.push(issue(`scene ${scene.id} ${problem.path}: ${problem.message}`, 'resolvable references', problem.message));
         }
