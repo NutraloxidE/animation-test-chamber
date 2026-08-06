@@ -4,15 +4,27 @@
 
 - Remote pre-work SHA: `0e74422784b1a41a3ca3bfaaacc19dc62e82ebf6`
 - Checkpoint SHA: `b467ba465029332f9192b6f24caa1dfad1971434`
-- Final implementation SHA: `6fd64220e1a627b4f7e0fdb358566bfb8ab49a50`
-- Merge base with `origin/main`: `2e5b2a21a269f41aad7f14c00b0cded91233f33f`
+- Implementation SHA: `6fd64220e1a627b4f7e0fdb358566bfb8ab49a50`
+- Closure documentation SHA: `54dd2930227f0b6ec71452eef2802dc5c3df357e`
+- Verified head SHA: `b6976f0e48b609f048fff10dfd1080f7fcea2359`
+- `origin/main` tip: `2e5b2a21a269f41aad7f14c00b0cded91233f33f`
 - Canonical Project Git blob before/after verification: `8730866dec007ab77fa8bb035053d5e1b747cf0b`
+
+The working checkout is a shallow clone (51 commits). `git merge-base` therefore
+returns no common ancestor with `origin/main`, and the `origin/main` tip is not
+present in this branch's truncated history. An earlier revision of this audit
+recorded `2e5b2a21…` as the merge base; that value is not verifiable here and is
+recorded above as the `origin/main` tip only.
 
 The WIP checkpoint was pushed before closure work. The implementation commit was tested from a clean tree. No `.chamber-transactions` directory remained after either official run.
 
 ## Exact adoption matrix
 
-Every cell is an individual parameterized integration test in `tests/integration/api/prefabs.test.ts`, named `adopts <derivation> Ã— <slot> through stored files and the real resolver`.
+Every cell is an individual parameterized integration test in `tests/integration/api/prefabs.test.ts`, named `adopts <derivation> × <slot> through stored files and the real resolver`.
+
+That title previously stored the multiplication sign as its UTF-8 bytes decoded
+as Latin-1, so each cell reported as `adopts base Ã— behavior`. Repaired in
+`b6976f0e48b609f048fff10dfd1080f7fcea2359`; assertions were not touched.
 
 | Prefab derivation | behavior | motionSet | rig | tuning |
 | --- | --- | --- | --- | --- |
@@ -80,7 +92,19 @@ Focused command matrix results:
 Full visual command: `pnpm harness:visual`
 
 - 249 configured cases across desktop, mobile-landscape and narrow.
-- 243 passed; 6 existing project-conditioned skips. No test was removed, disabled or newly skipped for this work.
+- 243 passed; 6 skipped. No test was removed, disabled or newly skipped for this work.
+
+The 6 skips are two `test.fixme` placeholders in
+`tests/visual/routing/prefab-binding.spec.ts:172-173` (`the Prefab Overview names
+every reference and who else holds it`, `the preview override is visibly
+non-canonical, and resets on navigation`), counted once per browser project.
+Both were introduced by `fdfe70a` — "Give a Prefab its own route, and make the
+rig route a redirect" — which precedes the checkpoint `b467ba4`, so neither was
+added by this work. An earlier revision of this audit described them as
+"project-conditioned skips"; they are unimplemented placeholders multiplied
+across the three projects, which is the accurate description. The one genuinely
+project-conditioned guard, `apply-round-trip.spec.ts:31`, skips only outside the
+wrapper; under `pnpm harness:visual` those tests ran.
 - Duration: 17.4 minutes in the standalone proof.
 - Wrapper reported `source checkout unchanged; disposable repository removed`.
 - Windows launch was repaired by using the command shell for `npx`; the full suite then completed normally with no port, process or transaction-lock residue.
@@ -100,6 +124,61 @@ Official one-shot run 2, immediately after run 1 with no cleanup:
 - Total: 1,174.2 seconds
 - Visual: PASS, 1,039.8 seconds
 - Clean afterward: PASS
+
+## Independent re-verification at `b6976f0`
+
+The results above were recorded on Windows. Every gate was re-run from a clean
+tree on Linux at `b6976f0e48b609f048fff10dfd1080f7fcea2359`, from a fresh
+`pnpm install --frozen-lockfile`, rather than carried over from that session.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| typecheck | `pnpm typecheck` | PASS |
+| lint | `pnpm lint` | PASS |
+| build | `pnpm build` | PASS |
+| adoption matrix | `pnpm harness:prefab-api` | 24/24 PASS |
+| transaction faults | `npx vitest run tests/integration/api/repository-apply-faults.test.ts` | 16/16 PASS |
+| animation assets | `pnpm harness:animation-assets` | 7/7 PASS |
+| Prefabs | `pnpm harness:prefabs` | 6/6 PASS |
+| GameObjects | `pnpm harness:game-objects` | 3/3 PASS |
+| renderer | `pnpm harness:game-object-renderer` | 5/5 PASS |
+| Scene cutover | `pnpm harness:scene-gameobject-cutover` | 10/10 PASS |
+| rig prerequisites | `pnpm harness:rig-editor-prerequisites` | 3/3 PASS |
+| world | `pnpm harness:world` | PASS |
+| Repo Guard | `pnpm harness:repo-guard` | 14/14 PASS |
+| unit | `pnpm harness:unit` | 722/722 PASS |
+| integration | `pnpm harness:integration` | 289/289 PASS |
+| replay | `pnpm harness:replay` | 129/129 PASS |
+
+Generation drift: `pnpm schema:generate` wrote 70 files with
+`git diff --exit-code -- schemas` clean; `pnpm assets:animation:index` (149 asset
+versions, index hash `efc894ace4c9`), `pnpm assets:prefabs:index` and
+`pnpm prefabs:check` (7 Prefabs, 5 migrated identities already current) left the
+tree clean. Zero drift on all three.
+
+Standalone visual proof: `pnpm harness:visual` — 243 passed, 6 skipped of 249
+configured, 17.1 minutes, single worker, exit 0. The wrapper reported
+`source checkout unchanged; disposable repository removed`, and
+`git status --short` was empty afterwards. No port, process or transaction-lock
+residue.
+
+Official one-shot run 1, from a clean tree at `b6976f0`:
+
+- Clean start: PASS (`git status --short` empty)
+- Result: 62/62 stages PASS, exit 0
+- Total: 1,062.0 seconds; visual stage 997.6 seconds
+- `prefab API` and `rig prerequisites` present as explicit stages
+- Clean afterward: PASS
+
+Official one-shot run 2, immediately after run 1 with no manual cleanup:
+
+- Clean start: PASS
+- Result: 62/62 stages PASS, exit 0
+- Total: 1,036.1 seconds; visual stage 974.8 seconds
+- Clean afterward: PASS
+
+Run 2 required no cleanup after run 1, which is the idempotent-generation,
+process-cleanup and repository-isolation proof.
 
 RIG EDITOR RESTORATION PREREQUISITES: PASS
 
