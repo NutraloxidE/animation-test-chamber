@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClipTimeCurve } from '@atc/schema';
 import { applyClipTimeCurve, clipForState, clipIdForState } from '@atc/animation-runtime';
-import { useChamber, useWeaponProject } from '../store.ts';
-import { WEAPON_MODES } from '../three/catalog.ts';
+import { useChamber, useMotionContext, useWeaponProject } from './chamber-source.ts';
 import { Field } from './Field.tsx';
 
 const LINEAR: ClipTimeCurve = { x1: 0.25, y1: 0.25, x2: 0.75, y2: 0.75 };
@@ -159,21 +158,20 @@ function CurveEditor({
  */
 function WeaponCurveRow({ stateId }: { stateId: string }) {
   const rawProject = useChamber((state) => state.project);
-  const weaponModeId = useChamber((state) => state.weaponModeId);
-  const setWeaponMode = useChamber((state) => state.setWeaponMode);
+  const { contextKeys, contextId, setContext } = useMotionContext();
   const session = useChamber((state) => state.session);
   useChamber((state) => state.revision);
 
   const state = rawProject.graph.states.find((entry) => entry.id === stateId);
   // A per-weapon clip is a contextual binding in the motion set now, so the
   // question "does this state vary by weapon" is asked of the bindings rather
-  // than of a map on the state.
+  // than of a map on the state — and of the contexts the subject's Motion Set
+  // actually resolves, rather than of a static catalogue that may name neither
+  // all of them nor only them.
   const variesByWeapon =
     state !== undefined &&
-    WEAPON_MODES.some(
-      (mode) =>
-        clipIdForState(rawProject, state.id, mode.id) !==
-        clipIdForState(rawProject, state.id),
+    contextKeys.some(
+      (key) => clipIdForState(rawProject, state.id, key) !== clipIdForState(rawProject, state.id),
     );
   if (!state || !variesByWeapon) {
     return (
@@ -185,24 +183,24 @@ function WeaponCurveRow({ stateId }: { stateId: string }) {
 
   return (
     <div className="weapon-curves" data-testid="weapon-curves">
-      {WEAPON_MODES.map((mode) => {
-        const clipId = clipIdForState(rawProject, state.id, mode.id) ?? '';
+      {contextKeys.map((key) => {
+        const clipId = clipIdForState(rawProject, state.id, key) ?? '';
         const field = session.fieldView(`/clips/${clipId}/timeCurve`);
         const edited =
           JSON.stringify(field.previewValue) !== JSON.stringify(field.repositoryValue);
         return (
           <button
             type="button"
-            key={mode.id}
-            className={`weapon-curves__chip${mode.id === weaponModeId ? ' is-current' : ''}${
+            key={key}
+            className={`weapon-curves__chip${key === contextId ? ' is-current' : ''}${
               edited ? ' is-edited' : ''
             }`}
-            data-testid={`weapon-curve-${mode.id}`}
+            data-testid={`weapon-curve-${key}`}
             data-edited={edited ? 'true' : 'false'}
             title={clipId}
-            onClick={() => setWeaponMode(mode.id)}
+            onClick={() => setContext(key)}
           >
-            {mode.id}
+            {key}
             {edited && <span aria-label="edited"> •</span>}
           </button>
         );

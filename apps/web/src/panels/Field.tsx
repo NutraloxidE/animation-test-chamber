@@ -1,4 +1,4 @@
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 
 interface FieldProps {
   path: string;

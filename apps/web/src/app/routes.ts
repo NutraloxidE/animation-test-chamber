@@ -24,6 +24,7 @@ export const ROUTES = {
   scenes: '/scenes',
   prefabs: '/prefabs',
   prefabEditor: '/edit/prefab/:prefabId',
+  prefabAnimationWorkspace: '/edit/prefab/:prefabId/animation/:nodeId/:componentId',
   rigEditor: '/edit/rig/:characterId',
   sceneEditor: '/edit/scene/:sceneId',
 } as const;
@@ -40,6 +41,31 @@ export function prefabEditorPath(prefabId: string, componentType?: string): stri
   return componentType === undefined
     ? base
     : `${base}?component=${encodeURIComponent(componentType)}`;
+}
+
+/**
+ * `/edit/prefab/<id>/animation/<nodeId>/<componentId>`.
+ *
+ * Three segments rather than a `?component=` query, because the animation
+ * workspace is not a transient view of the composition page (§7.1). It owns an
+ * edit session, a preview engine, panel selection, staging and publication, and
+ * a thing that owns a session belongs in the path — a query parameter would let
+ * a bookmark restore the URL without restoring what the URL identified.
+ *
+ * The Component is named by `componentId`, never by type: one node may hold
+ * several Animators, and "the first Animator" is not an identity.
+ *
+ * Each of the three ids is encoded here and nowhere else.
+ */
+export function prefabAnimationWorkspacePath(
+  prefabId: string,
+  nodeId: string,
+  componentId: string,
+): string {
+  return (
+    `/edit/prefab/${encodeURIComponent(prefabId)}` +
+    `/animation/${encodeURIComponent(nodeId)}/${encodeURIComponent(componentId)}`
+  );
 }
 
 /** `/edit/rig/<id>`. The id is encoded here and nowhere else. */

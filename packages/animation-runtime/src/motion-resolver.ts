@@ -6,7 +6,12 @@
  * owns its animation" and "a character is handed one". The behaviour names a
  * slot; something else decides which clip that is.
  */
-import type { AnimationClipDefinition, ResolvedProject, StateDefinition } from '@atc/schema';
+import type {
+  AnimationClipDefinition,
+  AnimationGraphDefinition,
+  ResolvedProject,
+  StateDefinition,
+} from '@atc/schema';
 
 export interface AnimationContext {
   /** Contextual binding selector — the weapon mode, in the demo project. */
@@ -79,8 +84,25 @@ export class BoundMotionResolver implements MotionResolver {
  * does not know, and every caller that pretended otherwise would have had to be
  * found again the first time a character wanted a different clip.
  */
+/**
+ * The part of a document motion resolution actually reads.
+ *
+ * Named so that resolving a clip does not require a whole `ResolvedProject`,
+ * and therefore does not require a Character. The animation chamber edits an
+ * exact Prefab Animator subject whose document has no character in it, and
+ * these four fields are the entire question "which clip does this state play".
+ * `ResolvedProject` satisfies it structurally, so existing callers are
+ * unaffected.
+ */
+export interface MotionResolutionDocument {
+  graph: AnimationGraphDefinition;
+  clips: AnimationClipDefinition[];
+  motionBindings: Record<string, string>;
+  contextualMotionBindings: Record<string, Record<string, string>>;
+}
+
 export function clipIdForState(
-  project: ResolvedProject,
+  project: MotionResolutionDocument,
   stateId: string,
   contextKey?: string,
 ): string | undefined {
@@ -93,7 +115,7 @@ export function clipIdForState(
 }
 
 export function clipForState(
-  project: ResolvedProject,
+  project: MotionResolutionDocument,
   stateId: string,
   contextKey?: string,
 ): AnimationClipDefinition | undefined {

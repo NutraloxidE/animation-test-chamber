@@ -1,7 +1,7 @@
 import { clipForState } from '@atc/animation-runtime';
 import { useEffect, useState } from 'react';
 import { HapticPlayer } from '@atc/haptics-runtime';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber, useWeaponProject } from './chamber-source.ts';
 
 const TRACKS = [
   'Animation',

@@ -1,7 +1,7 @@
 import { ACTION_LAYER, clipForState, layerStateOf } from '@atc/animation-runtime';
 import { useEffect, useMemo, useState } from 'react';
 import { dodgeRecoveryBlendWeight } from '@atc/animation-runtime';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber, useWeaponProject } from './chamber-source.ts';
 
 interface GraphWarning {
   kind: 'unreachable' | 'conflict' | 'self-loop';

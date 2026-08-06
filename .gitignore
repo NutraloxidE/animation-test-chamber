@@ -42,3 +42,5 @@ playwright-report/
 .vite/
 coverage/
 tsconfig.tsbuildinfo
+!reports/rig-editor-restoration-prerequisites-audit.md
+!reports/rig-editor-main-ui-inventory.md

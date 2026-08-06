@@ -41,6 +41,7 @@ import { defaultSceneEditorSceneId } from '../scene-editor/resolve-scene-editor-
 import { CharacterListPage, SceneListPage } from './ListPages.tsx';
 import { PrefabListPage } from '../prefab-editor/PrefabListPage.tsx';
 import { PrefabEditorPage } from '../prefab-editor/PrefabEditorPage.tsx';
+import { AnimationWorkspaceRoute } from '../prefab-editor/AnimationWorkspaceRoute.tsx';
 import { prefabRedirectForLegacyCharacterId } from '../prefab-editor/resolve-prefab-editor-target.ts';
 import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { routeId } from './routes.ts';
@@ -98,6 +99,15 @@ export function AppRouter(): JSX.Element {
         <Route path={ROUTES.root} element={<RootRedirect />} />
         <Route path={ROUTES.prefabs} element={<PrefabListPage />} />
         <Route path={ROUTES.prefabEditor} element={<PrefabEditorPage />} />
+        {/*
+          Listed before nothing in particular — React Router matches by
+          specificity, not order — but kept next to the composition route it
+          extends, because the two share a lineage and are read together.
+        */}
+        <Route
+          path={ROUTES.prefabAnimationWorkspace}
+          element={<AnimationWorkspaceRoute />}
+        />
         <Route path={ROUTES.rigEditor} element={<LegacyRigRedirect />} />
         <Route path={ROUTES.sceneEditor} element={<SceneEditorPage />} />
         <Route path={ROUTES.characters} element={<CharacterListPage />} />
