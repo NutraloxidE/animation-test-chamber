@@ -14,6 +14,7 @@
  * receives its return value.
  */
 import { useMemo } from 'react';
+import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { useChamber } from '../store.ts';
 import type { AnimationChamberRepositoryDefaults } from '../animation-chamber/AnimationChamberDocument.ts';
 
@@ -31,6 +32,7 @@ export function useAnimationRepositoryDefaults(): AnimationChamberRepositoryDefa
       preferences: project.preferences,
       defaultTerrainPresetId: project.defaultTerrainPresetId,
       revisionId: project.revisionId,
+      replays: REPLAY_FIXTURES,
     }),
     [project],
   );

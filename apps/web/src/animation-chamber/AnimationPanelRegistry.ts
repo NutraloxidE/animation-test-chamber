@@ -28,7 +28,7 @@ export const ANIMATION_PANELS: readonly AnimationPanelDescriptor[] = [
   { id: 'graph', label: 'Graph', implemented: true },
   { id: 'timeline', label: 'Timeline', implemented: true },
   { id: 'timing', label: 'Timing', implemented: true },
-  { id: 'replay', label: 'Replay', implemented: false },
+  { id: 'replay', label: 'Replay', implemented: true },
   { id: 'terrain', label: 'Terrain', implemented: true },
   { id: 'ai', label: 'AI', implemented: false },
   { id: 'diff', label: 'Diff', implemented: false },

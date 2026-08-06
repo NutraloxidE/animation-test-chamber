@@ -1,7 +1,6 @@
 import type {
   CameraProfile,
   HapticProfile,
-  ResolvedProject,
   TerrainPreset,
   SemanticEventKind,
 } from '@atc/schema';
@@ -26,6 +25,7 @@ import {
   frameAt,
   runReplay,
   type CharacterSimulationDocument,
+  type ReplayDocument,
   type RootMotionTrack,
   type ReplayTrace,
   type TickRecord,
@@ -357,7 +357,7 @@ export class ChamberEngine {
   }
 
   /** Runs a replay headlessly against a document, for comparison panels. */
-  traceFor(document: ResolvedProject, replay: ReplayDefinition): ReplayTrace {
+  traceFor(document: ReplayDocument, replay: ReplayDefinition): ReplayTrace {
     return runReplay(document, replay);
   }
 

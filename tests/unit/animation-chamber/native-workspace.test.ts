@@ -39,6 +39,12 @@ import {
   ANIMATION_PANELS,
   ANIMATION_PANEL_IDS,
 } from '../../../apps/web/src/animation-chamber/AnimationPanelRegistry.ts';
+import { REPLAY_FIXTURES } from '@atc/replay-runtime';
+import {
+  createAnimationChamberFacade,
+  type AnimationChamberStore,
+} from '../../../apps/web/src/animation-chamber/AnimationChamberFacade.ts';
+import { createAnimationAuthoringSession } from '../../../apps/web/src/prefab-editor/animation-authoring-session.ts';
 import { ChamberEngine } from '../../../apps/web/src/engine.ts';
 import { resolveAnimationSubjectPresentation } from '../../../apps/web/src/animation-chamber/resolve-subject-presentation.ts';
 import {
@@ -71,6 +77,7 @@ function repositoryDefaults(): AnimationChamberRepositoryDefaults {
     preferences: project.preferences,
     defaultTerrainPresetId: project.defaultTerrainPresetId,
     revisionId: project.revisionId,
+    replays: REPLAY_FIXTURES,
   };
 }
 
@@ -265,7 +272,15 @@ describe('the panel registry', () => {
 
   it('wires exactly the first vertical slice so far', () => {
     const wired = ANIMATION_PANELS.filter((panel) => panel.implemented).map((panel) => panel.id);
-    expect(wired).toEqual(['inspector', 'graph', 'timeline', 'timing', 'terrain', 'capability']);
+    expect(wired).toEqual([
+      'inspector',
+      'graph',
+      'timeline',
+      'timing',
+      'replay',
+      'terrain',
+      'capability',
+    ]);
   });
 
   it('keeps every unwired panel registered rather than hidden', () => {
@@ -470,5 +485,195 @@ describe('one driver advances the simulation', () => {
     expect(engine.terrainPreset.id).toBeTruthy();
     expect(typeof engine.subscribe).toBe('function');
     expect(engine.hapticPlayer).toBeDefined();
+  });
+});
+
+/**
+ * The facade drives one engine, and the engine must never hold a document the
+ * panels are not showing. Every test below is about that single agreement.
+ */
+describe('the facade and the running engine agree', () => {
+  function chamber(options: { withModel?: boolean } = {}) {
+    const { registry, reference, animationRegistry } = subjectFixture(options);
+    const subject = animationSubjectFromPrefab({
+      registry,
+      animationRegistry,
+      reference,
+      nodeId: 'root',
+      componentId: 'animator',
+    }).subject!;
+    const repository = repositoryDefaults();
+    let engine!: ChamberEngine;
+    const authoring = createAnimationAuthoringSession({
+      subject,
+      animationRegistry,
+      baseRevisionId: repository.revisionId,
+      createEngine: (resolved) => {
+        engine = new ChamberEngine(materializeAnimationChamberDocument({ resolved, repository }));
+        return { dispose: () => {} };
+      },
+    });
+    const facade = createAnimationChamberFacade({ authoring, repository, engine });
+    return { facade, engine, store: facade.store };
+  }
+
+  /** A blend duration that exists on the demo graph, for edit round-trips. */
+  function firstTransitionPath(store: AnimationChamberStore): string {
+    return `/graph/transitions/${store.getState().project.graph.transitions[0]!.id}/blendDurationSec`;
+  }
+
+  it('hands an edited document to the engine, not only to the panels', () => {
+    const { engine, store } = chamber();
+    const path = firstTransitionPath(store);
+
+    store.getState().setPreviewValue(path, 0.42);
+
+    // The failure this prevents: panels showing 0.42 while the body on screen
+    // keeps playing the committed value.
+    expect(store.getState().previewDocument).toBe(engine.currentProject);
+  });
+
+  it('returns the engine to the previous document on undo', () => {
+    const { engine, store } = chamber();
+    const path = firstTransitionPath(store);
+    const committed = engine.currentProject;
+
+    store.getState().setPreviewValue(path, 0.42);
+    expect(engine.currentProject).not.toBe(committed);
+
+    store.getState().undo();
+    expect(engine.currentProject).toBe(store.getState().previewDocument);
+  });
+
+  it('returns the engine to the repository document on revert', () => {
+    const { engine, store } = chamber();
+    store.getState().setPreviewValue(firstTransitionPath(store), 0.42);
+
+    store.getState().revertSession();
+
+    expect(engine.currentProject).toBe(store.getState().previewDocument);
+    expect(store.getState().previewDocument).toEqual(store.getState().repositoryDocument);
+  });
+
+  it('does not re-seed the engine for staging, which moves no value', () => {
+    const { engine, store } = chamber();
+    const path = firstTransitionPath(store);
+    store.getState().setPreviewValue(path, 0.42);
+    const afterEdit = engine.currentProject;
+
+    store.getState().stage(path);
+
+    expect(engine.currentProject).toBe(afterEdit);
+  });
+
+  it('sends a motion context change to the engine as well as the store', () => {
+    const { engine, store } = chamber();
+    store.getState().setMotionContext('sword');
+
+    expect(store.getState().motionContextId).toBe('sword');
+    // The viewport resolves takes by context; the simulation resolves clips by
+    // it too, and the two must be the same context.
+    expect(engine.snapshot()).toBeDefined();
+    expect(store.getState().project.motionContextKeys).toContain('sword');
+  });
+
+  it('records a capability refresh on the facade', () => {
+    const { store } = chamber();
+    const before = store.getState().capability;
+
+    store.getState().refreshCapability({ ...before, deviceLabel: 'a freshly plugged pad' });
+
+    // The Haptics panel's device table reads this. Discarding the detection
+    // result left it describing a pad that had been unplugged.
+    expect(store.getState().capability.deviceLabel).toBe('a freshly plugged pad');
+    expect(store.getState().capability).not.toBe(before);
+  });
+});
+
+describe('replay is subject-local', () => {
+  it('takes its before trace from the repository and its after trace from the preview', () => {
+    const document = materialize();
+    const engine = new ChamberEngine(document);
+    const replay = REPLAY_FIXTURES[0]!;
+
+    const before = engine.traceFor(document, replay);
+    const edited = {
+      ...document,
+      movement: {
+        ...document.movement,
+        walkSpeed: document.movement.walkSpeed * 0.5,
+        runSpeed: document.movement.runSpeed * 0.5,
+      },
+    };
+    const after = engine.traceFor(edited, replay);
+
+    // Same inputs, different documents: the traces must be able to differ, or
+    // the comparison the Replay panel draws would be decorative.
+    expect(before.replayId).toBe(replay.id);
+    expect(after.replayId).toBe(replay.id);
+    expect(before.revisionId).toBe(document.revisionId);
+    expect(JSON.stringify(after.ticks)).not.toBe(JSON.stringify(before.ticks));
+  });
+
+  it('starts every subject with no recordings, ghost or comparison', () => {
+    const engine = new ChamberEngine(materialize());
+    const repository = repositoryDefaults();
+    const { registry, reference, animationRegistry } = subjectFixture();
+    const subject = animationSubjectFromPrefab({
+      registry,
+      animationRegistry,
+      reference,
+      nodeId: 'root',
+      componentId: 'animator',
+    }).subject!;
+    const facade = createAnimationChamberFacade({
+      authoring: createAnimationAuthoringSession({
+        subject,
+        animationRegistry,
+        baseRevisionId: repository.revisionId,
+        createEngine: () => ({ dispose: () => {} }),
+      }),
+      repository,
+      engine,
+    });
+
+    const state = facade.store.getState();
+    // A new facade is built per subject, so "discarded on subject change" is
+    // the same statement as "empty at construction".
+    expect(state.recordedReplays).toEqual([]);
+    expect(state.ghostEnabled).toBe(false);
+    expect(state.compareSlots).toEqual([]);
+    expect(state.activeCompareSlot).toBe(-1);
+    expect(state.replays).toBe(repository.replays);
+  });
+});
+
+describe('one canvas, one driver', () => {
+  const viewportSource = readFileSync(
+    join(REPO_ROOT, 'apps/web/src/animation-chamber/AnimationSubjectViewport.tsx'),
+    'utf8',
+  );
+
+  it('mounts exactly one Canvas', () => {
+    // Two canvases on one page compete for the same software rasteriser, and a
+    // hidden second one is the version of that bug nobody sees until CI slows.
+    expect(viewportSource.match(/<Canvas/g)).toHaveLength(1);
+  });
+
+  it('draws the ghost inside that Canvas rather than beside it', () => {
+    const canvasStart = viewportSource.indexOf('<Canvas');
+    const canvasEnd = viewportSource.indexOf('</Canvas>');
+    const ghost = viewportSource.indexOf('ghostEnabled &&');
+
+    expect(canvasStart).toBeGreaterThan(-1);
+    expect(ghost).toBeGreaterThan(canvasStart);
+    expect(ghost).toBeLessThan(canvasEnd);
+  });
+
+  it('lets the shell clock run only when no Canvas exists', () => {
+    // The viewport drives from useFrame, which needs a Canvas, which needs a
+    // body. Same fact, one place, so the two can never both advance.
+    expect(viewportOwnsSimulation(materialize())).toBe(true);
+    expect(viewportOwnsSimulation(materialize({ withModel: false }))).toBe(false);
   });
 });

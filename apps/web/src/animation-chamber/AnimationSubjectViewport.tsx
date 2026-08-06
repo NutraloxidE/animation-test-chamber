@@ -20,10 +20,20 @@ import type { ChamberEngine } from '../engine.ts';
 import { Character } from '../three/Character.tsx';
 import { TerrainMesh } from '../three/TerrainMesh.tsx';
 import { DebugOverlays } from '../three/DebugOverlays.tsx';
-import { weaponMode } from '../three/catalog.ts';
+import { WEAPON_MODES, weaponMode } from '../three/catalog.ts';
 import { resolveWeaponGrip } from '../rig-editor/resolve-character-presentation.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
 import { resolveAnimationSubjectPresentation } from './resolve-subject-presentation.ts';
+
+/**
+ * What a context the presentation catalogue does not know looks like.
+ *
+ * Empty hands and its own id, so the viewport neither invents a held item nor
+ * pretends the context is `unarmed`. The animation for it still plays: clips
+ * come from the Motion Set's contextual bindings, which are keyed by the same
+ * id and need no catalogue entry.
+ */
+const UNKNOWN_CONTEXT_PRESENTATION = { id: 'unknown-context', label: 'Unknown context' };
 
 /** Advances the simulation from render deltas and trails the camera. */
 function SubjectLoop({ engine }: { engine: ChamberEngine }): null {
@@ -61,16 +71,31 @@ export function AnimationSubjectViewport(): JSX.Element | null {
   const document = useAnimationChamber((state) => state.project);
   const motionContextId = useAnimationChamber((state) => state.motionContextId);
 
+  const refreshCapability = useAnimationChamber((state) => state.refreshCapability);
+  const ghostEnabled = useAnimationChamber((state) => state.ghostEnabled);
+
   const presentation = resolveAnimationSubjectPresentation({ document, motionContextId });
-  const context = weaponMode(motionContextId);
-  const grip = presentation
-    ? resolveWeaponGrip({ model: presentation.model.effective, weaponModeId: context.id })
-    : undefined;
+  /*
+   * The held item is presentation, and the catalogue is the only thing that
+   * knows about it. A Motion Set may bind a context the catalogue has never
+   * heard of — that is data, and its *animation* resolves fine — but there is
+   * no authored item to put in the hand, and `weaponMode`'s fallback would put
+   * the unarmed one there as though it had been chosen.
+   */
+  const knownContext = WEAPON_MODES.some((mode) => mode.id === motionContextId);
+  const context = knownContext ? weaponMode(motionContextId) : UNKNOWN_CONTEXT_PRESENTATION;
+  const grip =
+    presentation && knownContext
+      ? resolveWeaponGrip({ model: presentation.model.effective, weaponModeId: context.id })
+      : undefined;
 
   useEffect(() => {
     const update = (): void => {
       engine.refreshHapticCapability();
-      detectCapability(readActiveGamepad());
+      // The result is the panel's only source of truth for the device table;
+      // discarding it left the Haptics panel describing a device that had been
+      // unplugged.
+      refreshCapability(detectCapability(readActiveGamepad()));
     };
     update();
     window.addEventListener('gamepadconnected', update);
@@ -79,7 +104,7 @@ export function AnimationSubjectViewport(): JSX.Element | null {
       window.removeEventListener('gamepadconnected', update);
       window.removeEventListener('gamepaddisconnected', update);
     };
-  }, [engine]);
+  }, [engine, refreshCapability]);
 
   // No body to draw: the header already says which requirement is missing, and
   // an empty canvas would say it worse.
@@ -121,6 +146,13 @@ export function AnimationSubjectViewport(): JSX.Element | null {
         weapon={context}
         grip={grip}
       />
+      {/*
+        The ghost is a second *body* in this scene, never a second scene. It
+        reads the same engine's ghost trace, so there is one canvas, one
+        driver and one simulation — which is what keeps before/after honest
+        rather than turning it into two previews that could drift apart.
+      */}
+      {ghostEnabled && <Character engine={engine} ghost color="#f472b6" weapon={context} />}
       <DebugOverlays engine={engine} />
     </Canvas>
   );

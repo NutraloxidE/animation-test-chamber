@@ -29,6 +29,7 @@ import type {
   InputMapDefinition,
   MovementProfile,
   PreferenceProfile,
+  ReplayDefinition,
   ResolvedValue,
   RootMotionProfile,
   SkeletonDefinition,
@@ -62,6 +63,15 @@ export interface AnimationChamberRepositoryDefaults {
    * underneath an open workspace.
    */
   revisionId: string;
+  /**
+   * Replays the repository ships, for the Replay panel's selector.
+   *
+   * Named on its own rather than reached through a project, for the same
+   * reason every other field here is: a `ProjectDefinition` parameter would
+   * carry `characters` into this module, and a replay list is the entire
+   * dependency the panel actually has.
+   */
+  replays: ReplayDefinition[];
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { compareTraces } from '@atc/replay-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 
 /**
  * Replay controls and comparison (PLAN 8.5, 13). The point of this panel is that

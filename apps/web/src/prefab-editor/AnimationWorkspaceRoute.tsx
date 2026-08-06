@@ -209,8 +209,18 @@ export function AnimationWorkspaceRoute(): JSX.Element {
     return <p data-testid="animation-subject-loading">Opening the exact animation subject…</p>;
   }
 
+  /*
+   * Keyed by subject identity so React unmounts the whole workspace on a
+   * subject change.
+   *
+   * The facade's own state is rebuilt either way, but the panels hold local
+   * state too — the Replay panel's recording flag and time scale are `useState`
+   * inside a preserved component — and that state has no reason to survive into
+   * a different Animator. Remounting is what makes "everything is discarded on
+   * subject change" true of the panels as well as of the session.
+   */
   return (
-    <AnimationChamberProvider facade={facade}>
+    <AnimationChamberProvider key={subjectKey} facade={facade}>
       <AnimationChamber />
     </AnimationChamberProvider>
   );

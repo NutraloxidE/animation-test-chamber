@@ -28,6 +28,8 @@ import type { CanonicalPath } from '@atc/runtime-core';
 import { EditSession } from '@atc/editor-core';
 import type { AnimationAuthoringSession } from '../prefab-editor/animation-authoring-session.ts';
 import type { ChamberEngine } from '../engine.ts';
+import type { ReplayDefinition } from '@atc/schema';
+import type { ReplayTrace } from '@atc/replay-runtime';
 import { detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
 import {
   materializeAnimationChamberDocument,
@@ -101,6 +103,20 @@ export interface AnimationChamberState {
 
   /** Resolved Motion Set context keys, replacing the static weapon catalogue. */
   motionContextId: string;
+
+  /*
+   * Replay, all of it subject-local (§10.1).
+   *
+   * `replays` is the repository's fixture set; everything below it belongs to
+   * this session and dies with it. The route rebuilds the facade — and remounts
+   * the chamber — on any change of subject identity, so none of this can be
+   * carried into another subject's workspace.
+   */
+  replays: ReplayDefinition[];
+  recordedReplays: ReplayDefinition[];
+  ghostEnabled: boolean;
+  compareSlots: AnimationCompareSlot[];
+  activeCompareSlot: number;
 }
 
 export interface AnimationChamberActions {
@@ -111,6 +127,12 @@ export interface AnimationChamberActions {
   selectTransition(id: string): void;
   selectReplay(id: string): void;
   setMotionContext(id: string): void;
+
+  playSelectedReplay(): void;
+  addRecordedReplay(replay: ReplayDefinition): void;
+  setGhostEnabled(enabled: boolean): void;
+  buildCompareSlots(): void;
+  activateCompareSlot(index: number): void;
 
   setPreviewValue(path: CanonicalPath, value: unknown, options?: { intent?: string }): void;
   resetToRepository(path: CanonicalPath): void;
@@ -127,6 +149,19 @@ export interface AnimationChamberActions {
   setStatus(message: string): void;
 }
 
+/**
+ * One column of the A/B/C comparison.
+ *
+ * `document` is a chamber document rather than a resolved project, which is the
+ * whole difference: a slot is a version of *this subject*, and switching to one
+ * re-seeds the same engine rather than selecting a different Character.
+ */
+export interface AnimationCompareSlot {
+  label: string;
+  document: AnimationChamberDocument;
+  trace: ReplayTrace | null;
+}
+
 export type AnimationChamberStore = StoreApi<AnimationChamberState & AnimationChamberActions>;
 
 /**
@@ -141,6 +176,13 @@ export interface AnimationChamberFacade {
   authoring: AnimationAuthoringSession;
   store: AnimationChamberStore;
   dispose(): void;
+}
+
+/** The replay the panel has selected, from either list. */
+function selectedReplay(state: AnimationChamberState): ReplayDefinition | undefined {
+  return [...state.replays, ...state.recordedReplays].find(
+    (entry) => entry.id === state.selectedReplayId,
+  );
 }
 
 /**
@@ -180,11 +222,24 @@ export function createAnimationChamberFacade(input: {
      * is that signal, and routing all writes through one place is what stops a
      * new action from forgetting to send it.
      */
-    const applied = (): void => {
+    const applied = (options: { syncEngine?: boolean } = {}): void => {
+      const preview = session.previewProject;
+      /*
+       * The running simulation is part of "the preview", not a separate view of
+       * it. Without this the panels would show an edited blend duration while
+       * the body on screen kept playing the committed one — two documents, one
+       * of which is invisible, which is the class of disagreement this whole
+       * restoration exists to remove.
+       *
+       * Skipped for changes that cannot move a value: staging promotes an
+       * existing preview value, and re-seeding the simulation for it would
+       * restart the graph for no reason.
+       */
+      if (options.syncEngine !== false) engine.setProject(preview);
       set({
         revision: get().revision + 1,
-        project: session.previewProject,
-        previewDocument: session.previewProject,
+        project: preview,
+        previewDocument: preview,
       });
     };
 
@@ -202,6 +257,12 @@ export function createAnimationChamberFacade(input: {
       terrainPresetId: engine.terrainPreset.id,
       capability: detectCapability(readActiveGamepad()),
 
+      replays: repository.replays,
+      recordedReplays: [],
+      ghostEnabled: false,
+      compareSlots: [],
+      activeCompareSlot: -1,
+
       revision: 0,
 
       activePanel: input.initialPanel ?? 'inspector',
@@ -216,10 +277,84 @@ export function createAnimationChamberFacade(input: {
         set({ terrainPresetId: id });
       },
       refreshCapability: (capability) => set({ capability }),
+
+      playSelectedReplay: () => {
+        const { replays: shipped, recordedReplays, selectedReplayId } = get();
+        const replay = [...shipped, ...recordedReplays].find(
+          (entry) => entry.id === selectedReplayId,
+        );
+        if (!replay) return;
+        // A replay was recorded on a terrain, and playing it anywhere else
+        // reproduces different contacts from the same inputs.
+        engine.setTerrainPreset(replay.terrainPresetId);
+        engine.playReplay(replay);
+        set({ terrainPresetId: replay.terrainPresetId });
+      },
+
+      addRecordedReplay: (replay) =>
+        set({
+          recordedReplays: [...get().recordedReplays, replay],
+          selectedReplayId: replay.id,
+          statusMessage: `Recorded ${replay.tickCount} ticks as "${replay.id}".`,
+        }),
+
+      setGhostEnabled: (enabled) => {
+        const replay = selectedReplay(get());
+        /*
+         * The ghost is the *repository* run of the same replay, which is what
+         * makes it a before/after: comparing the preview against itself would
+         * draw two identical bodies.
+         */
+        engine.setGhost(
+          enabled && replay ? engine.traceFor(session.repositoryProject, replay) : null,
+        );
+        set({ ghostEnabled: enabled });
+      },
+
+      buildCompareSlots: () => {
+        const replay = selectedReplay(get());
+        if (!replay) return;
+        const slots: AnimationCompareSlot[] = [
+          {
+            label: 'Repository',
+            document: session.repositoryProject,
+            trace: engine.traceFor(session.repositoryProject, replay),
+          },
+          {
+            label: 'Preview',
+            document: session.previewProject,
+            trace: engine.traceFor(session.previewProject, replay),
+          },
+        ];
+        set({ compareSlots: slots, activeCompareSlot: 0 });
+      },
+
+      activateCompareSlot: (index) => {
+        const slot = get().compareSlots[index];
+        if (!slot) return;
+        // An instant A/B/C switch is a re-seed of the one engine, not a second
+        // preview — which is what keeps the one-viewport rule intact.
+        engine.setProject(slot.document);
+        set({ activeCompareSlot: index, statusMessage: `Previewing: ${slot.label}` });
+      },
       selectState: (id) => set({ selectedStateId: id }),
       selectTransition: (id) => set({ selectedTransitionId: id }),
       selectReplay: (id) => set({ selectedReplayId: id }),
-      setMotionContext: (id) => set({ motionContextId: id }),
+      setMotionContext: (id) => {
+        /*
+         * The engine resolves clips by context too, so setting it here only
+         * would leave the viewport drawing one context's takes while the
+         * simulation played another's.
+         *
+         * Any key is accepted, known to the presentation catalogue or not:
+         * contextual bindings are data on the Motion Set, and refusing a key
+         * the catalogue has not heard of would hide a context the subject
+         * genuinely binds. What the catalogue governs is the held item, and
+         * that is the viewport's problem to state.
+         */
+        engine.setWeaponModeId(id);
+        set({ motionContextId: id });
+      },
 
       statusMessage: '',
       setStatus: (message) => set({ statusMessage: message }),
@@ -262,11 +397,11 @@ export function createAnimationChamberFacade(input: {
       },
       stage: (path) => {
         session.stage(path);
-        applied();
+        applied({ syncEngine: false });
       },
       stageAll: () => {
         session.stageAll();
-        applied();
+        applied({ syncEngine: false });
       },
       undo: () => {
         session.undo();

@@ -18,6 +18,7 @@ import { TransitionInspector } from '../panels/TransitionInspector.tsx';
 import { StateGraph } from '../panels/StateGraph.tsx';
 import { Timeline } from '../panels/Timeline.tsx';
 import { MotionTimingPanel } from '../panels/MotionTimingPanel.tsx';
+import { ReplayPanel } from '../panels/ReplayPanel.tsx';
 import { TerrainPanel } from '../panels/TerrainPanel.tsx';
 import { CapabilityPanel } from '../panels/CapabilityPanel.tsx';
 import { ANIMATION_PANELS } from './AnimationPanelRegistry.ts';
@@ -26,6 +27,7 @@ import { useAnimationChamber } from './useAnimationChamber.ts';
 import { presentationAvailability, viewportOwnsSimulation } from './AnimationChamberDocument.ts';
 import { useAnimationPreviewClock } from './useAnimationPreviewClock.ts';
 import { AnimationSubjectViewport } from './AnimationSubjectViewport.tsx';
+import { WEAPON_MODES } from '../three/catalog.ts';
 
 function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
   switch (id) {
@@ -37,6 +39,8 @@ function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
       return <Timeline />;
     case 'timing':
       return <MotionTimingPanel />;
+    case 'replay':
+      return <ReplayPanel />;
     case 'terrain':
       return <TerrainPanel />;
     case 'capability':
@@ -71,6 +75,9 @@ function SubjectHeader(): JSX.Element {
   const subject = useAnimationChamber((state) => state.subject);
   const document = useAnimationChamber((state) => state.project);
   const presentation = presentationAvailability(document);
+  const motionContextId = useAnimationChamber((state) => state.motionContextId);
+  const knownContext =
+    motionContextId === '' || WEAPON_MODES.some((mode) => mode.id === motionContextId);
   const { prefab, nodeId, componentId } = subject.source;
   return (
     <header className="animation-subject-header" data-testid="animation-subject-header">
@@ -100,6 +107,18 @@ function SubjectHeader(): JSX.Element {
       {!presentation.available && (
         <p className="muted" data-testid="animation-subject-presentation-unavailable">
           {presentation.reason}
+        </p>
+      )}
+      {!knownContext && (
+        /*
+         * The animation for this context plays: clips come from the Motion
+         * Set's contextual bindings, which need no catalogue entry. What is
+         * missing is the held item, and saying so is better than silently
+         * putting the unarmed one in the hand.
+         */
+        <p className="muted" data-testid="animation-context-presentation-unavailable">
+          The Motion Set binds <code>{motionContextId}</code>, which the held-item catalogue does
+          not describe. Its animation plays; no item is shown.
         </p>
       )}
     </header>

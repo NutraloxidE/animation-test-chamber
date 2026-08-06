@@ -1,5 +1,4 @@
 import type {
-  ResolvedProject,
   ReplayDefinition,
   ReplayFrame,
   ReplayTolerance,
@@ -10,7 +9,11 @@ import { FIXED_TIMESTEP_VERSION } from '@atc/schema';
 import { FIXED_DT, quantize } from '@atc/runtime-core';
 import { emptySample, frameToSample, sampleToFrame, type ActionSample } from '@atc/input-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
-import { Simulation, type TickRecord } from './simulation.ts';
+import {
+  Simulation,
+  type CharacterSimulationDocument,
+  type TickRecord,
+} from './simulation.ts';
 
 /** Aggregate quality numbers for a run (PLAN 11.5). Advisory, never the verdict. */
 export interface ReplayMetrics {
@@ -62,8 +65,22 @@ export function frameAt(replay: ReplayDefinition, tick: number): ActionSample {
  * comparison. Nothing here reads wall-clock time, so the result depends only on
  * the project revision and the replay file.
  */
+/**
+ * What replaying needs: a document the simulation can run, plus the revision it
+ * came from.
+ *
+ * The revision is the replay's, not the simulation's — a trace records what it
+ * was produced against so a later comparison can say whether the two runs are
+ * even commensurable. Keeping it here rather than on
+ * `CharacterSimulationDocument` leaves the simulation's own requirements
+ * honest.
+ */
+export interface ReplayDocument extends CharacterSimulationDocument {
+  revisionId: string;
+}
+
 export function runReplay(
-  project: ResolvedProject,
+  project: ReplayDocument,
   replay: ReplayDefinition,
   terrain?: TerrainPreset,
 ): ReplayTrace {
