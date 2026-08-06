@@ -1,10 +1,14 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { GameObjectPrefabAsset } from '@atc/schema';
-import { prefabAssetFilePath } from '@atc/schema';
-import { nextPrefabVersion, PrefabAssetRegistry } from '@atc/prefab-runtime';
+import type { GameObjectPrefabAsset, ProjectDefinition } from '@atc/schema';
+import { prefabAssetFilePath, prefabHasStoredRoot } from '@atc/schema';
+import {
+  createPrefabFork,
+  nextPrefabVersion,
+  PrefabAssetRegistry,
+} from '@atc/prefab-runtime';
 import { createApp } from '../../../apps/api/src/app.ts';
 import { loadStoredPrefabs } from '../../../apps/api/src/context.ts';
 import { createRepositoryRuntime } from '../../../apps/api/src/runtime.ts';
@@ -34,6 +38,39 @@ function api() {
 
 function registry() {
   return new PrefabAssetRegistry(loadStoredPrefabs(repoRoot));
+}
+
+function project(): ProjectDefinition {
+  return JSON.parse(
+    readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8'),
+  ) as ProjectDefinition;
+}
+
+function prefabAdoptionRequest(targets: Array<{ sceneId: string; gameObjectId: string }>) {
+  const source = registry().referenceTo('navigator', '1.0.0');
+  const current = project();
+  const holders = current.scenes.flatMap((scene) =>
+    (scene.gameObjects ?? [])
+      .filter(
+        (gameObject) =>
+          gameObject.prefab.assetId === source.assetId &&
+          gameObject.prefab.version === source.version,
+      )
+      .map((gameObject) => ({
+        sceneId: scene.id,
+        gameObjectId: gameObject.id,
+        prefab: gameObject.prefab,
+      })),
+  );
+  return {
+    source,
+    expected: {
+      sourceContentHash: source.contentHash,
+      projectRevisionId: current.revisionId,
+      sceneInstanceReferences: holders,
+    },
+    targets,
+  };
 }
 
 async function body(response: Response): Promise<Record<string, unknown>> {
@@ -75,6 +112,46 @@ describe('Prefab API exact identity', () => {
       ).status,
     ).toBe(409);
   });
+
+  it('reports exact usage and delete blockers', async () => {
+    const reference = registry().referenceTo('navigator', '1.0.0');
+    const app = api();
+
+    const usageResponse = await app.request(
+      `/api/prefabs/${reference.assetId}/${reference.version}/usage`,
+    );
+    expect(usageResponse.status).toBe(200);
+    const usage = await body(usageResponse);
+    expect(usage.reference).toEqual(reference);
+    expect(usage.sceneInstances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sceneId: 'two-humanoids-shared-animation',
+          gameObjectId: 'controlled-humanoid',
+        }),
+        expect.objectContaining({
+          sceneId: 'two-humanoids-shared-animation',
+          gameObjectId: 'scripted-humanoid',
+        }),
+      ]),
+    );
+
+    const policyResponse = await app.request(
+      `/api/prefabs/${reference.assetId}/${reference.version}/delete-policy`,
+    );
+    expect(policyResponse.status).toBe(200);
+    const policy = await body(policyResponse);
+    expect(policy.allowed).toBe(false);
+    expect(policy.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'scene-instance',
+          sceneId: 'two-humanoids-shared-animation',
+          gameObjectId: 'controlled-humanoid',
+        }),
+      ]),
+    );
+  });
 });
 
 describe('Prefab API immutable publication', () => {
@@ -111,5 +188,137 @@ describe('Prefab API immutable publication', () => {
     });
     expect(second.status).toBe(409);
     expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(storedDocument);
+  });
+
+  it('publishes variants and forks without mutating their source lineage', async () => {
+    const sourceRegistry = registry();
+    const variant = sourceRegistry.get(sourceRegistry.referenceTo('navigator', '1.0.0'));
+    const nextVariant = nextPrefabVersion(variant);
+    const source = sourceRegistry.referenceTo('default-scene-camera', '1.0.0');
+    const sourceDocument = sourceRegistry.get(source);
+    expect(prefabHasStoredRoot(sourceDocument)).toBe(true);
+    if (!prefabHasStoredRoot(sourceDocument)) throw new Error('camera fixture must store a root');
+    const fork = createPrefabFork(
+      {
+        id: 'detached-camera',
+        displayName: 'Detached camera',
+        description: 'Integration-test fork.',
+        tags: ['test'],
+        createdAt: '2026-08-06T00:00:00.000Z',
+        createdBy: 'prefab-api-test',
+      },
+      source,
+      'Prove fork publication does not move its source lineage.',
+      sourceDocument.root,
+    );
+    const beforeSource = readFileSync(
+      join(repoRoot, prefabAssetFilePath(source.assetId, source.version)),
+      'utf8',
+    );
+    const app = api();
+
+    const variantResponse = await app.request('/api/prefabs/create-variant', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ document: nextVariant }),
+    });
+    expect(variantResponse.status, JSON.stringify(await variantResponse.clone().json())).toBe(200);
+
+    const forkResponse = await app.request('/api/prefabs/create-fork', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ document: fork }),
+    });
+    expect(forkResponse.status, JSON.stringify(await forkResponse.clone().json())).toBe(200);
+    expect(
+      readFileSync(join(repoRoot, prefabAssetFilePath(source.assetId, source.version)), 'utf8'),
+    ).toBe(beforeSource);
+    expect(registry().referenceTo(fork.metadata.id, fork.metadata.version)).toMatchObject({
+      assetId: 'detached-camera',
+      version: '1.0.0',
+    });
+  });
+});
+
+describe('Prefab to Scene exact-target adoption', () => {
+  it('publishes only without writing the Project or moving any holder', async () => {
+    const before = readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8');
+    const response = await api().request('/api/prefabs/publish-and-adopt-scenes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(prefabAdoptionRequest([])),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(200);
+    expect(responseBody.changedTargets).toEqual({ sceneInstances: [] });
+    expect(responseBody.changedPaths).not.toContain('projects/demo-character/project.json');
+    expect(readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8')).toBe(
+      before,
+    );
+  });
+
+  it('moves exactly one named Scene instance and bumps the Project revision', async () => {
+    const target = {
+      sceneId: 'two-humanoids-shared-animation',
+      gameObjectId: 'controlled-humanoid',
+    };
+    const before = project();
+    const beforeScene = before.scenes.find((scene) => scene.id === target.sceneId)!;
+    const untouchedBefore = JSON.stringify(
+      beforeScene.gameObjects?.find((gameObject) => gameObject.id === 'scripted-humanoid'),
+    );
+    const response = await api().request('/api/prefabs/publish-and-adopt-scenes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(prefabAdoptionRequest([target])),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(200);
+    expect(responseBody.changedTargets).toEqual({ sceneInstances: [target] });
+    const after = project();
+    expect(after.revisionId).not.toBe(before.revisionId);
+    const afterScene = after.scenes.find((scene) => scene.id === target.sceneId)!;
+    expect(afterScene.gameObjects?.find((gameObject) => gameObject.id === target.gameObjectId)?.prefab)
+      .toMatchObject({ assetId: 'navigator', version: '1.0.1' });
+    expect(
+      JSON.stringify(
+        afterScene.gameObjects?.find((gameObject) => gameObject.id === 'scripted-humanoid'),
+      ),
+    ).toBe(untouchedBefore);
+  });
+
+  it.each([
+    ['stale revision', (request: ReturnType<typeof prefabAdoptionRequest>) => {
+      request.expected.projectRevisionId = 'stale-revision';
+    }],
+    ['unknown target', (request: ReturnType<typeof prefabAdoptionRequest>) => {
+      request.targets = [{ sceneId: 'missing-scene', gameObjectId: 'missing-object' }];
+    }],
+  ])('refuses %s with zero writes', async (_name, mutate) => {
+    const request = prefabAdoptionRequest([]);
+    mutate(request);
+    const projectBefore = readFileSync(
+      join(repoRoot, 'projects/demo-character/project.json'),
+      'utf8',
+    );
+    const prefabFilesBefore = readdirSync(join(repoRoot, 'assets/prefabs'), {
+      recursive: true,
+    }).map(String);
+
+    const response = await api().request('/api/prefabs/publish-and-adopt-scenes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    expect(response.status).toBe(409);
+    expect((await body(response)).changedTargets).toEqual({ sceneInstances: [] });
+    expect(readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8')).toBe(
+      projectBefore,
+    );
+    expect(
+      readdirSync(join(repoRoot, 'assets/prefabs'), { recursive: true }).map(String),
+    ).toEqual(prefabFilesBefore);
   });
 });

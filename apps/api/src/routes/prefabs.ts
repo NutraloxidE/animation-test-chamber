@@ -61,6 +61,7 @@ import { runRepositoryTransaction, sha256Hex } from '@atc/repository-transaction
 import type { PlannedFileWrite } from '@atc/repository-transaction';
 import { markRepositoryFatal } from '../repository-health.ts';
 import { createRepositoryRuntime, type RepositoryRuntime } from '../runtime.ts';
+import { revisionOf } from './repository-apply.ts';
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -770,7 +771,7 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
      * `harness:prefab-api` checks by hashing the non-target bytes.
      */
     const named = new Set(plan.targets.map((target) => `${target.sceneId}/${target.gameObjectId}`));
-    const nextProject: ProjectDefinition = {
+    const changedProject: ProjectDefinition = {
       ...project,
       scenes: project.scenes.map((scene) => ({
         ...scene,
@@ -781,6 +782,10 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
         ),
       })),
     };
+    const nextProject: ProjectDefinition = {
+      ...changedProject,
+      revisionId: revisionOf(changedProject),
+    };
 
     const outcome = await publishThroughTransaction({
       runtime,
@@ -788,7 +793,7 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
         `adopt ${published.metadata.id}@${published.metadata.version} into ` +
         `${[...named].join(', ') || 'no Scene instances'}`,
       documents: [published],
-      project: nextProject,
+      ...(plan.targets.length > 0 ? { project: nextProject } : {}),
       expectedProjectRevisionId: request.expected.projectRevisionId,
     });
 
