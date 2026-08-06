@@ -1,7 +1,11 @@
 # Rig Editor restoration prerequisites handoff
 
-NOT READY FOR RIG EDITOR UI RESTORATION
+READY FOR RIG EDITOR UI RESTORATION
 
-The explicit subject seam is implemented: closed schema, exact Prefab/node/Animator extraction, Character-free resolver core, disposable session boundary, exact publication plan, isolated legacy UI adapter, focused tests and one-shot stages.
+The restoration may mount the existing chamber body over an explicit `AnimationAuthoringSession` created from exact Prefab/node/Animator Component identity. The subject schema, extraction, shared resolver, session disposal boundary and exact publication plan are present and guarded.
 
-Before changing the Rig Editor UI, complete the remaining adoption matrix (base, fork, variant and behavior/motionSet/rig/tuning), finish the full visual suite, run `pnpm harness:one-shot` twice from a clean tree, update the audit with final hashes and evidence, then commit. Keep `/edit/rig/:id` as its redirect and retain all legacy schemas until the later migration package.
+Animation-to-Prefab adoption is verified for base, fork and variant Prefabs across behavior, motionSet, rig and tuning. Adoption requires exact hashes, variants retain canonical terminal patches, and changed targets come from promoted Prefab paths. Publish-only moves no holder or Scene.
+
+The compatibility mapping remains isolated in `legacy-animation-workspace-adapter.ts`; remove it only when the restored UI consumes the explicit session directly. Keep `/edit/rig/:id` as its redirect until that separate route package, and do not delete `Project.characters`, `activeCharacterId`, `Scene.entities` or legacy schemas during UI restoration.
+
+Verification at implementation SHA `6fd64220e1a627b4f7e0fdb358566bfb8ab49a50`: two consecutive clean one-shot runs passed 62/62 stages, including the complete visual matrix. No manual cleanup was required between runs.
