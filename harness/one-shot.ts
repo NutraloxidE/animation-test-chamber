@@ -11,6 +11,7 @@ import { staticStages } from './check-static.ts';
 import { animationAssetStages } from './check-animation-assets.ts';
 import { prefabStages } from './check-prefabs.ts';
 import { gameObjectStages } from './check-game-objects.ts';
+import { gameObjectRendererStages } from './check-game-object-renderer.ts';
 import { transactionRecoveryStage } from './check-transaction-recovery.ts';
 import { worldStages } from './check-world.ts';
 import { capabilityStages } from './check-capabilities.ts';
@@ -164,6 +165,13 @@ async function main(): Promise<void> {
     results.push(result);
   }
   for (const result of gameObjectStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  // The renderer projection last of the GameObject stages: it asserts what the
+  // production Viewport draws, and it can only mean anything once the objects
+  // it draws are known to resolve and to run.
+  for (const result of gameObjectRendererStages()) {
     printStage(result);
     results.push(result);
   }

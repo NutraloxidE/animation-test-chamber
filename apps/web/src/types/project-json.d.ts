@@ -22,3 +22,16 @@ declare module '@chamber/animation-assets' {
   const index: AnimationAssetLibraryIndex;
   export default index;
 }
+
+/**
+ * The generated Prefab asset library.
+ *
+ * A Scene holds Prefab *references*; resolving one needs the documents. The
+ * browser gets them the same way it gets animation assets — from the generated
+ * index — so the static build can render a Scene with no API server behind it.
+ */
+declare module '@chamber/prefab-assets' {
+  import type { PrefabLibraryIndex } from '@atc/prefab-runtime';
+  const index: PrefabLibraryIndex;
+  export default index;
+}

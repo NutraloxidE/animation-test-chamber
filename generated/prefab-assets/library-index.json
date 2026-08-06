@@ -1,6 +1,609 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedFrom": "assets/prefabs",
+  "assets": [
+    {
+      "id": "default-scene-camera",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "default-scene-camera",
+          "version": "1.0.0",
+          "displayName": "Scene Camera",
+          "description": "Generated from a migrated Scene camera entity.",
+          "tags": [
+            "camera"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "camera",
+              "componentType": "camera",
+              "enabled": true,
+              "projection": "perspective",
+              "fieldOfViewDeg": 60
+            }
+          ],
+          "children": [],
+          "displayName": "Camera"
+        }
+      }
+    },
+    {
+      "id": "humanoid-character-base",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "humanoid-character-base",
+          "version": "1.0.0",
+          "displayName": "Humanoid Character Base",
+          "description": "The shared humanoid composition: an Animator on the project behaviour, a CharacterMotor, and a capsule. Abstract — it carries no model, so it is a shape to inherit rather than a thing to place.",
+          "tags": [
+            "character",
+            "humanoid",
+            "base"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": true,
+        "root": {
+          "nodeId": "root",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "animator",
+              "componentType": "animator",
+              "enabled": true,
+              "assignment": {
+                "behavior": {
+                  "assetType": "animation-behavior",
+                  "assetId": "humanoid-third-person-base",
+                  "version": "1.0.0",
+                  "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+                },
+                "motionSet": {
+                  "assetType": "animation-motion-set",
+                  "assetId": "demo-humanoid-motion-set",
+                  "version": "1.0.0",
+                  "contentHash": "973c67a41ed1ee36ea096111e8a84d00c15a3ba48372884b1ed28108541b750c"
+                },
+                "rig": {
+                  "assetType": "humanoid-rig",
+                  "assetId": "demo-humanoid-rig",
+                  "version": "1.0.0",
+                  "contentHash": "2f8c7909d85613f6872337d287261ea1f4ef5a43649be0c5a270736bb6d91f6d"
+                },
+                "tuning": {
+                  "assetType": "animation-tuning",
+                  "assetId": "demo-default-tuning",
+                  "version": "1.0.0",
+                  "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
+                },
+                "instanceOverrides": [
+                  {
+                    "path": "/graph/states/walk/speed",
+                    "op": "set",
+                    "value": 1.53
+                  },
+                  {
+                    "path": "/graph/states/run/speed",
+                    "op": "set",
+                    "value": 1.21
+                  }
+                ]
+              }
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "character-motor",
+              "componentType": "character-motor",
+              "enabled": true,
+              "intentChannel": "primary",
+              "movementScale": 1,
+              "turnScale": 1
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "capsule",
+              "componentType": "capsule-collider",
+              "enabled": true,
+              "radius": 0.3,
+              "height": 1.8,
+              "center": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              }
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "character",
+                "humanoid"
+              ]
+            }
+          ],
+          "children": [],
+          "displayName": "Humanoid"
+        }
+      }
+    },
+    {
+      "id": "navigator",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "navigator",
+          "version": "1.0.0",
+          "displayName": "Navigator",
+          "description": "Migrated from Character \"demo-humanoid\".",
+          "tags": [
+            "character",
+            "humanoid"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "humanoid-character-base",
+            "version": "1.0.0",
+            "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "model",
+                "componentType": "model-renderer",
+                "enabled": true,
+                "model": {
+                  "kind": "procedural-humanoid",
+                  "presetId": "navigator"
+                },
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "quaternius-knight",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "quaternius-knight",
+          "version": "1.0.0",
+          "displayName": "Quaternius Knight",
+          "description": "Migrated from Character \"quaternius-knight\".",
+          "tags": [
+            "character",
+            "humanoid"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "c7a7366ec8f73a27980948a5eeecc36f673575f0f3c0f44992fa04f05bddda78"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "humanoid-character-base",
+            "version": "1.0.0",
+            "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "model",
+                "componentType": "model-renderer",
+                "enabled": true,
+                "model": {
+                  "kind": "repository-model",
+                  "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+                  "scale": 0.3,
+                  "rotationYRad": 0
+                },
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/motionSet",
+                  "op": "set",
+                  "value": {
+                    "assetType": "animation-motion-set",
+                    "assetId": "quaternius-knight-motion-set",
+                    "version": "1.0.0",
+                    "contentHash": "0f5cdff2290de16e37bbd5239c1dcfb326cf20802cd1244b8350a7ce0b983b6b"
+                  }
+                },
+                {
+                  "path": "/assignment/rig",
+                  "op": "set",
+                  "value": {
+                    "assetType": "humanoid-rig",
+                    "assetId": "quaternius-knight-rig",
+                    "version": "1.0.0",
+                    "contentHash": "a43a0ebd54713409ad97c2681fb3319397d553dc28dec1a9aa8667759e453e59"
+                  }
+                },
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": []
+                }
+              ]
+            },
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "equipment-sockets",
+                "componentType": "equipment-sockets",
+                "enabled": true,
+                "sockets": [
+                  {
+                    "socketId": "right-hand-sword",
+                    "boneName": "Palm.R",
+                    "localPosition": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "localRotation": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "acceptedItemTags": [
+                      "sword"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "quaternius-universal-base",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "quaternius-universal-base",
+          "version": "1.0.0",
+          "displayName": "Universal Base Superhero",
+          "description": "Migrated from Character \"quaternius-universal-base\".",
+          "tags": [
+            "character",
+            "humanoid"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "humanoid-character-base",
+            "version": "1.0.0",
+            "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "model",
+                "componentType": "model-renderer",
+                "enabled": true,
+                "model": {
+                  "kind": "repository-model",
+                  "assetPath": "/assets/characters/quaternius-universal-base/Superhero_Female_FullBody.gltf",
+                  "scale": 1,
+                  "rotationYRad": 0
+                },
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/motionSet",
+                  "op": "set",
+                  "value": {
+                    "assetType": "animation-motion-set",
+                    "assetId": "quaternius-universal-motion-set",
+                    "version": "1.0.0",
+                    "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
+                  }
+                },
+                {
+                  "path": "/assignment/rig",
+                  "op": "set",
+                  "value": {
+                    "assetType": "humanoid-rig",
+                    "assetId": "quaternius-universal-rig",
+                    "version": "1.0.0",
+                    "contentHash": "10fc68780d556ab1d75ab2e3387b7711cd049a79808d5985485d670ba2a5956e"
+                  }
+                },
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": []
+                }
+              ]
+            },
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "equipment-sockets",
+                "componentType": "equipment-sockets",
+                "enabled": true,
+                "sockets": [
+                  {
+                    "socketId": "right-hand-sword",
+                    "boneName": "hand_r",
+                    "localPosition": [
+                      0,
+                      -0.035,
+                      0
+                    ],
+                    "localRotation": [
+                      0,
+                      1.5707963267948966,
+                      -0.18
+                    ],
+                    "acceptedItemTags": [
+                      "sword"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "relay",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "relay",
+          "version": "1.0.0",
+          "displayName": "Relay",
+          "description": "Migrated from Character \"alternate-humanoid-character\".",
+          "tags": [
+            "character",
+            "humanoid"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "humanoid-character-base",
+            "version": "1.0.0",
+            "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "model",
+                "componentType": "model-renderer",
+                "enabled": true,
+                "model": {
+                  "kind": "procedural-humanoid",
+                  "presetId": "relay"
+                },
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/motionSet",
+                  "op": "set",
+                  "value": {
+                    "assetType": "animation-motion-set",
+                    "assetId": "alternate-humanoid-motion-set",
+                    "version": "1.0.0",
+                    "contentHash": "796f61d6c797150a14eb510ba6a766c4df41dda261cefc51203f79e325233545"
+                  }
+                },
+                {
+                  "path": "/assignment/tuning",
+                  "op": "set",
+                  "value": {
+                    "assetType": "animation-tuning",
+                    "assetId": "alternate-humanoid-tuning",
+                    "version": "1.0.0",
+                    "contentHash": "1fe0d91cbb0ca1f8879b9e20c9ff07010da7d0e62300b6cb16679355c4156588"
+                  }
+                },
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": []
+                }
+              ]
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "sentinel",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "sentinel",
+          "version": "1.0.0",
+          "displayName": "Sentinel",
+          "description": "Migrated from Character \"sentinel\".",
+          "tags": [
+            "character",
+            "humanoid"
+          ],
+          "createdAt": "2026-08-06T00:00:00.000Z",
+          "createdBy": "prefabs:migrate",
+          "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "humanoid-character-base",
+            "version": "1.0.0",
+            "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "model",
+                "componentType": "model-renderer",
+                "enabled": true,
+                "model": {
+                  "kind": "procedural-humanoid",
+                  "presetId": "sentinel"
+                },
+                "castShadow": true,
+                "receiveShadow": true
+              }
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": []
+                }
+              ]
+            }
+          ]
+        },
+        "abstract": false
+      }
+    }
+  ],
   "prefabs": [
     {
       "id": "default-scene-camera",

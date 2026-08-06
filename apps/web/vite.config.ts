@@ -26,8 +26,11 @@ export default defineConfig({
       '@atc/editor-core': resolve(repoRoot, 'packages/editor-core/src/index.ts'),
       '@atc/ai-adapter': resolve(repoRoot, 'packages/ai-adapter/src/index.ts'),
       '@atc/acquisition-core': resolve(repoRoot, 'packages/acquisition-core/src/index.ts'),
+      '@atc/prefab-runtime': resolve(repoRoot, 'packages/prefab-runtime/src/index.ts'),
+      '@atc/game-object-runtime': resolve(repoRoot, 'packages/game-object-runtime/src/index.ts'),
       '@chamber/project': resolve(repoRoot, 'projects/demo-character/project.json'),
       '@chamber/animation-assets': resolve(repoRoot, 'generated/animation-assets/library-index.json'),
+      '@chamber/prefab-assets': resolve(repoRoot, 'generated/prefab-assets/library-index.json'),
     },
   },
   server: {
