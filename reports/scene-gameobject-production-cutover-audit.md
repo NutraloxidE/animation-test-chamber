@@ -271,32 +271,199 @@ Every command below was run. Results are from the final code on a clean tree.
 | `pnpm lint` | pass (`--max-warnings=0`) |
 | `pnpm build` | pass |
 | `pnpm harness:check` | 5/5 |
-| `pnpm harness:animation-assets` | see one-shot |
+| `pnpm harness:animation-assets` | 7/7 |
 | `pnpm harness:prefabs` | 6/6 |
 | `pnpm harness:game-objects` | 3/3 |
 | `pnpm harness:game-object-renderer` | 5/5 |
 | `pnpm harness:scene-gameobject-cutover` | 10/10 |
-| `pnpm harness:world` | see one-shot |
+| `pnpm harness:world` | pass |
 | `pnpm harness:scenes` | pass |
 | `pnpm harness:character-control` | 22 tests pass |
-| `pnpm harness:capabilities` | see one-shot |
-| `pnpm harness:unit` | see one-shot |
-| `pnpm harness:integration` | see one-shot |
-| `pnpm harness:replay` | see one-shot |
+| `pnpm harness:capabilities` | pass |
+| `pnpm harness:unit` | pass |
+| `pnpm harness:integration` | pass |
+| `pnpm harness:replay` | pass |
+| all three together | 1087 tests, 54 files, 0 failures |
 | `pnpm harness:repo-guard` | 14/14 |
-| `pnpm harness:visual` | see §13 |
-| `pnpm harness:one-shot` ×2 | see §13 |
+| `pnpm harness:visual` | 231 passed, 6 skipped, 0 failed |
+| `pnpm harness:one-shot` ×2 | 58/58 twice — see §13 |
 
 ## 13. One-shot results
 
-<!-- ONE_SHOT_RESULTS -->
+Both runs were started from a clean tree, back to back, with no edit between
+them.
+
+```text
+ONE-SHOT RUN 1    58/58 stages passed in 1275.1s    exit 0
+ONE-SHOT RUN 2    58/58 stages passed in 1247.6s    exit 0
+```
+
+The 58 stages, in the order they ran:
+
+```text
+typescript strict                                    eslint
+canonical data validity                              schema generation drift
+generated files not hand-modified                    animation assets resolve and validate
+every character resolves to a runnable document      generated asset index is current
+migration is deterministic                           asset-resolved runtime matches pre-migration
+two characters share one behaviour                   second character runs every replay fixture
+prefab assets validate and resolve                   every prefab resolves to a composition
+migrated prefabs preserve the characters             prefab migration is deterministic
+generated prefab index is current                    prefab usage graph names exact holders
+every scene GameObject resolves                      every Scene is complete in GameObject terms alone
+two instances have independent runtime state         every required composition renders from Components
+a disabled GameObject draws nothing                  the active camera resolves through its Component
+a missing required Component is an error             the canonical Scene renders from gameObjects alone
+--- the ten stages this package added ---
+the production Scene resolves gameObjects and ignores entities
+the Scene Viewport projects RuntimeScene through GameObjectRenderer
+every GameObject Scene operation is deterministic and leaves entities alone
+Scene operations refuse what the Prefab cannot support
+a child runtime node selects for inspection and never becomes an operation target
+Scene hierarchy rows carry exact Prefab identity, Components and badges
+an Animator Component produces deterministic, isolated playback
+two animated instances of one Prefab do not contaminate each other
+an Animator with no take for its state is an issue, not a silent substitution
+one transform edit agrees across document, hierarchy, runtime and projection
+--- and the rest ---
+transaction recovery is clean and idempotent         world contract
+capability completeness                              unit
+integration                                          replay
+every workspace package resolves                     no direct device-to-Simulation control path
+no second Character selector                         no protected value changed unexpectedly
+no tests deleted or weakened                         no schema constraint relaxed silently
+no generated artifact treated as canonical           no secrets committed
+no raw restricted asset committed                    no published asset version modified in place
+no runtime behaviour inferred from state names       world contract not eroded
+gameobject prefab system present and canonical       the production Scene path reads and writes gameObjects
+web build                                            visual (playwright)
+```
+
+Visual, from run 2's captured stage output:
+
+```text
+6 skipped
+231 passed (19.7m)
+[visual] source checkout unchanged; disposable repository removed.
+```
+
+The `source checkout unchanged` line is the wrapper's own assertion: the suite
+performs real writes through the real API, against a disposable checkout, and
+proves the developer's `projects/demo-character/project.json`, `assets/`,
+`generated/` and the replay baselines did not move. Both desktop and narrow
+Playwright projects are inside that count.
+
+A separate, earlier run of `pnpm harness:visual tests/visual/scene
+tests/visual/routing` — the specs this package rewrote — reported
+`117 passed, 6 skipped` across desktop, mobile-landscape and narrow with zero
+failures.
 
 ## 14. Working tree
 
-<!-- CLEAN_TREE -->
+Clean before run 1, after run 1 and after run 2. `git status --short` produced
+no output at any of the three points; the chain script captured all three and
+each section is empty.
+
+`reports/one-shot-report.{json,md}` are written by the harness and are ignored by
+`.gitignore`, so a run leaves nothing behind to commit.
+
+```text
+End implementation SHA:  4644829452ece6235949336f02b47f5bbab6a95e
+```
 
 ---
 
-## 15. Declaration
+## 15. What this package did not do
 
-<!-- DECLARATION -->
+Named here rather than left to be discovered:
+
+- **the canonical schema deletion.** `Scene.entities`, `SceneEntityDefinition`,
+  `Project.characters` and the legacy `SceneOperation` union all still exist, by
+  design (§0 of the work package). The Repo Guard forbids production Scene
+  modules from reaching for them and forbids reverse generation anywhere; it does
+  not require their removal.
+- **Prefab APIs, Asset Library and Unity export.** Out of scope, and none of them
+  were required for this slice.
+- **an Inspector control that authors a Component override patch.** The Inspector
+  can *clear* one override and revert all of them, and `scene.set_component_override`
+  is exercised by the unit suite, the integration suite and the harness — but a
+  human cannot yet author a patch through the UI. `scene.set_prefab_source` is
+  reachable through the version selector; `scene.reorder_game_object` through Move
+  earlier / Move later.
+- **Open Prefab from a hierarchy row.** It lives on the Inspector, which §6.3 and
+  §21.16 both permit; child rows select a node for inspection and the Inspector's
+  link follows the selection.
+
+---
+
+## 16. Declaration
+
+```text
+SCENE GAMEOBJECT PRODUCTION CUTOVER: PASS
+
+Start SHA:                                  5b9dc609af7b24bb72c6caaaee52ff44087bed8e
+End Implementation SHA:                     4644829452ece6235949336f02b47f5bbab6a95e
+Branch Identity:                            PASS
+Clean Working Tree:                         PASS
+
+Scene Reads gameObjects:                    PASS
+Scene Ignores entities:                     PASS
+RuntimeScene Production Use:                PASS
+GameObjectRenderer Production Use:          PASS
+No Entity Fallback:                         PASS
+
+GameObject Hierarchy:                       PASS
+Root/Child Selection Identity:              PASS
+Scene Inspector Cutover:                    PASS
+Place Prefab Flow:                          PASS
+
+GameObject Operations:                      PASS
+Repository Apply to gameObjects:            PASS
+Entities Byte-Identical:                    PASS
+Stale Revision Zero Writes:                 PASS
+Prefab Source Clears Overrides:             PASS
+Duplicate Drops Camera Relation:            PASS
+Active Camera Validation:                   PASS
+One-Source Reload:                          PASS
+
+Animator Visible Playback:                  PASS
+Canonical Clip Binding:                     PASS
+Fixed-Clock Animation:                      PASS
+Mixer/Skeleton Isolation:                   PASS
+Reset Determinism:                          PASS
+Missing Clip Visibility:                    PASS
+
+Scene Cutover Harness:                      PASS
+GameObject Renderer Harness:                PASS
+Animation Assets Harness:                   PASS
+Prefabs Harness:                            PASS
+GameObjects Harness:                        PASS
+Scenes Harness:                             PASS
+Character Control Harness:                  PASS
+Capabilities Harness:                       PASS
+Unit:                                       PASS
+Integration:                                PASS
+Replay:                                     PASS
+Repo Guard:                                 PASS
+Visual Desktop:                             PASS
+Visual Narrow:                              PASS
+Typecheck:                                  PASS
+Lint:                                       PASS
+Build:                                      PASS
+One-Shot Run 1:                             PASS
+One-Shot Run 2:                             PASS
+
+Decision:
+SCENE GAMEOBJECT PRODUCTION CUTOVER: PASS
+```
+
+One qualification on `Animator Visible Playback`, stated rather than buried. What
+is proven in Node is that the Animator resolves a canonical take, advances
+exactly 0.5 s per 30 fixed steps, produces a different animation state at three
+different simulation times, resets to its initial state, and stays isolated from
+a second instance. What is proven in the browser is that the page renders and
+behaves — the visual suite asserts the Scene runtime reaches `RUNNING`, and the
+chamber's own imported-Character spec asserts canonical takes play. The pixels of
+a skinned mesh mid-clip are not diffed against a reference image; no stage in
+this repository does that, and claiming otherwise would be the kind of evidence
+inflation §10.7 warns about.
