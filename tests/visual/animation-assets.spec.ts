@@ -47,6 +47,24 @@ test('lists the migrated assets and filters by type', async ({ page }) => {
   await expect(page.getByTestId('asset-card-idle')).toBeVisible();
 });
 
+test('browses Prefabs with exact identity, usage, validation and delete policy', async ({ page }) => {
+  await showPane(page, 'types');
+  await page.getByTestId('asset-type-game-object-prefab').click();
+  await showPane(page, 'list');
+  await expect(page.getByTestId('prefab-card-navigator')).toBeVisible();
+  await expect(page.getByTestId('asset-card-idle')).toHaveCount(0);
+
+  await page.getByTestId('prefab-card-navigator').click();
+  await showPane(page, 'detail');
+  await expect(page.getByTestId('prefab-detail')).toContainText('navigator@1.0.0');
+  await expect(page.getByTestId('prefab-components')).toContainText('animator');
+  await expect(page.getByTestId('prefab-dependencies')).toContainText('animation-behavior');
+  await expect(page.getByTestId('prefab-usage')).toContainText('2 Scene instance(s)');
+  await expect(page.getByTestId('prefab-validation')).toContainText('valid');
+  await expect(page.getByTestId('prefab-delete-policy')).toContainText('Deletion blocked');
+  await expect(page.getByTestId('prefab-delete-policy')).toContainText('controlled-humanoid');
+});
+
 test('search matches a motion slot name, not just the asset id', async ({ page }) => {
   await showPane(page, 'list');
   // The slot lives inside the behaviour, so matching it proves the index carries
