@@ -6,7 +6,8 @@
 - Checkpoint SHA: `b467ba465029332f9192b6f24caa1dfad1971434`
 - Implementation SHA: `6fd64220e1a627b4f7e0fdb358566bfb8ab49a50`
 - Closure documentation SHA: `54dd2930227f0b6ec71452eef2802dc5c3df357e`
-- Verified head SHA: `b6976f0e48b609f048fff10dfd1080f7fcea2359`
+- Refusal-coverage SHA: `e144862` (see "Gap closed" below)
+- Verified head SHA: `b6976f0e48b609f048fff10dfd1080f7fcea2359`, superseded by the run pair at `e144862`
 - `origin/main` tip: `2e5b2a21a269f41aad7f14c00b0cded91233f33f`
 - Canonical Project Git blob before/after verification: `8730866dec007ab77fa8bb035053d5e1b747cf0b`
 
@@ -201,19 +202,24 @@ configured, 17.1 minutes, single worker, exit 0. The wrapper reported
 `git status --short` was empty afterwards. No port, process or transaction-lock
 residue.
 
-Official one-shot run 1, from a clean tree at `b6976f0`:
+An initial pair of official runs passed 62/62 at `b6976f0` (1,062.0s and
+1,036.1s). Closing the refusal gap changed test code afterwards, so that pair no
+longer described the final tree and the official count was restarted at
+`e144862` rather than carried forward.
+
+Official one-shot run 1, from a clean tree at `e144862`:
 
 - Clean start: PASS (`git status --short` empty)
 - Result: 62/62 stages PASS, exit 0
-- Total: 1,062.0 seconds; visual stage 997.6 seconds
-- `prefab API` and `rig prerequisites` present as explicit stages
+- Total: 1,350.2 seconds; visual stage 1,270.1 seconds
+- `prefab API` (7.8s, 29 tests) and `rig prerequisites` present as explicit stages
 - Clean afterward: PASS
 
 Official one-shot run 2, immediately after run 1 with no manual cleanup:
 
 - Clean start: PASS
 - Result: 62/62 stages PASS, exit 0
-- Total: 1,036.1 seconds; visual stage 974.8 seconds
+- Total: 1,329.5 seconds; visual stage 1,257.0 seconds
 - Clean afterward: PASS
 
 Run 2 required no cleanup after run 1, which is the idempotent-generation,
