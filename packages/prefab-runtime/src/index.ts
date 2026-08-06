@@ -5,6 +5,7 @@ export * from './validation.ts';
 export * from './registry.ts';
 export * from './resolution.ts';
 export * from './capabilities.ts';
+export * from './delete-policy.ts';
 export * from './usage.ts';
 export * from './adoption.ts';
 export * from './derivation.ts';

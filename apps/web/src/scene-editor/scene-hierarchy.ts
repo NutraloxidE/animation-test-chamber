@@ -15,8 +15,13 @@
  * something different after a reorder, and reordering is a first-class Scene
  * operation.
  */
-import type { GameObjectInstanceDefinition, SceneDefinition } from '@atc/schema';
+import type {
+  GameObjectComponentDefinition,
+  GameObjectInstanceDefinition,
+  SceneDefinition,
+} from '@atc/schema';
 import {
+  applyComponentOverrides,
   resolveGameObjectPrefab,
   walkResolvedNodes,
   type PrefabAssetRegistry,
@@ -27,6 +32,16 @@ export interface SceneHierarchyComponentRow {
   componentType: string;
   /** True when this instance overrides this Component's values (§7.1). */
   overridden: boolean;
+  /**
+   * The Component as *resolved* — Prefab values with this instance's overrides
+   * already applied.
+   *
+   * Both layers, deliberately. The Inspector edits the instance layer, so a
+   * control showing only the Prefab layer would display a value it does not
+   * edit: uncheck the box, the document changes, and the box snaps back to what
+   * the shared Prefab says.
+   */
+  definition: GameObjectComponentDefinition;
 }
 
 export interface SceneHierarchyNodeRow {
@@ -103,6 +118,27 @@ export function sceneHierarchyRows(input: {
      */
     const stored = registry.find(instance.prefab);
     const error = resolution.issues.find((issue) => issue.severity === 'error');
+
+    /*
+     * The instance's own overrides, applied on top of the Prefab.
+     *
+     * `resolveGameObjectPrefab` answers "what does this Prefab version say" and
+     * stops there — the instance layer is applied by `resolveGameObjectInstance`,
+     * which the *runtime* uses. Showing the Prefab's values in an Inspector that
+     * can edit the instance's would be a control whose displayed value is not
+     * the value it edits: uncheck a box, the document changes, and the box goes
+     * straight back to what the shared Prefab says.
+     *
+     * The resolution is freshly built per call and owned here, so mutating it is
+     * safe; nothing else holds a reference to it.
+     */
+    if (!error && instance.componentOverrides.length > 0) {
+      applyComponentOverrides(
+        resolution.prefab.root,
+        instance.componentOverrides,
+        instance.prefab,
+      );
+    }
     const nodes = error ? [] : walkResolvedNodes(resolution.prefab.root);
     const overridden = new Set(
       instance.componentOverrides.map((override) => `${override.nodeId}/${override.componentId}`),
@@ -150,6 +186,7 @@ export function sceneHierarchyRows(input: {
           componentId: component.componentId,
           componentType: component.componentType,
           overridden: overridden.has(`${node.nodeId}/${component.componentId}`),
+          definition: component,
         })),
       })),
     };

@@ -65,6 +65,7 @@ export const REPO_ROOT = process.env.ATC_REPO_ROOT
 export const PROJECT_PATH = 'projects/demo-character/project.json';
 export const ASSET_ROOT = 'assets/animation';
 export const PREFAB_ROOT = 'assets/prefabs';
+export const PREFAB_LIBRARY_INDEX_PATH = 'generated/prefab-assets/library-index.json';
 
 const DIRECTORY_BY_TYPE: Record<string, AnimationAssetType> = {
   behaviors: 'animation-behavior',

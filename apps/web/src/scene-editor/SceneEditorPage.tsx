@@ -44,8 +44,17 @@ import { useSceneRuntime } from './use-scene-runtime.ts';
 import {
   hierarchyRowFor,
   sceneHierarchyRows,
+  type SceneHierarchyComponentRow,
   type SceneHierarchyRow,
 } from './scene-hierarchy.ts';
+import {
+  fieldScope,
+  fieldValue,
+  mergePatch,
+  overridableFields,
+  patchForField,
+  type OverrideField,
+} from './component-override-fields.ts';
 import { operationTarget, selectedNodeId, type SceneSelection } from './scene-selection.ts';
 import { SceneViewport, type GizmoMode, type TransformSpace } from './viewport/SceneViewport.tsx';
 import { placementGameObjectId, writeDragPayload } from './drag-payload.ts';
@@ -555,6 +564,17 @@ function GameObjectInspector({
   const capabilities = handle.capabilities(instance.prefab);
   const nodeId = selectedNodeId(selection);
   const node = nodeId === null ? undefined : row.nodes.find((entry) => entry.nodeId === nodeId);
+  /*
+   * The Component the override editor edits, chosen by the URL-free selection
+   * rather than by position. A node with no Component selected shows the list
+   * and no editor — opening one implicitly would put an editable control in
+   * front of somebody who only clicked a node.
+   */
+  const componentId = selection.kind === 'game-object' ? selection.selection.componentId : undefined;
+  const selectedComponent =
+    componentId === undefined
+      ? undefined
+      : node?.components.find((entry) => entry.componentId === componentId);
   const versions = registry.versionsOf(instance.prefab.assetId);
 
   const changePrefabSource = (reference: GameObjectPrefabReference): void => {
@@ -796,6 +816,7 @@ function GameObjectInspector({
               <li key={component.componentId}>
                 <button
                   type="button"
+                  aria-pressed={component.componentId === componentId}
                   onClick={() =>
                     onSelect({
                       kind: 'game-object',
@@ -835,6 +856,15 @@ function GameObjectInspector({
               </li>
             ))}
           </ul>
+
+          {selectedComponent && (
+            <ComponentOverrideEditor
+              instance={instance}
+              nodeId={node.nodeId}
+              component={selectedComponent}
+              handle={handle}
+            />
+          )}
         </section>
       )}
 
@@ -886,6 +916,172 @@ function GameObjectInspector({
         Delete
       </button>
       <ReorderControls instance={instance} handle={handle} />
+    </section>
+  );
+}
+
+/**
+ * Authoring one Component override, from the Inspector (§3).
+ *
+ * Three properties are load-bearing and none of them is about the controls.
+ *
+ * **The target is exact.** `gameObjectId + nodeId + componentId`, all three
+ * stable ids the resolver produced. There is no path box: §3.2 forbids
+ * arbitrary JSON Pointer editing, so what a human may change is the enumerated
+ * table in `component-override-fields.ts` and nothing else.
+ *
+ * **The scope is stated before the edit, not after.** Every field says whether
+ * the value it shows is `OVERRIDDEN HERE` or `INHERITED`, and the section says
+ * `INSTANCE ONLY` — because "why did changing this move every other placement
+ * of this Prefab?" is a question that must not be answerable in this UI.
+ *
+ * **An edit merges rather than replaces.** `scene.set_component_override`
+ * replaces the whole override for a node/Component pair, so sending only the
+ * field just touched would silently drop every other field the instance had
+ * already overridden on that Component.
+ *
+ * The operation target stays the root Scene instance (§3.4). `nodeId` addresses
+ * *inside* the resolved Prefab; it is never an operation target of its own.
+ */
+function ComponentOverrideEditor({
+  instance,
+  nodeId,
+  component,
+  handle,
+}: {
+  instance: GameObjectInstanceDefinition;
+  nodeId: string;
+  component: SceneHierarchyComponentRow;
+  handle: SceneSessionHandle;
+}): JSX.Element {
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const fields = overridableFields(component.componentType);
+  const existing = instance.componentOverrides.find(
+    (override) => override.nodeId === nodeId && override.componentId === component.componentId,
+  );
+
+  if (fields.length === 0) {
+    return (
+      <section data-testid="scene-override-editor-unsupported">
+        <h4>Override</h4>
+        <p className="scene-inspector__note">
+          “{component.componentType}” has no instance-overridable fields. Its payload is a list
+          addressed by position, so an override would mean something different the moment the
+          Prefab reordered it — that edit belongs to the shared Prefab.
+        </p>
+      </section>
+    );
+  }
+
+  const edit = (field: OverrideField, raw: string | boolean): void => {
+    const result = patchForField(field, raw);
+    if (!result.ok) {
+      // Refused before staging, next to the control that was moved. The server
+      // re-checks everything and stays authoritative (§3.6).
+      setRefusal(result.message);
+      return;
+    }
+    setRefusal(null);
+    handle.dispatch({
+      type: 'scene.set_component_override',
+      gameObjectId: instance.id,
+      override: {
+        nodeId,
+        componentId: component.componentId,
+        patches: mergePatch(existing?.patches, result.patch),
+      },
+    });
+  };
+
+  return (
+    <section data-testid="scene-override-editor">
+      <h4>
+        Override “{component.componentType}” <ScopeLabel scope="instance" />
+      </h4>
+      <p className="scene-inspector__note" data-testid="scene-override-editor-target">
+        {instance.id} · {nodeId} · {component.componentId}
+      </p>
+
+      {fields.map((field) => {
+        const scope = fieldScope(existing?.patches, field);
+        const value = fieldValue(component.definition, field);
+        const testId = `scene-override-${component.componentType}-${field.path.slice(1)}`;
+        return (
+          <label key={field.path} data-testid={`${testId}-row`}>
+            {field.label}
+            {field.kind === 'boolean' && (
+              <input
+                type="checkbox"
+                checked={value === true}
+                onChange={(event) => edit(field, event.target.checked)}
+                data-testid={testId}
+              />
+            )}
+            {field.kind === 'number' && (
+              <input
+                type="number"
+                value={value === undefined ? '' : String(value)}
+                {...(field.min === undefined ? {} : { min: field.min })}
+                {...(field.max === undefined ? {} : { max: field.max })}
+                {...(field.step === undefined ? {} : { step: field.step })}
+                onChange={(event) => edit(field, event.target.value)}
+                data-testid={testId}
+              />
+            )}
+            {(field.kind === 'text' || field.kind === 'color') && (
+              <input
+                type="text"
+                value={value === undefined ? '' : String(value)}
+                onChange={(event) => edit(field, event.target.value)}
+                data-testid={testId}
+              />
+            )}
+            {field.kind === 'enum' && (
+              <select
+                value={value === undefined ? '' : String(value)}
+                onChange={(event) => edit(field, event.target.value)}
+                data-testid={testId}
+              >
+                {(field.options ?? []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            )}
+            <span
+              className="badge"
+              data-testid={`${testId}-scope`}
+            >
+              {scope === 'overridden-here' ? 'OVERRIDDEN HERE' : 'INHERITED'}
+            </span>
+          </label>
+        );
+      })}
+
+      {refusal && (
+        <p className="scene-inspector__refusal" data-testid="scene-override-refusal">
+          {refusal}
+        </p>
+      )}
+
+      {existing && (
+        <button
+          type="button"
+          onClick={() =>
+            handle.dispatch({
+              type: 'scene.clear_component_override',
+              gameObjectId: instance.id,
+              nodeId,
+              componentId: component.componentId,
+            })
+          }
+          data-testid="scene-override-clear"
+          title="Removes this instance's override; the shared Prefab's values apply again"
+        >
+          Clear this override
+        </button>
+      )}
     </section>
   );
 }

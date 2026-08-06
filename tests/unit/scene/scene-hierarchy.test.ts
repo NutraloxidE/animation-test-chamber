@@ -200,3 +200,97 @@ describe('selection keeps four identities apart', () => {
     expect(selectedNodeId({ kind: 'scene', sceneId: 'scene-a' })).toBeNull();
   });
 });
+
+describe('the resolved Component carries both layers', () => {
+  /*
+   * The Inspector edits the *instance* layer, so a row that showed only the
+   * Prefab layer would give it a control whose displayed value is not the value
+   * it edits — uncheck the box, the document changes, and the box snaps back.
+   */
+  it('shows the instance override, not the shared Prefab value', () => {
+    const scene = contradictoryScene(registry);
+    const base = hierarchyRowFor(sceneHierarchyRows({ scene, registry }), 'hero')!;
+    const beforeModel = base.nodes[0]!.components.find(
+      (component) => component.componentType === 'model-renderer',
+    )!;
+    expect((beforeModel.definition as { castShadow?: boolean }).castShadow).toBe(true);
+
+    const overridden = {
+      ...scene,
+      gameObjects: (scene.gameObjects ?? []).map((gameObject) =>
+        gameObject.id === 'hero'
+          ? {
+              ...gameObject,
+              componentOverrides: [
+                {
+                  nodeId: 'root',
+                  componentId: 'model',
+                  patches: [{ path: '/castShadow', op: 'set' as const, value: false }],
+                },
+              ],
+            }
+          : gameObject,
+      ),
+    };
+    const after = hierarchyRowFor(sceneHierarchyRows({ scene: overridden, registry }), 'hero')!;
+    const afterModel = after.nodes[0]!.components.find(
+      (component) => component.componentType === 'model-renderer',
+    )!;
+    expect((afterModel.definition as { castShadow?: boolean }).castShadow).toBe(false);
+  });
+
+  it('leaves a Component the instance did not override at its Prefab value', () => {
+    const scene = contradictoryScene(registry);
+    const overridden = {
+      ...scene,
+      gameObjects: (scene.gameObjects ?? []).map((gameObject) =>
+        gameObject.id === 'hero'
+          ? {
+              ...gameObject,
+              componentOverrides: [
+                {
+                  nodeId: 'root',
+                  componentId: 'model',
+                  patches: [{ path: '/castShadow', op: 'set' as const, value: false }],
+                },
+              ],
+            }
+          : gameObject,
+      ),
+    };
+    const row = hierarchyRowFor(sceneHierarchyRows({ scene: overridden, registry }), 'hero')!;
+    const animator = row.nodes[0]!.components.find(
+      (component) => component.componentType === 'animator',
+    )!;
+    expect(animator.overridden).toBe(false);
+    expect(animator.definition.componentType).toBe('animator');
+  });
+
+  it('does not leak one instance\'s override into another standing on the same Prefab', () => {
+    const scene = contradictoryScene(registry);
+    const overridden = {
+      ...scene,
+      gameObjects: (scene.gameObjects ?? []).map((gameObject) =>
+        gameObject.id === 'hero'
+          ? {
+              ...gameObject,
+              componentOverrides: [
+                {
+                  nodeId: 'root',
+                  componentId: 'model',
+                  patches: [{ path: '/castShadow', op: 'set' as const, value: false }],
+                },
+              ],
+            }
+          : gameObject,
+      ),
+    };
+    const rows = sceneHierarchyRows({ scene: overridden, registry });
+    // `understudy` stands on the same Prefab version and overrode nothing.
+    const understudy = hierarchyRowFor(rows, 'understudy')!;
+    const model = understudy.nodes[0]!.components.find(
+      (component) => component.componentType === 'model-renderer',
+    )!;
+    expect((model.definition as { castShadow?: boolean }).castShadow).toBe(true);
+  });
+});

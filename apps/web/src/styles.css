@@ -2436,6 +2436,27 @@ button.link {
 }
 
 /*
+ * A refusal sits next to the control that caused it, not in the issues rail at
+ * the bottom of the page: the point of refusing before staging is that the
+ * human reads the reason where they are looking.
+ */
+.scene-inspector__refusal {
+  color: #ffbdbd;
+  background: #3a1d1d;
+  border-radius: 3px;
+  padding: 0.25rem 0.4rem;
+  margin: 0.3rem 0;
+  font-size: 0.72rem;
+}
+
+.scene-inspector h4 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: #8b93a4;
+  margin: 0.9rem 0 0.3rem;
+}
+
+/*
  * The unavailable state needs the padding the canvas does not: it is prose, and
  * prose flush against a panel edge reads as a rendering failure of its own.
  */
