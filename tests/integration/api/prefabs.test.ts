@@ -1,4 +1,5 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -244,6 +245,28 @@ function prefabAdoptionRequest(targets: Array<{ sceneId: string; gameObjectId: s
 
 async function body(response: Response): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
+}
+
+/**
+ * Every stored byte the API can reach, as one digest.
+ *
+ * A refusal test that only checks the response body proves the route said no,
+ * not that it wrote nothing — and "wrote nothing" is the actual requirement
+ * (§7). Comparing a file list alone would miss a file rewritten in place, so
+ * the digest covers each path *and* its contents.
+ */
+function repositoryDigest(): string {
+  const hash = createHash('sha256');
+  for (const root of ['assets', 'generated', 'projects']) {
+    for (const entry of readdirSync(join(repoRoot, root), { recursive: true }).map(String).sort()) {
+      const path = join(repoRoot, root, entry);
+      if (!statSync(path).isFile()) continue;
+      hash.update(`${root}/${entry}\0`);
+      hash.update(readFileSync(path));
+      hash.update('\0');
+    }
+  }
+  return hash.digest('hex');
 }
 
 describe('Prefab API exact identity', () => {
@@ -618,6 +641,75 @@ describe('Animation to Prefab exact-target adoption', () => {
     for (const [path, bytes] of originalPrefabBytes) {
       expect(readFileSync(join(repoRoot, path), 'utf8'), path).toBe(bytes);
     }
+  });
+
+  /*
+   * The refusal paths this route can reach, each proven to write nothing.
+   *
+   * The Prefab-to-Scene direction already parameterized its conflicts; this
+   * direction asserted only the stale holder snapshot, which left the plan's
+   * other two conflict codes and the route's protection check covered by
+   * nothing. They are separate branches over separate request fields, so a
+   * passing sibling says nothing about them.
+   */
+  it.each([
+    ['a stale source content hash', () => {
+      const request = animationAdoptionRequest(['navigator']);
+      request.expected.sourceContentHash = 'a'.repeat(64);
+      return request;
+    }],
+    ['a stale project revision', () => {
+      const request = animationAdoptionRequest(['navigator']);
+      request.expected.projectRevisionId = 'the-project-moved-on';
+      return request;
+    }],
+    ['an unknown target', () => animationAdoptionRequest(['no-such-prefab'])],
+    ['a target that does not hold the source', () =>
+      animationAdoptionRequest(['default-scene-camera'])],
+  ])('refuses %s with zero writes', async (_name, build) => {
+    const request = build();
+    const before = repositoryDigest();
+
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(409);
+    expect(responseBody.changedTargets).toEqual({ prefabIds: [] });
+    expect(responseBody.published).toBeUndefined();
+    expect(repositoryDigest()).toBe(before);
+  });
+
+  it('refuses a protected target with zero writes', async () => {
+    const assignment = animatorAssignment();
+    const source = assignment.behavior;
+    if (!source) throw new Error('behavior fixture reference is absent');
+    storePrefab(sealAsset({
+      metadata: {
+        ...fixtureMetadata('matrix-protected-holder'),
+        protection: { level: 'locked', reason: 'Adoption refusal fixture.' },
+      },
+      derivation: { mode: 'base' },
+      abstract: false,
+      root: fixtureRoot(assignment, 'behavior'),
+    }) as GameObjectPrefabAsset);
+    const request = exactAnimationRequest(source, 'matrix-protected-holder');
+    const before = repositoryDigest();
+
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(409);
+    expect(responseBody.changedTargets).toEqual({ prefabIds: [] });
+    expect(JSON.stringify(responseBody.issues)).toContain('locked');
+    expect(repositoryDigest()).toBe(before);
   });
 
   it('refuses a stale holder snapshot with zero animation or Prefab writes', async () => {

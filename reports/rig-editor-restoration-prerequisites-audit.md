@@ -60,6 +60,42 @@ The matrix caught a real defect: `assignmentPath()` compared type/id/version but
 - Windows fault selectors normalize only their predicate input; the production transaction seam retains native absolute paths, preserving all transaction ownership tests.
 - Publication plans expose exact current holders, selected targets, non-targets, protected targets and deterministic expected writes. The closed request schema refuses wildcard scope fields.
 
+### Gap closed: refusal coverage in the animation-to-Prefab direction
+
+An earlier revision of this audit claimed the refusal cases were covered "by the
+Prefab/API and repository transaction suites". Re-reading the suites by test name
+rather than by that claim showed the coverage was asymmetric: the parameterized
+refusal cases (`refuses %s with zero writes`) existed only for the
+Prefab-to-Scene route. The animation-to-Prefab route asserted one refusal, the
+stale holder snapshot, which left four reachable branches proven by nothing:
+
+| Branch | Source |
+| --- | --- |
+| stale source content hash | `adoption.ts:125` |
+| stale project revision | `adoption.ts:131` |
+| unknown target | `adoption.ts:163` (`unknown-target`) |
+| target does not hold the source | `adoption.ts:163` (`target-does-not-hold-source`) |
+| protected target | `routes/prefabs.ts:906` |
+
+Five tests now cover them in `tests/integration/api/prefabs.test.ts`. Each takes
+a SHA-256 digest over every file under `assets`, `generated` and `projects`
+before the request and requires it unchanged after, so a refusal that wrote or
+rewrote any byte fails — a file-list comparison alone would miss an in-place
+rewrite. `pnpm harness:prefab-api` is 29/29 and integration moved from 289 to
+294.
+
+Both new mechanisms were mutation-tested rather than assumed:
+
+- Replacing the protection guard with `if (false)` made the route publish four
+  paths and failed `refuses a protected target with zero writes` at the status
+  assertion.
+- Allowing that mutated run to reach the digest comparison failed it there too
+  (`be249250…` against `3c0d6edb…`), which is the proof that the digest observes
+  writes rather than returning a constant.
+
+Both mutations were reverted; `apps/api/src/routes/prefabs.ts` is byte-identical
+to its committed state.
+
 ## Subject and compatibility evidence
 
 - Closed `AnimationSubjectDefinition` names exact Prefab, node and Animator Component identity.
@@ -69,7 +105,10 @@ The matrix caught a real defect: `assignmentPath()` compared type/id/version but
 - The embedded Prefab Animator workspace starts from the explicit subject. The legacy Character projection is isolated in `legacy-animation-workspace-adapter.ts`.
 - `/edit/rig/:id` remains a redirect. No Rig Editor UI or legacy schema was restored or deleted.
 
-## Full verification
+## Full verification (previous session, Windows)
+
+Recorded before the refusal gap was closed, which is why the Prefab API count is
+24 and integration is 289 here; both are higher in the re-verification below.
 
 Focused command matrix results:
 
@@ -136,7 +175,7 @@ tree on Linux at `b6976f0e48b609f048fff10dfd1080f7fcea2359`, from a fresh
 | typecheck | `pnpm typecheck` | PASS |
 | lint | `pnpm lint` | PASS |
 | build | `pnpm build` | PASS |
-| adoption matrix | `pnpm harness:prefab-api` | 24/24 PASS |
+| adoption matrix + refusals | `pnpm harness:prefab-api` | 29/29 PASS |
 | transaction faults | `npx vitest run tests/integration/api/repository-apply-faults.test.ts` | 16/16 PASS |
 | animation assets | `pnpm harness:animation-assets` | 7/7 PASS |
 | Prefabs | `pnpm harness:prefabs` | 6/6 PASS |
@@ -147,7 +186,7 @@ tree on Linux at `b6976f0e48b609f048fff10dfd1080f7fcea2359`, from a fresh
 | world | `pnpm harness:world` | PASS |
 | Repo Guard | `pnpm harness:repo-guard` | 14/14 PASS |
 | unit | `pnpm harness:unit` | 722/722 PASS |
-| integration | `pnpm harness:integration` | 289/289 PASS |
+| integration | `pnpm harness:integration` | 294/294 PASS |
 | replay | `pnpm harness:replay` | 129/129 PASS |
 
 Generation drift: `pnpm schema:generate` wrote 70 files with
