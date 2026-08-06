@@ -78,5 +78,5 @@ the renderer and routes read GameObjects, removing `entities` stops being a
 ```bash
 pnpm typecheck                     # PASS
 pnpm lint                          # PASS
-pnpm harness:one-shot              # see the audit for both runs
+pnpm harness:one-shot              # 42/42 twice, 700.5s and 700.1s, clean tree both times
 ```

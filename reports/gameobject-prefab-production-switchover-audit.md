@@ -217,7 +217,7 @@ pnpm typecheck                            PASS
 pnpm lint                                 PASS
 vitest run tests/unit/game-objects        21 tests → 36 with hierarchy.test.ts, PASS
 vitest run tests/unit/prefabs             79 tests, PASS
-pnpm harness:one-shot                     see §5
+pnpm harness:one-shot                     42/42 twice: 700.5s and 700.1s, clean both times
 ```
 
 `pnpm harness:prefab-api`, `pnpm harness:game-object-renderer` and
@@ -232,8 +232,14 @@ Run from a clean tree at `c0e544d`.
 
 | Run | Result | Duration | `git status --short` after |
 | --- | --- | --- | --- |
-| 1 | see below | | |
-| 2 | see below | | |
+| 1 | 42/42 stages passed | 700.5s | clean |
+| 2 | 42/42 stages passed | 700.1s | clean |
+
+Both runs include the nine Prefab and GameObject stages, the build and the
+201-test visual suite. Nothing in the visual suite exercises a GameObject
+hierarchy, an "Open Prefab" action or an instance-override badge, because the
+Scene Editor still renders entities — §16.5 and §16.6 remain unmet, and these
+runs are not evidence for them.
 
 ---
 
@@ -248,7 +254,10 @@ Of the 100 conditions in §23, the following are met:
 - 79–91 (replay determinism, animation/prefab/gameobject/scene/character-control/
   capability harnesses, unit, integration, build, typecheck, lint) — unchanged
 
-Conditions 6–66 and 69–78 are not met. Conditions 92–99 are addressed by this
-report and the one-shot runs below.
+- 95–98 (one-shot run 1, one-shot run 2, clean working tree, audit committed)
+- 99 (handoff committed)
+
+Conditions 6–66 and 69–78 are not met, and condition 100 — no production dual
+SSoT remains — is the one this package existed to satisfy. It does not.
 
 **GAMEOBJECT PREFAB PRODUCTION SWITCHOVER: HOLD.**
