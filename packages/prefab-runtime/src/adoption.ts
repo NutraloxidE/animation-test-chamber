@@ -80,7 +80,7 @@ export function planAnimationAdoption(input: {
   }
 
   const holders = prefabHoldersOfAnimationAsset(usage, request.source as AssetReference);
-  const believed = request.expected.prefabReferences.map(
+  const believed = request.expected.holderPrefabReferences.map(
     (reference) => `${reference.assetId}@${reference.version}`,
   );
   const actual = holders.map((reference) => `${reference.assetId}@${reference.version}`);

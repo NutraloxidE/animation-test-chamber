@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import type { PublishAnimationAndUpdatePrefabsRequest } from '@atc/schema';
 import { validateAgainst } from '@atc/schema';
 import { describePrefabUsage, planAnimationAdoption, planPrefabAdoption } from '@atc/prefab-runtime';
-import { loadCanonicalProject } from '../../../harness/animation-assets.ts';
+import { loadAssetRegistry, loadCanonicalProject } from '../../../harness/animation-assets.ts';
 import { loadPrefabRegistry } from '../../../harness/prefabs.ts';
 
 const project = loadCanonicalProject();
@@ -27,6 +27,7 @@ const usage = describePrefabUsage({ prefabRegistry, project });
 
 /** The shared Behavior every migrated character holds. */
 const sharedBehavior = project.characters[0]!.animation.behavior;
+const sharedBehaviorDraft = loadAssetRegistry().get(sharedBehavior);
 
 function holderIds(): string[] {
   return usage
@@ -46,10 +47,11 @@ function animationRequest(
 ): PublishAnimationAndUpdatePrefabsRequest {
   return {
     source: sharedBehavior,
+    draft: sharedBehaviorDraft,
     expected: {
       sourceContentHash: sharedBehavior.contentHash,
       projectRevisionId: project.revisionId,
-      prefabReferences: usage
+      holderPrefabReferences: usage
         .filter((entry) => holderIds().includes(entry.prefab.assetId))
         .map((entry) => entry.prefab),
       ...overrides,
@@ -131,7 +133,7 @@ describe('planning an animation adoption', () => {
   });
 
   it('refuses a stale holder snapshot rather than recomputing it', () => {
-    const request = animationRequest(['navigator'], { prefabReferences: [] });
+    const request = animationRequest(['navigator'], { holderPrefabReferences: [] });
     const plan = planAnimationAdoption({
       usage,
       request,

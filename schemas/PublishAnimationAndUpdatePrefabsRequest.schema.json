@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "source",
+    "draft",
     "expected",
     "targetPrefabIds"
   ],
@@ -61,13 +62,16 @@
         }
       }
     },
+    "draft": {
+      "$ref": "AnimationAsset"
+    },
     "expected": {
       "additionalProperties": false,
       "type": "object",
       "required": [
         "sourceContentHash",
         "projectRevisionId",
-        "prefabReferences"
+        "holderPrefabReferences"
       ],
       "properties": {
         "sourceContentHash": {
@@ -78,7 +82,7 @@
           "minLength": 1,
           "type": "string"
         },
-        "prefabReferences": {
+        "holderPrefabReferences": {
           "type": "array",
           "items": {
             "$id": "GameObjectPrefabReference",

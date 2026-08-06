@@ -25,15 +25,21 @@
  * button in the UI; what goes on the wire is what that button expanded to.
  */
 import type { Hono } from 'hono';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type {
+  AnimationAsset,
+  AssetReference,
+  GameObjectComponentDefinition,
   GameObjectPrefabAsset,
   GameObjectPrefabReference,
   ProjectDefinition,
   PublishAnimationAndUpdatePrefabsRequest,
   PublishPrefabAndUpdateInstancesRequest,
+  PrefabNodeDefinition,
   SceneDefinition,
 } from '@atc/schema';
-import { prefabAssetFilePath, validateAgainst } from '@atc/schema';
+import { assetFilePath, bumpAssetVersion, prefabAssetFilePath, prefabHasStoredRoot, referencesEqual, validateAgainst } from '@atc/schema';
 import {
   buildPrefabLibraryIndex,
   checkPrefabDeletePolicy,
@@ -50,9 +56,11 @@ import {
   type PrefabIssue,
 } from '@atc/prefab-runtime';
 import { computeContentHash, sealAsset } from '@atc/animation-asset-runtime';
+import { AnimationAssetRegistry, buildLibraryIndex } from '@atc/animation-asset-runtime';
 import {
   loadPrefabRegistry,
   loadProject as loadProjectFrom,
+  loadStoredAssets,
   loadStoredPrefabs,
   PREFAB_LIBRARY_INDEX_PATH,
   PROJECT_PATH,
@@ -62,6 +70,8 @@ import type { PlannedFileWrite } from '@atc/repository-transaction';
 import { markRepositoryFatal } from '../repository-health.ts';
 import { createRepositoryRuntime, type RepositoryRuntime } from '../runtime.ts';
 import { revisionOf } from './repository-apply.ts';
+
+const ANIMATION_LIBRARY_INDEX_PATH = 'generated/animation-assets/library-index.json';
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -143,6 +153,93 @@ interface PublishOutcome {
   body: Record<string, unknown>;
 }
 
+function animationSchemaName(assetType: AssetReference['assetType']) {
+  return {
+    'animation-behavior': 'AnimationBehaviorAsset',
+    'animation-motion-set': 'AnimationMotionSetAsset',
+    'animation-clip': 'AnimationClipAsset',
+    'humanoid-rig': 'HumanoidRigProfileAsset',
+    'animation-tuning': 'AnimationTuningProfileAsset',
+  }[assetType] as
+    | 'AnimationBehaviorAsset'
+    | 'AnimationMotionSetAsset'
+    | 'AnimationClipAsset'
+    | 'HumanoidRigProfileAsset'
+    | 'AnimationTuningProfileAsset';
+}
+
+function assignmentPath(
+  component: Extract<GameObjectComponentDefinition, { componentType: 'animator' }>,
+  source: AssetReference,
+): string | undefined {
+  for (const key of ['behavior', 'motionSet', 'rig', 'tuning'] as const) {
+    const reference = component.assignment[key];
+    if (reference && referencesEqual(reference, source)) return `/assignment/${key}`;
+  }
+  return undefined;
+}
+
+function adoptInStoredNode(
+  node: PrefabNodeDefinition,
+  source: AssetReference,
+  published: AssetReference,
+): PrefabNodeDefinition {
+  return {
+    ...node,
+    components: node.components.map((component) => {
+      if (component.componentType !== 'animator') return component;
+      const path = assignmentPath(component, source);
+      if (!path) return component;
+      const key = path.slice('/assignment/'.length) as 'behavior' | 'motionSet' | 'rig' | 'tuning';
+      return {
+        ...component,
+        assignment: { ...component.assignment, [key]: published },
+      } as GameObjectComponentDefinition;
+    }),
+    children: node.children.map((child) =>
+      child.kind === 'inline'
+        ? { ...child, node: adoptInStoredNode(child.node, source, published) }
+        : child,
+    ),
+  };
+}
+
+/** Publish a new version of one holder that actually points at `published`. */
+function adoptAnimationInPrefab(input: {
+  registry: PrefabAssetRegistry;
+  current: GameObjectPrefabAsset;
+  source: AssetReference;
+  published: AssetReference;
+}): GameObjectPrefabAsset {
+  const { registry, current, source, published } = input;
+  if (current.derivation.mode === 'variant') {
+    const resolved = resolveGameObjectPrefab(registry, referenceOf(current)).prefab;
+    const patches = walkResolvedNodes(resolved.root).flatMap((node) =>
+      node.components.flatMap((component) => {
+        if (component.componentType !== 'animator') return [];
+        const path = assignmentPath(component, source);
+        return path
+          ? [{
+              kind: 'patch-component' as const,
+              nodeId: node.nodeId,
+              componentId: component.componentId,
+              patches: [{ path, op: 'set' as const, value: published }],
+            }]
+          : [];
+      }),
+    );
+    return nextPrefabVersion({
+      ...current,
+      derivation: { ...current.derivation, patches: [...current.derivation.patches, ...patches] },
+    });
+  }
+  if (!prefabHasStoredRoot(current)) throw new Error('non-variant Prefab must store a root');
+  return nextPrefabVersion({
+    ...current,
+    root: adoptInStoredNode(current.root, source, published),
+  });
+}
+
 /**
  * One publication, through the shared repository transaction engine.
  *
@@ -155,11 +252,42 @@ async function publishThroughTransaction(input: {
   runtime: RepositoryRuntime;
   intent: string;
   documents: readonly GameObjectPrefabAsset[];
+  animationAssets?: readonly AnimationAsset[];
+  expectedPaths?: readonly string[];
   project?: ProjectDefinition;
   expectedProjectRevisionId?: string;
 }): Promise<PublishOutcome> {
   const root = input.runtime.repoRoot;
   const writes: PlannedFileWrite[] = [];
+
+  for (const asset of input.animationAssets ?? []) {
+    writes.push({
+      repositoryPath: assetFilePath(
+        asset.metadata.assetType,
+        asset.metadata.id,
+        asset.metadata.version,
+      ),
+      mode: 'create',
+      content: `${JSON.stringify(asset, null, 2)}\n`,
+    });
+  }
+
+  if ((input.animationAssets?.length ?? 0) > 0) {
+    const registry = new AnimationAssetRegistry([
+      ...loadStoredAssets(root),
+      ...input.animationAssets!.map((document) => ({
+        assetType: document.metadata.assetType,
+        id: document.metadata.id,
+        version: document.metadata.version,
+        document,
+      })),
+    ]);
+    writes.push({
+      repositoryPath: ANIMATION_LIBRARY_INDEX_PATH,
+      mode: 'replace',
+      content: `${JSON.stringify(buildLibraryIndex(registry), null, 2)}\n`,
+    });
+  }
 
   for (const document of input.documents) {
     const path = prefabAssetFilePath(document.metadata.id, document.metadata.version);
@@ -172,12 +300,14 @@ async function publishThroughTransaction(input: {
     writes.push({ repositoryPath: path, mode: 'create', content: prefabContent(document) });
   }
 
-  const nextRegistry = registryWith(root, input.documents);
-  writes.push({
-    repositoryPath: PREFAB_LIBRARY_INDEX_PATH,
-    mode: 'replace',
-    content: libraryIndexContent(nextRegistry),
-  });
+  if (input.documents.length > 0) {
+    const nextRegistry = registryWith(root, input.documents);
+    writes.push({
+      repositoryPath: PREFAB_LIBRARY_INDEX_PATH,
+      mode: 'replace',
+      content: libraryIndexContent(nextRegistry),
+    });
+  }
 
   if (input.project) {
     writes.push({
@@ -187,8 +317,9 @@ async function publishThroughTransaction(input: {
     });
   }
 
-  const expectedFiles = input.project
-    ? [
+  const expectedFiles = [
+    ...(input.project
+      ? [
         {
           repositoryPath: PROJECT_PATH,
           expectedSha256: sha256Hex(
@@ -202,7 +333,18 @@ async function publishThroughTransaction(input: {
           ),
         },
       ]
-    : [];
+      : []),
+    ...(input.expectedPaths ?? []).map((repositoryPath) => ({
+      repositoryPath,
+      expectedSha256: sha256Hex(
+        new Uint8Array(
+          // These exact immutable versions are what the holder plan inspected.
+          // Re-check their bytes under the transaction lock.
+          readFileSync(resolve(root, repositoryPath)),
+        ),
+      ),
+    })),
+  ];
 
   const result = await runRepositoryTransaction(
     root,
@@ -238,6 +380,31 @@ async function publishThroughTransaction(input: {
           } catch (failure) {
             issues.push({
               code: 'prepared-prefab-unreadable',
+              severity: 'error' as const,
+              message: `prepared ${path} is not readable JSON: ${message(failure)}`,
+              path,
+            });
+          }
+        }
+        for (const asset of input.animationAssets ?? []) {
+          const path = assetFilePath(
+            asset.metadata.assetType,
+            asset.metadata.id,
+            asset.metadata.version,
+          );
+          try {
+            const prepared = JSON.parse(view.readText(path)) as AnimationAsset;
+            if (prepared.metadata.contentHash !== asset.metadata.contentHash) {
+              issues.push({
+                code: 'prepared-animation-hash-mismatch',
+                severity: 'error' as const,
+                message: `prepared ${path} carries a different content hash`,
+                path,
+              });
+            }
+          } catch (failure) {
+            issues.push({
+              code: 'prepared-animation-unreadable',
               severity: 'error' as const,
               message: `prepared ${path} is not readable JSON: ${message(failure)}`,
               path,
@@ -619,6 +786,7 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
     const request = body as PublishAnimationAndUpdatePrefabsRequest;
 
     const registry = loadPrefabRegistry(root);
+    const animationRegistry = new AnimationAssetRegistry(loadStoredAssets(root));
     const project = loadProjectFrom(root);
     const usage = describePrefabUsage({ prefabRegistry: registry, scenes: scenesOf(project) });
 
@@ -648,6 +816,58 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
       );
     }
 
+    const sourceIssues = animationRegistry.checkReference(request.source);
+    if (sourceIssues.length > 0) {
+      return c.json(
+        { ok: false, issues: sourceIssues, changedTargets: { prefabIds: [] } },
+        409,
+      );
+    }
+    if (
+      request.draft.metadata.assetType !== request.source.assetType ||
+      request.draft.metadata.id !== request.source.assetId
+    ) {
+      return c.json(
+        {
+          ok: false,
+          issues: [{
+            path: '/draft/metadata',
+            message: 'draft type and id must match the exact source lineage',
+            keyword: 'identity',
+          }],
+          changedTargets: { prefabIds: [] },
+        },
+        422,
+      );
+    }
+
+    const publishedAnimation = sealAsset({
+      ...request.draft,
+      metadata: {
+        ...request.draft.metadata,
+        assetType: request.source.assetType,
+        id: request.source.assetId,
+        version: bumpAssetVersion(request.source.version, 'patch'),
+        contentHash: '',
+      },
+    } as AnimationAsset);
+    const animationSchema = validateAgainst(
+      animationSchemaName(publishedAnimation.metadata.assetType),
+      publishedAnimation,
+    );
+    if (!animationSchema.valid) {
+      return c.json(
+        { ok: false, issues: animationSchema.issues, changedTargets: { prefabIds: [] } },
+        422,
+      );
+    }
+    const publishedReference: AssetReference = {
+      assetType: publishedAnimation.metadata.assetType,
+      assetId: publishedAnimation.metadata.id,
+      version: publishedAnimation.metadata.version,
+      contentHash: publishedAnimation.metadata.contentHash,
+    };
+
     /*
      * Each target adopts the new animation version as a *new Prefab version*.
      * Rewriting the existing one in place is forbidden (§6.1): every Scene that
@@ -657,21 +877,27 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
     const documents: GameObjectPrefabAsset[] = [];
     for (const target of plan.targets) {
       const current = registry.get(target);
-      /*
-       * `nextPrefabVersion` bumps the version *and* re-seals, so the stored
-       * hash is always the hash of the stored bytes. Doing the two separately
-       * is how a document ends up carrying the hash of the version it was
-       * copied from.
-       */
-      documents.push(
-        nextPrefabVersion({
-          ...current,
-          metadata: {
-            ...current.metadata,
-            description: `Adopted ${request.source.assetId}@${request.source.version}.`,
+      const protection = current.metadata.protection?.level;
+      if (protection === 'locked' || protection === 'invariant') {
+        return c.json(
+          {
+            ok: false,
+            issues: [{
+              path: '/targetPrefabIds',
+              message: `${target.assetId}@${target.version} is ${protection}`,
+              keyword: 'protected',
+            }],
+            changedTargets: { prefabIds: [] },
           },
-        }),
-      );
+          409,
+        );
+      }
+      documents.push(adoptAnimationInPrefab({
+        registry,
+        current,
+        source: request.source,
+        published: publishedReference,
+      }));
     }
 
     const outcome = await publishThroughTransaction({
@@ -680,6 +906,11 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
         `adopt ${request.source.assetId}@${request.source.version} into ` +
         `${plan.targets.map((target) => target.assetId).join(', ') || 'no Prefabs'}`,
       documents,
+      animationAssets: [publishedAnimation],
+      expectedPaths: [
+        assetFilePath(request.source.assetType, request.source.assetId, request.source.version),
+        ...plan.targets.map((target) => prefabAssetFilePath(target.assetId, target.version)),
+      ],
       expectedProjectRevisionId: request.expected.projectRevisionId,
     });
 
@@ -697,12 +928,15 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
             : [],
         },
         published: outcome.ok
-          ? documents.map((document) => ({
-              assetId: document.metadata.id,
-              version: document.metadata.version,
-              contentHash: document.metadata.contentHash,
-            }))
-          : [],
+          ? {
+              animation: publishedReference,
+              prefabs: documents.map((document) => ({
+                assetId: document.metadata.id,
+                version: document.metadata.version,
+                contentHash: document.metadata.contentHash,
+              })),
+            }
+          : undefined,
       },
       outcome.status,
     );

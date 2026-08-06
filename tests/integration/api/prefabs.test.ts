@@ -2,15 +2,19 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { GameObjectPrefabAsset, ProjectDefinition } from '@atc/schema';
-import { prefabAssetFilePath, prefabHasStoredRoot } from '@atc/schema';
+import type { AnimationAsset, GameObjectPrefabAsset, ProjectDefinition } from '@atc/schema';
+import { assetFilePath, prefabAssetFilePath, prefabHasStoredRoot } from '@atc/schema';
+import { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import {
   createPrefabFork,
   nextPrefabVersion,
   PrefabAssetRegistry,
+  describePrefabUsage,
+  resolveGameObjectPrefab,
+  walkResolvedNodes,
 } from '@atc/prefab-runtime';
 import { createApp } from '../../../apps/api/src/app.ts';
-import { loadStoredPrefabs } from '../../../apps/api/src/context.ts';
+import { loadStoredAssets, loadStoredPrefabs } from '../../../apps/api/src/context.ts';
 import { createRepositoryRuntime } from '../../../apps/api/src/runtime.ts';
 
 const SOURCE_REPO = resolve(__dirname, '../../..');
@@ -23,9 +27,17 @@ beforeEach(() => {
   cpSync(join(SOURCE_REPO, 'assets/prefabs'), join(repoRoot, 'assets/prefabs'), {
     recursive: true,
   });
+  cpSync(join(SOURCE_REPO, 'assets/animation'), join(repoRoot, 'assets/animation'), {
+    recursive: true,
+  });
   cpSync(
     join(SOURCE_REPO, 'generated/prefab-assets'),
     join(repoRoot, 'generated/prefab-assets'),
+    { recursive: true },
+  );
+  cpSync(
+    join(SOURCE_REPO, 'generated/animation-assets'),
+    join(repoRoot, 'generated/animation-assets'),
     { recursive: true },
   );
 });
@@ -44,6 +56,47 @@ function project(): ProjectDefinition {
   return JSON.parse(
     readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8'),
   ) as ProjectDefinition;
+}
+
+function animationRegistry() {
+  return new AnimationAssetRegistry(loadStoredAssets(repoRoot));
+}
+
+function animationAdoptionRequest(targetPrefabIds: string[]) {
+  const currentProject = project();
+  const source = currentProject.characters[0]!.animation.behavior;
+  const sourceAsset = animationRegistry().get(source);
+  const draft = {
+    ...sourceAsset,
+    metadata: {
+      ...sourceAsset.metadata,
+      description: `${sourceAsset.metadata.description} Published by exact adoption test.`,
+    },
+  } as AnimationAsset;
+  const usage = describePrefabUsage({
+    prefabRegistry: registry(),
+    scenes: currentProject.scenes,
+  });
+  const holderPrefabReferences = usage
+    .filter((entry) =>
+      entry.animationReferences.some(
+        (reference) =>
+          reference.assetType === source.assetType &&
+          reference.assetId === source.assetId &&
+          reference.version === source.version,
+      ),
+    )
+    .map((entry) => entry.prefab);
+  return {
+    source,
+    draft,
+    expected: {
+      sourceContentHash: source.contentHash,
+      projectRevisionId: currentProject.revisionId,
+      holderPrefabReferences,
+    },
+    targetPrefabIds,
+  };
 }
 
 function prefabAdoptionRequest(targets: Array<{ sceneId: string; gameObjectId: string }>) {
@@ -320,5 +373,91 @@ describe('Prefab to Scene exact-target adoption', () => {
     expect(
       readdirSync(join(repoRoot, 'assets/prefabs'), { recursive: true }).map(String),
     ).toEqual(prefabFilesBefore);
+  });
+});
+
+describe('Animation to Prefab exact-target adoption', () => {
+  it('publishes the animation and moves zero Prefabs when the target list is empty', async () => {
+    const request = animationAdoptionRequest([]);
+    const prefabIndexBefore = readFileSync(
+      join(repoRoot, 'generated/prefab-assets/library-index.json'),
+      'utf8',
+    );
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(200);
+    expect(responseBody.changedTargets).toEqual({ prefabIds: [] });
+    const published = (responseBody.published as { animation: {
+      assetType: AnimationAsset['metadata']['assetType'];
+      assetId: string;
+      version: string;
+      contentHash: string;
+    } }).animation;
+    expect(published.version).toBe('1.0.1');
+    expect(
+      readFileSync(
+        join(repoRoot, assetFilePath(published.assetType, published.assetId, published.version)),
+        'utf8',
+      ),
+    ).toContain(published.contentHash);
+    expect(
+      readFileSync(join(repoRoot, 'generated/prefab-assets/library-index.json'), 'utf8'),
+    ).toBe(prefabIndexBefore);
+  });
+
+  it('publishes a real Animator reference change in exactly the named Prefab', async () => {
+    const request = animationAdoptionRequest(['navigator']);
+    const originalPrefabBytes = new Map(
+      registry().all().map((stored) => {
+        const path = prefabAssetFilePath(stored.id, stored.version);
+        return [path, readFileSync(join(repoRoot, path), 'utf8')] as const;
+      }),
+    );
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const responseBody = await body(response);
+
+    expect(response.status, JSON.stringify(responseBody)).toBe(200);
+    expect(responseBody.changedTargets).toEqual({ prefabIds: ['navigator'] });
+    const nextRegistry = registry();
+    const navigator = nextRegistry.referenceTo('navigator', '1.0.1');
+    const resolved = resolveGameObjectPrefab(nextRegistry, navigator).prefab;
+    const animator = walkResolvedNodes(resolved.root)
+      .flatMap((node) => node.components)
+      .find((component) => component.componentType === 'animator');
+    expect(animator?.componentType).toBe('animator');
+    if (animator?.componentType !== 'animator') throw new Error('navigator must resolve an Animator');
+    expect(animator.assignment.behavior).toMatchObject({
+      assetId: request.source.assetId,
+      version: '1.0.1',
+    });
+    for (const [path, bytes] of originalPrefabBytes) {
+      expect(readFileSync(join(repoRoot, path), 'utf8'), path).toBe(bytes);
+    }
+  });
+
+  it('refuses a stale holder snapshot with zero animation or Prefab writes', async () => {
+    const request = animationAdoptionRequest(['navigator']);
+    request.expected.holderPrefabReferences = [];
+    const animationBefore = readdirSync(join(repoRoot, 'assets/animation'), { recursive: true }).map(String);
+    const prefabsBefore = readdirSync(join(repoRoot, 'assets/prefabs'), { recursive: true }).map(String);
+
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    expect(response.status).toBe(409);
+    expect((await body(response)).changedTargets).toEqual({ prefabIds: [] });
+    expect(readdirSync(join(repoRoot, 'assets/animation'), { recursive: true }).map(String)).toEqual(animationBefore);
+    expect(readdirSync(join(repoRoot, 'assets/prefabs'), { recursive: true }).map(String)).toEqual(prefabsBefore);
   });
 });

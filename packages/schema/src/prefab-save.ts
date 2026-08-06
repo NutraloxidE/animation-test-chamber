@@ -26,7 +26,7 @@
  */
 import { Type, type Static } from '@sinclair/typebox';
 import { Id } from './common.ts';
-import { AssetReference } from './animation-assets.ts';
+import { AnimationAsset, AssetReference } from './animation-assets.ts';
 import { GameObjectPrefabReference } from './prefab.ts';
 
 /** One Scene GameObject standing on one Prefab version, named exactly. */
@@ -56,12 +56,14 @@ export type SceneInstanceTarget = Static<typeof SceneInstanceTarget>;
 export const PublishAnimationAndUpdatePrefabsRequest = Type.Object(
   {
     source: AssetReference,
+    /** Proposed contents. The server assigns the next immutable version and seals it. */
+    draft: Type.Ref(AnimationAsset),
     expected: Type.Object(
       {
         sourceContentHash: Type.String({ minLength: 1 }),
         projectRevisionId: Type.String({ minLength: 1 }),
         /** Every Prefab version the client believed holds `source`, when it asked. */
-        prefabReferences: Type.Array(GameObjectPrefabReference),
+        holderPrefabReferences: Type.Array(GameObjectPrefabReference),
       },
       { additionalProperties: false },
     ),

@@ -11,6 +11,7 @@ import { MovementProfile, CameraProfile, RootMotionProfile } from './movement.ts
 import { TerrainInteractionProfile } from './terrain.ts';
 import {
   AnimationBehaviorAsset,
+  AnimationAsset,
   AnimationClipAsset,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
@@ -92,6 +93,7 @@ export const SCHEMA_REGISTRY = {
   CameraProfile,
   TerrainInteractionProfile,
   AnimationBehaviorAsset,
+  AnimationAsset,
   AnimationMotionSetAsset,
   AnimationClipAsset,
   HumanoidRigProfileAsset,
@@ -192,7 +194,15 @@ function stripUnreferencedIds<T>(schema: T, keep: Set<string>): T {
 function compile(name: SchemaName): ValidateFunction {
   const existing = compiled.get(name);
   if (existing) return existing;
-  const fn = ajv.compile(stripSchemaIds(SCHEMA_REGISTRY[name]) as object);
+  const schema = SCHEMA_REGISTRY[name];
+  for (const reference of referencedIds(schema)) {
+    if (ajv.getSchema(reference)) continue;
+    const dependency = Object.values(SCHEMA_REGISTRY).find(
+      (candidate) => candidate.$id === reference,
+    );
+    if (dependency) ajv.addSchema(stripSchemaIds(dependency) as object, reference);
+  }
+  const fn = ajv.compile(stripSchemaIds(schema) as object);
   compiled.set(name, fn);
   return fn;
 }
