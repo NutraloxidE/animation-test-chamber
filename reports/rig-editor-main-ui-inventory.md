@@ -124,6 +124,25 @@ Known Character-bound IDs, expected to be replaced rather than preserved:
 
 Everything else in `allStatic` is a preservation target.
 
+### Identities changed by exact Component selection
+
+The Prefab Editor's Component list was keyed by `componentType`, which cannot
+name one of two Animators on a node. It is keyed by `componentId` now, and
+`?component=` reads an id (falling back to a type match only for URLs written
+before the change).
+
+| Old ID | New ID | Reason |
+| --- | --- | --- |
+| `prefab-component-model-renderer` | `prefab-component-model` | keyed by Component id; the type is available as `data-component-type` |
+| `prefab-component-animator` | `prefab-component-animator` | unchanged — every current Prefab's Animator has `componentId` `animator` |
+
+These are composition-page identities rather than donor animation-workspace
+identities, so neither appears in `allStatic`; they are recorded here because
+the same preservation rule applies to any test-ID this restoration moves.
+
+New identities, one per Animator, for the way into the workspace:
+`prefab-open-animation-workspace-<componentId>`.
+
 ## 8. Data-source surface to rewire
 
 The preserved panels reach global Character-bound state through `store.ts`:

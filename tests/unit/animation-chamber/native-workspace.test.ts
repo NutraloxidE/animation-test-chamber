@@ -51,6 +51,10 @@ import {
   registryOf,
 } from '../prefabs/fixtures.ts';
 import { demoRegistry, loadDemoProject } from '../../fixtures/project.ts';
+import {
+  legacyRigWorkspaceRedirect,
+  prefabAnimatorLocations,
+} from '../../../apps/web/src/prefab-editor/resolve-prefab-editor-target.ts';
 
 const REPO_ROOT = join(__dirname, '../../..');
 const DONOR_SHA = '2e5b2a21a269f41aad7f14c00b0cded91233f33f';
@@ -294,5 +298,59 @@ describe('the donor test-id inventory', () => {
     }
     // The Hierarchy identities are the documented exception, not an oversight.
     expect(inventory.allStatic).toContain('character-select');
+  });
+});
+
+describe('the way into the workspace', () => {
+  it('finds every Animator rather than the first', () => {
+    const assignment = loadDemoProject().characters[0]!.animation as CharacterAnimationAssignment;
+    const twoAnimators = basePrefab(
+      'two-animators',
+      node('root', [
+        { ...animatorComponent(assignment), componentId: 'animator-a' },
+        { ...animatorComponent(assignment), componentId: 'animator-b' },
+      ]),
+    );
+    const registry = registryOf(twoAnimators);
+    const found = prefabAnimatorLocations(registry, referenceTo(twoAnimators));
+
+    expect(found.map((entry) => entry.componentId)).toEqual(['animator-a', 'animator-b']);
+  });
+
+  it('refuses to redirect a legacy rig URL when the choice is not deterministic', () => {
+    const assignment = loadDemoProject().characters[0]!.animation as CharacterAnimationAssignment;
+    const ambiguous = basePrefab(
+      'navigator',
+      node('root', [
+        { ...animatorComponent(assignment), componentId: 'animator-a' },
+        { ...animatorComponent(assignment), componentId: 'animator-b' },
+      ]),
+    );
+    const result = legacyRigWorkspaceRedirect(registryOf(ambiguous), 'demo-humanoid');
+
+    // Picking the first would be the exact fallback the route exists to refuse.
+    expect(result.status).toBe('ambiguous');
+    if (result.status !== 'ambiguous') throw new Error('expected an ambiguous redirect');
+    expect(result.candidates).toHaveLength(2);
+  });
+
+  it('redirects to the exact Animator when there is exactly one', () => {
+    const assignment = loadDemoProject().characters[0]!.animation as CharacterAnimationAssignment;
+    const single = basePrefab('navigator', node('root', [animatorComponent(assignment)]));
+    const result = legacyRigWorkspaceRedirect(registryOf(single), 'demo-humanoid');
+
+    expect(result).toMatchObject({
+      status: 'resolved',
+      prefabId: 'navigator',
+      nodeId: 'root',
+      componentId: 'animator',
+    });
+  });
+
+  it('is a not-found for a legacy id that maps to no Prefab', () => {
+    const single = basePrefab('navigator', node('root', [animatorComponent()]));
+    expect(legacyRigWorkspaceRedirect(registryOf(single), 'no-such-character').status).toBe(
+      'unknown-character',
+    );
   });
 });

@@ -37,7 +37,7 @@ import {
 import { useChamber } from '../store.ts';
 import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { NotFoundPage } from '../app/NotFoundPage.tsx';
-import { prefabEditorPath, ROUTES, routeId } from '../app/routes.ts';
+import { prefabAnimationWorkspacePath, prefabEditorPath, ROUTES, routeId } from '../app/routes.ts';
 import { prefabParentReference, resolvePrefabEditorTarget } from './resolve-prefab-editor-target.ts';
 import { PrefabOverview } from './PrefabOverview.tsx';
 import { PrefabViewport } from './PrefabViewport.tsx';
@@ -169,11 +169,20 @@ export function PrefabEditorPage(): JSX.Element {
   const nodes = walkResolvedNodes(resolution.prefab.root);
   const selectedNodeId = search.get('node') ?? resolution.prefab.root.nodeId;
   const selectedNode = nodes.find((node) => node.nodeId === selectedNodeId) ?? resolution.prefab.root;
-  const selectedComponentType = search.get('component');
+  /*
+   * `?component=` names a Component **id**, not a type (§7.2).
+   *
+   * A node may carry two Animators, and selecting by type would open whichever
+   * came first — the same "pick something plausible" failure the exact route
+   * exists to refuse, one level down. The id match is tried first; the type
+   * match that follows is a compatibility path for URLs written before this
+   * change, and it only settles for a type when no Component has that id.
+   */
+  const selectedComponentKey = search.get('component');
   const selectedComponent =
-    selectedNode.components.find(
-      (component) => component.componentType === selectedComponentType,
-    ) ?? selectedNode.components[0];
+    selectedNode.components.find((component) => component.componentId === selectedComponentKey) ??
+    selectedNode.components.find((component) => component.componentType === selectedComponentKey) ??
+    selectedNode.components[0];
   /*
    * The workspace opens only when the URL *names* the Animator, not merely when
    * an Animator happens to be the node's first Component. Opening a Prefab
@@ -181,7 +190,7 @@ export function PrefabEditorPage(): JSX.Element {
    * legacy rig redirect is what navigates there.
    */
   const workspaceOpen =
-    selectedComponentType === 'animator' && selectedComponent?.componentType === 'animator';
+    selectedComponentKey !== null && selectedComponent?.componentType === 'animator';
   const animationSubject = workspaceOpen
     ? animationSubjectFromPrefab({
         registry,
@@ -245,12 +254,30 @@ export function PrefabEditorPage(): JSX.Element {
               <li key={component.componentId}>
                 <button
                   type="button"
-                  data-testid={`prefab-component-${component.componentType}`}
+                  data-testid={`prefab-component-${component.componentId}`}
+                  data-component-type={component.componentType}
                   aria-pressed={component.componentId === selectedComponent?.componentId}
-                  onClick={() => select({ component: component.componentType })}
+                  onClick={() => select({ component: component.componentId })}
                 >
-                  {component.componentType}
+                  {component.componentType} <code>{component.componentId}</code>
                 </button>
+                {component.componentType === 'animator' && (
+                  /*
+                   * The way into the workspace. It names all three ids, so the
+                   * destination is this Animator rather than whichever one the
+                   * Prefab happens to resolve first.
+                   */
+                  <Link
+                    data-testid={`prefab-open-animation-workspace-${component.componentId}`}
+                    to={prefabAnimationWorkspacePath(
+                      target.prefabId,
+                      selectedNode.nodeId,
+                      component.componentId,
+                    )}
+                  >
+                    Open Animation Workspace
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

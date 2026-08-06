@@ -103,8 +103,10 @@ test.describe('client-side navigation', () => {
   test('the selected Component lives in the URL and resets across targets', async ({ page }) => {
     test.setTimeout(90_000);
     await openPrefabEditor(page, PREFAB_A);
-    await page.getByTestId('prefab-component-model-renderer').click();
-    await expect(page).toHaveURL(/component=model-renderer/);
+    // `?component=` names the Component id now, not its type: one node may
+    // carry two Components of a type, and only the id tells them apart.
+    await page.getByTestId('prefab-component-model').click();
+    await expect(page).toHaveURL(/component=model/);
 
     await page.goto(`/edit/prefab/${PREFAB_B}`);
     await expect(page).not.toHaveURL(/component=/);

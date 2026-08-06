@@ -19,6 +19,7 @@
 import type { GameObjectPrefabAsset, GameObjectPrefabReference } from '@atc/schema';
 import { prefabIdForLegacyCharacterId } from '@atc/schema';
 import type { PrefabAssetRegistry, PrefabSummary } from '@atc/prefab-runtime';
+import { resolveGameObjectPrefab, walkResolvedNodes } from '@atc/prefab-runtime';
 
 export type PrefabEditorTarget =
   | {
@@ -69,6 +70,78 @@ export function prefabRedirectForLegacyCharacterId(
   if (characterId === null) return null;
   const prefabId = prefabIdForLegacyCharacterId(characterId) ?? characterId;
   return registry.latestVersion(prefabId) === undefined ? null : prefabId;
+}
+
+/** One Animator Component, addressed exactly. */
+export interface PrefabAnimatorLocation {
+  nodeId: string;
+  componentId: string;
+  nodeDisplayName: string;
+}
+
+/**
+ * Every Animator in a Prefab's resolved tree, in walk order.
+ *
+ * Returns all of them rather than the first, because "the Animator" is not a
+ * thing a Prefab necessarily has one of. A caller that wants to open one must
+ * decide what to do when there are none or several, and returning a list is
+ * what forces that decision to be made instead of defaulted.
+ */
+export function prefabAnimatorLocations(
+  registry: PrefabAssetRegistry,
+  reference: GameObjectPrefabReference,
+): PrefabAnimatorLocation[] {
+  const resolution = resolveGameObjectPrefab(registry, reference);
+  if (resolution.issues.some((issue) => issue.severity === 'error')) return [];
+  return walkResolvedNodes(resolution.prefab.root).flatMap((node) =>
+    node.components
+      .filter((component) => component.componentType === 'animator')
+      .map((component) => ({
+        nodeId: node.nodeId,
+        componentId: component.componentId,
+        nodeDisplayName: node.displayName,
+      })),
+  );
+}
+
+export type LegacyRigWorkspaceRedirect =
+  | { status: 'resolved'; prefabId: string; nodeId: string; componentId: string }
+  | { status: 'unknown-character'; characterId: string | null }
+  | { status: 'no-animator'; prefabId: string }
+  | { status: 'ambiguous'; prefabId: string; candidates: PrefabAnimatorLocation[] };
+
+/**
+ * Where `/edit/rig/:legacyCharacterId` sends someone now.
+ *
+ * The redirect used to land on the composition page with `?component=animator`,
+ * which was the best available answer while the workspace was embedded there.
+ * It is no longer: the workspace has an exact route, and a bookmark that
+ * predates it should arrive at the same place a fresh navigation would.
+ *
+ * Deterministic or nothing. One Animator redirects; none is a not-found; and
+ * several is a *choice*, not a coin flip — picking the first would be the same
+ * "fall back to something so the page renders" failure the exact route exists
+ * to prevent, just moved one level up.
+ */
+export function legacyRigWorkspaceRedirect(
+  registry: PrefabAssetRegistry,
+  characterId: string | null,
+): LegacyRigWorkspaceRedirect {
+  const prefabId = prefabRedirectForLegacyCharacterId(registry, characterId);
+  if (prefabId === null) return { status: 'unknown-character', characterId };
+
+  const version = registry.latestVersion(prefabId)!;
+  const animators = prefabAnimatorLocations(registry, registry.referenceTo(prefabId, version));
+  if (animators.length === 0) return { status: 'no-animator', prefabId };
+  if (animators.length > 1) return { status: 'ambiguous', prefabId, candidates: animators };
+
+  const only = animators[0]!;
+  return {
+    status: 'resolved',
+    prefabId,
+    nodeId: only.nodeId,
+    componentId: only.componentId,
+  };
 }
 
 /**
