@@ -24,6 +24,7 @@ import { useAnimationChamber } from './useAnimationChamber.ts';
 import { isIdleLivePreview } from './AnimationLivePreview.ts';
 import { presentationAvailability } from './AnimationChamberDocument.ts';
 import { useAnimationPreviewClock } from './useAnimationPreviewClock.ts';
+import { AnimationSubjectViewport } from './AnimationSubjectViewport.tsx';
 
 function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
   switch (id) {
@@ -207,10 +208,20 @@ export function AnimationChamber(): JSX.Element {
   const setPanel = useAnimationChamber((state) => state.setPanel);
   const engine = useAnimationChamber((state) => state.engine);
   const controls = useAnimationChamber((state) => state.controls);
+  const previewEngine = useAnimationChamber((state) => state.previewEngine);
+  const document = useAnimationChamber((state) => state.project);
   const statusMessage = useAnimationChamber((state) => state.statusMessage);
 
-  // The shell drives the simulation until a viewport exists to drive it.
-  useAnimationPreviewClock(controls);
+  /*
+   * Exactly one thing advances the simulation.
+   *
+   * The viewport drives it from `useFrame` whenever there is a body to draw;
+   * the shell's clock covers the case where there is not, so a subject with no
+   * ModelRenderer still shows live state in Graph and Timeline instead of a
+   * frozen graph beside an explanation of why nothing is moving.
+   */
+  const viewportDrives = previewEngine !== null && presentationAvailability(document).available;
+  useAnimationPreviewClock(controls, { enabled: !viewportDrives });
 
   return (
     <div className="animation-chamber" data-testid="animation-chamber">
@@ -222,6 +233,11 @@ export function AnimationChamber(): JSX.Element {
         </p>
       ) : (
         <>
+          {viewportDrives && (
+            <div className="animation-viewport" data-testid="animation-viewport">
+              <AnimationSubjectViewport />
+            </div>
+          )}
           <Hud />
           <PreviewControls />
         </>

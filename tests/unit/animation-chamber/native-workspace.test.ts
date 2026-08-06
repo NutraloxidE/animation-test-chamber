@@ -45,6 +45,7 @@ import {
   type AnimationPreviewControls,
 } from '../../../apps/web/src/animation-chamber/AnimationLivePreview.ts';
 import { ChamberEngine } from '../../../apps/web/src/engine.ts';
+import { resolveAnimationSubjectPresentation } from '../../../apps/web/src/animation-chamber/resolve-subject-presentation.ts';
 import {
   animatorComponent,
   basePrefab,
@@ -400,5 +401,74 @@ describe('the subject-native preview engine', () => {
     expect(isIdleLivePreview(port)).toBe(false);
     expect(typeof controls.advance).toBe('function');
     expect(port.graphLayers).toBeDefined();
+  });
+});
+
+describe('the subject presentation the viewport draws', () => {
+  it('is keyed by the subject, not by a Character', () => {
+    const document = materialize();
+    const presentation = resolveAnimationSubjectPresentation({
+      document,
+      motionContextId: 'unarmed',
+    })!;
+
+    // The renderer keys its mixer and cloned skeleton by this. A Character id
+    // here would make two subjects on one Prefab share a skeleton.
+    expect(presentation.characterId).toBe(document.subject.subjectId);
+    expect(presentation.characterId).toContain('game-object-prefab:');
+    expect(presentation.characterId).toContain('/root/animator');
+    expect(presentation.displayName).toBe(document.subject.displayName);
+  });
+
+  it('draws the model the Prefab Component authored', () => {
+    const document = materialize();
+    const presentation = resolveAnimationSubjectPresentation({
+      document,
+      motionContextId: 'unarmed',
+    })!;
+
+    expect(presentation.model.canonical).toEqual(document.presentation.model);
+    expect(presentation.model.effective).toEqual(document.presentation.model);
+    expect(presentation.model.isPreviewOverridden).toBe(false);
+  });
+
+  it('has nothing to draw when the node has no ModelRenderer', () => {
+    // Not a substituted default: a Prefab node with no model has no appearance,
+    // and drawing "some humanoid" would invent a subject nobody authored.
+    expect(
+      resolveAnimationSubjectPresentation({
+        document: materialize({ withModel: false }),
+        motionContextId: 'unarmed',
+      }),
+    ).toBeNull();
+  });
+
+  it('resolves takes and loop flags for every graph state', () => {
+    const document = materialize();
+    const presentation = resolveAnimationSubjectPresentation({
+      document,
+      motionContextId: 'unarmed',
+    })!;
+
+    const stateIds = document.graph.states.map((state) => state.id).sort();
+    expect(Object.keys(presentation.loopByStateId).sort()).toEqual(stateIds);
+    // Source files are deduplicated and sorted, so the loader fetches each once.
+    expect(presentation.sourceFiles).toEqual([...new Set(presentation.sourceFiles)].sort());
+  });
+
+  it('lets a preview override swap appearance without touching the canonical binding', () => {
+    const document = materialize();
+    const presentation = resolveAnimationSubjectPresentation({
+      document,
+      motionContextId: 'unarmed',
+      previewModelOverridePresetId: 'blocky',
+    })!;
+
+    expect(presentation.model.effective).toEqual({
+      kind: 'procedural-humanoid',
+      presetId: 'blocky',
+    });
+    expect(presentation.model.canonical).toEqual(document.presentation.model);
+    expect(presentation.model.isPreviewOverridden).toBe(true);
   });
 });

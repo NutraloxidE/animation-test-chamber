@@ -127,6 +127,7 @@ export function AnimationWorkspaceRoute(): JSX.Element {
         authoring,
         repository,
         livePreview: held.engine,
+        previewEngine: held.engine,
       });
       setFailure(null);
       setFacade(created);

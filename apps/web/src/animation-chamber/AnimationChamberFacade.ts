@@ -23,6 +23,7 @@ import type { AnimationSubjectDefinition, ValidationResult } from '@atc/schema';
 import type { CanonicalPath } from '@atc/runtime-core';
 import { EditSession } from '@atc/editor-core';
 import type { AnimationAuthoringSession } from '../prefab-editor/animation-authoring-session.ts';
+import type { ChamberEngine } from '../engine.ts';
 import {
   materializeAnimationChamberDocument,
   type AnimationChamberDocument,
@@ -73,6 +74,16 @@ export interface AnimationChamberState {
   engine: AnimationLivePreview;
   /** Absent when the subject has no running simulation to drive. */
   controls: AnimationPreviewControls | null;
+  /**
+   * The concrete engine, for the viewport only.
+   *
+   * The panels read `engine` — the narrow port — and must keep doing so. The
+   * viewport genuinely needs more than four members (terrain mesh, debug
+   * overlays and the camera all reach into the simulation), and pretending
+   * otherwise would mean widening the port every panel shares to satisfy one
+   * consumer.
+   */
+  previewEngine: ChamberEngine | null;
 
   /** Bumped on every edit, undo, redo or revert, so controls re-read. */
   revision: number;
@@ -147,6 +158,8 @@ export function createAnimationChamberFacade(input: {
   repository: AnimationChamberRepositoryDefaults;
   /** Omitted when the subject cannot run a simulation; an idle port is used. */
   livePreview?: AnimationLivePreview & Partial<AnimationPreviewControls>;
+  /** The same engine as `livePreview`, when there is one, typed for the viewport. */
+  previewEngine?: ChamberEngine;
   initialPanel?: AnimationPanelId;
 }): AnimationChamberFacade {
   const { authoring, repository } = input;
@@ -195,6 +208,7 @@ export function createAnimationChamberFacade(input: {
       session,
       engine,
       controls: isPreviewControls(input.livePreview) ? input.livePreview : null,
+      previewEngine: input.previewEngine ?? null,
 
       revision: 0,
 
