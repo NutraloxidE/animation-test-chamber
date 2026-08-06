@@ -8,9 +8,9 @@
 | --- | --- |
 | Branch | `claude/new-session-5h8bdp` (the branch this session was assigned; the work package names `claude/new-session-j71ojl`, whose tip is the same start SHA) |
 | Start SHA | `17f4386a3baf09ec244029d32ce00ccbf269fd7d` |
-| End implementation SHA | `fdfe70a49138dcb62ec72d9af8fbe1537c54a72a` |
+| End implementation SHA | `02b702b` (see the commit list) |
 | Merge base with `origin/claude/new-session-j71ojl` | `17f4386a3baf09ec244029d32ce00ccbf269fd7d` |
-| Clean working tree | PASS (only this report and the DECISION were added after the last verification run) |
+| Clean working tree | PASS — `git status --short` empty after both one-shot runs |
 | `main` merged or rebased | No |
 | Force-push | No |
 
@@ -19,6 +19,9 @@ Commits:
 ```text
 01f4e73  Draw a GameObject from its Components, not from what kind of thing it is
 fdfe70a  Give a Prefab its own route, and make the rig route a redirect
+3867e3b  Record the cutover as HOLD, and the two steps that are actually done
+b016bf3  Show one viewport at a time, and stop sending specs through the old front door
+02b702b  Keep the Prefab surfaces inside their own box at every width
 ```
 
 ## Why this is HOLD
@@ -145,7 +148,7 @@ Asserted in `tests/unit/routing/prefab-routes.test.ts` (15 tests) and
 
 ## Command results
 
-Run from a clean tree at `fdfe70a`:
+Run from a clean tree at `02b702b`:
 
 ```text
 pnpm install --frozen-lockfile          PASS
@@ -174,13 +177,25 @@ pnpm harness:replay                     PASS
 pnpm harness:repo-guard                 PASS  13/13
 pnpm harness:prefab-api                 NOT RUN — the harness does not exist yet
 pnpm harness:legacy-removal             NOT RUN — the harness does not exist yet
-pnpm harness:visual                     see below
+pnpm harness:visual                     PASS  204 passed, 6 skipped, checkout unchanged
 git status --short                      clean
 ```
 
-`pnpm harness:one-shot` twice from a clean tree: **NOT RUN** in this session. It
-is not evidence for a cutover that did not happen, and the two missing harnesses
-are wired into the §17 list.
+`pnpm harness:one-shot`, twice, from a clean tree:
+
+```text
+run 1   47/47 stages passed in 1051.4s   exit 0   git status --short: clean
+run 2   47/47 stages passed in 1135.3s   exit 0   git status --short: clean
+```
+
+Both runs include the new `harness:game-object-renderer` stages. **What this is
+not evidence for:** it is not evidence that the cutover happened. The one-shot
+gate asserts the repository is internally consistent and every existing contract
+holds; it contains no stage that would fail because production still composes
+Scenes out of `entities`. That is precisely why the two missing harnesses —
+`harness:prefab-api` and `harness:legacy-removal` — are part of the definition of
+done, and why a green one-shot here means "nothing was broken", not "the
+switchover is complete".
 
 ## Coverage changed, stated rather than dropped
 
@@ -196,6 +211,19 @@ Both contracts still hold in canonical data. What is missing is the surface: the
 Prefab Overview names references and holders but not per-reference ownership,
 and the Prefab Editor has no preview override control. They are marked, not
 deleted, so the gap is visible in the runner output.
+
+## Regressions found and fixed during verification
+
+Three, all caused by the route change and all caught by the visual suite:
+
+- every spec that reached the chamber by loading `/` found no chamber, because
+  `/` is the Prefab inventory now;
+- the Prefab Editor mounted its own preview canvas beside the animation
+  workspace's, and two live WebGL canvases competed for the same software
+  rasteriser — the sword-recovery test timed out at 90s on desktop while passing
+  on other viewports;
+- the narrow layout scrolled horizontally, because a Component's JSON cannot
+  wrap and the workspace was nested inside a padded flex cell.
 
 ## Not done
 
@@ -260,9 +288,9 @@ Prefab API Harness:                     FAIL   (does not exist)
 GameObject Renderer Harness:            PASS   5/5
 Legacy Removal Harness:                 FAIL   (does not exist)
 Unit/Integration/Replay:                PASS
-Visual Desktop/Narrow:                  see the run recorded above this section
-One-Shot Run 1:                         NOT RUN
-One-Shot Run 2:                         NOT RUN
+Visual Desktop/Narrow:                  PASS   204 passed, 6 skipped
+One-Shot Run 1:                         PASS   47/47, clean tree
+One-Shot Run 2:                         PASS   47/47, clean tree
 
 Decision:
 GAMEOBJECT PREFAB PRODUCTION CUTOVER: HOLD
