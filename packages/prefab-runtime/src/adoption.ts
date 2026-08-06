@@ -24,6 +24,8 @@ import type {
   SceneInstanceReference,
 } from '@atc/schema';
 import { referenceKey } from '@atc/schema';
+import { assetFilePath, prefabAssetFilePath } from '@atc/schema';
+import type { PrefabAssetRegistry } from './registry.ts';
 import type { PrefabUsageDescription } from './usage.ts';
 import { prefabHoldersOfAnimationAsset } from './usage.ts';
 
@@ -45,6 +47,62 @@ function sameSet(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) return false;
   const sorted = (values: readonly string[]) => [...values].sort();
   return sorted(left).every((value, index) => value === sorted(right)[index]);
+}
+
+export interface AnimationPublicationPlan {
+  source: AssetReference;
+  currentHolders: GameObjectPrefabReference[];
+  selectedTargets: GameObjectPrefabReference[];
+  nonTargets: GameObjectPrefabReference[];
+  protectedTargets: GameObjectPrefabReference[];
+  expectedWrites: string[];
+  request: PublishAnimationAndUpdatePrefabsRequest;
+}
+
+const prefabIdentity = (reference: GameObjectPrefabReference): string =>
+  `${reference.assetId}@${reference.version}:${reference.contentHash}`;
+
+export function exactPrefabTargetSetsEqual(
+  left: readonly GameObjectPrefabReference[],
+  right: readonly GameObjectPrefabReference[],
+): boolean {
+  return sameSet(left.map(prefabIdentity), right.map(prefabIdentity));
+}
+
+export function changedPrefabIdsEqualTargets(
+  changedPrefabIds: readonly string[],
+  targets: readonly GameObjectPrefabReference[],
+): boolean {
+  return sameSet(changedPrefabIds, targets.map((target) => target.assetId));
+}
+
+export function createAnimationPublicationPlan(input: {
+  usage: readonly PrefabUsageDescription[];
+  registry: PrefabAssetRegistry;
+  request: PublishAnimationAndUpdatePrefabsRequest;
+  currentProjectRevisionId: string;
+}): AnimationPublicationPlan {
+  const adoption = planAnimationAdoption(input);
+  const order = (a: GameObjectPrefabReference, b: GameObjectPrefabReference): number =>
+    prefabIdentity(a).localeCompare(prefabIdentity(b));
+  const selectedTargets = [...adoption.targets].sort(order);
+  const currentHolders = [...selectedTargets, ...adoption.untouched].sort(order);
+  const protectedTargets = selectedTargets.filter((target) => {
+    const level = input.registry.get(target).metadata.protection?.level;
+    return level === 'locked' || level === 'invariant';
+  });
+  return {
+    source: input.request.source,
+    currentHolders,
+    selectedTargets,
+    nonTargets: [...adoption.untouched].sort(order),
+    protectedTargets,
+    expectedWrites: [
+      assetFilePath(input.request.source.assetType, input.request.source.assetId, input.request.source.version),
+      ...selectedTargets.map((target) => prefabAssetFilePath(target.assetId, target.version)),
+    ],
+    request: input.request,
+  };
 }
 
 /**

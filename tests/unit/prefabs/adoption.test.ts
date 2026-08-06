@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PublishAnimationAndUpdatePrefabsRequest } from '@atc/schema';
 import { validateAgainst } from '@atc/schema';
-import { describePrefabUsage, planAnimationAdoption, planPrefabAdoption } from '@atc/prefab-runtime';
+import { createAnimationPublicationPlan, describePrefabUsage, planAnimationAdoption, planPrefabAdoption } from '@atc/prefab-runtime';
 import { loadAssetRegistry, loadCanonicalProject } from '../../../harness/animation-assets.ts';
 import { loadPrefabRegistry } from '../../../harness/prefabs.ts';
 
@@ -78,6 +78,16 @@ describe('the request contract', () => {
 });
 
 describe('planning an animation adoption', () => {
+  it('builds a stable exact publication plan, including publish-only', () => {
+    const publishOnly = createAnimationPublicationPlan({ usage, registry: prefabRegistry, request: animationRequest([]), currentProjectRevisionId: project.revisionId });
+    expect(publishOnly.selectedTargets).toEqual([]);
+    expect(publishOnly.nonTargets).toEqual(publishOnly.currentHolders);
+    expect('scope' in publishOnly.request).toBe(false);
+
+    const plan = createAnimationPublicationPlan({ usage, registry: prefabRegistry, request: animationRequest(['sentinel', 'navigator']), currentProjectRevisionId: project.revisionId });
+    expect(plan.selectedTargets.map((target) => target.assetId)).toEqual(['navigator', 'sentinel']);
+    expect(plan.nonTargets.map((target) => target.assetId)).not.toContain('navigator');
+  });
   it('names the holders the Prefab graph actually has', () => {
     // Every migrated character carries the shared Behavior, plus the abstract
     // base they all inherit it from.

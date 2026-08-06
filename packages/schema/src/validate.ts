@@ -20,6 +20,7 @@ import {
   HumanoidRigProfileAsset,
 } from './animation-assets.ts';
 import { SaveAnimationChangesRequest } from './animation-save.ts';
+import { AnimationSubjectDefinition } from './animation-subject.ts';
 import {
   RuntimeInstanceDefinition,
   WorldDefinition,
@@ -101,6 +102,7 @@ export const SCHEMA_REGISTRY = {
   AssetReference,
   CharacterAnimationAssignment,
   SaveAnimationChangesRequest,
+  AnimationSubjectDefinition,
   WorldDefinition,
   RuntimeInstanceDefinition,
   IntentTrackDefinition,

@@ -10,3 +10,4 @@ export * from './usage.ts';
 export * from './adoption.ts';
 export * from './derivation.ts';
 export * from './library-index.ts';
+export * from './animation-subject.ts';

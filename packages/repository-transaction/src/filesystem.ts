@@ -154,7 +154,9 @@ export function withFaultInjection(fs: FilesystemOps, hook: FaultInjectionHook):
   };
   function guard(op: FsOpName, path: string): void {
     counts[op] += 1;
-    hook({ op, path, callIndex: counts[op] });
+    // Fault selectors are repository-path predicates and must behave the same
+    // on POSIX and Windows. The underlying filesystem still receives the native path.
+    hook({ op, path: path.replace(/\\/g, '/'), callIndex: counts[op] });
   }
   return {
     readFileIfExists(absolutePath) {

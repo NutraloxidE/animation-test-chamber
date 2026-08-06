@@ -18,6 +18,7 @@ import { worldStages } from './check-world.ts';
 import { capabilityStages } from './check-capabilities.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
+import { rigEditorPrerequisiteStages } from './check-rig-editor-prerequisites.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
 
 function vitestStage(name: string, directory: string, suggestion: string): StageResult {
@@ -203,6 +204,14 @@ async function main(): Promise<void> {
     results.push(result);
   }
   for (const result of capabilityStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  results.push(vitestStage('prefab API', 'tests/integration/api/prefabs.test.ts', 'fix exact Prefab API semantics'));
+  printStage(results.at(-1)!);
+
+  for (const result of rigEditorPrerequisiteStages()) {
     printStage(result);
     results.push(result);
   }

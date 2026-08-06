@@ -271,7 +271,7 @@ describe('faults before promotion refuse without touching the repository', () =>
     const fs: FilesystemOps = {
       ...real,
       writeFile(absolutePath, data) {
-        if (absolutePath.includes('/prepared/') && absolutePath.endsWith('project.json')) {
+        if (absolutePath.replace(/\\/g, '/').includes('/prepared/') && absolutePath.endsWith('project.json')) {
           // Truncated mid-write: valid-looking, unparseable, and exactly what a
           // partial flush leaves behind.
           real.writeFile(absolutePath, new TextEncoder().encode('{"schemaVersion": 1, "scenes"'));
@@ -301,7 +301,8 @@ describe('faults before promotion refuse without touching the repository', () =>
     const fs: FilesystemOps = {
       ...real,
       writeFile(absolutePath, data) {
-        if (absolutePath.includes('/prepared/') && absolutePath.includes('/reports/apply/')) {
+        const portablePath = absolutePath.replace(/\\/g, '/');
+        if (portablePath.includes('/prepared/') && portablePath.includes('/reports/apply/')) {
           const report = JSON.parse(new TextDecoder().decode(data)) as Record<string, unknown>;
           // A report describing a revision the project beside it does not have.
           // This is the artifact someone would later use to reconstruct what

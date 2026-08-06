@@ -138,6 +138,7 @@ async function main(): Promise<void> {
     {
       cwd: REPO_ROOT,
       stdio: 'inherit',
+      shell: process.platform === 'win32',
       env: {
         ...process.env,
         ATC_REPO_ROOT: root,

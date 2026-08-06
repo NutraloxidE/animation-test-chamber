@@ -29,6 +29,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { GameObjectComponentDefinition } from '@atc/schema';
 import {
   describePrefabUsage,
+  animationSubjectFromPrefab,
   resolveGameObjectPrefab,
   walkResolvedNodes,
   type ResolvedPrefabNode,
@@ -40,7 +41,7 @@ import { prefabEditorPath, ROUTES, routeId } from '../app/routes.ts';
 import { prefabParentReference, resolvePrefabEditorTarget } from './resolve-prefab-editor-target.ts';
 import { PrefabOverview } from './PrefabOverview.tsx';
 import { PrefabViewport } from './PrefabViewport.tsx';
-import { AnimationWorkspace, animationSubjectId } from './AnimationWorkspace.tsx';
+import { AnimationWorkspace } from './AnimationWorkspace.tsx';
 
 /** One row of the resolved tree. Nested nodes say where they came from. */
 function HierarchyRow({
@@ -119,6 +120,7 @@ function ComponentInspector({
 export function PrefabEditorPage(): JSX.Element {
   const prefabId = routeId(useParams().prefabId);
   const scenes = useChamber((state) => state.canonicalProject.scenes);
+  const animationRegistry = useChamber((state) => state.registry);
   const [search, setSearch] = useSearchParams();
   const registry = browserPrefabRegistry();
 
@@ -180,6 +182,15 @@ export function PrefabEditorPage(): JSX.Element {
    */
   const workspaceOpen =
     selectedComponentType === 'animator' && selectedComponent?.componentType === 'animator';
+  const animationSubject = workspaceOpen
+    ? animationSubjectFromPrefab({
+        registry,
+        animationRegistry,
+        reference: target.reference,
+        nodeId: selectedNode.nodeId,
+        componentId: selectedComponent.componentId,
+      })
+    : undefined;
 
   const select = (patch: Record<string, string>): void => {
     const next = new URLSearchParams(search);
@@ -303,7 +314,13 @@ export function PrefabEditorPage(): JSX.Element {
          */
         <section className="prefab-editor__workspace" data-testid="prefab-animation-workspace">
           <h3>Animation workspace</h3>
-          <AnimationWorkspace subjectId={animationSubjectId(target.prefabId)} />
+          {animationSubject?.subject ? (
+            <AnimationWorkspace subject={animationSubject.subject} />
+          ) : (
+            <ul data-testid="animation-subject-issues">
+              {animationSubject?.issues.map((issue) => <li key={`${issue.code}-${issue.message}`}>{issue.message}</li>)}
+            </ul>
+          )}
         </section>
         )}
 
