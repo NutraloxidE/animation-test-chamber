@@ -74,13 +74,13 @@ describe('two instances of one Prefab', () => {
     const scene = runtimeScene();
     const first = scene.get('controlled-humanoid')!;
     const second = scene.get('scripted-humanoid')!;
-    const before = JSON.stringify(second.transformState);
+    const before = JSON.stringify(second.worldTransform);
 
     for (let tick = 0; tick < 60; tick += 1) {
       first.step({ tick, cameraYawRad: 0 });
     }
 
-    expect(JSON.stringify(second.transformState)).toBe(before);
+    expect(JSON.stringify(second.worldTransform)).toBe(before);
     scene.dispose();
   });
 
@@ -140,9 +140,9 @@ describe('two Prefabs sharing Animator assets', () => {
     expect(spawned.character!.resolvedProject.clips).toEqual(first.character!.resolvedProject.clips);
     expect(spawned.character).not.toBe(first.character);
 
-    const before = JSON.stringify(first.transformState);
+    const before = JSON.stringify(first.worldTransform);
     for (let tick = 0; tick < 30; tick += 1) spawned.step({ tick, cameraYawRad: 0 });
-    expect(JSON.stringify(first.transformState)).toBe(before);
+    expect(JSON.stringify(first.worldTransform)).toBe(before);
 
     scene.dispose();
   });

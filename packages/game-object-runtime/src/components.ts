@@ -30,11 +30,30 @@ export interface ComponentRuntimeContext {
   services: GameObjectRuntimeServices;
 }
 
+/**
+ * What a component runtime is told about the passage of time (§4.4).
+ *
+ * Both numbers, always, because they answer different questions and neither
+ * can be derived from the other by a component that does not already know the
+ * clock. `tick` is the simulation's integer step — what a replay indexes and
+ * what a trace records. `deltaSeconds` is how much time that step represents,
+ * and it comes from `GameObjectRuntimeServices.clock.fixedDeltaSeconds`.
+ *
+ * These used to be one number. Nothing broke, because no built-in component
+ * integrates against time yet — which is precisely why it had to be fixed
+ * before one does: the first Audio or Particle component would have advanced
+ * sixty times too fast and looked like a tuning problem.
+ */
+export interface RuntimeComponentStepContext {
+  tick: number;
+  deltaSeconds: number;
+}
+
 export interface RuntimeComponent {
   componentId: string;
   componentType: string;
   enabled: boolean;
-  step?(deltaSeconds: number): void;
+  step?(context: RuntimeComponentStepContext): void;
   dispose?(): void;
 }
 

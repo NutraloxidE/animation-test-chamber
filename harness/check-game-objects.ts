@@ -224,13 +224,13 @@ export function gameObjectIsolationStage(): StageResult {
 
       const [first, second] = characters as [(typeof characters)[number], (typeof characters)[number]];
       const issues: StageIssue[] = [];
-      const before = JSON.stringify(second.transformState);
+      const before = JSON.stringify(second.worldTransform);
 
       for (let tick = 0; tick < 30; tick += 1) {
         first.step({ tick, cameraYawRad: 0 });
       }
 
-      if (JSON.stringify(second.transformState) !== before) {
+      if (JSON.stringify(second.worldTransform) !== before) {
         issues.push({
           files: ['packages/game-object-runtime/src/runtime.ts'],
           expected: 'stepping one instance to leave the other untouched',
