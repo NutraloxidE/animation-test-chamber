@@ -9,6 +9,7 @@
     "@atc/schema": "workspace:*",
     "@atc/runtime-core": "workspace:*",
     "@atc/animation-asset-runtime": "workspace:*",
+    "@atc/animation-runtime": "workspace:*",
     "@atc/character-control-runtime": "workspace:*",
     "@atc/prefab-runtime": "workspace:*",
     "@atc/replay-runtime": "workspace:*",

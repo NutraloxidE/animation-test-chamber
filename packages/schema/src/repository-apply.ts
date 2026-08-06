@@ -20,7 +20,7 @@
  */
 import { Type, type Static } from '@sinclair/typebox';
 import { Id } from './common.ts';
-import { SceneOperation } from './scene.ts';
+import { GameObjectSceneOperation } from './scene.ts';
 
 /**
  * A canonical document path, as it appears in protection decisions and Apply
@@ -121,7 +121,18 @@ export const RepositoryApplyRequest = Type.Object(
   {
     target: RepositoryDocumentTarget,
     expected: RepositoryApplyExpected,
-    operations: Type.Array(SceneOperation, { maxItems: 1000 }),
+    /**
+     * GameObject operations, and only those (DECISION 0025).
+     *
+     * This field named `SceneOperation` — the entity union — until the Scene
+     * cutover. The change is not additive on purpose: accepting both unions
+     * would have made the endpoint a *dual* write path, one branch writing
+     * `gameObjects` and the other writing `entities`, and "which collection is
+     * canonical" would have been decided per request by whichever client sent
+     * it. An entity operation is now refused by name, with the GameObject
+     * operation to send instead.
+     */
+    operations: Type.Array(GameObjectSceneOperation, { maxItems: 1000 }),
     actor: RepositoryApplyActor,
     intent: Type.String({ minLength: 1, maxLength: 2000, pattern: '\\S' }),
     approval: Type.Optional(ProtectionApproval),

@@ -52,9 +52,11 @@ import {
   seedOf,
   type CharacterIntentSource,
 } from '@atc/character-control-runtime';
+import { activeAnimationState } from '@atc/animation-runtime';
 import { composeTransforms, type ResolvedPrefabNode } from '@atc/prefab-runtime';
 import { characterViewOfGameObject, projectForGameObjectResolution } from './character-adapter.ts';
 import {
+  AnimatorRuntime,
   ComponentRuntimeRegistry,
   defaultComponentRuntimeRegistry,
   type RuntimeComponent,
@@ -134,7 +136,22 @@ export class RuntimeGameObject {
       : composeTransforms(definition.transform, definition.root.transform);
 
     const registry = options.componentRuntimes ?? defaultComponentRuntimeRegistry();
-    this.buildComponents(definition.root, registry, services);
+    /*
+     * The project a Component sees, with `characters` emptied.
+     *
+     * Project-level policy — movement, root motion, terrain, camera, equipment
+     * — is what an Animator's resolution needs. `Project.characters` is not, and
+     * a Component that could read it would be a production consumer of the
+     * legacy collection this migration is retiring.
+     */
+    const componentProject = projectForGameObjectResolution(options.project);
+    this.buildComponents(
+      definition.root,
+      registry,
+      services,
+      componentProject,
+      definition.displayName,
+    );
     for (const child of definition.root.children) {
       this.children.push(
         new RuntimeGameObject({
@@ -182,12 +199,23 @@ export class RuntimeGameObject {
       return;
     }
 
-    const project = projectForGameObjectResolution(options.project);
-    const resolvedBundle = resolveCharacterAnimationBundle({
-      registry: services.animationRegistry,
-      project,
-      character: view.character,
-    });
+    /*
+     * The Animator Component already resolved this node's behaviour, motion set
+     * and rig, so the character half borrows that bundle rather than running the
+     * resolver a second time. Two resolutions of one assignment would be two
+     * chances to disagree about which clip a state plays — the renderer would
+     * bind through one and the simulation would step through the other.
+     */
+    const animator = this.components.find(
+      (component): component is AnimatorRuntime => component instanceof AnimatorRuntime,
+    );
+    const resolvedBundle = animator
+      ? { bundle: animator.bundle, issues: animator.issues }
+      : resolveCharacterAnimationBundle({
+          registry: services.animationRegistry,
+          project: componentProject,
+          character: view.character,
+        });
     this.issues.push(...resolvedBundle.issues);
 
     const binding = definition.bindings.characterIntent;
@@ -256,12 +284,16 @@ export class RuntimeGameObject {
     node: ResolvedPrefabNode,
     registry: ComponentRuntimeRegistry,
     services: GameObjectRuntimeServices,
+    project: ProjectDefinition,
+    displayName: string,
   ): void {
     for (const component of node.components) {
       const runtime = registry.create(component, {
         gameObjectId: this.id,
+        displayName,
         nodeId: node.nodeId,
         nodePath: node.nodePath,
+        project,
         services,
       });
       // `tags` has no factory by design; a component type nobody registered a
@@ -294,6 +326,52 @@ export class RuntimeGameObject {
     };
     for (const component of this.components) component.step?.(componentContext);
     for (const child of this.children) child.step(context);
+  }
+
+  /** This node's Animator, if it declares one. */
+  get animator(): AnimatorRuntime | undefined {
+    return this.components.find(
+      (component): component is AnimatorRuntime => component instanceof AnimatorRuntime,
+    );
+  }
+
+  /**
+   * What this node's Animator is playing right now (§10.3).
+   *
+   * Two sources, one shape, and which one applies is decided by what the node
+   * *has* rather than by what kind of thing it is:
+   *
+   *   CharacterMotor present  the simulation owns the graph, so the state and
+   *                           the normalized time come from the tick record the
+   *                           character just produced.
+   *   Animator alone          nothing is driving the graph, so the object sits
+   *                           in the graph's default state and advances through
+   *                           its clip on the shared fixed-step clock.
+   *
+   * `undefined` means there is no Animator, which is not a failure — a crate
+   * with a mesh and no Animator is a perfectly ordinary GameObject.
+   */
+  get animationState(): { stateId: string; normalizedTime: number } | undefined {
+    const animator = this.animator;
+    if (!animator?.enabled) return undefined;
+
+    const record = this.character?.lastRecord;
+    if (this.character && record) {
+      const resolved = this.character.resolvedProject;
+      const active = activeAnimationState({
+        graph: resolved.graph,
+        clips: resolved.clips,
+        motionBindings: resolved.motionBindings,
+        actionStateId: record.actionState,
+        actionNormalizedTime: record.actionNormalizedTime,
+        locomotionStateId: record.locomotionState,
+        locomotionNormalizedTime: record.locomotionNormalizedTime,
+      });
+      return { stateId: active.stateId, normalizedTime: active.normalizedTime };
+    }
+
+    const stateId = animator.playback.initialStateId;
+    return { stateId, normalizedTime: animator.normalizedTimeFor(stateId) ?? 0 };
   }
 
   componentRuntime(componentId: string): RuntimeComponent | undefined {

@@ -40,6 +40,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Hono } from 'hono';
 import type {
+  GameObjectSceneOperation,
   ProjectDefinition,
   ProtectionApproval,
   RepositoryApplyRequest,
@@ -47,12 +48,18 @@ import type {
   SceneDefinition,
   ValidationIssue,
 } from '@atc/schema';
-import { validateProject, validateProjectReferences, validateSceneReferences } from '@atc/schema';
-import { resolveProtection, type EditActor } from '@atc/runtime-core';
 import {
-  applySceneOperation,
+  validateProject,
+  validateProjectReferences,
+  validateSceneGameObjectReferences,
+} from '@atc/schema';
+import { resolveProtection, type EditActor } from '@atc/runtime-core';
+import { prefabCapabilityLookup } from '@atc/prefab-runtime';
+import {
+  applySceneGameObjectOperation,
+  changedGameObjectIds,
+  exactPrefabReferenceKey,
   parseRepositoryApplyRequest,
-  type SceneOperation,
 } from '@atc/editor-core';
 import {
   runRepositoryTransaction,
@@ -62,7 +69,7 @@ import {
   type RepositoryTransactionState,
   type TransactionIssue,
 } from '@atc/repository-transaction';
-import { loadProject, PROJECT_PATH } from '../context.ts';
+import { loadPrefabRegistry, loadProject, PROJECT_PATH } from '../context.ts';
 import { repositoryReportFile, type RepositoryApplyReport } from '../reports.ts';
 import { markRepositoryFatal } from '../repository-health.ts';
 import type { RepositoryRuntime } from '../runtime.ts';
@@ -84,6 +91,15 @@ export interface RepositoryApplyResponseBody {
   project?: ProjectDefinition;
   targetDocument?: SceneDefinition;
   changedPaths?: string[];
+  /**
+   * Which GameObjects this Apply actually changed (§9.4).
+   *
+   * Derived by the server from the operation *result* — the documents before
+   * and after — never from anything the request declared. A client-supplied
+   * list would be a claim about a computation the server is about to perform
+   * itself, and a response echoing it would confirm the client's own guess.
+   */
+  changedGameObjectIds?: string[];
   reportPath?: string;
   /** This Apply's own identity. Absent for no-change, which writes no report. */
   applyId?: string;
@@ -256,7 +272,7 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
     }
     const request: RepositoryApplyRequest = parsed.request;
     const actor: EditActor = request.actor;
-    const operations = request.operations as SceneOperation[];
+    const operations: readonly GameObjectSceneOperation[] = request.operations;
 
     /*
      * An AI request may never carry an approval.
@@ -330,12 +346,37 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
       );
     }
 
-    let scene = project.scenes[index]!;
+    const baseScene = project.scenes[index]!;
+    let scene = baseScene;
     const changedPaths: string[] = [];
     const protectedChangedPaths: string[] = [];
 
+    /*
+     * The operation context, built from the repository rather than the request.
+     *
+     * `knownPrefabKeys` is what makes §8.2 enforceable server-side: a Scene may
+     * only name a Prefab version this checkout actually holds, exactly, hash
+     * included. `capabilities` is what lets the server refuse "make this the
+     * active camera" for an object whose Prefab has no camera — a check the
+     * browser also makes, and one that would be a habit of one client rather
+     * than a rule if only the browser made it.
+     */
+    const prefabRegistry = loadPrefabRegistry(root);
+    const operationContext = {
+      knownPrefabKeys: new Set(
+        prefabRegistry
+          .all()
+          .map((stored) =>
+            exactPrefabReferenceKey(
+              prefabRegistry.referenceTo(stored.id, stored.version),
+            ),
+          ),
+      ),
+      capabilities: prefabCapabilityLookup(prefabRegistry),
+    };
+
     for (const [position, operation] of operations.entries()) {
-      const result = applySceneOperation(scene, operation, project);
+      const result = applySceneGameObjectOperation(scene, operation, operationContext);
       if (!result.ok || result.document === undefined) {
         return refuse(
           'invalid',
@@ -433,6 +474,16 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
       }
     }
 
+    /*
+     * Which GameObjects moved, computed from the two documents.
+     *
+     * Not accumulated per operation: two operations that touch one object, or
+     * one that places an object a later one deletes, would each contribute a
+     * name to a running list that no longer describes the result. The
+     * before/after comparison describes what the Apply *did*.
+     */
+    const changedIds = changedGameObjectIds(baseScene, scene);
+
     const scenes = [...project.scenes];
     scenes[index] = scene;
     const candidate: ProjectDefinition = { ...project, scenes };
@@ -471,6 +522,7 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
         project,
         targetDocument: scene,
         changedPaths: [],
+        changedGameObjectIds: [],
       });
     }
 
@@ -554,6 +606,7 @@ export function repositoryApplyRoutes(app: Hono, runtime: RepositoryRuntime): vo
       project: proposed,
       targetDocument: scene,
       changedPaths,
+      changedGameObjectIds: changedIds,
       reportPath: reportFile.path,
       applyId,
       transactionId: result.transactionId,
@@ -622,8 +675,15 @@ function validatePrepared(
       PROJECT_PATH,
     );
   } else {
-    const characterIds = new Set((prepared.characters ?? []).map((entry) => entry.id));
-    for (const entry of validateSceneReferences(preparedScene, characterIds).issues) {
+    /*
+     * The GameObject view of the prepared Scene, not the entity view.
+     *
+     * This Apply wrote `gameObjects` and left `entities` exactly as it found
+     * them, so validating the entity mirror here would be checking bytes this
+     * transaction did not produce — and would let a mirror that was already
+     * stale before the Apply refuse a write that had nothing to do with it.
+     */
+    for (const entry of validateSceneGameObjectReferences(preparedScene).issues) {
       error('prepared-scene-references-invalid', `${entry.path}: ${entry.message}`, PROJECT_PATH);
     }
   }

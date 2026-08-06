@@ -6,28 +6,36 @@
  * forbids (§12.2) fails in the same way: DOM text, a list index, a React
  * component identity or a bare URL all *look* like an asset reference at the
  * drop site and none of them can be checked, so the first malformed drop
- * becomes a malformed entity in a canonical file.
+ * becomes a malformed instance in a canonical file.
  *
- * The payload also deliberately carries no transform. Where a thing lands is
+ * What it now carries is one thing: an **exact Prefab reference** — id, version
+ * and content hash. It used to carry a four-branch `PlaceableAsset` kind, and
+ * losing that is the point of the Scene cutover: "place a Light" and "place a
+ * Character" are the same action naming different Prefabs, not different actions
+ * producing different kinds of thing.
+ *
+ * The version and hash travel *with* the drag rather than being looked up at the
+ * drop site (§8.2). A drop that resolved "latest" would place whatever had been
+ * published between the mousedown and the mouseup.
+ *
+ * The payload still deliberately carries no transform. Where a thing lands is
  * decided by the drop, not by the drag.
  */
-import type { PlaceableAsset } from '@atc/editor-core';
+import type { GameObjectPrefabReference } from '@atc/schema';
 
 /** Private to this app; a browser will not hand it to another page by accident. */
 export const SCENE_ASSET_MIME = 'application/x-atc-scene-asset';
 
-export interface SceneAssetDragPayload {
-  kind: PlaceableAsset['kind'];
-  /** Character id, asset id, or the light type for a creation entry. */
-  id: string;
-  /** Display name to give the placed entity. */
+export interface ScenePrefabDragPayload {
+  kind: 'prefab';
+  prefab: GameObjectPrefabReference;
+  /** Display name to give the placed GameObject. */
   displayName: string;
-  version?: string;
 }
 
 export function writeDragPayload(
   transfer: DataTransfer,
-  payload: SceneAssetDragPayload,
+  payload: ScenePrefabDragPayload,
 ): void {
   transfer.setData(SCENE_ASSET_MIME, JSON.stringify(payload));
   transfer.effectAllowed = 'copy';
@@ -37,12 +45,13 @@ export function writeDragPayload(
  * The payload a drop carries, or `null`.
  *
  * `null` for anything unrecognised — a file dragged in from the desktop, a
- * selection from another tab, a payload from an older build. Refusing is the
- * whole job: OS file import has to go through the acquisition pipeline so
- * provenance and licence checks happen, and a drop handler that turned an
- * arbitrary file into a Scene entity would be a way around them (§12.8).
+ * selection from another tab, a payload from an older build that still speaks
+ * `{ kind: 'character' }`. Refusing is the whole job: OS file import has to go
+ * through the acquisition pipeline so provenance and licence checks happen, and
+ * a drop handler that turned an arbitrary file into a Scene GameObject would be
+ * a way around them (§12.8).
  */
-export function readDragPayload(transfer: DataTransfer): SceneAssetDragPayload | null {
+export function readDragPayload(transfer: DataTransfer): ScenePrefabDragPayload | null {
   const raw = transfer.getData(SCENE_ASSET_MIME);
   if (!raw) return null;
 
@@ -53,46 +62,43 @@ export function readDragPayload(transfer: DataTransfer): SceneAssetDragPayload |
     return null;
   }
 
-  const candidate = parsed as Partial<SceneAssetDragPayload>;
-  const kinds: PlaceableAsset['kind'][] = ['character', 'prop', 'light', 'camera'];
-  if (typeof candidate.kind !== 'string' || !kinds.includes(candidate.kind as PlaceableAsset['kind'])) {
+  const candidate = parsed as Partial<ScenePrefabDragPayload>;
+  if (candidate.kind !== 'prefab') return null;
+  if (typeof candidate.displayName !== 'string') return null;
+
+  const prefab = candidate.prefab as Partial<GameObjectPrefabReference> | undefined;
+  if (
+    prefab?.assetType !== 'game-object-prefab' ||
+    typeof prefab.assetId !== 'string' ||
+    typeof prefab.version !== 'string' ||
+    typeof prefab.contentHash !== 'string'
+  ) {
+    // A reference missing its version or hash is refused rather than completed
+    // here. Filling one in would be this file resolving "latest", which is the
+    // one thing an exact reference exists to stop.
     return null;
   }
-  if (typeof candidate.id !== 'string' || typeof candidate.displayName !== 'string') return null;
 
   return {
-    kind: candidate.kind as PlaceableAsset['kind'],
-    id: candidate.id,
+    kind: 'prefab',
     displayName: candidate.displayName,
-    ...(typeof candidate.version === 'string' ? { version: candidate.version } : {}),
+    prefab: {
+      assetType: 'game-object-prefab',
+      assetId: prefab.assetId,
+      version: prefab.version,
+      contentHash: prefab.contentHash,
+    },
   };
 }
 
-/** The `PlaceableAsset` a payload names, for `scene.place_asset`. */
-export function assetOf(payload: SceneAssetDragPayload): PlaceableAsset | null {
-  switch (payload.kind) {
-    case 'character':
-      return { kind: 'character', characterId: payload.id };
-    case 'camera':
-      return { kind: 'camera' };
-    case 'light': {
-      const types = ['directional', 'point', 'spot'] as const;
-      const lightType = types.find((entry) => entry === payload.id);
-      return lightType ? { kind: 'light', lightType } : null;
-    }
-    case 'prop':
-      return { kind: 'prop', asset: { kind: 'model', assetPath: payload.id } };
-  }
-}
-
 /**
- * A collision-free entity id derived from the dragged asset.
+ * A collision-free GameObject id derived from the dragged Prefab.
  *
  * A stable counter, not a random suffix: a fixture asserting on the id of a
- * dropped entity could not be written against `crate-7f3a`, and two runs of the
+ * dropped object could not be written against `crate-7f3a`, and two runs of the
  * same interaction test would produce documents that diff against each other.
  */
-export function placementEntityId(
+export function placementGameObjectId(
   base: string,
   existing: readonly { id: string }[],
 ): string {

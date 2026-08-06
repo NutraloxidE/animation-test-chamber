@@ -17,14 +17,20 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ProjectDefinition, SceneDefinition } from '@atc/schema';
-import { validateSceneReferences } from '@atc/schema';
+import type {
+  GameObjectSceneOperation,
+  ProjectDefinition,
+  SceneDefinition,
+} from '@atc/schema';
+import { validateSceneGameObjectReferences } from '@atc/schema';
+import { prefabCapabilityLookup } from '@atc/prefab-runtime';
 import {
   DocumentEditSession,
-  applySceneOperation,
-  type SceneOperation,
+  applySceneGameObjectOperation,
+  exactPrefabReferenceKey,
 } from '@atc/editor-core';
 import { createApp } from '../../../apps/api/src/app.ts';
+import { loadPrefabRegistry } from '../../../apps/api/src/context.ts';
 import { revisionOf } from '../../../apps/api/src/routes/repository-apply.ts';
 
 const SOURCE_REPO = resolve(__dirname, '../../..');
@@ -38,6 +44,15 @@ beforeEach(() => {
   mkdirSync(join(repoRoot, 'projects/demo-character'), { recursive: true });
   cpSync(join(SOURCE_REPO, PROJECT_PATH), join(repoRoot, PROJECT_PATH));
   cpSync(join(SOURCE_REPO, 'assets/animation'), join(repoRoot, 'assets/animation'), {
+    recursive: true,
+  });
+  /*
+   * The Prefabs come too. Since the Scene cutover the endpoint resolves
+   * Components to decide what an operation may do — "may this be the active
+   * camera" is a question about the Prefab it stands on — so a checkout without
+   * `assets/prefabs` is a checkout where every placement is refused as unknown.
+   */
+  cpSync(join(SOURCE_REPO, 'assets/prefabs'), join(repoRoot, 'assets/prefabs'), {
     recursive: true,
   });
   app = createApp({ runtime: { repoRoot, health: { state: 'ready' }, transactionOptions: {} } as never }).app;
@@ -69,16 +84,43 @@ function transactionDirs(): string[] {
   return existsSync(dir) ? readdirSync(dir).sort() : [];
 }
 
+/** The same operation context the server builds for itself, from this checkout. */
+function operationContext() {
+  const registry = loadPrefabRegistry(repoRoot);
+  return {
+    knownPrefabKeys: new Set(
+      registry
+        .all()
+        .map((stored) => exactPrefabReferenceKey(registry.referenceTo(stored.id, stored.version))),
+    ),
+    capabilities: prefabCapabilityLookup(registry),
+  };
+}
+
 function session(project = projectOf()) {
   const scene = project.scenes[0]!;
-  const characterIds = new Set(project.characters.map((entry) => entry.id));
-  return new DocumentEditSession<SceneDefinition, SceneOperation>({
+  const context = operationContext();
+  return new DocumentEditSession<SceneDefinition, GameObjectSceneOperation>({
     target: { kind: 'scene', id: scene.id },
     baseRevisionId: project.revisionId,
     document: scene,
-    apply: (document, operation) => applySceneOperation(document, operation, project),
-    validate: (document) => validateSceneReferences(document, characterIds),
+    apply: (document, operation) => applySceneGameObjectOperation(document, operation, context),
+    validate: (document) => validateSceneGameObjectReferences(document),
   });
+}
+
+/** An exact reference to a published Prefab in this checkout. */
+function prefabReference(assetId: string, version = '1.0.0') {
+  return loadPrefabRegistry(repoRoot).referenceTo(assetId, version);
+}
+
+function gameObjectsOf() {
+  return sceneOf().gameObjects ?? [];
+}
+
+/** The entity mirror's bytes, so an operation can be proven not to touch them. */
+function entityBytes(): string {
+  return JSON.stringify(sceneOf().entities);
 }
 
 async function post(body: unknown) {
@@ -106,20 +148,34 @@ function issuesOf(body: Record<string, unknown>): { path: string; message: strin
   return (body.issues ?? []) as { path: string; message: string; keyword: string }[];
 }
 
-const placeLight: SceneOperation = {
-  type: 'scene.place_asset',
-  entityId: 'key-light',
-  displayName: 'Key light',
-  asset: { kind: 'light', lightType: 'directional' },
-};
+/**
+ * The operation most of these tests apply.
+ *
+ * A *Prefab placement*, naming an exact version. It used to be
+ * `scene.place_asset` with a `{ kind: 'light' }` payload; the replacement is
+ * not a rename, because there is no light kind any more — a Prefab carrying a
+ * Light Component is what a light is.
+ *
+ * Built lazily rather than as a module constant: the content hash comes from
+ * the Prefabs copied into the temporary checkout, which does not exist yet at
+ * module scope.
+ */
+function placeCamera(): GameObjectSceneOperation {
+  return {
+    type: 'scene.place_prefab',
+    gameObjectId: 'key-camera',
+    displayName: 'Key camera',
+    prefab: prefabReference('default-scene-camera'),
+  };
+}
 
 describe('preview and stage do not write', () => {
   it('leaves the repository byte-identical through dispatch and stage', () => {
     const before = projectBytes();
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    expect(s.stagedPaths).toEqual(['/entities/key-light']);
+    expect(s.stagedPaths).toEqual(['/gameObjects/key-camera']);
     expect(projectBytes()).toBe(before);
   });
 });
@@ -127,34 +183,51 @@ describe('preview and stage do not write', () => {
 describe('apply writes', () => {
   it('persists the staged entity and returns the new canonical documents', async () => {
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
 
-    const { status, body } = await post(s.buildApplyRequest('place a key light'));
+    const { status, body } = await post(s.buildApplyRequest('place a key camera'));
     expect(status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.status).toBe('applied');
-    expect(body.changedPaths).toEqual(['/entities/key-light']);
+    expect(body.changedPaths).toEqual(['/gameObjects/key-camera']);
+    // The server reports which GameObjects it actually changed (§9.4).
+    expect(body.changedGameObjectIds).toEqual(['key-camera']);
 
-    const persisted = sceneOf().entities.find((entity) => entity.id === 'key-light');
+    const persisted = gameObjectsOf().find((gameObject) => gameObject.id === 'key-camera');
     expect(persisted).toBeDefined();
-    expect(persisted!.kind).toBe('light');
+    expect(persisted!.prefab.assetId).toBe('default-scene-camera');
+  });
+
+  /*
+   * The entity mirror is never written by a production edit (§9.1, §13.7).
+   * Compared byte-for-byte rather than field-by-field: a reverse-generation step
+   * that produced an *equivalent* entity list would still be the dual
+   * source-of-truth this cutover removes.
+   */
+  it('leaves the entity mirror byte-identical', async () => {
+    const before = entityBytes();
+    const s = session();
+    s.dispatch(placeCamera());
+    s.stageAll();
+    await post(s.buildApplyRequest('place a key camera'));
+    expect(entityBytes()).toBe(before);
   });
 
   it('bumps the project revision so the next session opens against it', async () => {
     const before = projectOf().revisionId;
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    await post(s.buildApplyRequest('place a key light'));
+    await post(s.buildApplyRequest('place a key camera'));
     expect(projectOf().revisionId).not.toBe(before);
   });
 
   it('writes a machine-readable report that claims no git commit', async () => {
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    const { body } = await post(s.buildApplyRequest('place a key light'));
+    const { body } = await post(s.buildApplyRequest('place a key camera'));
 
     const report = JSON.parse(readFileSync(join(repoRoot, body.reportPath as string), 'utf8')) as {
       operations: string[];
@@ -163,8 +236,8 @@ describe('apply writes', () => {
       commitSha?: string;
       protectionApproval?: unknown;
     };
-    expect(report.operations).toEqual(['scene.place_asset']);
-    expect(report.intent).toBe('place a key light');
+    expect(report.operations).toEqual(['scene.place_prefab']);
+    expect(report.intent).toBe('place a key camera');
     expect(report.applyId).toBe(body.applyId);
     // No protected path was touched, so there is no approval to record. An
     // approval field on an unprotected Apply would be evidence of a decision
@@ -177,9 +250,9 @@ describe('apply writes', () => {
 
   it('does not create a git commit', async () => {
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    await post(s.buildApplyRequest('place a key light'));
+    await post(s.buildApplyRequest('place a key camera'));
 
     const head = await app.request('/api/git/head');
     const headBody = (await head.json()) as { commits?: unknown[] };
@@ -197,7 +270,7 @@ describe('apply writes', () => {
 describe('request schema', () => {
   it('accepts a complete, well-formed request', async () => {
     const { status, body } = await post(
-      validRequest({ operations: [placeLight], intent: 'place a key light' }),
+      validRequest({ operations: [placeCamera()], intent: 'place a key camera' }),
     );
     expect(status).toBe(200);
     expect(body.status).toBe('applied');
@@ -231,10 +304,17 @@ describe('request schema', () => {
     ['an approval with a duplicate path', () => validRequest({ approval: { approvedPaths: ['/a', '/a'], reason: 'r' } })],
     ['an approval with a blank reason', () => validRequest({ approval: { approvedPaths: ['/a'], reason: '  ' } })],
     ['an approval with a missing reason', () => validRequest({ approval: { approvedPaths: ['/a'] } })],
-    ['an approval path that is not a canonical path', () => validRequest({ approval: { approvedPaths: ['entities/a'], reason: 'r' } })],
-    ['an unknown operation type', () => validRequest({ operations: [{ type: 'scene.set_matereal', entityId: 'x' }] })],
-    ['an operation with an unknown field', () => validRequest({ operations: [{ ...placeLight, entityIdd: 'typo' }] })],
-    ['an operation missing a required field', () => validRequest({ operations: [{ type: 'scene.rename_entity', entityId: 'ground' }] })],
+    ['an approval path that is not a canonical path', () => validRequest({ approval: { approvedPaths: ['gameObjects/a'], reason: 'r' } })],
+    ['an unknown operation type', () => validRequest({ operations: [{ type: 'scene.set_matereal', gameObjectId: 'x' }] })],
+    /*
+     * The retired entity operations. Refused by name rather than ignored: a
+     * client still sending one believes it is editing the Scene, and a server
+     * that quietly dropped it would report success for a write it never made.
+     */
+    ['a retired entity operation', () => validRequest({ operations: [{ type: 'scene.delete_entity', entityId: 'x' }] })],
+    ['the retired scene rename operation', () => validRequest({ operations: [{ type: 'scene.rename', displayName: 'x' }] })],
+    ['an operation with an unknown field', () => validRequest({ operations: [{ ...placeCamera(), gameObjectIdd: 'typo' }] })],
+    ['an operation missing a required field', () => validRequest({ operations: [{ type: 'scene.rename_game_object', gameObjectId: 'ground' }] })],
     ['a generic path/value command', () => validRequest({ operations: [{ path: '/displayName', value: 'x' }] })],
   ])('refuses %s with 400 and no write', async (_label, build) => {
     const before = projectBytes();
@@ -264,7 +344,7 @@ describe('request schema', () => {
           operations: [
             {
               type: 'scene.set_transform',
-              entityId: sceneOf().entities[0]!.id,
+              gameObjectId: gameObjectsOf()[0]!.id,
               transform: {
                 position: { x: '__INF__', y: 0, z: 0 },
                 rotation: { x: 0, y: 0, z: 0, w: 1 },
@@ -283,7 +363,7 @@ describe('request schema', () => {
 
   it('names an unknown operation type rather than dumping the union', async () => {
     const { body } = await post(
-      validRequest({ operations: [{ type: 'scene.set_matereal', entityId: 'x' }] }),
+      validRequest({ operations: [{ type: 'scene.set_matereal', gameObjectId: 'x' }] }),
     );
     expect(issuesOf(body)[0]!.message).toContain('scene.set_matereal');
     expect(issuesOf(body)[0]!.path).toMatch(/^\/operations\/0/);
@@ -321,7 +401,7 @@ describe('request schema', () => {
 
   it('refuses an unknown scene id rather than falling back to the first scene', async () => {
     const { status } = await post(
-      validRequest({ target: { kind: 'scene', id: 'no-such-scene' }, operations: [placeLight] }),
+      validRequest({ target: { kind: 'scene', id: 'no-such-scene' }, operations: [placeCamera()] }),
     );
     expect(status).toBe(404);
   });
@@ -332,36 +412,40 @@ describe('request schema', () => {
  * run the browser session, and the endpoint is reachable without it.
  */
 describe('exact-path protection approval', () => {
-  /** Protects the first entity of the canonical scene, on disk. */
-  function protectFirstEntity(level: 'locked' | 'approval-required' | 'invariant'): string {
+  /** Protects the first GameObject of the canonical scene, on disk. */
+  function protectFirstGameObject(level: 'locked' | 'approval-required' | 'invariant'): string {
     const project = projectOf();
     const scene = project.scenes[0]!;
-    const entity = scene.entities[0]!;
+    const gameObjects = scene.gameObjects ?? [];
+    const first = gameObjects[0]!;
     const guarded = {
       ...project,
       scenes: [
         {
           ...scene,
-          entities: [{ ...entity, protection: { level, reason: 'test fixture' } }, ...scene.entities.slice(1)],
+          gameObjects: [
+            { ...first, protection: { level, reason: 'test fixture' } },
+            ...gameObjects.slice(1),
+          ],
         },
         ...project.scenes.slice(1),
       ],
     };
     writeFileSync(join(repoRoot, PROJECT_PATH), `${JSON.stringify(guarded, null, 2)}\n`, 'utf8');
-    return entity.id;
+    return first.id;
   }
 
-  function renameEntity(entityId: string, displayName: string): SceneOperation {
-    return { type: 'scene.rename_entity', entityId, displayName };
+  function renameGameObject(gameObjectId: string, displayName: string): GameObjectSceneOperation {
+    return { type: 'scene.rename_game_object', gameObjectId, displayName };
   }
 
   it('refuses an AI edit to a locked path, with no browser session involved', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const before = projectBytes();
 
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Renamed anyway')],
+        operations: [renameGameObject(gameObjectId, 'Renamed anyway')],
         actor: 'ai',
         intent: 'agent rename of a locked entity',
       }),
@@ -373,10 +457,10 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses an AI edit to an approval-required path', async () => {
-    const entityId = protectFirstEntity('approval-required');
+    const gameObjectId = protectFirstGameObject('approval-required');
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Renamed by an agent')],
+        operations: [renameGameObject(gameObjectId, 'Renamed by an agent')],
         actor: 'ai',
         intent: 'agent rename',
       }),
@@ -391,14 +475,14 @@ describe('exact-path protection approval', () => {
    * did not, and a silently ignored field looks identical to an honoured one.
    */
   it('refuses an AI request that carries its own approval', async () => {
-    const entityId = protectFirstEntity('approval-required');
+    const gameObjectId = protectFirstGameObject('approval-required');
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Self-approved')],
+        operations: [renameGameObject(gameObjectId, 'Self-approved')],
         actor: 'ai',
         intent: 'agent rename with a self-granted approval',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
           reason: 'the agent is confident',
         },
       }),
@@ -408,12 +492,12 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses a human protected edit that carries no approval', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const before = projectBytes();
 
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'No approval')],
+        operations: [renameGameObject(gameObjectId, 'No approval')],
         intent: 'rename a locked entity without approving it',
       }),
     );
@@ -422,18 +506,18 @@ describe('exact-path protection approval', () => {
     expect(issuesOf(body)[0]!.keyword).toBe('approval-required');
     // The message names the exact path that needs approving, so the caller can
     // build the approval without guessing what the server computed.
-    expect(issuesOf(body)[0]!.message).toContain(`/entities/${entityId}/displayName`);
+    expect(issuesOf(body)[0]!.message).toContain(`/gameObjects/${gameObjectId}/displayName`);
     expect(projectBytes()).toBe(before);
   });
 
   it('accepts a human protected edit whose approval names exactly the protected path', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Approved and renamed')],
+        operations: [renameGameObject(gameObjectId, 'Approved and renamed')],
         intent: 'rename a locked entity',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
           reason: 'the display name was agreed in review',
         },
       }),
@@ -441,17 +525,17 @@ describe('exact-path protection approval', () => {
 
     expect(status).toBe(200);
     expect(body.status).toBe('applied');
-    expect(sceneOf().entities[0]!.displayName).toBe('Approved and renamed');
+    expect(gameObjectsOf()[0]!.displayName).toBe('Approved and renamed');
   });
 
   it('records the exact approved paths and reason in the report', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const { body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Approved and renamed')],
+        operations: [renameGameObject(gameObjectId, 'Approved and renamed')],
         intent: 'rename a locked entity',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
           reason: 'the display name was agreed in review',
         },
       }),
@@ -462,7 +546,7 @@ describe('exact-path protection approval', () => {
       approved?: unknown;
     };
     expect(report.protectionApproval).toEqual({
-      approvedPaths: [`/entities/${entityId}/displayName`],
+      approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
       reason: 'the display name was agreed in review',
     });
     // Never a bare boolean: it names nothing and can be checked against nothing.
@@ -470,18 +554,18 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses an approval that misses one of the protected paths', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const before = projectBytes();
 
     const { status, body } = await post(
       validRequest({
         operations: [
-          renameEntity(entityId, 'Renamed'),
-          { type: 'scene.set_enabled', entityId, enabled: false },
+          renameGameObject(gameObjectId, 'Renamed'),
+          { type: 'scene.set_enabled', gameObjectId, enabled: false },
         ],
         intent: 'two protected changes, one approved',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
           reason: 'only approved the rename',
         },
       }),
@@ -494,13 +578,13 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses an approval carrying an extra path the operations never touched', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Renamed')],
+        operations: [renameGameObject(gameObjectId, 'Renamed')],
         intent: 'approve more than this Apply does',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`, '/entities/some-other/transform'],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`, '/gameObjects/some-other/transform'],
           reason: 'approving generously',
         },
       }),
@@ -510,12 +594,12 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses a prefix approval standing in for an exact path', async () => {
-    const entityId = protectFirstEntity('locked');
+    const gameObjectId = protectFirstGameObject('locked');
     const { status } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Renamed')],
+        operations: [renameGameObject(gameObjectId, 'Renamed')],
         intent: 'approve by prefix',
-        approval: { approvedPaths: [`/entities/${entityId}`], reason: 'approving the whole entity' },
+        approval: { approvedPaths: [`/gameObjects/${gameObjectId}`], reason: 'approving the whole GameObject' },
       }),
     );
     expect(status).toBe(403);
@@ -524,7 +608,7 @@ describe('exact-path protection approval', () => {
   it('refuses an approval on an Apply that changes nothing protected', async () => {
     const { status, body } = await post(
       validRequest({
-        operations: [placeLight],
+        operations: [placeCamera()],
         intent: 'approve an unprotected change',
         approval: { approvedPaths: ['/entities/key-light'], reason: 'unnecessary approval' },
       }),
@@ -534,13 +618,13 @@ describe('exact-path protection approval', () => {
   });
 
   it('refuses an invariant edit that no approval can authorise', async () => {
-    const entityId = protectFirstEntity('invariant');
+    const gameObjectId = protectFirstGameObject('invariant');
     const { status, body } = await post(
       validRequest({
-        operations: [renameEntity(entityId, 'Renamed anyway')],
+        operations: [renameGameObject(gameObjectId, 'Renamed anyway')],
         intent: 'change a project invariant',
         approval: {
-          approvedPaths: [`/entities/${entityId}/displayName`],
+          approvedPaths: [`/gameObjects/${gameObjectId}/displayName`],
           reason: 'approving an invariant',
         },
       }),
@@ -558,9 +642,9 @@ describe('exact-path protection approval', () => {
 describe('repeated apply from one session', () => {
   it('accepts the second apply after the session adopts the applied revision', async () => {
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    const first = await post(s.buildApplyRequest('place a key light'));
+    const first = await post(s.buildApplyRequest('place a key camera'));
     expect(first.status).toBe(200);
 
     s.acceptApplied(
@@ -568,13 +652,17 @@ describe('repeated apply from one session', () => {
       (first.body.project as ProjectDefinition).revisionId,
     );
 
-    s.dispatch({ type: 'scene.rename_entity', entityId: 'key-light', displayName: 'Rim light' });
+    s.dispatch({
+      type: 'scene.rename_game_object',
+      gameObjectId: 'key-camera',
+      displayName: 'Rim camera',
+    });
     s.stageAll();
-    const second = await post(s.buildApplyRequest('rename the light'));
+    const second = await post(s.buildApplyRequest('rename the camera'));
     expect(second.status).toBe(200);
-    expect(sceneOf().entities.find((entity) => entity.id === 'key-light')!.displayName).toBe(
-      'Rim light',
-    );
+    expect(
+      gameObjectsOf().find((gameObject) => gameObject.id === 'key-camera')!.displayName,
+    ).toBe('Rim camera');
   });
 });
 
@@ -587,12 +675,18 @@ describe('no-change apply', () => {
   it('reports no-change, writes no file, no report and no transaction', async () => {
     const before = projectBytes();
     const revisionBefore = projectOf().revisionId;
-    const scene = sceneOf();
+    const first = gameObjectsOf()[0]!;
 
     const { status, body } = await post(
       validRequest({
-        operations: [{ type: 'scene.rename', displayName: scene.displayName }],
-        intent: 'rename the scene to the name it already has',
+        operations: [
+          {
+            type: 'scene.rename_game_object',
+            gameObjectId: first.id,
+            displayName: first.displayName,
+          },
+        ],
+        intent: 'rename a GameObject to the name it already has',
       }),
     );
 
@@ -623,12 +717,16 @@ describe('no-change apply', () => {
 
   it('treats setting a transform to its existing value as no-change', async () => {
     const before = projectBytes();
-    const entity = sceneOf().entities[0]!;
+    const first = gameObjectsOf()[0]!;
 
     const { status, body } = await post(
       validRequest({
         operations: [
-          { type: 'scene.set_transform', entityId: entity.id, transform: entity.transform },
+          {
+            type: 'scene.set_transform',
+            gameObjectId: first.id,
+            transform: first.transform,
+          },
         ],
         intent: 'set the transform it already has',
       }),
@@ -643,9 +741,9 @@ describe('no-change apply', () => {
 describe('revision conflict', () => {
   it('refuses a stale baseline instead of overwriting', async () => {
     const s = session();
-    s.dispatch(placeLight);
+    s.dispatch(placeCamera());
     s.stageAll();
-    const request = s.buildApplyRequest('place a key light');
+    const request = s.buildApplyRequest('place a key camera');
 
     // Something else moves the repository forward underneath the session.
     const moved = { ...projectOf(), revisionId: 'moved-on-externally' };
@@ -672,14 +770,19 @@ describe('server-side validation', () => {
       validRequest({
         operations: [
           {
-            type: 'scene.place_asset',
-            entityId: 'ghost',
+            type: 'scene.place_prefab',
+            gameObjectId: 'ghost',
             displayName: 'Ghost',
-            asset: { kind: 'character', characterId: 'no-such-character' },
+            prefab: {
+              assetType: 'game-object-prefab',
+              assetId: 'no-such-prefab',
+              version: '1.0.0',
+              contentHash: 'f'.repeat(64),
+            },
           },
         ],
         actor: 'ai',
-        intent: 'place a character that does not exist',
+        intent: 'place a Prefab that does not exist',
       }),
     );
 
@@ -732,17 +835,24 @@ describe('content revision identity', () => {
  */
 describe('apply report identity', () => {
   async function rename(displayName: string, project = projectOf()) {
+    const scene = project.scenes[0]!;
     return post({
-      target: { kind: 'scene', id: project.scenes[0]!.id },
+      target: { kind: 'scene', id: scene.id },
       expected: { projectRevisionId: project.revisionId },
-      operations: [{ type: 'scene.rename', displayName }],
+      operations: [
+        {
+          type: 'scene.rename_game_object',
+          gameObjectId: (scene.gameObjects ?? [])[0]!.id,
+          displayName,
+        },
+      ],
       actor: 'human',
-      intent: `rename the scene to ${displayName}`,
+      intent: `rename the first GameObject to ${displayName}`,
     });
   }
 
   it('survives a content revision returning to a previous value', async () => {
-    const original = sceneOf().displayName;
+    const original = gameObjectsOf()[0]!.displayName;
 
     const first = await rename('B');
     expect(first.status).toBe(200);
@@ -776,7 +886,7 @@ describe('apply report identity', () => {
   });
 
   it('does not let the apply identity leak into the canonical revision', async () => {
-    const original = sceneOf().displayName;
+    const original = gameObjectsOf()[0]!.displayName;
     await rename('B');
     const revisionB = projectOf().revisionId;
     await rename(original);

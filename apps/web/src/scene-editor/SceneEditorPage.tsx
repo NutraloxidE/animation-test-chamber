@@ -2,30 +2,53 @@
  * `/edit/scene/:sceneId` — the Scene Editor shell.
  *
  * Unity-like composition layout: Hierarchy on the left, viewport in the centre,
- * Inspector and Asset Panel sharing the right dock (work package §11.2). It is
- * a separate page from the Rig Editor on purpose — a tab inside the chamber
- * would have had to share the chamber's single-character session, and "which
- * character is this panel about" is exactly the question the split removes.
+ * Inspector and Asset Panel sharing the right dock (work package §11.2).
  *
- * Every edit here — an Inspector field, a gizmo drag, a drop from the Asset
- * Panel — goes through one typed operation and the shared staging model, which
- * is what makes the same change reachable by a machine. What is still missing
- * is browsing repository prop and model assets; the Asset Panel currently
- * offers Character Definitions and the built-in Light and Camera entries.
+ * Since the Scene cutover (DECISION 0025) every surface on this page reads
+ * `scene.gameObjects` and every action writes a GameObject operation. Both
+ * halves moved together on purpose: a page whose viewport read `gameObjects`
+ * while its Inspector wrote `entities` would need a migration between every edit
+ * and the next frame, and the migration would then be the thing that decides
+ * what the Scene means.
+ *
+ * There is no `entity.kind` here, no character/prop/light/camera branch, and no
+ * lookup that turns an id into geometry. What an object *is* comes from the
+ * Components its resolved Prefab carries, which is what the hierarchy badges,
+ * the Inspector's available actions and the renderer all read.
  */
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import type {
+  GameObjectInstanceDefinition,
+  GameObjectPrefabReference,
+  SceneDefinition,
+} from '@atc/schema';
+import { IDENTITY_ROTATION, UNIT_SCALE } from '@atc/schema';
+import { overridesClearedByPrefabSourceChange } from '@atc/editor-core';
+import type { PrefabCapabilities } from '@atc/prefab-runtime';
 import { useChamber } from '../store.ts';
-import { routeId, sceneEditorPath, rigEditorPath } from '../app/routes.ts';
+import { routeId, prefabEditorPath, sceneEditorPath } from '../app/routes.ts';
 import { NotFoundPage } from '../app/NotFoundPage.tsx';
+import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
+import type { RenderProjectionIssue } from '../game-objects/render-projection.ts';
+import {
+  PREFAB_FILTERS,
+  PREFAB_FILTER_LABELS,
+  filterPrefabRows,
+  prefabListRows,
+  type PrefabFilterId,
+} from '../prefab-editor/prefab-list.ts';
 import { resolveSceneEditorTarget } from './resolve-scene-editor-target.ts';
 import { useSceneSession, type SceneSessionHandle } from './use-scene-session.ts';
-import { selectedEntityId, type SceneSelection } from './scene-selection.ts';
+import { useSceneRuntime } from './use-scene-runtime.ts';
+import {
+  hierarchyRowFor,
+  sceneHierarchyRows,
+  type SceneHierarchyRow,
+} from './scene-hierarchy.ts';
+import { operationTarget, selectedNodeId, type SceneSelection } from './scene-selection.ts';
 import { SceneViewport, type GizmoMode, type TransformSpace } from './viewport/SceneViewport.tsx';
-import type { SceneDefinition, SceneEntityDefinition } from '@atc/schema';
-import { IDENTITY_ROTATION, UNIT_SCALE } from '@atc/schema';
-import { assetOf, placementEntityId, writeDragPayload } from './drag-payload.ts';
-import type { PlaceableAsset } from '@atc/editor-core';
+import { placementGameObjectId, writeDragPayload } from './drag-payload.ts';
 
 export function SceneEditorPage(): JSX.Element {
   const sceneId = routeId(useParams().sceneId);
@@ -48,24 +71,48 @@ export function SceneEditorPage(): JSX.Element {
   }
 
   // Keyed on the scene id so React discards the whole subtree — and with it the
-  // previous session and selection — when the route changes.
+  // previous session, its RuntimeScene and its selection — when the route
+  // changes.
   return <SceneEditorShell key={target.sceneId} scene={target.scene} />;
 }
 
 function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
   const project = useChamber((state) => state.canonicalProject);
   const handle = useSceneSession(project, scene);
+  const runtime = useSceneRuntime(project, handle.scene);
+  const registry = browserPrefabRegistry();
+
   const [selection, setSelection] = useState<SceneSelection>({ kind: 'scene', sceneId: scene.id });
   // Gizmo tool and transform space are viewport presentation, not scene data:
   // switching between Move and Rotate changes nothing about the document.
   const [mode, setMode] = useState<GizmoMode>('translate');
   const [space, setSpace] = useState<TransformSpace>('world');
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [renderIssues, setRenderIssues] = useState<RenderProjectionIssue[]>([]);
+
+  const rows = useMemo(
+    () => sceneHierarchyRows({ scene: handle.scene, registry }),
+    [handle.scene, registry],
+  );
 
   const staged = handle.session.stagedPaths;
-  const entityId = selectedEntityId(selection);
-  const selected = entityId
-    ? handle.scene.entities.find((entity) => entity.id === entityId)
+  const instanceId = operationTarget(selection);
+  const selectedRow = instanceId ? hierarchyRowFor(rows, instanceId) : undefined;
+  const selectedInstance = instanceId
+    ? handle.scene.gameObjects?.find((gameObject) => gameObject.id === instanceId)
     : undefined;
+
+  const onRenderIssues = useCallback((issues: RenderProjectionIssue[]) => {
+    setRenderIssues(issues);
+  }, []);
+
+  const toggleExpanded = (id: string): void =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <div className="scene-editor" data-testid="scene-editor">
@@ -147,55 +194,71 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
           ▼ {handle.scene.displayName}
         </button>
         <ul>
-          {/*
-            Rows are navigation, not embedded forms (§11.5). No character
-            select, no controller select, no transform inputs — a row answers
-            what exists, what is selected, what kind it is and whether it is
-            enabled, and the Inspector answers everything else.
-          */}
-          {handle.scene.entities.map((entity) => (
-            <li key={entity.id}>
-              <button
-                type="button"
-                className={entityId === entity.id ? 'is-active' : ''}
-                onClick={() => setSelection({ kind: 'entity', sceneId: scene.id, entityId: entity.id })}
-                data-testid={`scene-hierarchy-row-${entity.id}`}
-              >
-                <span className="scene-hierarchy__kind">{kindIcon(entity.kind)}</span>
-                <span>{entity.displayName}</span>
-                {!entity.enabled && <em>hidden</em>}
-                {staged.some((path) => path.startsWith(`/entities/${entity.id}`)) && (
-                  <em className="is-staged">staged</em>
-                )}
-              </button>
-            </li>
+          {rows.map((row) => (
+            <HierarchyRow
+              key={row.instanceId}
+              row={row}
+              selectedInstanceId={instanceId}
+              selectedNodeId={selectedNodeId(selection)}
+              expanded={expanded.has(row.instanceId)}
+              staged={staged.some((path) => path.startsWith(`/gameObjects/${row.instanceId}`))}
+              onToggle={() => toggleExpanded(row.instanceId)}
+              onSelectInstance={() =>
+                setSelection({
+                  kind: 'game-object',
+                  sceneId: scene.id,
+                  selection: { instanceId: row.instanceId },
+                })
+              }
+              onSelectNode={(nodeId, componentId) =>
+                setSelection({
+                  kind: 'game-object',
+                  sceneId: scene.id,
+                  selection: {
+                    instanceId: row.instanceId,
+                    nodeId,
+                    ...(componentId === undefined ? {} : { componentId }),
+                  },
+                })
+              }
+            />
           ))}
+          {rows.length === 0 && <li data-testid="scene-hierarchy-empty">No GameObjects.</li>}
         </ul>
       </aside>
 
       <SceneViewport
         scene={handle.scene}
+        runtime={runtime}
         selection={selection}
         onSelect={setSelection}
-        onCommitTransform={(entityId, transform) =>
-          handle.dispatch({ type: 'scene.set_transform', entityId, transform })
+        onCommitTransform={(gameObjectId, transform) =>
+          /*
+           * Always the root instance id, handed over by the viewport from
+           * `operationTarget`. A child runtime node is spelled
+           * `<instanceId>/<nodeId>` and naming one here would write an
+           * operation against a GameObject that does not exist (§2.5).
+           */
+          handle.dispatch({ type: 'scene.set_transform', gameObjectId, transform })
         }
         mode={mode}
         space={space}
-        onDropAsset={(payload, point) => {
-          const asset = assetOf(payload);
-          if (!asset) return;
+        onRenderIssues={onRenderIssues}
+        onDropPrefab={(payload, point) => {
           /*
            * The drop dispatches the *same* typed command the Asset Panel's
-           * place button does. A drop handler that pushed onto scene.entities
-           * directly would be a second write path with no validation, no
-           * protection check and no machine equivalent.
+           * place button does. A drop handler that pushed onto
+           * `scene.gameObjects` directly would be a second write path with no
+           * validation, no protection check and no machine equivalent.
            */
           handle.dispatch({
-            type: 'scene.place_asset',
-            entityId: placementEntityId(payload.id, handle.scene.entities),
+            type: 'scene.place_prefab',
+            gameObjectId: placementGameObjectId(
+              payload.prefab.assetId,
+              handle.scene.gameObjects ?? [],
+            ),
             displayName: payload.displayName,
-            asset,
+            prefab: payload.prefab,
             transform: {
               position: point,
               rotation: { ...IDENTITY_ROTATION },
@@ -206,24 +269,177 @@ function SceneEditorShell({ scene }: { scene: SceneDefinition }): JSX.Element {
       />
 
       <aside className="scene-inspector" data-testid="scene-inspector">
-        {selected ? (
-          <EntityInspector entity={selected} handle={handle} />
+        {selectedInstance && selectedRow ? (
+          <GameObjectInspector
+            instance={selectedInstance}
+            row={selectedRow}
+            selection={selection}
+            handle={handle}
+            onSelect={setSelection}
+          />
         ) : (
           <SceneRootInspector scene={handle.scene} handle={handle} />
         )}
         <AssetPanel handle={handle} />
       </aside>
 
-      {handle.lastIssues.length > 0 && (
+      {(handle.lastIssues.length > 0 || runtime.issues.length > 0 || renderIssues.length > 0) && (
         <ul className="scene-issues" data-testid="scene-issues">
           {handle.lastIssues.map((issue) => (
-            <li key={`${issue.path}:${issue.message}`}>
+            <li key={`op:${issue.path}:${issue.message}`}>
               <code>{issue.path}</code> {issue.message}
+            </li>
+          ))}
+          {/*
+            Resolver and runtime issues, shown rather than rendered around
+            (§4.4). An unknown Prefab version, an abstract Prefab placed, a
+            motor with no Animator, an invalid relation — all of them make the
+            Scene visibly incomplete, and none of them silently fall back to
+            drawing the entity mirror instead.
+          */}
+          {runtime.issues.map((issue, index) => (
+            <li key={`runtime:${issue.code}:${index}`} data-testid="scene-runtime-issue">
+              [{issue.severity}] {issue.code}: {issue.message}
+            </li>
+          ))}
+          {renderIssues.map((issue, index) => (
+            <li key={`render:${issue.code}:${index}`} data-testid="scene-render-issue">
+              [{issue.code}] {issue.message}
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * One root instance row, and its resolved Prefab nodes when expanded (§6).
+ *
+ * The child rows are *inspection* targets. Clicking one selects the node for the
+ * Inspector and highlights it in the viewport; it does not turn the node into a
+ * Scene instance, and every persistent action stays on the root (§6.2).
+ */
+function HierarchyRow({
+  row,
+  selectedInstanceId,
+  selectedNodeId: selectedNode,
+  expanded,
+  staged,
+  onToggle,
+  onSelectInstance,
+  onSelectNode,
+}: {
+  row: SceneHierarchyRow;
+  selectedInstanceId: string | null;
+  selectedNodeId: string | null;
+  expanded: boolean;
+  staged: boolean;
+  onToggle: () => void;
+  onSelectInstance: () => void;
+  onSelectNode: (nodeId: string, componentId?: string) => void;
+}): JSX.Element {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        data-testid={`scene-hierarchy-expand-${row.instanceId}`}
+        title="Show the resolved Prefab nodes and their Components"
+      >
+        {expanded ? '▼' : '▶'}
+      </button>
+      <button
+        type="button"
+        className={selectedInstanceId === row.instanceId && selectedNode === null ? 'is-active' : ''}
+        onClick={onSelectInstance}
+        data-testid={`scene-hierarchy-row-${row.instanceId}`}
+      >
+        <span>{row.displayName}</span>
+        <code data-testid={`scene-hierarchy-prefab-${row.instanceId}`}>
+          {row.prefabId}@{row.prefabVersion}
+        </code>
+      </button>
+      {!row.enabled && <em data-testid={`scene-hierarchy-disabled-${row.instanceId}`}>hidden</em>}
+      {row.derivation !== 'base' && (
+        <span className="badge" data-testid={`scene-hierarchy-derivation-${row.instanceId}`}>
+          {row.derivation}
+        </span>
+      )}
+      {row.componentTypes.map((componentType) => (
+        <span
+          key={componentType}
+          className="badge"
+          data-testid={`scene-hierarchy-component-${row.instanceId}-${componentType}`}
+        >
+          {componentType}
+        </span>
+      ))}
+      {row.overrideCount > 0 && (
+        <span className="badge" data-testid={`scene-hierarchy-override-${row.instanceId}`}>
+          {row.overrideCount} override{row.overrideCount === 1 ? '' : 's'}
+        </span>
+      )}
+      {row.bindingBadge && (
+        <span className="badge" data-testid={`scene-hierarchy-binding-${row.instanceId}`}>
+          {row.bindingBadge}
+        </span>
+      )}
+      {row.relationBadge && (
+        <span className="badge" data-testid={`scene-hierarchy-relation-${row.instanceId}`}>
+          {row.relationBadge}
+        </span>
+      )}
+      {row.activeCamera && (
+        <span className="badge" data-testid={`scene-hierarchy-active-camera-${row.instanceId}`}>
+          active camera
+        </span>
+      )}
+      {staged && <em className="is-staged">staged</em>}
+      {row.unresolved && (
+        <em data-testid={`scene-hierarchy-unresolved-${row.instanceId}`}>
+          {row.unresolvedReason}
+        </em>
+      )}
+
+      {expanded && (
+        <ul data-testid={`scene-hierarchy-nodes-${row.instanceId}`}>
+          {row.nodes.map((node) => (
+            <li key={node.nodeId} style={{ paddingLeft: `${node.depth * 12}px` }}>
+              <button
+                type="button"
+                className={selectedNode === node.nodeId ? 'is-active' : ''}
+                onClick={() => onSelectNode(node.nodeId)}
+                data-testid={`scene-hierarchy-node-${row.instanceId}-${node.nodeId}`}
+              >
+                {node.displayName} <code>{node.nodeId}</code>
+              </button>
+              {node.nested && (
+                <span
+                  className="badge"
+                  data-testid={`scene-hierarchy-node-nested-${row.instanceId}-${node.nodeId}`}
+                >
+                  from {node.sourcePrefabId}@{node.sourcePrefabVersion}
+                </span>
+              )}
+              {node.components.map((component) => (
+                <button
+                  key={component.componentId}
+                  type="button"
+                  className="badge"
+                  onClick={() => onSelectNode(node.nodeId, component.componentId)}
+                  data-testid={`scene-hierarchy-node-component-${row.instanceId}-${node.nodeId}-${component.componentType}`}
+                >
+                  {component.componentType}
+                  {component.overridden ? ' •' : ''}
+                </button>
+              ))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 
@@ -283,10 +499,6 @@ function applyLabel(outcome: NonNullable<SceneSessionHandle['lastApply']>): stri
   }
 }
 
-function kindIcon(kind: SceneEntityDefinition['kind']): string {
-  return { character: '🯅', prop: '▧', light: '☀', camera: '🎥' }[kind];
-}
-
 function SceneRootInspector({
   scene,
   handle,
@@ -297,114 +509,214 @@ function SceneRootInspector({
   return (
     <section data-testid="scene-root-inspector">
       <h2>Scene</h2>
-      <label>
-        Display name
-        <input
-          value={scene.displayName}
-          onChange={(event) =>
-            handle.dispatch({ type: 'scene.rename', displayName: event.target.value })
-          }
-        />
-      </label>
       <dl>
         <dt>Scene ID</dt>
         <dd>{scene.id}</dd>
-        <dt>Entities</dt>
-        <dd>{scene.entities.length}</dd>
+        <dt>GameObjects</dt>
+        <dd data-testid="scene-game-object-count">{(scene.gameObjects ?? []).length}</dd>
         <dt>Active camera</dt>
-        <dd>{scene.activeCameraEntityId ?? '—'}</dd>
+        <dd data-testid="scene-active-camera">{scene.activeCameraGameObjectId ?? '—'}</dd>
         <dt>Staged paths</dt>
         <dd>{handle.session.stagedPaths.length}</dd>
       </dl>
+      <p className="scene-inspector__note">
+        Select a GameObject to edit it. Renaming the Scene itself is not a Scene-composition
+        operation and is not offered here.
+      </p>
     </section>
   );
 }
 
-function EntityInspector({
-  entity,
-  handle,
-}: {
-  entity: SceneEntityDefinition;
-  handle: SceneSessionHandle;
-}): JSX.Element {
+/** The scope a value belongs to, as the label the Inspector shows (§7.1). */
+function ScopeLabel({ scope }: { scope: 'shared' | 'instance' | 'runtime' }): JSX.Element {
+  const text =
+    scope === 'shared' ? 'SHARED PREFAB' : scope === 'instance' ? 'INSTANCE ONLY' : 'RUNTIME ONLY';
   return (
-    <section data-testid={`scene-entity-inspector-${entity.kind}`}>
-      <h2>{entity.displayName}</h2>
+    <span className="badge" data-testid={`scene-scope-${scope}`}>
+      {text}
+    </span>
+  );
+}
+
+function GameObjectInspector({
+  instance,
+  row,
+  selection,
+  handle,
+  onSelect,
+}: {
+  instance: GameObjectInstanceDefinition;
+  row: SceneHierarchyRow;
+  selection: SceneSelection;
+  handle: SceneSessionHandle;
+  onSelect: (selection: SceneSelection) => void;
+}): JSX.Element {
+  const registry = browserPrefabRegistry();
+  const capabilities = handle.capabilities(instance.prefab);
+  const nodeId = selectedNodeId(selection);
+  const node = nodeId === null ? undefined : row.nodes.find((entry) => entry.nodeId === nodeId);
+  const versions = registry.versionsOf(instance.prefab.assetId);
+
+  const changePrefabSource = (reference: GameObjectPrefabReference): void => {
+    /*
+     * The confirmation states which overrides the change drops, computed by the
+     * *same* function the operation uses (§7.2). A dialog that listed a
+     * different set than the operation clears would be worse than no dialog:
+     * the human would sign off on one thing and get another.
+     */
+    const dropped = overridesClearedByPrefabSourceChange(
+      instance,
+      handle.capabilities(reference) as PrefabCapabilities | undefined,
+    );
+    const message =
+      dropped.length === 0
+        ? `Point "${instance.id}" at ${reference.assetId}@${reference.version}?`
+        : `Point "${instance.id}" at ${reference.assetId}@${reference.version}?\n\n` +
+          'Node and Component ids belong to the Prefab graph that declared them, so these ' +
+          `instance overrides cannot carry across and will be cleared:\n` +
+          dropped.map((entry) => `  • ${entry.nodeId} / ${entry.componentId}`).join('\n');
+    if (!globalThis.confirm(message)) return;
+    handle.dispatch({
+      type: 'scene.set_prefab_source',
+      gameObjectId: instance.id,
+      prefab: reference,
+    });
+  };
+
+  return (
+    <section data-testid="scene-game-object-inspector">
+      <h2>{instance.displayName}</h2>
       <dl>
-        <dt>Entity ID</dt>
-        <dd>{entity.id}</dd>
-        <dt>Kind</dt>
-        <dd>{entity.kind}</dd>
+        <dt>GameObject ID</dt>
+        <dd data-testid="scene-inspector-instance-id">{instance.id}</dd>
+        <dt>Prefab</dt>
+        <dd data-testid="scene-inspector-prefab">
+          {instance.prefab.assetId}@{instance.prefab.version} <ScopeLabel scope="shared" />
+        </dd>
+        <dt>Components</dt>
+        <dd data-testid="scene-inspector-components">
+          {row.componentTypes.join(', ') || '—'} <ScopeLabel scope="shared" />
+        </dd>
       </dl>
+
+      <p>
+        <Link
+          to={prefabEditorPath(
+            instance.prefab.assetId,
+            ...(node?.components[0] ? ([node.components[0].componentType] as const) : []),
+          )}
+          data-testid="scene-open-prefab"
+        >
+          Open “{instance.prefab.assetId}” in the Prefab Editor
+        </Link>
+      </p>
+
+      <h3>Instance</h3>
+      <label>
+        Name <ScopeLabel scope="instance" />
+        <input
+          value={instance.displayName}
+          onChange={(event) =>
+            handle.dispatch({
+              type: 'scene.rename_game_object',
+              gameObjectId: instance.id,
+              displayName: event.target.value,
+            })
+          }
+          data-testid="scene-inspector-rename"
+        />
+      </label>
 
       <label>
         <input
           type="checkbox"
-          checked={entity.enabled}
+          checked={instance.enabled}
           onChange={(event) =>
             handle.dispatch({
               type: 'scene.set_enabled',
-              entityId: entity.id,
+              gameObjectId: instance.id,
               enabled: event.target.checked,
             })
           }
+          data-testid="scene-inspector-enabled"
         />
-        Enabled
+        Enabled <ScopeLabel scope="instance" />
       </label>
 
-      <h3>Transform</h3>
+      <h3>
+        Transform <ScopeLabel scope="instance" />
+      </h3>
+      {/*
+        The *authored* transform, always — never where the simulation has moved
+        the object to (§7.1). A CharacterMotor-driven object's live placement is
+        RUNTIME ONLY and is deliberately not presented as a saved value; showing
+        it here would mean the next tick silently rewrote what the field says.
+      */}
       {(['x', 'y', 'z'] as const).map((axis) => (
         <label key={axis}>
           Position {axis}
           <input
             type="number"
             step="0.1"
-            value={entity.transform.position[axis]}
+            value={instance.transform.position[axis]}
             onChange={(event) =>
               handle.dispatch({
                 type: 'scene.set_transform',
-                entityId: entity.id,
+                gameObjectId: instance.id,
                 transform: {
-                  ...entity.transform,
-                  position: { ...entity.transform.position, [axis]: Number(event.target.value) },
+                  ...instance.transform,
+                  position: {
+                    ...instance.transform.position,
+                    [axis]: Number(event.target.value),
+                  },
                 },
               })
             }
+            data-testid={`scene-inspector-position-${axis}`}
           />
         </label>
       ))}
 
-      {entity.kind === 'character' && (
+      <h3>Prefab source</h3>
+      <select
+        value={instance.prefab.version}
+        onChange={(event) =>
+          changePrefabSource(registry.referenceTo(instance.prefab.assetId, event.target.value))
+        }
+        data-testid="scene-inspector-prefab-version"
+      >
+        {versions.map((version) => (
+          <option key={version} value={version}>
+            {instance.prefab.assetId}@{version}
+          </option>
+        ))}
+      </select>
+
+      {capabilities?.hasCharacterMotor && (
         <>
-          <h3>Source</h3>
-          <p>
-            {/*
-              Opening the source Character navigates to the Rig Editor. It does
-              not edit the Scene, and it does not inline a rig editor here —
-              shared rig mappings and animation graphs are not Scene data.
-            */}
-            <Link to={rigEditorPath(entity.characterId)}>
-              Open “{entity.characterId}” in the Rig Editor
-            </Link>
-          </p>
-          <h3>Controller</h3>
+          <h3>
+            Binding <ScopeLabel scope="instance" />
+          </h3>
           <select
-            value={entity.controller.kind}
+            value={instance.bindings.characterIntent?.kind ?? 'none'}
             onChange={(event) => {
               const kind = event.target.value;
               handle.dispatch({
-                type: 'scene.bind_controller',
-                entityId: entity.id,
-                controller:
+                type: 'scene.set_instance_binding',
+                gameObjectId: instance.id,
+                bindings:
                   kind === 'human'
-                    ? { kind: 'human', playerIndex: 0 }
+                    ? { characterIntent: { kind: 'human', playerIndex: 0 } }
                     : kind === 'ai'
-                      ? { kind: 'ai', channelId: 'default' }
-                      : { kind: 'none' },
+                      ? { characterIntent: { kind: 'ai', channelId: 'default' } }
+                      : kind === 'none'
+                        ? { characterIntent: { kind: 'none' } }
+                        : {},
               });
             }}
-            data-testid={`scene-controller-${entity.id}`}
+            data-testid="scene-inspector-binding"
           >
+            <option value="">Unbound</option>
             <option value="none">None</option>
             <option value="human">Human (player 0)</option>
             <option value="ai">AI (channel: default)</option>
@@ -413,49 +725,143 @@ function EntityInspector({
               need a picker rather than a bare option that would produce a
               dangling reference. Not built yet.
             */}
-            {entity.controller.kind === 'script' && <option value="script">Script</option>}
-            {entity.controller.kind === 'replay' && <option value="replay">Replay</option>}
+            {instance.bindings.characterIntent?.kind === 'script' && (
+              <option value="script">Script</option>
+            )}
+            {instance.bindings.characterIntent?.kind === 'replay' && (
+              <option value="replay">Replay</option>
+            )}
           </select>
         </>
       )}
 
-      {entity.kind === 'prop' && (
+      {capabilities?.hasCamera && (
         <>
-          <h3>Asset</h3>
-          <code>{JSON.stringify(entity.asset)}</code>
-        </>
-      )}
-
-      {entity.kind === 'light' && (
-        <>
-          <h3>Light</h3>
-          <dl>
-            <dt>Type</dt>
-            <dd>{entity.lightType}</dd>
-            <dt>Intensity</dt>
-            <dd>{entity.intensity}</dd>
-            <dt>Colour</dt>
-            <dd>{entity.color}</dd>
-          </dl>
-        </>
-      )}
-
-      {entity.kind === 'camera' && (
-        <>
-          <h3>Camera</h3>
-          <dl>
-            <dt>Projection</dt>
-            <dd>{entity.projection}</dd>
-            <dt>Target</dt>
-            <dd>{entity.targetEntityId ?? '—'}</dd>
-          </dl>
+          <h3>
+            Camera <ScopeLabel scope="instance" />
+          </h3>
+          <select
+            value={instance.relations.cameraTargetGameObjectId ?? ''}
+            onChange={(event) =>
+              handle.dispatch({
+                type: 'scene.set_relation',
+                gameObjectId: instance.id,
+                relations:
+                  event.target.value === ''
+                    ? {}
+                    : { cameraTargetGameObjectId: event.target.value },
+              })
+            }
+            data-testid="scene-inspector-relation"
+          >
+            <option value="">No target</option>
+            {(handle.scene.gameObjects ?? [])
+              .filter((candidate) => candidate.id !== instance.id)
+              .map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.displayName}
+                </option>
+              ))}
+          </select>
           <button
             type="button"
             onClick={() =>
-              handle.dispatch({ type: 'scene.set_active_camera', entityId: entity.id })
+              handle.dispatch({ type: 'scene.set_active_camera', gameObjectId: instance.id })
             }
+            data-testid="scene-inspector-set-active-camera"
           >
             Set active camera
+          </button>
+        </>
+      )}
+
+      {node && (
+        <section data-testid="scene-inspector-node">
+          <h3>
+            Node “{node.displayName}” <ScopeLabel scope="shared" />
+          </h3>
+          <p data-testid="scene-inspector-node-id">
+            <code>{node.nodeId}</code> from {node.sourcePrefabId}@{node.sourcePrefabVersion}
+          </p>
+          {/*
+            A child node is inspected here and edited in the Prefab. It is not a
+            Scene instance, and no operation on this page names it (§6.2).
+          */}
+          <p className="scene-inspector__note">
+            This is a node of the shared Prefab, shown for inspection. Scene operations address the
+            root instance “{instance.id}”.
+          </p>
+          <ul>
+            {node.components.map((component) => (
+              <li key={component.componentId}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSelect({
+                      kind: 'game-object',
+                      sceneId: handle.scene.id,
+                      selection: {
+                        instanceId: instance.id,
+                        nodeId: node.nodeId,
+                        componentId: component.componentId,
+                      },
+                    })
+                  }
+                  data-testid={`scene-inspector-node-component-${component.componentType}`}
+                >
+                  {component.componentType}
+                </button>
+                {component.overridden ? (
+                  <>
+                    <ScopeLabel scope="instance" />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handle.dispatch({
+                          type: 'scene.clear_component_override',
+                          gameObjectId: instance.id,
+                          nodeId: node.nodeId,
+                          componentId: component.componentId,
+                        })
+                      }
+                      data-testid={`scene-inspector-clear-override-${component.componentType}`}
+                    >
+                      Clear override
+                    </button>
+                  </>
+                ) : (
+                  <ScopeLabel scope="shared" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {instance.componentOverrides.length > 0 && (
+        <>
+          <h3>
+            Instance overrides <ScopeLabel scope="instance" />
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              // One operation per override rather than a single "revert all"
+              // command: the engine's thirteen operations are the whole
+              // contract, and a fourteenth that only the UI could produce would
+              // be a change no machine could make.
+              for (const override of instance.componentOverrides) {
+                handle.dispatch({
+                  type: 'scene.clear_component_override',
+                  gameObjectId: instance.id,
+                  nodeId: override.nodeId,
+                  componentId: override.componentId,
+                });
+              }
+            }}
+            data-testid="scene-inspector-revert-overrides"
+          >
+            Revert all instance overrides ({instance.componentOverrides.length})
           </button>
         </>
       )}
@@ -463,114 +869,144 @@ function EntityInspector({
       <h3>Actions</h3>
       <button
         type="button"
-        onClick={() => handle.dispatch({ type: 'scene.duplicate_entity', entityId: entity.id })}
+        onClick={() =>
+          handle.dispatch({ type: 'scene.duplicate_game_object', gameObjectId: instance.id })
+        }
+        data-testid="scene-inspector-duplicate"
       >
         Duplicate
       </button>
       <button
         type="button"
-        onClick={() => handle.dispatch({ type: 'scene.delete_entity', entityId: entity.id })}
-        data-testid={`scene-delete-${entity.id}`}
+        onClick={() =>
+          handle.dispatch({ type: 'scene.delete_game_object', gameObjectId: instance.id })
+        }
+        data-testid={`scene-delete-${instance.id}`}
       >
         Delete
       </button>
+      <ReorderControls instance={instance} handle={handle} />
     </section>
+  );
+}
+
+function ReorderControls({
+  instance,
+  handle,
+}: {
+  instance: GameObjectInstanceDefinition;
+  handle: SceneSessionHandle;
+}): JSX.Element {
+  const gameObjects = handle.scene.gameObjects ?? [];
+  const index = gameObjects.findIndex((entry) => entry.id === instance.id);
+  const move = (toIndex: number): void => {
+    handle.dispatch({
+      type: 'scene.reorder_game_object',
+      gameObjectId: instance.id,
+      toIndex,
+    });
+  };
+  return (
+    <>
+      <button
+        type="button"
+        disabled={index <= 0}
+        onClick={() => move(index - 1)}
+        data-testid="scene-inspector-reorder-up"
+        title="Declaration order is tick and draw order. Relations are id-based and do not move."
+      >
+        Move earlier
+      </button>
+      <button
+        type="button"
+        disabled={index === -1 || index >= gameObjects.length - 1}
+        onClick={() => move(index + 1)}
+        data-testid="scene-inspector-reorder-down"
+      >
+        Move later
+      </button>
+    </>
   );
 }
 
 /**
  * The Asset Panel.
  *
- * Placement is by button rather than by drag for now — the typed
- * `scene.place_asset` operation is the same either way, which is the point of
- * §4.7: when the drag lands in Phase 8 it dispatches this identical command
- * rather than a second code path.
+ * It places **Prefabs**, exactly (§11). The categories are filters over
+ * Components — "Characters" means Animator + CharacterMotor — and they are not
+ * canonical object kinds: a Prefab moves between categories by gaining a
+ * Component, not by being reclassified.
  *
- * Animation clips, behaviours, tuning profiles and rigs are deliberately absent
- * (§12.1): they are not placeable entities, and offering them would invite a
- * scene that references a clip as if it were a prop.
+ * Placement is by button or by drag, and both dispatch the identical
+ * `scene.place_prefab` command carrying the exact id, version and content hash
+ * (§8.2). Resolving "latest" at the drop site would place whatever had been
+ * published since the panel rendered.
  */
 function AssetPanel({ handle }: { handle: SceneSessionHandle }): JSX.Element {
-  const project = useChamber((state) => state.canonicalProject);
+  const registry = browserPrefabRegistry();
+  const scenes = useChamber((state) => state.canonicalProject.scenes);
+  const [filter, setFilter] = useState<PrefabFilterId>('all');
 
-  const place = (displayName: string, asset: PlaceableAsset, baseId: string): void => {
-    const taken = new Set(handle.scene.entities.map((entity) => entity.id));
-    let entityId = baseId;
-    for (let index = 2; taken.has(entityId); index += 1) entityId = `${baseId}-${index}`;
-    handle.dispatch({ type: 'scene.place_asset', entityId, displayName, asset });
+  const rows = useMemo(() => prefabListRows({ registry, scenes }), [registry, scenes]);
+  const visible = useMemo(
+    () => filterPrefabRows(rows, filter).filter((row) => !row.abstract && !row.unresolved),
+    [rows, filter],
+  );
+
+  const place = (reference: GameObjectPrefabReference, displayName: string): void => {
+    handle.dispatch({
+      type: 'scene.place_prefab',
+      gameObjectId: placementGameObjectId(reference.assetId, handle.scene.gameObjects ?? []),
+      displayName,
+      prefab: reference,
+    });
   };
 
   return (
     <section className="scene-assets" data-testid="scene-asset-panel">
-      <h2>Assets</h2>
-      <h3>Characters</h3>
+      <h2>Prefabs</h2>
+      <div className="scene-assets__filters">
+        {PREFAB_FILTERS.filter((entry) => entry !== 'abstract').map((entry) => (
+          <button
+            key={entry}
+            type="button"
+            className={filter === entry ? 'is-active' : ''}
+            onClick={() => setFilter(entry)}
+            data-testid={`scene-asset-filter-${entry}`}
+          >
+            {PREFAB_FILTER_LABELS[entry]}
+          </button>
+        ))}
+      </div>
       <ul>
-        {project.characters.map((character) => (
-          <li key={character.id}>
+        {visible.map((row) => (
+          <li key={`${row.prefabId}@${row.version}`}>
             <button
               type="button"
               draggable
               onDragStart={(event) =>
                 writeDragPayload(event.dataTransfer, {
-                  kind: 'character',
-                  id: character.id,
-                  displayName: character.displayName,
+                  kind: 'prefab',
+                  prefab: row.reference,
+                  displayName: row.displayName,
                 })
               }
-              onClick={() =>
-                place(character.displayName, { kind: 'character', characterId: character.id }, character.id)
-              }
-              data-testid={`scene-place-character-${character.id}`}
+              onClick={() => place(row.reference, row.displayName)}
+              data-testid={`scene-place-prefab-${row.prefabId}`}
               title="Drag into the viewport to place it where you point, or click to place it at the origin"
             >
-              Place {character.displayName}
+              Place {row.displayName}
             </button>
+            <code>
+              {row.prefabId}@{row.version}
+            </code>
           </li>
         ))}
-      </ul>
-      <h3>Create</h3>
-      <ul>
-        {(['directional', 'point', 'spot'] as const).map((lightType) => (
-          <li key={lightType}>
-            <button
-              type="button"
-              draggable
-              onDragStart={(event) =>
-                writeDragPayload(event.dataTransfer, {
-                  kind: 'light',
-                  id: lightType,
-                  displayName: `${lightType} light`,
-                })
-              }
-              onClick={() => place(`${lightType} light`, { kind: 'light', lightType }, `${lightType}-light`)}
-              data-testid={`scene-place-light-${lightType}`}
-            >
-              {lightType} light
-            </button>
-          </li>
-        ))}
-        <li>
-          <button
-            type="button"
-            draggable
-            onDragStart={(event) =>
-              writeDragPayload(event.dataTransfer, {
-                kind: 'camera',
-                id: 'camera',
-                displayName: 'Camera',
-              })
-            }
-            onClick={() => place('Camera', { kind: 'camera' }, 'camera')}
-            data-testid="scene-place-camera"
-          >
-            Camera
-          </button>
-        </li>
+        {visible.length === 0 && <li data-testid="scene-asset-panel-empty">No Prefabs match.</li>}
       </ul>
       <p className="scene-assets__note">
-        Drag an entry into the viewport to place it where you point, or click to place it at the
-        origin. Both dispatch the same <code>scene.place_asset</code> command. Browsing repository
-        prop and model assets is still to come.
+        Categories are filters over Components, not object kinds. Both placing gestures dispatch the
+        same <code>scene.place_prefab</code> command with the exact Prefab version.
       </p>
     </section>
   );

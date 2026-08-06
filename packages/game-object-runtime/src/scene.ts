@@ -51,9 +51,13 @@ export class RuntimeScene {
 
   constructor(private readonly options: InstantiateSceneOptions) {
     this.id = options.scene.id;
+    this.build();
+  }
+
+  private build(): void {
     const resolved = resolveSceneGameObjects({
-      prefabRegistry: options.services.prefabRegistry,
-      scene: options.scene,
+      prefabRegistry: this.options.services.prefabRegistry,
+      scene: this.options.scene,
     });
     this.issues.push(...resolved.issues);
     for (const definition of resolved.definitions) {
@@ -61,15 +65,37 @@ export class RuntimeScene {
         definition.gameObjectId,
         instantiateGameObject({
           definition,
-          services: options.services,
-          project: options.project,
-          ...(options.terrain ? { terrain: options.terrain } : {}),
-          tracks: options.scene.intentTracks,
-          replays: options.replays ?? [],
-          ...(options.componentRuntimes ? { componentRuntimes: options.componentRuntimes } : {}),
+          services: this.options.services,
+          project: this.options.project,
+          ...(this.options.terrain ? { terrain: this.options.terrain } : {}),
+          tracks: this.options.scene.intentTracks,
+          replays: this.options.replays ?? [],
+          ...(this.options.componentRuntimes
+            ? { componentRuntimes: this.options.componentRuntimes }
+            : {}),
         }),
       );
     }
+  }
+
+  /**
+   * Rebuilds every object at tick 0 from the same canonical Scene.
+   *
+   * A full rebuild rather than a pass that walks the tree setting fields back to
+   * zero. Runtime state lives in enough places — a `Simulation`'s private
+   * integrator, an intent source's cursor, an Animator's elapsed seconds — that
+   * a hand-written reset would be a second, quietly divergent constructor, and
+   * the first field somebody forgot would make "Reset" leave the scene subtly
+   * ahead of where it started.
+   *
+   * The canonical Scene is untouched, exactly as `despawn` leaves it: resetting
+   * a preview must not author a document change.
+   */
+  reset(): void {
+    this.dispose();
+    this.issues.length = 0;
+    this.tick = 0;
+    this.build();
   }
 
   get gameObjects(): RuntimeGameObject[] {

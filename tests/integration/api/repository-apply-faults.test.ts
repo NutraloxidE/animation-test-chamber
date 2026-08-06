@@ -45,6 +45,11 @@ beforeEach(() => {
   cpSync(join(SOURCE_REPO, 'assets/animation'), join(repoRoot, 'assets/animation'), {
     recursive: true,
   });
+  // The endpoint resolves Prefab Components to validate an operation, so a
+  // checkout without them is one where every Scene edit is refused as unknown.
+  cpSync(join(SOURCE_REPO, 'assets/prefabs'), join(repoRoot, 'assets/prefabs'), {
+    recursive: true,
+  });
 });
 
 afterEach(() => {
@@ -130,23 +135,43 @@ function uncertifiableRollbackFs(): FilesystemOps {
   });
 }
 
+/**
+ * One ordinary, valid Apply — renaming the first GameObject.
+ *
+ * Every fault below is injected into the *transaction*, so the operation itself
+ * has to be uninteresting: a request that could fail validation would make
+ * "nothing was written" ambiguous between the fault under test and a refusal
+ * that never reached the filesystem.
+ */
 async function applyRename(
   app: ReturnType<typeof createApp>['app'],
   displayName: string,
   project = projectOf(),
 ) {
+  const scene = project.scenes[0]!;
   const response = await app.request('/api/repository/apply', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      target: { kind: 'scene', id: project.scenes[0]!.id },
+      target: { kind: 'scene', id: scene.id },
       expected: { projectRevisionId: project.revisionId },
-      operations: [{ type: 'scene.rename', displayName }],
+      operations: [
+        {
+          type: 'scene.rename_game_object',
+          gameObjectId: (scene.gameObjects ?? [])[0]!.id,
+          displayName,
+        },
+      ],
       actor: 'human',
-      intent: `rename the scene to ${displayName}`,
+      intent: `rename the first GameObject to ${displayName}`,
     }),
   });
   return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+}
+
+/** The first GameObject's display name, as persisted. */
+function firstGameObjectName(): string {
+  return (projectOf().scenes[0]!.gameObjects ?? [])[0]!.displayName;
 }
 
 describe('a committed Apply', () => {
@@ -161,7 +186,7 @@ describe('a committed Apply', () => {
 
     // The project holds exactly the proposed document the response described.
     expect(projectOf()).toEqual(body.project);
-    expect(projectOf().scenes[0]!.displayName).toBe('Committed scene');
+    expect(firstGameObjectName()).toBe('Committed scene');
     expect(projectOf().revisionId).not.toBe(before.revisionId);
 
     // The report exists, at the path the response named, describing this Apply.
@@ -459,7 +484,7 @@ describe('concurrent and stale Apply requests', () => {
     expect(second.status).toBe(409);
     expect(second.body.status).toBe('conflict');
     // The first writer's work survives intact.
-    expect(projectOf().scenes[0]!.displayName).toBe('First writer');
+    expect(firstGameObjectName()).toBe('First writer');
     expect(reportFiles()).toHaveLength(1);
   });
 
@@ -483,7 +508,7 @@ describe('concurrent and stale Apply requests', () => {
 describe('report create-target collision', () => {
   it('accepts a second Apply that returns to a previously written revision', async () => {
     const { app } = serverWith();
-    const original = projectOf().scenes[0]!.displayName;
+    const original = firstGameObjectName();
 
     expect((await applyRename(app, 'B')).status).toBe(200);
     const revisionB = projectOf().revisionId;
@@ -573,6 +598,6 @@ describe('a later process over an abandoned transaction', () => {
     // unwritable would be its own outage.
     const recovered = await applyRename(restarted, 'After recovery', projectOf());
     expect(recovered.status).toBe(200);
-    expect(projectOf().scenes[0]!.displayName).toBe('After recovery');
+    expect(firstGameObjectName()).toBe('After recovery');
   });
 });

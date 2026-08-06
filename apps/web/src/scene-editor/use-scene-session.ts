@@ -14,23 +14,29 @@
  * problem.
  */
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ProjectDefinition, SceneDefinition } from '@atc/schema';
-import { validateSceneReferences } from '@atc/schema';
+import type { GameObjectSceneOperation, ProjectDefinition, SceneDefinition } from '@atc/schema';
+import { validateSceneGameObjectReferences } from '@atc/schema';
+import { prefabCapabilityLookup, type PrefabCapabilities } from '@atc/prefab-runtime';
 import {
   DocumentEditSession,
-  applySceneOperation,
+  applySceneGameObjectOperation,
+  exactPrefabReferenceKey,
   type OperationResult,
-  type SceneOperation,
 } from '@atc/editor-core';
 import { applyToRepository, type ApplyOutcome } from '../editor/apply-client.ts';
+import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { useChamber } from '../store.ts';
 
 export interface SceneSessionHandle {
-  session: DocumentEditSession<SceneDefinition, SceneOperation>;
+  session: DocumentEditSession<SceneDefinition, GameObjectSceneOperation>;
   /** The staged-or-previewed scene the UI renders from. Never the repository one. */
   scene: SceneDefinition;
-  dispatch: (operation: SceneOperation) => OperationResult<SceneDefinition>;
+  dispatch: (operation: GameObjectSceneOperation) => OperationResult<SceneDefinition>;
   lastIssues: OperationResult<SceneDefinition>['issues'];
+  /** What a Prefab this Scene stands on can do. Read by the Inspector's refusals. */
+  capabilities: (reference: Parameters<typeof exactPrefabReferenceKey>[0]) =>
+    | PrefabCapabilities
+    | undefined;
   stageAll: () => void;
   revert: () => void;
   undo: () => void;
@@ -52,9 +58,30 @@ export function useSceneSession(
   const [lastApply, setLastApply] = useState<ApplyOutcome | null>(null);
   const [applying, setApplying] = useState(false);
   const adoptAppliedProject = useChamber((state) => state.adoptAppliedProject);
-  const characterIds = useMemo(
-    () => new Set(project.characters.map((entry) => entry.id)),
-    [project],
+
+  /*
+   * The operation context, built from the browser's Prefab registry.
+   *
+   * The same two things the server builds for itself (§9): the exact-reference
+   * set an operation may name, and the resolved-Component lookup its refusals
+   * are made against. Building it here as well is not duplication of the
+   * *rule* — the rule lives in `applySceneGameObjectOperation` — it is what
+   * lets the editor refuse at the control the human just moved rather than
+   * several seconds later at Apply.
+   */
+  const prefabRegistry = browserPrefabRegistry();
+  const operationContext = useMemo(
+    () => ({
+      knownPrefabKeys: new Set(
+        prefabRegistry
+          .all()
+          .map((stored) =>
+            exactPrefabReferenceKey(prefabRegistry.referenceTo(stored.id, stored.version)),
+          ),
+      ),
+      capabilities: prefabCapabilityLookup(prefabRegistry),
+    }),
+    [prefabRegistry],
   );
 
   /*
@@ -65,16 +92,26 @@ export function useSceneSession(
    */
   const key = `${scene.id}:${project.revisionId}`;
   const keyRef = useRef(key);
-  const sessionRef = useRef<DocumentEditSession<SceneDefinition, SceneOperation> | null>(null);
+  const sessionRef = useRef<DocumentEditSession<
+    SceneDefinition,
+    GameObjectSceneOperation
+  > | null>(null);
 
   if (sessionRef.current === null || keyRef.current !== key) {
     keyRef.current = key;
-    sessionRef.current = new DocumentEditSession<SceneDefinition, SceneOperation>({
+    sessionRef.current = new DocumentEditSession<SceneDefinition, GameObjectSceneOperation>({
       target: { kind: 'scene', id: scene.id },
       baseRevisionId: project.revisionId,
       document: scene,
-      apply: (document, operation) => applySceneOperation(document, operation, project),
-      validate: (document) => validateSceneReferences(document, characterIds),
+      apply: (document, operation) =>
+        applySceneGameObjectOperation(document, operation, operationContext),
+      /*
+       * The GameObject view is what production validates. The entity mirror is
+       * passed through untouched by every operation, so validating it here
+       * would let a mirror that went stale under some earlier migration refuse
+       * an edit that never looked at it (DECISION 0025).
+       */
+      validate: (document) => validateSceneGameObjectReferences(document),
     });
   }
   const session = sessionRef.current;
@@ -82,7 +119,7 @@ export function useSceneSession(
   const bump = useCallback(() => setRevision((value) => value + 1), []);
 
   const dispatch = useCallback(
-    (operation: SceneOperation) => {
+    (operation: GameObjectSceneOperation) => {
       const result = session.dispatch(operation);
       // Refusals are shown, not thrown: the human needs the reason next to the
       // control they just moved.
@@ -98,6 +135,7 @@ export function useSceneSession(
     scene: session.previewDocument,
     dispatch,
     lastIssues,
+    capabilities: operationContext.capabilities,
     stageAll: useCallback(() => {
       session.stageAll();
       bump();

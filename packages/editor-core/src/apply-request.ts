@@ -15,7 +15,7 @@
  */
 import type { RepositoryApplyRequest, ValidationIssue } from '@atc/schema';
 import { validateAgainst } from '@atc/schema';
-import { parseSceneOperation } from './operations.ts';
+import { parseSceneGameObjectOperation } from './game-object-operations.ts';
 
 export type ParsedApplyRequest =
   | { ok: true; request: RepositoryApplyRequest }
@@ -69,10 +69,14 @@ export function parseRepositoryApplyRequest(value: unknown): ParsedApplyRequest 
 
   /*
    * Operations are parsed individually first, so an unrecognised operation is
-   * reported by name rather than as an eleven-member union dump. This is a
+   * reported by name rather than as a thirteen-member union dump. This is a
    * strictly narrower check than the request schema's — every operation the
    * loop accepts, the schema accepts too — so it cannot let anything through
    * that the full validation below would have refused.
+   *
+   * Since the Scene cutover these are *GameObject* operations. A client still
+   * sending `scene.place_asset` or `scene.delete_entity` is told so by name,
+   * which is the one thing a union dump could never have told it.
    */
   const operations = body.operations;
   if (!Array.isArray(operations)) {
@@ -82,7 +86,7 @@ export function parseRepositoryApplyRequest(value: unknown): ParsedApplyRequest 
     };
   }
   for (const [position, candidate] of operations.entries()) {
-    const parsed = parseSceneOperation(candidate);
+    const parsed = parseSceneGameObjectOperation(candidate);
     if (parsed.ok) continue;
     return {
       ok: false,

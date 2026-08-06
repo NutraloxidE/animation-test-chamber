@@ -21,11 +21,13 @@ import { useGLTF } from '@react-three/drei';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useMemo } from 'react';
 import type { RuntimeGameObject } from '@atc/game-object-runtime';
+import { AnimatedRepositoryModel } from './AnimatedRepositoryModel.tsx';
 import {
   drawableNodes,
   projectGameObject,
   type GameObjectRenderNode,
   type GameObjectRenderProjection,
+  type RenderProjectionIssue,
 } from './render-projection.ts';
 
 export interface GameObjectRendererProps {
@@ -34,6 +36,16 @@ export interface GameObjectRendererProps {
   projection?: GameObjectRenderProjection;
   selectedGameObjectId?: string | null;
   onSelect?: (gameObjectId: string) => void;
+  /**
+   * Reports a problem only the browser can see (§10.5).
+   *
+   * The projection catches everything knowable from documents alone — a state
+   * whose motion set binds no take. What it cannot know is whether the GLTF on
+   * disk actually contains the take the motion set named, because that needs
+   * the file. Those arrive here, and the Scene Editor shows them beside the
+   * resolver's own issues rather than leaving a mesh silently frozen.
+   */
+  onIssue?: (issue: RenderProjectionIssue) => void;
 }
 
 /**
@@ -135,10 +147,12 @@ function RenderedNode({
   node,
   selected,
   onSelect,
+  onIssue,
 }: {
   node: GameObjectRenderNode;
   selected: boolean;
   onSelect?: (gameObjectId: string) => void;
+  onIssue?: (issue: RenderProjectionIssue) => void;
 }) {
   const { position, rotation, scale } = node.worldTransform;
   return (
@@ -158,7 +172,27 @@ function RenderedNode({
           : undefined
       }
     >
-      {node.model?.binding.kind === 'repository-model' && (
+      {/*
+        An imported model with an Animator is drawn by the animation adapter,
+        and one without is drawn as static geometry. The branch is on the
+        *Components present*, exactly like every other decision in this file —
+        not on a kind, and not on whether the Prefab id looks like a character.
+      */}
+      {node.model?.binding.kind === 'repository-model' && node.animator && (
+        <Suspense fallback={null}>
+          <AnimatedRepositoryModel
+            assetPath={node.model.binding.assetPath}
+            castShadow={node.model.castShadow}
+            receiveShadow={node.model.receiveShadow}
+            animator={node.animator}
+            model={node.model}
+            gameObjectId={node.gameObjectId}
+            displayName={node.displayName}
+            {...(onIssue ? { onIssue } : {})}
+          />
+        </Suspense>
+      )}
+      {node.model?.binding.kind === 'repository-model' && !node.animator && (
         <Suspense fallback={null}>
           <RepositoryModel
             assetPath={node.model.binding.assetPath}
@@ -167,6 +201,13 @@ function RenderedNode({
           />
         </Suspense>
       )}
+      {/*
+        A procedural body follows the runtime transform and has no skeletal
+        clip to play — stated rather than hidden (§10.7). An Animator on such a
+        node still resolves and still advances; it simply has no skinned mesh
+        to pose, and marking this as evidence of skeletal playback would be a
+        lie the harness could not catch.
+      */}
       {node.model?.binding.kind === 'procedural-humanoid' && (
         <ProceduralModel presetId={node.model.binding.presetId} selected={selected} />
       )}
@@ -188,6 +229,7 @@ export function GameObjectRenderer({
   projection,
   selectedGameObjectId,
   onSelect,
+  onIssue,
 }: GameObjectRendererProps): JSX.Element | null {
   const resolved = projection ?? (gameObject ? projectGameObject(gameObject) : undefined);
   if (!resolved) return null;
@@ -197,8 +239,19 @@ export function GameObjectRenderer({
         <RenderedNode
           key={node.gameObjectId}
           node={node}
-          selected={node.gameObjectId === selectedGameObjectId}
+          /*
+           * A child node counts as selected when its own instance is. Comparing
+           * only the exact id would leave the whole body of a selected
+           * character unhighlighted except for whichever node was clicked.
+           */
+          selected={
+            selectedGameObjectId !== null &&
+            selectedGameObjectId !== undefined &&
+            (node.gameObjectId === selectedGameObjectId ||
+              node.gameObjectId.startsWith(`${selectedGameObjectId}/`))
+          }
           {...(onSelect ? { onSelect } : {})}
+          {...(onIssue ? { onIssue } : {})}
         />
       ))}
     </>

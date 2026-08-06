@@ -11,6 +11,7 @@
  */
 import type {
   AnimatorComponent,
+  AssetIssue,
   CameraComponent,
   CapsuleColliderComponent,
   CharacterMotorComponent,
@@ -18,15 +19,31 @@ import type {
   GameObjectComponentDefinition,
   LightComponent,
   ModelRendererComponent,
+  ProjectDefinition,
   RenderableModelBinding,
 } from '@atc/schema';
+import type { ResolvedAnimationBundle } from '@atc/animation-asset-runtime';
+import {
+  resolveAnimatorPlayback,
+  type AnimatorPlaybackPlan,
+} from './animator-playback.ts';
 import type { GameObjectRuntimeServices } from './services.ts';
 
-/** The context a factory is handed. Never the Scene, never the document. */
+/**
+ * The context a factory is handed. Never the Scene, never the document.
+ *
+ * `project` is the exception that proves the rule: it is project-level *policy*
+ * — movement, root motion, terrain, camera, equipment — that the animation
+ * resolver reads, and an Animator that could not see it would have to resolve
+ * its clips against a project it invented. It is read, never written; a
+ * component that mutated it would be a tick writing into a document.
+ */
 export interface ComponentRuntimeContext {
   gameObjectId: string;
+  displayName: string;
   nodeId: string;
   nodePath: string;
+  project: ProjectDefinition;
   services: GameObjectRuntimeServices;
 }
 
@@ -101,25 +118,81 @@ export class ModelRendererRuntime implements RuntimeComponent {
 }
 
 /**
- * The Animator's *authored* half.
+ * The Animator.
  *
- * The actual animation engine is not duplicated here (§9.5): when the object
- * also carries a `character-motor`, `CharacterGameObjectRuntime` composes the
- * existing `ControllableCharacter` and this runtime just carries the assignment
- * the renderer and the Inspector need to name what is playing.
+ * The animation *engine* is still not duplicated here (§9.5). When the object
+ * also carries a `character-motor`, the existing `ControllableCharacter` owns
+ * the state machine and this runtime contributes the resolved playback plan the
+ * renderer binds clips through. When it does not — an animated prop, a windmill,
+ * a looping banner — nothing else is driving the graph, so this runtime holds
+ * the one piece of state such an object needs: how far into its clip it is.
+ *
+ * That time advances from `deltaSeconds`, which arrives from
+ * `GameObjectRuntimeServices.clock.fixedDeltaSeconds` (§4.4). It is deliberately
+ * *not* read from a wall clock: the rest of the simulation is fixed-step, and an
+ * animation that advanced by real elapsed time would make two runs of the same
+ * replay show different poses at the same tick.
  */
 export class AnimatorRuntime implements RuntimeComponent {
   readonly componentType = 'animator';
   readonly componentId: string;
   readonly assignment: AnimatorComponent['assignment'];
   readonly defaultContextKey: string | undefined;
+  /** What this Animator plays, per graph state (§10.4). Resolved once. */
+  readonly playback: AnimatorPlaybackPlan;
+  /** The shared half of the resolution, so the object beside it resolves once. */
+  readonly bundle: ResolvedAnimationBundle;
+  /** Resolution problems, surfaced rather than thrown. */
+  readonly issues: AssetIssue[];
   enabled: boolean;
 
-  constructor(definition: AnimatorComponent) {
+  /** Seconds of animation this Animator has advanced. Per instance, never shared. */
+  private elapsed = 0;
+
+  constructor(definition: AnimatorComponent, context: ComponentRuntimeContext) {
     this.componentId = definition.componentId;
     this.assignment = definition.assignment;
     this.defaultContextKey = definition.defaultContextKey;
     this.enabled = definition.enabled;
+
+    const resolved = resolveAnimatorPlayback({
+      registry: context.services.animationRegistry,
+      project: context.project,
+      assignment: definition.assignment,
+      defaultContextKey: definition.defaultContextKey,
+      identity: {
+        gameObjectId: context.gameObjectId,
+        displayName: context.displayName,
+        componentId: definition.componentId,
+      },
+    });
+    this.playback = resolved.plan;
+    this.bundle = resolved.bundle;
+    this.issues = resolved.issues;
+  }
+
+  /** Seconds of animation elapsed. Zero at instantiation and after a reset. */
+  get animationSeconds(): number {
+    return this.elapsed;
+  }
+
+  /**
+   * Where in its clip an Animator-only object currently is, in [0, 1).
+   *
+   * Undefined when the plan binds no clip to the state, which is the honest
+   * answer: there is nothing to be part-way through. The renderer surfaces that
+   * as an issue rather than playing something else (§10.5).
+   */
+  normalizedTimeFor(stateId: string): number | undefined {
+    const duration = this.playback.durationByStateId[stateId];
+    if (duration === undefined || duration <= 0) return undefined;
+    const looping = this.playback.loopByStateId[stateId] ?? true;
+    const raw = this.elapsed / duration;
+    return looping ? raw - Math.floor(raw) : Math.min(raw, 1);
+  }
+
+  step(context: RuntimeComponentStepContext): void {
+    this.elapsed += context.deltaSeconds;
   }
 }
 
@@ -269,7 +342,8 @@ export function defaultComponentRuntimeRegistry(): ComponentRuntimeRegistry {
     },
     {
       componentType: 'animator',
-      create: (definition) => new AnimatorRuntime(definition as AnimatorComponent),
+      create: (definition, context) =>
+        new AnimatorRuntime(definition as AnimatorComponent, context),
     },
     {
       componentType: 'character-motor',

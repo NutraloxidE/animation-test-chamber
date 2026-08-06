@@ -10,15 +10,17 @@
   "dependencies": {
     "@atc/acquisition-core": "workspace:*",
     "@atc/ai-adapter": "workspace:*",
+    "@atc/animation-asset-runtime": "workspace:*",
     "@atc/editor-core": "workspace:*",
+    "@atc/game-object-runtime": "workspace:*",
     "@atc/git-adapter": "workspace:*",
+    "@atc/prefab-runtime": "workspace:*",
     "@atc/replay-runtime": "workspace:*",
     "@atc/runtime-core": "workspace:*",
     "@atc/schema": "workspace:*",
     "@atc/unity-export": "workspace:*",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.15",
-    "@atc/animation-asset-runtime": "workspace:*"
+    "hono": "^4.6.15"
   },
   "devDependencies": {
     "tsx": "^4.19.2"

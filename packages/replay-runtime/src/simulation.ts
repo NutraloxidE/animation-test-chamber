@@ -1,3 +1,4 @@
+import { DEFAULT_MOTION_CONTEXT_KEY } from '@atc/schema';
 import type { AnimationClipDefinition, ButtonAction, ResolvedProject, SemanticEventKind, StateDefinition, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
@@ -134,7 +135,7 @@ export class Simulation {
 
   constructor(init: SimulationInit) {
     this.baseProject = init.project;
-    this.weaponModeId = init.weaponModeId ?? 'unarmed';
+    this.weaponModeId = init.weaponModeId ?? DEFAULT_MOTION_CONTEXT_KEY;
     this.project = resolveWeaponMode(this.baseProject, this.weaponModeId);
     this.equipped = { ...defaultEquipped(this.baseProject), ...init.equipped };
     this.terrain = init.terrain;

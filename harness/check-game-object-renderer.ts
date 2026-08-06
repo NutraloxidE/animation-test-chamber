@@ -54,14 +54,40 @@ function terrain() {
  * assignment naming animation assets that do not exist would resolve to issues
  * and the stage would be asserting the failure path by accident.
  */
-function canonicalAnimatorComponent(): GameObjectComponentDefinition {
+function canonicalAnimatorComponent(prefabId = 'navigator'): GameObjectComponentDefinition {
   const registry = loadPrefabRegistry();
-  const resolved = resolveGameObjectPrefab(registry, registry.referenceTo('navigator', '1.0.0'));
+  const resolved = resolveGameObjectPrefab(registry, registry.referenceTo(prefabId, '1.0.0'));
   const animator = resolvedComponents(resolved.prefab.root).find(
     (component) => component.componentType === 'animator',
   );
-  if (!animator) throw new Error('the navigator Prefab has no animator to borrow');
+  if (!animator) throw new Error(`the ${prefabId} Prefab has no animator to borrow`);
   return animator;
+}
+
+/**
+ * The model and Animator of a Prefab that genuinely animates a skinned mesh.
+ *
+ * The animated-prop composition used to pair an arbitrary `.glb` path with the
+ * *navigator's* Animator, whose motion set binds only procedural clips. Nothing
+ * failed, because the projection only reported that an Animator existed — and
+ * an Animator with no imported take on a skinned model is precisely the thing
+ * that cannot animate. Now the composition borrows the Knight, whose motion set
+ * resolves to real takes in a real file, so "the animated prop animates" is a
+ * claim the stage can actually check.
+ */
+const IMPORTED_PREFAB_ID = 'quaternius-knight';
+
+function importedModelComponent(): GameObjectComponentDefinition {
+  const registry = loadPrefabRegistry();
+  const resolved = resolveGameObjectPrefab(
+    registry,
+    registry.referenceTo(IMPORTED_PREFAB_ID, '1.0.0'),
+  );
+  const model = resolvedComponents(resolved.prefab.root).find(
+    (component) => component.componentType === 'model-renderer',
+  );
+  if (!model) throw new Error(`the ${IMPORTED_PREFAB_ID} Prefab has no model to borrow`);
+  return model;
 }
 
 function component(partial: Record<string, unknown>): GameObjectComponentDefinition {
@@ -75,15 +101,6 @@ const MODEL = (): GameObjectComponentDefinition =>
     model: { kind: 'procedural-humanoid', presetId: 'navigator' },
     castShadow: true,
     receiveShadow: true,
-  });
-
-const PROP_MODEL = (): GameObjectComponentDefinition =>
-  component({
-    componentId: 'model',
-    componentType: 'model-renderer',
-    model: { kind: 'repository-model', assetPath: 'assets/models/prop.glb' },
-    castShadow: true,
-    receiveShadow: false,
   });
 
 const MOTOR = (): GameObjectComponentDefinition =>
@@ -150,7 +167,10 @@ function compositionPrefabs(): StoredPrefab[] {
     syntheticPrefab('harness-model-animator', [MODEL(), animator]),
     syntheticPrefab('harness-model-animator-motor', [MODEL(), animator, MOTOR()]),
     syntheticPrefab('harness-character-with-light', [MODEL(), animator, MOTOR(), LIGHT()]),
-    syntheticPrefab('harness-animated-prop', [PROP_MODEL(), animator]),
+    syntheticPrefab('harness-animated-prop', [
+      importedModelComponent(),
+      canonicalAnimatorComponent(IMPORTED_PREFAB_ID),
+    ]),
     syntheticPrefab('harness-camera-only', [CAMERA()]),
     syntheticPrefab('harness-light-only', [LIGHT()]),
     syntheticPrefab('harness-motor-without-animator', [MODEL(), MOTOR()]),

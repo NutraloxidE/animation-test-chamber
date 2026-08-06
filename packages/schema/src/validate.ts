@@ -321,7 +321,7 @@ export function validateProjectReferences(project: unknown): ValidationResult {
 
   issues.push(...equipmentIssues(p.equipment ?? [], null));
   issues.push(...worldIssues(project, seenCharacters));
-  issues.push(...scenesIssues(project, seenCharacters));
+  issues.push(...scenesIssues(project));
   return { valid: issues.length === 0, issues };
 }
 
@@ -333,7 +333,7 @@ export function validateProjectReferences(project: unknown): ValidationResult {
  * id would make `/edit/scene/x` name two documents, and whichever one the
  * resolver reached first would be the one that got written.
  */
-function scenesIssues(project: unknown, characterIds: ReadonlySet<string>): ValidationIssue[] {
+function scenesIssues(project: unknown): ValidationIssue[] {
   const p = project as { scenes?: unknown[]; activeSceneId?: string };
   if (!Array.isArray(p.scenes)) return [];
 
@@ -349,7 +349,17 @@ function scenesIssues(project: unknown, characterIds: ReadonlySet<string>): Vali
       });
     }
     sceneIds.add(id);
-    issues.push(...sceneIssues(scene, characterIds, `/scenes/${id}`));
+    /*
+     * The GameObject view, not the entity view (DECISION 0025).
+     *
+     * Project validation is a production check, and after the Scene cutover the
+     * production collection is `gameObjects`. Validating `entities` here would
+     * make the legacy mirror able to refuse a write that never touched it —
+     * which is exactly the "stale mirror is load-bearing" state the cutover
+     * removes. Its own validator still exists and is still exercised, from the
+     * migration path that produces it.
+     */
+    issues.push(...sceneGameObjectIssues(scene, `/scenes/${id}`));
   }
 
   if (p.activeSceneId !== undefined && !sceneIds.has(p.activeSceneId)) {
@@ -363,12 +373,17 @@ function scenesIssues(project: unknown, characterIds: ReadonlySet<string>): Vali
 }
 
 /**
- * Structural checks on one Scene.
+ * Structural checks on one Scene's **entity** collection.
  *
- * Exported so a *staged* Scene can be checked before it is ever attached to a
- * project — the command surface refuses a bad entity at the command, not at
- * publication, and a refusal that arrives that late is one a caller has already
- * built a UI on top of.
+ * The legacy validator, kept for the migration path and its tests. Production
+ * no longer runs it: after the Scene cutover (DECISION 0025) nothing reads
+ * `scene.entities`, so an entity mirror that has gone stale cannot affect a
+ * frame, an operation or a write — and continuing to refuse a project because
+ * of it would make the stale mirror load-bearing again by the back door.
+ *
+ * Still exported, and still exercised, because "the migration produced a valid
+ * entity view" remains a true and checkable claim about the documents that
+ * carry one.
  */
 export function validateSceneReferences(
   scene: unknown,
@@ -376,6 +391,189 @@ export function validateSceneReferences(
 ): ValidationResult {
   const issues = sceneIssues(scene, knownCharacterIds, '/scene');
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Structural checks on one Scene's **GameObject** collection (§9).
+ *
+ * The production validator. It answers the questions a Scene of GameObjects can
+ * be wrong about without any Prefab knowledge at all — duplicate ids, a
+ * non-finite or non-unit transform, a script binding naming no track, a relation
+ * or an active camera pointing at something absent or disabled.
+ *
+ * What it deliberately does *not* answer is "does the resolved Prefab actually
+ * have a Camera Component". That needs the Prefab registry, which a schema
+ * package must not depend on, so it is checked one layer up — in the operation
+ * engine and again in the apply path, where the registry is in hand.
+ *
+ * Exported so a *staged* Scene can be checked before it is ever attached to a
+ * project: the command surface refuses a bad instance at the command, not at
+ * publication, and a refusal that arrives that late is one a caller has already
+ * built a UI on top of.
+ */
+export function validateSceneGameObjectReferences(scene: unknown): ValidationResult {
+  const issues = sceneGameObjectIssues(scene, '/scene');
+  return { valid: issues.length === 0, issues };
+}
+
+interface RawSceneGameObject {
+  id?: string;
+  enabled?: boolean;
+  prefab?: { assetId?: string; version?: string };
+  bindings?: { characterIntent?: { kind?: string; trackId?: string } };
+  relations?: { cameraTargetGameObjectId?: string };
+  componentOverrides?: { nodeId?: string; componentId?: string }[];
+  transform?: {
+    position?: Record<string, number>;
+    rotation?: Record<string, number>;
+    scale?: Record<string, number>;
+  };
+}
+
+function sceneGameObjectIssues(scene: unknown, base: string): ValidationIssue[] {
+  const s = scene as {
+    gameObjects?: RawSceneGameObject[];
+    intentTracks?: { id: string; durationTicks: number; keyframes: { tick: number }[] }[];
+    activeCameraGameObjectId?: string;
+  };
+  if (!s || typeof s !== 'object') return [];
+
+  const issues: ValidationIssue[] = [...intentTrackIssues(s.intentTracks ?? [], base)];
+  const trackIds = new Set((s.intentTracks ?? []).map((track) => track.id));
+  const gameObjects = s.gameObjects ?? [];
+
+  const enabled = new Map<string, boolean>();
+  for (const gameObject of gameObjects) {
+    const id = gameObject.id ?? '';
+    const path = `${base}/gameObjects/${id}`;
+    if (enabled.has(id)) {
+      issues.push({ path, message: `duplicate GameObject id "${id}"`, keyword: 'unique' });
+    }
+    enabled.set(id, gameObject.enabled ?? false);
+
+    if (!gameObject.prefab?.assetId || !gameObject.prefab.version) {
+      issues.push({
+        path: `${path}/prefab`,
+        message: `GameObject "${id}" names no exact Prefab version`,
+        keyword: 'reference',
+      });
+    }
+
+    const intent = gameObject.bindings?.characterIntent;
+    if (intent?.kind === 'script' && !trackIds.has(intent.trackId ?? '')) {
+      issues.push({
+        path: `${path}/bindings/characterIntent/trackId`,
+        message: `GameObject "${id}" references unknown intent track "${intent.trackId ?? ''}"`,
+        keyword: 'reference',
+      });
+    }
+
+    /*
+     * An override addresses a node and a Component by stable id. An override
+     * missing either is not a partial instruction the resolver could complete —
+     * it is an instruction with no target, and applying it would mean guessing
+     * which Component in the Prefab it meant.
+     */
+    for (const [index, override] of (gameObject.componentOverrides ?? []).entries()) {
+      if (!override.nodeId || !override.componentId) {
+        issues.push({
+          path: `${path}/componentOverrides/${index}`,
+          message: `GameObject "${id}" has a component override with no node/component target`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    issues.push(...transformIssues(gameObject.transform, path));
+  }
+
+  /*
+   * A relation — and the Scene's active camera — must name a GameObject that
+   * exists and is enabled. A camera aimed at a disabled object opens the Scene
+   * looking at nothing, which reads as a broken build rather than a broken
+   * document. Never left dangling (§8.3).
+   */
+  for (const gameObject of gameObjects) {
+    const target = gameObject.relations?.cameraTargetGameObjectId;
+    if (target === undefined) continue;
+    if (!enabled.has(target)) {
+      issues.push({
+        path: `${base}/gameObjects/${gameObject.id ?? ''}/relations/cameraTargetGameObjectId`,
+        message: `camera targets unknown GameObject "${target}"`,
+        keyword: 'reference',
+      });
+    }
+  }
+
+  const activeCameraId = s.activeCameraGameObjectId;
+  if (activeCameraId !== undefined) {
+    if (!enabled.has(activeCameraId)) {
+      issues.push({
+        path: `${base}/activeCameraGameObjectId`,
+        message: `references unknown GameObject "${activeCameraId}"`,
+        keyword: 'reference',
+      });
+    } else if (!enabled.get(activeCameraId)) {
+      issues.push({
+        path: `${base}/activeCameraGameObjectId`,
+        message: `references disabled GameObject "${activeCameraId}"`,
+        keyword: 'enabled',
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Intent tracks belong to the Scene, not to either view of its contents.
+ *
+ * Shared by both validators for exactly that reason: a track list that is fine
+ * under one view and broken under the other would be a contradiction the Scene
+ * document cannot express.
+ */
+function intentTrackIssues(
+  tracks: readonly { id: string; durationTicks: number; keyframes: { tick: number }[] }[],
+  base: string,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const seen = new Set<string>();
+  for (const track of tracks) {
+    if (seen.has(track.id)) {
+      issues.push({
+        path: `${base}/intentTracks/${track.id}`,
+        message: `duplicate intent track id "${track.id}"`,
+        keyword: 'unique',
+      });
+    }
+    seen.add(track.id);
+
+    /*
+     * Keyframes must be strictly ascending. Out-of-order keyframes are not a
+     * schema error and would still sample *something*, which is worse than
+     * failing: the track would play a different shape than the one the author
+     * can see written down.
+     */
+    let previous = -1;
+    for (const keyframe of track.keyframes ?? []) {
+      if (keyframe.tick <= previous) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe ticks must strictly ascend (saw ${keyframe.tick} after ${previous})`,
+          keyword: 'order',
+        });
+      }
+      previous = keyframe.tick;
+      if (keyframe.tick >= track.durationTicks) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe at tick ${keyframe.tick} is outside durationTicks ${track.durationTicks}`,
+          keyword: 'range',
+        });
+      }
+    }
+  }
+  return issues;
 }
 
 interface RawSceneEntity {
@@ -405,45 +603,9 @@ function sceneIssues(
   };
   if (!s || typeof s !== 'object') return [];
 
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...intentTrackIssues(s.intentTracks ?? [], base)];
   const entities = s.entities ?? [];
-
-  const trackIds = new Set<string>();
-  for (const track of s.intentTracks ?? []) {
-    if (trackIds.has(track.id)) {
-      issues.push({
-        path: `${base}/intentTracks/${track.id}`,
-        message: `duplicate intent track id "${track.id}"`,
-        keyword: 'unique',
-      });
-    }
-    trackIds.add(track.id);
-
-    /*
-     * Keyframes must be strictly ascending. Out-of-order keyframes are not a
-     * schema error and would still sample *something*, which is worse than
-     * failing: the track would play a different shape than the one the author
-     * can see written down.
-     */
-    let previous = -1;
-    for (const keyframe of track.keyframes ?? []) {
-      if (keyframe.tick <= previous) {
-        issues.push({
-          path: `${base}/intentTracks/${track.id}/keyframes`,
-          message: `keyframe ticks must strictly ascend (saw ${keyframe.tick} after ${previous})`,
-          keyword: 'order',
-        });
-      }
-      previous = keyframe.tick;
-      if (keyframe.tick >= track.durationTicks) {
-        issues.push({
-          path: `${base}/intentTracks/${track.id}/keyframes`,
-          message: `keyframe at tick ${keyframe.tick} is outside durationTicks ${track.durationTicks}`,
-          keyword: 'range',
-        });
-      }
-    }
-  }
+  const trackIds = new Set((s.intentTracks ?? []).map((track) => track.id));
 
   const enabled = new Map<string, boolean>();
   for (const entity of entities) {

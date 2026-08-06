@@ -75,42 +75,23 @@
       "maxItems": 1000,
       "type": "array",
       "items": {
-        "$id": "SceneOperation",
+        "$id": "GameObjectSceneOperation",
         "anyOf": [
           {
             "additionalProperties": false,
             "type": "object",
             "required": [
               "type",
-              "displayName"
-            ],
-            "properties": {
-              "type": {
-                "const": "scene.rename",
-                "type": "string"
-              },
-              "displayName": {
-                "minLength": 1,
-                "maxLength": 200,
-                "type": "string"
-              }
-            }
-          },
-          {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "type",
-              "entityId",
+              "gameObjectId",
               "displayName",
-              "asset"
+              "prefab"
             ],
             "properties": {
               "type": {
-                "const": "scene.place_asset",
+                "const": "scene.place_prefab",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -121,136 +102,37 @@
                 "maxLength": 200,
                 "type": "string"
               },
-              "asset": {
-                "$id": "PlaceableAsset",
-                "anyOf": [
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "characterId"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "character",
-                        "type": "string"
-                      },
-                      "characterId": {
-                        "pattern": "^[a-z0-9][a-z0-9-]*$",
-                        "minLength": 1,
-                        "maxLength": 96,
-                        "type": "string"
-                      }
-                    }
+              "prefab": {
+                "$id": "GameObjectPrefabReference",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "assetType",
+                  "assetId",
+                  "version",
+                  "contentHash"
+                ],
+                "properties": {
+                  "assetType": {
+                    "$id": "GameObjectPrefabAssetType",
+                    "const": "game-object-prefab",
+                    "type": "string"
                   },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "asset"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "prop",
-                        "type": "string"
-                      },
-                      "asset": {
-                        "$id": "SceneAssetReference",
-                        "anyOf": [
-                          {
-                            "additionalProperties": false,
-                            "type": "object",
-                            "required": [
-                              "kind",
-                              "assetPath"
-                            ],
-                            "properties": {
-                              "kind": {
-                                "const": "model",
-                                "type": "string"
-                              },
-                              "assetPath": {
-                                "minLength": 1,
-                                "maxLength": 512,
-                                "type": "string"
-                              }
-                            }
-                          },
-                          {
-                            "additionalProperties": false,
-                            "type": "object",
-                            "required": [
-                              "kind",
-                              "assetId"
-                            ],
-                            "properties": {
-                              "kind": {
-                                "const": "asset",
-                                "type": "string"
-                              },
-                              "assetId": {
-                                "pattern": "^[a-z0-9][a-z0-9-]*$",
-                                "minLength": 1,
-                                "maxLength": 96,
-                                "type": "string"
-                              },
-                              "version": {
-                                "minLength": 1,
-                                "maxLength": 32,
-                                "type": "string"
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
+                  "assetId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
                   },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "lightType"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "light",
-                        "type": "string"
-                      },
-                      "lightType": {
-                        "anyOf": [
-                          {
-                            "const": "directional",
-                            "type": "string"
-                          },
-                          {
-                            "const": "point",
-                            "type": "string"
-                          },
-                          {
-                            "const": "spot",
-                            "type": "string"
-                          }
-                        ]
-                      }
-                    }
+                  "version": {
+                    "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                    "type": "string"
                   },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "camera",
-                        "type": "string"
-                      }
-                    }
+                  "contentHash": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
                   }
-                ]
+                }
               },
               "transform": {
                 "$id": "TransformDefinition",
@@ -355,14 +237,14 @@
             "type": "object",
             "required": [
               "type",
-              "entityId"
+              "gameObjectId"
             ],
             "properties": {
               "type": {
-                "const": "scene.delete_entity",
+                "const": "scene.delete_game_object",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -375,14 +257,14 @@
             "type": "object",
             "required": [
               "type",
-              "entityId"
+              "gameObjectId"
             ],
             "properties": {
               "type": {
-                "const": "scene.duplicate_entity",
+                "const": "scene.duplicate_game_object",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -395,15 +277,15 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
+              "gameObjectId",
               "displayName"
             ],
             "properties": {
               "type": {
-                "const": "scene.rename_entity",
+                "const": "scene.rename_game_object",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -421,7 +303,7 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
+              "gameObjectId",
               "transform"
             ],
             "properties": {
@@ -429,7 +311,7 @@
                 "const": "scene.set_transform",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -538,7 +420,7 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
+              "gameObjectId",
               "enabled"
             ],
             "properties": {
@@ -546,7 +428,7 @@
                 "const": "scene.set_enabled",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -562,25 +444,51 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
-              "characterId"
+              "gameObjectId",
+              "prefab"
             ],
             "properties": {
               "type": {
-                "const": "scene.set_character_source",
+                "const": "scene.set_prefab_source",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
                 "type": "string"
               },
-              "characterId": {
-                "pattern": "^[a-z0-9][a-z0-9-]*$",
-                "minLength": 1,
-                "maxLength": 96,
-                "type": "string"
+              "prefab": {
+                "$id": "GameObjectPrefabReference",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "assetType",
+                  "assetId",
+                  "version",
+                  "contentHash"
+                ],
+                "properties": {
+                  "assetType": {
+                    "$id": "GameObjectPrefabAssetType",
+                    "const": "game-object-prefab",
+                    "type": "string"
+                  },
+                  "assetId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
+                  },
+                  "version": {
+                    "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -589,116 +497,133 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
-              "controller"
+              "gameObjectId",
+              "override"
             ],
             "properties": {
               "type": {
-                "const": "scene.bind_controller",
+                "const": "scene.set_component_override",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
                 "type": "string"
               },
-              "controller": {
-                "$id": "CharacterControllerBindingDefinition",
-                "anyOf": [
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "playerIndex"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "human",
-                        "type": "string"
-                      },
-                      "playerIndex": {
-                        "minimum": 0,
-                        "maximum": 7,
-                        "type": "integer"
-                      }
-                    }
+              "override": {
+                "$id": "PrefabComponentOverride",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "nodeId",
+                  "componentId",
+                  "patches"
+                ],
+                "properties": {
+                  "nodeId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
                   },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "trackId"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "script",
-                        "type": "string"
-                      },
-                      "trackId": {
-                        "pattern": "^[a-z0-9][a-z0-9-]*$",
-                        "minLength": 1,
-                        "maxLength": 96,
-                        "type": "string"
-                      }
-                    }
+                  "componentId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
                   },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "channelId"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "ai",
-                        "type": "string"
-                      },
-                      "channelId": {
-                        "pattern": "^[a-z0-9][a-z0-9-]*$",
-                        "minLength": 1,
-                        "maxLength": 96,
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind",
-                      "replayId"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "replay",
-                        "type": "string"
-                      },
-                      "replayId": {
-                        "pattern": "^[a-z0-9][a-z0-9-]*$",
-                        "minLength": 1,
-                        "maxLength": 96,
-                        "type": "string"
-                      }
-                    }
-                  },
-                  {
-                    "additionalProperties": false,
-                    "type": "object",
-                    "required": [
-                      "kind"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "none",
-                        "type": "string"
+                  "patches": {
+                    "type": "array",
+                    "items": {
+                      "$id": "CanonicalPatch",
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "path",
+                        "op"
+                      ],
+                      "properties": {
+                        "path": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "op": {
+                          "anyOf": [
+                            {
+                              "const": "set",
+                              "type": "string"
+                            },
+                            {
+                              "const": "append",
+                              "type": "string"
+                            },
+                            {
+                              "const": "remove",
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "value": {},
+                        "reason": {
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "$id": "ValueProvenance",
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "source"
+                          ],
+                          "properties": {
+                            "source": {
+                              "anyOf": [
+                                {
+                                  "const": "repository",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "human-adjustment",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "ai-proposal",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "import",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "default",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "basedOnAiProposal": {
+                              "type": "number"
+                            },
+                            "humanFinal": {
+                              "type": "number"
+                            },
+                            "replayId": {
+                              "type": "string"
+                            },
+                            "terrainPresetId": {
+                              "type": "string"
+                            },
+                            "intent": {
+                              "type": "string"
+                            },
+                            "at": {
+                              "type": "string"
+                            }
+                          }
+                        }
                       }
                     }
                   }
-                ]
+                }
               }
             }
           },
@@ -707,15 +632,208 @@
             "type": "object",
             "required": [
               "type",
-              "entityId",
+              "gameObjectId",
+              "nodeId",
+              "componentId"
+            ],
+            "properties": {
+              "type": {
+                "const": "scene.clear_component_override",
+                "type": "string"
+              },
+              "gameObjectId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "nodeId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "componentId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "gameObjectId",
+              "bindings"
+            ],
+            "properties": {
+              "type": {
+                "const": "scene.set_instance_binding",
+                "type": "string"
+              },
+              "gameObjectId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "bindings": {
+                "$id": "GameObjectInstanceBindings",
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "characterIntent": {
+                    "$id": "CharacterControllerBindingDefinition",
+                    "anyOf": [
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "playerIndex"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "human",
+                            "type": "string"
+                          },
+                          "playerIndex": {
+                            "minimum": 0,
+                            "maximum": 7,
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "trackId"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "script",
+                            "type": "string"
+                          },
+                          "trackId": {
+                            "pattern": "^[a-z0-9][a-z0-9-]*$",
+                            "minLength": 1,
+                            "maxLength": 96,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "channelId"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "ai",
+                            "type": "string"
+                          },
+                          "channelId": {
+                            "pattern": "^[a-z0-9][a-z0-9-]*$",
+                            "minLength": 1,
+                            "maxLength": 96,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "replayId"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "replay",
+                            "type": "string"
+                          },
+                          "replayId": {
+                            "pattern": "^[a-z0-9][a-z0-9-]*$",
+                            "minLength": 1,
+                            "maxLength": 96,
+                            "type": "string"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false,
+                        "type": "object",
+                        "required": [
+                          "kind"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "const": "none",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "gameObjectId",
+              "relations"
+            ],
+            "properties": {
+              "type": {
+                "const": "scene.set_relation",
+                "type": "string"
+              },
+              "gameObjectId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "relations": {
+                "$id": "GameObjectInstanceRelations",
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "cameraTargetGameObjectId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "gameObjectId",
               "toIndex"
             ],
             "properties": {
               "type": {
-                "const": "scene.reorder_entity",
+                "const": "scene.reorder_game_object",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
                 "minLength": 1,
                 "maxLength": 96,
@@ -732,14 +850,14 @@
             "type": "object",
             "required": [
               "type",
-              "entityId"
+              "gameObjectId"
             ],
             "properties": {
               "type": {
                 "const": "scene.set_active_camera",
                 "type": "string"
               },
-              "entityId": {
+              "gameObjectId": {
                 "anyOf": [
                   {
                     "pattern": "^[a-z0-9][a-z0-9-]*$",

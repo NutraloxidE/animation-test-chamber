@@ -65,9 +65,15 @@ importers:
       '@atc/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
+      '@atc/game-object-runtime':
+        specifier: workspace:*
+        version: link:../../packages/game-object-runtime
       '@atc/git-adapter':
         specifier: workspace:*
         version: link:../../packages/git-adapter
+      '@atc/prefab-runtime':
+        specifier: workspace:*
+        version: link:../../packages/prefab-runtime
       '@atc/replay-runtime':
         specifier: workspace:*
         version: link:../../packages/replay-runtime
@@ -241,6 +247,9 @@ importers:
       '@atc/animation-runtime':
         specifier: workspace:*
         version: link:../animation-runtime
+      '@atc/prefab-runtime':
+        specifier: workspace:*
+        version: link:../prefab-runtime
       '@atc/runtime-core':
         specifier: workspace:*
         version: link:../runtime-core
@@ -253,6 +262,9 @@ importers:
       '@atc/animation-asset-runtime':
         specifier: workspace:*
         version: link:../animation-asset-runtime
+      '@atc/animation-runtime':
+        specifier: workspace:*
+        version: link:../animation-runtime
       '@atc/character-control-runtime':
         specifier: workspace:*
         version: link:../character-control-runtime

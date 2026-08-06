@@ -35,6 +35,7 @@ import type {
 import type { EquipmentSocketsComponent } from '@atc/schema';
 import {
   AnimatorRuntime,
+  type AnimatorPlaybackPlan,
   CameraRuntime,
   CapsuleColliderRuntime,
   CharacterMotorRuntime,
@@ -52,9 +53,21 @@ export interface RenderProjectionIssue {
     | 'motor-without-animator'
     | 'active-camera-without-camera-component'
     | 'unknown-active-camera'
-    | 'scene-resolution-failed';
+    | 'scene-resolution-failed'
+    /**
+     * The Animator resolves, but the state it wants to play binds no imported
+     * take on a node that has an imported model (§10.5). Reported rather than
+     * filled in: playing the first clip in the GLTF would put motion on screen
+     * for a binding that names nothing, and "it animates" would stop being
+     * evidence that the binding is right.
+     */
+    | 'animator-take-unbound'
+    /** The take resolves canonically but the loaded file has no such animation. */
+    | 'animator-clip-missing';
   message: string;
   gameObjectId?: string;
+  /** The Animator this is about, when it is about one. */
+  componentId?: string;
 }
 
 export interface RenderModelFact {
@@ -68,6 +81,21 @@ export interface RenderAnimatorFact {
   componentId: string;
   assignment: AnimatorComponent['assignment'];
   defaultContextKey: string | undefined;
+  /**
+   * What to play, per graph state, already resolved (§10.4).
+   *
+   * Carried through the projection so the React adapter binds clips by
+   * *canonical take identity* — asset path plus animation name, arrived at
+   * through `state -> motion slot -> motion set -> clip asset`. A renderer given
+   * only the assignment would have to resolve it again, and a renderer given
+   * only a state id would have to guess a filename.
+   */
+  playback: AnimatorPlaybackPlan;
+  /** The state playing right now, and how far into it, this frame. */
+  stateId: string;
+  normalizedTime: number;
+  /** Seconds of animation elapsed. Advanced by the shared Scene clock (§10.3). */
+  animationSeconds: number;
 }
 
 export interface RenderLightFact {
@@ -170,6 +198,36 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
       });
     }
 
+    const playing = animator ? object.animationState : undefined;
+
+    /*
+     * An Animator on a node with an imported model, whose current state binds no
+     * imported take, is reported here rather than in the browser (§10.5). The
+     * canonical half of "the clip is missing" — the motion set binds nothing to
+     * this state's slot — is knowable from documents alone, which is what lets
+     * the harness catch it in Node before anybody opens a viewport.
+     *
+     * A *procedural* model is deliberately exempt: it has no skeleton to drive,
+     * so "no imported take" is its normal condition rather than a fault (§10.7).
+     */
+    if (
+      animator &&
+      playing &&
+      model?.model.kind === 'repository-model' &&
+      animator.playback.takeByStateId[playing.stateId] === undefined
+    ) {
+      issues.push({
+        code: 'animator-take-unbound',
+        gameObjectId: object.id,
+        componentId: animator.componentId,
+        message:
+          `GameObject "${object.id}" plays state "${playing.stateId}" on ` +
+          `animator "${animator.componentId}", but motion set ` +
+          `"${animator.assignment.motionSet.assetId}@${animator.assignment.motionSet.version}" ` +
+          'binds no imported take to it',
+      });
+    }
+
     nodes.push({
       gameObjectId: object.id,
       displayName: object.definition.displayName,
@@ -188,6 +246,10 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
             componentId: animator.componentId,
             assignment: animator.assignment,
             defaultContextKey: animator.defaultContextKey,
+            playback: animator.playback,
+            stateId: playing?.stateId ?? animator.playback.initialStateId,
+            normalizedTime: playing?.normalizedTime ?? 0,
+            animationSeconds: animator.animationSeconds,
           }
         : undefined,
       light: light
