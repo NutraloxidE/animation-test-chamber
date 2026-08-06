@@ -41,7 +41,10 @@ import {
 import {
   createIdleLivePreview,
   isIdleLivePreview,
+  type AnimationLivePreview,
+  type AnimationPreviewControls,
 } from '../../../apps/web/src/animation-chamber/AnimationLivePreview.ts';
+import { ChamberEngine } from '../../../apps/web/src/engine.ts';
 import {
   animatorComponent,
   basePrefab,
@@ -71,6 +74,7 @@ function repositoryDefaults(): AnimationChamberRepositoryDefaults {
     equipment: project.equipment,
     preferences: project.preferences,
     defaultTerrainPresetId: project.defaultTerrainPresetId,
+    revisionId: project.revisionId,
   };
 }
 
@@ -352,5 +356,49 @@ describe('the way into the workspace', () => {
     expect(legacyRigWorkspaceRedirect(registryOf(single), 'no-such-character').status).toBe(
       'unknown-character',
     );
+  });
+});
+
+describe('the subject-native preview engine', () => {
+  it('runs a real simulation from a Character-free document', () => {
+    const engine = new ChamberEngine(materialize());
+
+    const before = engine.snapshot();
+    // Wall-clock advance, the same way the workspace clock drives it.
+    for (let i = 0; i < 20; i += 1) engine.advance(1 / 60);
+    const after = engine.snapshot();
+
+    expect(before.tick).toBe(0);
+    expect(after.tick).toBeGreaterThan(before.tick);
+    // A running graph resolves a locomotion state; an inert one never would.
+    expect(after.locomotionState).not.toBe('');
+  });
+
+  it('pauses, frame-steps by exactly one tick, and resets', () => {
+    const engine = new ChamberEngine(materialize());
+    for (let i = 0; i < 10; i += 1) engine.advance(1 / 60);
+
+    engine.setPaused(true);
+    const paused = engine.snapshot().tick;
+    for (let i = 0; i < 10; i += 1) engine.advance(1 / 60);
+    expect(engine.snapshot().tick).toBe(paused);
+
+    engine.frameStep();
+    engine.advance(1 / 60);
+    expect(engine.snapshot().tick).toBe(paused + 1);
+
+    engine.reset();
+    expect(engine.snapshot().tick).toBe(0);
+  });
+
+  it('is the live-preview port the panels read', () => {
+    const engine = new ChamberEngine(materialize());
+    // Structural, not nominal: the panels never import ChamberEngine.
+    const port: AnimationLivePreview = engine;
+    const controls: AnimationPreviewControls = engine;
+
+    expect(isIdleLivePreview(port)).toBe(false);
+    expect(typeof controls.advance).toBe('function');
+    expect(port.graphLayers).toBeDefined();
   });
 });

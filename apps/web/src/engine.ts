@@ -1,4 +1,10 @@
-import type { ResolvedProject, TerrainPreset, SemanticEventKind } from '@atc/schema';
+import type {
+  CameraProfile,
+  HapticProfile,
+  ResolvedProject,
+  TerrainPreset,
+  SemanticEventKind,
+} from '@atc/schema';
 import { FixedStepAccumulator } from '@atc/runtime-core';
 import {
   BrowserInputSampler,
@@ -19,6 +25,7 @@ import {
   defaultEquipped,
   frameAt,
   runReplay,
+  type CharacterSimulationDocument,
   type RootMotionTrack,
   type ReplayTrace,
   type TickRecord,
@@ -56,6 +63,25 @@ export interface EngineSnapshot {
  * React only sees a throttled snapshot, so dragging a slider never competes
  * with the simulation for frame budget.
  */
+/**
+ * What the preview engine needs from a document.
+ *
+ * The simulation's own needs plus the four things the engine reads directly:
+ * the camera limits it clamps pitch against, the haptic profile it plays, the
+ * terrain preset it starts on, and the repository revision it stamps into a
+ * recording so a replay can say what it was recorded against.
+ *
+ * Still no Character. `ResolvedProject` satisfies this structurally, so the
+ * legacy chamber constructs the engine exactly as before, and the animation
+ * chamber's Character-free document constructs it too.
+ */
+export interface ChamberEngineDocument extends CharacterSimulationDocument {
+  camera: CameraProfile;
+  haptics: HapticProfile;
+  defaultTerrainPresetId: string;
+  revisionId: string;
+}
+
 export class ChamberEngine {
   /**
    * The live preview character.
@@ -78,7 +104,7 @@ export class ChamberEngine {
   private readonly sampler: BrowserInputSampler;
   private haptics: HapticPlayer;
 
-  private project: ResolvedProject;
+  private project: ChamberEngineDocument;
   private terrain: TerrainPreset;
 
   private recorder: ReplayRecorder | null = null;
@@ -105,7 +131,7 @@ export class ChamberEngine {
 
   private listeners = new Set<() => void>();
 
-  constructor(project: ResolvedProject) {
+  constructor(project: ChamberEngineDocument) {
     this.project = project;
     this.equipped = defaultEquipped(project);
     this.terrain = findTerrainPreset(project.defaultTerrainPresetId);
@@ -172,7 +198,7 @@ export class ChamberEngine {
   }
 
   /** Applies edited canonical data to the running preview without a restart. */
-  setProject(project: ResolvedProject): void {
+  setProject(project: ChamberEngineDocument): void {
     this.project = project;
     this.simulation.updateProject(project);
     this.sampler.setInputMap(project.inputMap);
@@ -197,7 +223,7 @@ export class ChamberEngine {
     return this.terrain;
   }
 
-  get currentProject(): ResolvedProject {
+  get currentProject(): ChamberEngineDocument {
     return this.project;
   }
 

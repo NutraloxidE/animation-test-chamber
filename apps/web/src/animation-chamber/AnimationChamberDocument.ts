@@ -54,6 +54,14 @@ export interface AnimationChamberRepositoryDefaults {
   equipment: EquipmentSlotDefinition[];
   preferences: PreferenceProfile;
   defaultTerrainPresetId: string;
+  /**
+   * The repository revision this document was built against.
+   *
+   * Not decoration: a recording stamps it so a replay can say what it ran
+   * against, and the session compares it to detect that the repository moved
+   * underneath an open workspace.
+   */
+  revisionId: string;
 }
 
 /**

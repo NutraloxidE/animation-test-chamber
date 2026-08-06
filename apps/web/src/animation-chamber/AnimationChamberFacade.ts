@@ -28,7 +28,11 @@ import {
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
 } from './AnimationChamberDocument.ts';
-import { createIdleLivePreview, type AnimationLivePreview } from './AnimationLivePreview.ts';
+import {
+  createIdleLivePreview,
+  type AnimationLivePreview,
+  type AnimationPreviewControls,
+} from './AnimationLivePreview.ts';
 
 export type AnimationPanelId =
   | 'inspector'
@@ -67,6 +71,8 @@ export interface AnimationChamberState {
 
   session: EditSession<AnimationChamberDocument>;
   engine: AnimationLivePreview;
+  /** Absent when the subject has no running simulation to drive. */
+  controls: AnimationPreviewControls | null;
 
   /** Bumped on every edit, undo, redo or revert, so controls re-read. */
   revision: number;
@@ -129,11 +135,18 @@ function validateChamberDocument(): ValidationResult {
   return { valid: true, issues: [] };
 }
 
+/** Whether the supplied preview can be driven, not merely read. */
+function isPreviewControls(
+  preview: (AnimationLivePreview & Partial<AnimationPreviewControls>) | undefined,
+): preview is AnimationLivePreview & AnimationPreviewControls {
+  return typeof preview?.advance === 'function';
+}
+
 export function createAnimationChamberFacade(input: {
   authoring: AnimationAuthoringSession;
   repository: AnimationChamberRepositoryDefaults;
   /** Omitted when the subject cannot run a simulation; an idle port is used. */
-  livePreview?: AnimationLivePreview;
+  livePreview?: AnimationLivePreview & Partial<AnimationPreviewControls>;
   initialPanel?: AnimationPanelId;
 }): AnimationChamberFacade {
   const { authoring, repository } = input;
@@ -181,6 +194,7 @@ export function createAnimationChamberFacade(input: {
 
       session,
       engine,
+      controls: isPreviewControls(input.livePreview) ? input.livePreview : null,
 
       revision: 0,
 

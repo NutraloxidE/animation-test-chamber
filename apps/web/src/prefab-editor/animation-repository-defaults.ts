@@ -30,6 +30,7 @@ export function useAnimationRepositoryDefaults(): AnimationChamberRepositoryDefa
       equipment: project.equipment,
       preferences: project.preferences,
       defaultTerrainPresetId: project.defaultTerrainPresetId,
+      revisionId: project.revisionId,
     }),
     [project],
   );

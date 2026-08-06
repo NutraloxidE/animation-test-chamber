@@ -25,7 +25,6 @@
  */
 import type {
   CharacterInstanceOverrides,
-  ResolvedProject,
   TerrainPreset,
   TransformDefinition,
 } from '@atc/schema';
@@ -33,6 +32,7 @@ import { quaternionToYaw } from '@atc/schema';
 import {
   Simulation,
   defaultEquipped,
+  type CharacterSimulationDocument,
   type RootMotionTrack,
   type TickRecord,
 } from '@atc/replay-runtime';
@@ -55,7 +55,7 @@ export interface ControllableCharacterOptions {
    * model path and capsule dimensions, and two different characters on one
    * animation set must not receive each other's body.
    */
-  resolvedProject: ResolvedProject;
+  resolvedProject: CharacterSimulationDocument;
   /** The authored spawn transform. Yaw is projected from the quaternion. */
   initialTransform: TransformDefinition;
   terrain: TerrainPreset;
@@ -122,7 +122,7 @@ export interface CharacterObservation {
 
 export class ControllableCharacter {
   readonly instanceId: string;
-  readonly resolvedProject: ResolvedProject;
+  readonly resolvedProject: CharacterSimulationDocument;
   /** The authored spawn transform, kept so `observe` can report authored scale. */
   readonly spawnTransform: TransformDefinition;
 

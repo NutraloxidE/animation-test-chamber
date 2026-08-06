@@ -29,6 +29,28 @@ export interface AnimationLivePreview {
 }
 
 /**
+ * Driving the preview, as opposed to reading it.
+ *
+ * Split from `AnimationLivePreview` because the two have different audiences:
+ * every panel reads, and only the workspace shell and the viewport drive. A
+ * panel that could pause the simulation is a panel that can surprise every
+ * other panel.
+ *
+ * `ChamberEngine` satisfies this structurally, which is the point — the shell
+ * drives the real engine today and the viewport takes the same handle later,
+ * with no adapter in between.
+ */
+export interface AnimationPreviewControls {
+  /** Advances by wall-clock seconds; the fixed-step accumulator does the rest. */
+  advance(deltaSec: number): void;
+  setPaused(paused: boolean): void;
+  readonly isPaused: boolean;
+  frameStep(): void;
+  reset(): void;
+  setTimeScale(scale: number): void;
+}
+
+/**
  * Why this subject has no running preview.
  *
  * Carried on the idle preview so the workspace can say which requirement is

@@ -9,7 +9,6 @@
 import type {
   AnimationClipDefinition,
   AnimationGraphDefinition,
-  ResolvedProject,
   StateDefinition,
 } from '@atc/schema';
 
@@ -123,7 +122,7 @@ export function clipForState(
   return clipId === undefined ? undefined : project.clips.find((clip) => clip.id === clipId);
 }
 
-export function motionResolverFor(project: ResolvedProject): MotionResolver {
+export function motionResolverFor(project: MotionResolutionDocument): MotionResolver {
   return new BoundMotionResolver(
     project.motionBindings,
     project.clips,

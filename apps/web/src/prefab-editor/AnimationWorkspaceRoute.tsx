@@ -27,6 +27,8 @@ import {
   type AnimationChamberFacade,
 } from '../animation-chamber/AnimationChamberFacade.ts';
 import { createAnimationAuthoringSession } from './animation-authoring-session.ts';
+import { ChamberEngine } from '../engine.ts';
+import { materializeAnimationChamberDocument } from '../animation-chamber/AnimationChamberDocument.ts';
 import { useAnimationRepositoryDefaults } from './animation-repository-defaults.ts';
 import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { resolvePrefabEditorTarget } from './resolve-prefab-editor-target.ts';
@@ -94,14 +96,37 @@ export function AnimationWorkspaceRoute(): JSX.Element {
     }
     let created: AnimationChamberFacade | null = null;
     try {
+      /*
+       * The engine is built from the subject's own document, so what runs is
+       * this Animator's graph against the repository's tuning — not a
+       * Character's. `ChamberEngine` needs no Character to do it; it never
+       * read one.
+       *
+       * Held in an object rather than a `let` so the reference survives
+       * narrowing: it is assigned inside the session's `createEngine`, which
+       * runs before the facade reads it.
+       */
+      const held: { engine?: ChamberEngine } = {};
+      const authoring = createAnimationAuthoringSession({
+        subject,
+        animationRegistry,
+        baseRevisionId,
+        createEngine: (resolved) => {
+          const engine = new ChamberEngine(
+            materializeAnimationChamberDocument({ resolved, repository }),
+          );
+          engine.attachInput();
+          held.engine = engine;
+          // Detaching is the session's job: the sampler holds window listeners,
+          // and a subject switch that left them attached would have two
+          // subjects sampling one keyboard.
+          return { dispose: () => engine.detachInput() };
+        },
+      });
       created = createAnimationChamberFacade({
-        authoring: createAnimationAuthoringSession({
-          subject,
-          animationRegistry,
-          baseRevisionId,
-          createEngine: () => ({ dispose: () => {} }),
-        }),
+        authoring,
         repository,
+        livePreview: held.engine,
       });
       setFailure(null);
       setFacade(created);

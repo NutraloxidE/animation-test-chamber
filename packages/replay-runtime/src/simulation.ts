@@ -1,5 +1,19 @@
 import { DEFAULT_MOTION_CONTEXT_KEY } from '@atc/schema';
-import type { AnimationClipDefinition, ButtonAction, ResolvedProject, SemanticEventKind, StateDefinition, TerrainPreset, TerrainState, Vec3 } from '@atc/schema';
+import type {
+  AnimationClipDefinition,
+  AnimationGraphDefinition,
+  ButtonAction,
+  EquipmentSlotDefinition,
+  InputMapDefinition,
+  MovementProfile,
+  RootMotionProfile,
+  SemanticEventKind,
+  StateDefinition,
+  TerrainInteractionProfile,
+  TerrainPreset,
+  TerrainState,
+  Vec3,
+} from '@atc/schema';
 import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards, quantize, rotateTowardsAngle, scaleVec3, vec3 } from '@atc/runtime-core';
 import {
   AnimationGraphRuntime,
@@ -31,6 +45,32 @@ const NEXT_ACTION_INPUTS = new Set<ButtonAction>([
 ]);
 
 /** Opening equipment state: every declared slot at its authored default. */
+/**
+ * What the simulation needs from a document — and nothing more.
+ *
+ * The simulation was typed against `ResolvedProject` since before the animation
+ * chamber had a subject of its own, but it never read a Character: grepping its
+ * own field access turns up exactly `graph`, `clips`, `motionBindings`,
+ * `contextualMotionBindings`, `equipment`, `inputMap`, `movement`, `rootMotion`
+ * and `terrain`. Naming that set is what lets an exact Prefab Animator subject
+ * drive a real simulation without a Character being invented to hold fields the
+ * simulation was never going to read.
+ *
+ * `ResolvedProject` satisfies this structurally, so every existing caller —
+ * Scene runtime, GameObject runtime, replay — is unaffected.
+ */
+export interface CharacterSimulationDocument {
+  graph: AnimationGraphDefinition;
+  clips: AnimationClipDefinition[];
+  motionBindings: Record<string, string>;
+  contextualMotionBindings: Record<string, Record<string, string>>;
+  equipment: EquipmentSlotDefinition[];
+  inputMap: InputMapDefinition;
+  movement: MovementProfile;
+  rootMotion: RootMotionProfile;
+  terrain: TerrainInteractionProfile;
+}
+
 export function defaultEquipped(project: { equipment: { id: string; defaultEquipped: boolean }[] }): Record<string, boolean> {
   return Object.fromEntries(
     project.equipment.map((slot) => [slot.id, slot.defaultEquipped]),
@@ -38,7 +78,7 @@ export function defaultEquipped(project: { equipment: { id: string; defaultEquip
 }
 
 export interface SimulationInit {
-  project: ResolvedProject;
+  project: CharacterSimulationDocument;
   terrain: TerrainPreset;
   seed: number;
   initialPosition: Vec3;
@@ -105,9 +145,9 @@ export class Simulation {
   private readonly random: () => number;
 
   /** Resolved document as authored, weapon overrides still folded in. */
-  private baseProject: ResolvedProject;
+  private baseProject: CharacterSimulationDocument;
   /** `baseProject` resolved for the active weapon mode. Everything reads this. */
-  private project: ResolvedProject;
+  private project: CharacterSimulationDocument;
   private terrain: TerrainPreset;
 
   private tickIndex = 0;
@@ -164,7 +204,7 @@ export class Simulation {
    * Applies edited canonical data mid-session. Used by the editor so a slider
    * drag shows up in the running preview without resetting the character.
    */
-  updateProject(project: ResolvedProject): void {
+  updateProject(project: CharacterSimulationDocument): void {
     this.baseProject = project;
     this.applyWeaponMode();
   }
