@@ -98,7 +98,7 @@ function faulty(hook: (context: FaultInjectionContext) => void): FilesystemOps {
 
 /** True when the operation targets the transaction's staging copy of `suffix`. */
 function isPrepared(context: FaultInjectionContext, suffix: string): boolean {
-  return context.path.includes('/prepared/') && context.path.endsWith(suffix);
+  return context.path.replace(/\\/g, '/').includes('/prepared/') && context.path.endsWith(suffix);
 }
 
 /**
@@ -109,7 +109,8 @@ function isPrepared(context: FaultInjectionContext, suffix: string): boolean {
  * before promotion and quietly tests nothing.
  */
 function isCanonicalProject(path: string): boolean {
-  return path.endsWith(PROJECT_PATH) && !path.includes('.chamber-transactions');
+  const portablePath = path.replace(/\\/g, '/');
+  return portablePath.endsWith(PROJECT_PATH) && !portablePath.includes('.chamber-transactions');
 }
 
 /**
@@ -126,7 +127,7 @@ function isCanonicalProject(path: string): boolean {
  */
 function uncertifiableRollbackFs(): FilesystemOps {
   return faulty((context) => {
-    if (context.op === 'rename' && context.path.includes('/reports/apply/')) {
+    if (context.op === 'rename' && context.path.replace(/\\/g, '/').includes('/reports/apply/')) {
       throw new Error('injected report promotion failure');
     }
     if (context.op === 'writeFile' && isCanonicalProject(context.path)) {
@@ -242,7 +243,7 @@ describe('faults before promotion refuse without touching the repository', () =>
     const before = projectBytes();
     const { app } = serverWith(
       faulty((context) => {
-        if (context.op === 'writeFile' && isPrepared(context, '.json') && context.path.includes('/reports/apply/')) {
+        if (context.op === 'writeFile' && isPrepared(context, '.json') && context.path.replace(/\\/g, '/').includes('/reports/apply/')) {
           throw new Error('injected prepared report write failure');
         }
       }),
@@ -367,7 +368,7 @@ describe('faults during promotion roll back', () => {
     const before = projectBytes();
     const { app, health } = serverWith(
       faulty((context) => {
-        if (context.op === 'rename' && context.path.includes('/reports/apply/')) {
+        if (context.op === 'rename' && context.path.replace(/\\/g, '/').includes('/reports/apply/')) {
           throw new Error('injected report promotion failure');
         }
       }),

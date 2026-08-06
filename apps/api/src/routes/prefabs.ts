@@ -174,7 +174,11 @@ function assignmentPath(
 ): string | undefined {
   for (const key of ['behavior', 'motionSet', 'rig', 'tuning'] as const) {
     const reference = component.assignment[key];
-    if (reference && referencesEqual(reference, source)) return `/assignment/${key}`;
+    if (
+      reference &&
+      referencesEqual(reference, source) &&
+      reference.contentHash === source.contentHash
+    ) return `/assignment/${key}`;
   }
   return undefined;
 }
@@ -228,9 +232,30 @@ function adoptAnimationInPrefab(input: {
           : [];
       }),
     );
+    const replacements = new Map(
+      patches.flatMap((patch) =>
+        patch.patches.map((entry) => [
+          `${patch.nodeId}/${patch.componentId}${entry.path}`,
+          patch,
+        ] as const),
+      ),
+    );
+    const preserved = current.derivation.patches.filter((patch) => {
+      if (patch.kind !== 'patch-component') return true;
+      return !patch.patches.some((entry) =>
+        replacements.has(`${patch.nodeId}/${patch.componentId}${entry.path}`),
+      );
+    });
+    const canonicalPatches = [...preserved, ...patches].sort((left, right) => {
+      const key = (patch: typeof left): string =>
+        patch.kind === 'patch-component'
+          ? `${patch.nodeId}/${patch.componentId}/${patch.patches.map((entry) => entry.path).join(',')}`
+          : `${patch.nodeId}/${patch.kind}`;
+      return key(left).localeCompare(key(right));
+    });
     return nextPrefabVersion({
       ...current,
-      derivation: { ...current.derivation, patches: [...current.derivation.patches, ...patches] },
+      derivation: { ...current.derivation, patches: canonicalPatches },
     });
   }
   if (!prefabHasStoredRoot(current)) throw new Error('non-variant Prefab must store a root');
@@ -924,7 +949,10 @@ export function prefabRoutes(app: Hono, runtime: RepositoryRuntime = createRepos
          */
         changedTargets: {
           prefabIds: outcome.ok
-            ? documents.map((document) => document.metadata.id)
+            ? ((outcome.body.changedPaths as string[] | undefined) ?? [])
+                .map((path) => /^assets\/prefabs\/([^/]+)\/[^/]+\.json$/.exec(path)?.[1])
+                .filter((id): id is string => id !== undefined)
+                .sort()
             : [],
         },
         published: outcome.ok

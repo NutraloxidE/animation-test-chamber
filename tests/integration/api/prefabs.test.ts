@@ -1,10 +1,10 @@
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AnimationAsset, GameObjectPrefabAsset, ProjectDefinition } from '@atc/schema';
+import type { AnimationAsset, AssetReference, GameObjectPrefabAsset, PrefabNodeDefinition, ProjectDefinition } from '@atc/schema';
 import { assetFilePath, prefabAssetFilePath, prefabHasStoredRoot } from '@atc/schema';
-import { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
+import { AnimationAssetRegistry, sealAsset } from '@atc/animation-asset-runtime';
 import {
   createPrefabFork,
   nextPrefabVersion,
@@ -96,6 +96,122 @@ function animationAdoptionRequest(targetPrefabIds: string[]) {
       holderPrefabReferences,
     },
     targetPrefabIds,
+  };
+}
+
+type AssignmentSlot = 'behavior' | 'motionSet' | 'rig' | 'tuning';
+type Derivation = 'base' | 'fork' | 'variant';
+
+function animatorAssignment() {
+  const resolved = resolveGameObjectPrefab(registry(), registry().referenceTo('navigator', '1.0.0')).prefab;
+  const animator = walkResolvedNodes(resolved.root).flatMap((node) => node.components)
+    .find((component) => component.componentType === 'animator');
+  if (animator?.componentType !== 'animator') throw new Error('navigator fixture has no Animator');
+  return animator.assignment;
+}
+
+function fixtureMetadata(id: string) {
+  return {
+    schemaVersion: 1,
+    assetType: 'game-object-prefab' as const,
+    id,
+    version: '1.0.0',
+    displayName: id,
+    description: 'Adoption matrix fixture.',
+    tags: ['test'],
+    createdAt: '2026-08-07T00:00:00.000Z',
+    createdBy: 'prefab-api-test',
+    contentHash: '',
+  };
+}
+
+function fixtureRoot(assignment: ReturnType<typeof animatorAssignment>, slot: AssignmentSlot): PrefabNodeDefinition {
+  const unrelatedAssignment = {
+    ...assignment,
+    [slot]: { ...assignment[slot]!, contentHash: 'f'.repeat(64) },
+    instanceOverrides: [{ path: '/graph/states/walk/speed', op: 'set' as const, value: 9 }],
+  };
+  return {
+    nodeId: 'root',
+    displayName: 'Root',
+    enabled: true,
+    transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: { x: 1, y: 1, z: 1 } },
+    components: [],
+    children: [{
+      kind: 'inline',
+      node: {
+        nodeId: 'animated-child',
+        displayName: 'Animated child',
+        enabled: true,
+        transform: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: { x: 1, y: 1, z: 1 } },
+        components: [
+          { schemaVersion: 1, componentId: 'unrelated-animator', componentType: 'animator', enabled: true, assignment: unrelatedAssignment },
+          { schemaVersion: 1, componentId: 'target-animator', componentType: 'animator', enabled: true, assignment },
+        ],
+        children: [],
+      },
+    }],
+  };
+}
+
+function storePrefab(document: GameObjectPrefabAsset): void {
+  const path = join(repoRoot, prefabAssetFilePath(document.metadata.id, document.metadata.version));
+  mkdirSync(resolve(path, '..'), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(document, null, 2)}\n`);
+}
+
+function addMatrixFixture(derivation: Derivation, slot: AssignmentSlot): { targetId: string; source: AssetReference; oldTarget: GameObjectPrefabAsset; parentPath?: string } {
+  const assignment = animatorAssignment();
+  const source = assignment[slot];
+  if (!source) throw new Error(`${slot} fixture reference is absent`);
+  const id = `matrix-${derivation}-${slot.toLowerCase()}`;
+  const root = fixtureRoot(assignment, slot);
+  if (derivation === 'base') {
+    const document = sealAsset({ metadata: fixtureMetadata(id), derivation: { mode: 'base' }, abstract: false, root }) as GameObjectPrefabAsset;
+    storePrefab(document);
+    return { targetId: id, source, oldTarget: document };
+  }
+  if (derivation === 'fork') {
+    const origin = registry().referenceTo('default-scene-camera', '1.0.0');
+    const document = sealAsset({ metadata: fixtureMetadata(id), derivation: { mode: 'fork', forkedFrom: origin, forkIntent: 'Adoption matrix fixture.' }, abstract: false, root }) as GameObjectPrefabAsset;
+    storePrefab(document);
+    return { targetId: id, source, oldTarget: document };
+  }
+  const parentId = `${id}-parent`;
+  const parent = sealAsset({ metadata: fixtureMetadata(parentId), derivation: { mode: 'base' }, abstract: true, root }) as GameObjectPrefabAsset;
+  storePrefab(parent);
+  const parentReference = registry().referenceTo(parentId, '1.0.0');
+  const document = sealAsset({
+    metadata: fixtureMetadata(id),
+    derivation: {
+      mode: 'variant',
+      parent: parentReference,
+      patches: [
+        { kind: 'patch-component', nodeId: 'animated-child', componentId: 'target-animator', patches: [{ path: '/enabled', op: 'set', value: true }] },
+        { kind: 'patch-component', nodeId: 'animated-child', componentId: 'target-animator', patches: [{ path: `/assignment/${slot}`, op: 'set', value: source }] },
+      ],
+    },
+    abstract: false,
+  }) as GameObjectPrefabAsset;
+  storePrefab(document);
+  return { targetId: id, source, oldTarget: document, parentPath: prefabAssetFilePath(parentId, '1.0.0') };
+}
+
+function exactAnimationRequest(source: AssetReference, targetId: string) {
+  const currentProject = project();
+  const usage = describePrefabUsage({ prefabRegistry: registry(), scenes: currentProject.scenes });
+  const sourceAsset = animationRegistry().get(source);
+  return {
+    source,
+    draft: { ...sourceAsset, metadata: { ...sourceAsset.metadata, description: `${sourceAsset.metadata.description} Matrix publication.` } } as AnimationAsset,
+    expected: {
+      sourceContentHash: source.contentHash,
+      projectRevisionId: currentProject.revisionId,
+      holderPrefabReferences: usage.filter((entry) => entry.animationReferences.some((reference) =>
+        reference.assetType === source.assetType && reference.assetId === source.assetId && reference.version === source.version && reference.contentHash === source.contentHash,
+      )).map((entry) => entry.prefab),
+    },
+    targetPrefabIds: [targetId],
   };
 }
 
@@ -377,6 +493,66 @@ describe('Prefab to Scene exact-target adoption', () => {
 });
 
 describe('Animation to Prefab exact-target adoption', () => {
+  it.each([
+    ['base', 'behavior'], ['base', 'motionSet'], ['base', 'rig'], ['base', 'tuning'],
+    ['fork', 'behavior'], ['fork', 'motionSet'], ['fork', 'rig'], ['fork', 'tuning'],
+    ['variant', 'behavior'], ['variant', 'motionSet'], ['variant', 'rig'], ['variant', 'tuning'],
+  ] as const)('adopts %s Ã— %s through stored files and the real resolver', async (derivation, slot) => {
+    const fixture = addMatrixFixture(derivation, slot);
+    const request = exactAnimationRequest(fixture.source, fixture.targetId);
+    const projectBefore = readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8');
+    const oldAnimationPath = join(repoRoot, assetFilePath(fixture.source.assetType, fixture.source.assetId, fixture.source.version));
+    const oldAnimationBytes = readFileSync(oldAnimationPath, 'utf8');
+    const oldPrefabPath = join(repoRoot, prefabAssetFilePath(fixture.targetId, '1.0.0'));
+    const oldPrefabBytes = readFileSync(oldPrefabPath, 'utf8');
+    const parentBytes = fixture.parentPath ? readFileSync(join(repoRoot, fixture.parentPath), 'utf8') : undefined;
+    const nonTargets = new Map(registry().all().filter((entry) => entry.id !== fixture.targetId).map((entry) => {
+      const path = prefabAssetFilePath(entry.id, entry.version);
+      return [path, readFileSync(join(repoRoot, path), 'utf8')] as const;
+    }));
+
+    const response = await api().request('/api/animation-assets/publish-and-adopt-prefabs', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request),
+    });
+    const responseBody = await body(response);
+    expect(response.status, JSON.stringify(responseBody)).toBe(200);
+    expect(responseBody.changedTargets).toEqual({ prefabIds: [fixture.targetId] });
+    const published = responseBody.published as { animation: AssetReference; prefabs: Array<{ assetId: string; version: string; contentHash: string }> };
+    const publishedPrefab = published.prefabs[0]!;
+    expect(readFileSync(join(repoRoot, assetFilePath(published.animation.assetType, published.animation.assetId, published.animation.version)), 'utf8')).toContain(published.animation.contentHash);
+
+    const nextRegistry = registry();
+    const nextReference = nextRegistry.referenceTo(publishedPrefab.assetId, publishedPrefab.version);
+    expect(nextReference.contentHash).toBe(publishedPrefab.contentHash);
+    const resolved = resolveGameObjectPrefab(nextRegistry, nextReference).prefab;
+    const targetAnimator = walkResolvedNodes(resolved.root).find((node) => node.nodeId === 'animated-child')?.components.find((component) => component.componentId === 'target-animator');
+    expect(targetAnimator?.componentType).toBe('animator');
+    if (targetAnimator?.componentType !== 'animator') throw new Error('target Animator did not resolve');
+    expect(targetAnimator.assignment[slot]).toEqual(published.animation);
+    for (const other of ['behavior', 'motionSet', 'rig', 'tuning'] as const) {
+      if (other !== slot) expect(targetAnimator.assignment[other]).toEqual(animatorAssignment()[other]);
+    }
+    const unrelated = walkResolvedNodes(resolved.root).find((node) => node.nodeId === 'animated-child')?.components.find((component) => component.componentId === 'unrelated-animator');
+    expect(unrelated?.componentType === 'animator' ? unrelated.assignment[slot] : undefined).toEqual({ ...fixture.source, contentHash: 'f'.repeat(64) });
+    expect(readFileSync(oldAnimationPath, 'utf8')).toBe(oldAnimationBytes);
+    expect(readFileSync(oldPrefabPath, 'utf8')).toBe(oldPrefabBytes);
+    expect(readFileSync(join(repoRoot, 'projects/demo-character/project.json'), 'utf8')).toBe(projectBefore);
+    if (fixture.parentPath) expect(readFileSync(join(repoRoot, fixture.parentPath), 'utf8')).toBe(parentBytes);
+    for (const [path, bytes] of nonTargets) expect(readFileSync(join(repoRoot, path), 'utf8'), path).toBe(bytes);
+    expect(readFileSync(join(repoRoot, 'generated/animation-assets/library-index.json'), 'utf8')).toContain(published.animation.contentHash);
+    expect(readFileSync(join(repoRoot, 'generated/prefab-assets/library-index.json'), 'utf8')).toContain(publishedPrefab.contentHash);
+    const stored = JSON.parse(readFileSync(join(repoRoot, prefabAssetFilePath(fixture.targetId, publishedPrefab.version)), 'utf8')) as GameObjectPrefabAsset;
+    expect(stored.derivation.mode).toBe(derivation);
+    if (derivation === 'variant') {
+      expect('root' in stored).toBe(false);
+      if (stored.derivation.mode !== 'variant') throw new Error('matrix variant changed derivation');
+      const terminal = stored.derivation.patches.filter((patch) =>
+        patch.kind === 'patch-component' && patch.nodeId === 'animated-child' && patch.componentId === 'target-animator' && patch.patches.some((entry) => entry.path === `/assignment/${slot}`),
+      );
+      expect(terminal).toHaveLength(1);
+      expect(JSON.stringify(stored.derivation.patches)).toContain('/enabled');
+    }
+  });
   it('publishes the animation and moves zero Prefabs when the target list is empty', async () => {
     const request = animationAdoptionRequest([]);
     const prefabIndexBefore = readFileSync(
