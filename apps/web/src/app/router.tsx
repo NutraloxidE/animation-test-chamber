@@ -42,6 +42,7 @@ import { CharacterListPage, SceneListPage } from './ListPages.tsx';
 import { PrefabListPage } from '../prefab-editor/PrefabListPage.tsx';
 import { PrefabEditorPage } from '../prefab-editor/PrefabEditorPage.tsx';
 import { AnimationWorkspaceRoute } from '../prefab-editor/AnimationWorkspaceRoute.tsx';
+import { RigEditorListPage } from '../prefab-editor/RigEditorListPage.tsx';
 import { legacyRigWorkspaceRedirect } from '../prefab-editor/resolve-prefab-editor-target.ts';
 import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { routeId } from './routes.ts';
@@ -121,12 +122,7 @@ export function AppRouter(): JSX.Element {
         <Route path={ROUTES.sceneEditor} element={<SceneEditorPage />} />
         <Route path={ROUTES.characters} element={<CharacterListPage />} />
         <Route path={ROUTES.scenes} element={<SceneListPage />} />
-        {/*
-          A bare `/edit/rig` with no id is a not-found, not a redirect to
-          "some character": the whole point of route identity is that the page
-          never picks a target the URL did not name.
-        */}
-        <Route path="/edit/rig" element={<LegacyRigRedirect />} />
+        <Route path="/edit/rig" element={<RigEditorListPage />} />
         <Route path="/edit/prefab" element={<PrefabEditorPage />} />
         <Route path="/edit/scene" element={<SceneEditorPage />} />
         <Route

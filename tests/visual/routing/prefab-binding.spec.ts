@@ -150,6 +150,19 @@ test('every legacy rig route redirects to the Prefab its Character became', asyn
   }
 });
 
+test('the bare rig route lists every exact Animator workspace', async ({ page }) => {
+  await page.goto('/edit/rig');
+  const list = page.getByTestId('rig-editor-list');
+  await expect(list).toBeVisible();
+  await expect(list.getByRole('link', { name: /Navigator/ })).toHaveAttribute(
+    'href',
+    '/edit/prefab/navigator/animation/root/animator',
+  );
+  await list.getByRole('link', { name: /Navigator/ }).click();
+  await expect(page).toHaveURL('/edit/prefab/navigator/animation/root/animator');
+  await expect(page.getByTestId('animation-subject-prefab')).toContainText('navigator');
+});
+
 test('an unmapped legacy character id is a not-found, not a guess', async ({ page }) => {
   await page.goto('/edit/rig/no-such-character');
   await expect(page.getByTestId('route-not-found')).toBeVisible();
