@@ -7,7 +7,7 @@ import {
 } from '@atc/animation-runtime';
 import { useEffect, useState } from 'react';
 import type { TransitionDefinition } from '@atc/schema';
-import { useChamber, useWeaponProject } from '../store.ts';
+import { useChamber, useWeaponProject } from './chamber-source.ts';
 import { Field, ToggleField } from './Field.tsx';
 
 type TimeUnit = 'seconds' | 'frames30' | 'frames60';

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { detectTouchDevice } from '@atc/input-runtime';
-import { useChamber, type PanelId } from './store.ts';
+import { useCharacterPresentation, useChamber, type PanelId } from './store.ts';
 import { Viewport } from './three/Viewport.tsx';
-import { WorldViewport } from './components/world/WorldViewport.tsx';
-import { WorldPanel } from './components/world/WorldPanel.tsx';
 import { TransitionInspector } from './panels/TransitionInspector.tsx';
 import { StateGraph } from './panels/StateGraph.tsx';
 import { Timeline } from './panels/Timeline.tsx';
@@ -19,11 +18,10 @@ import { Hierarchy } from './panels/Hierarchy.tsx';
 import { AssetLibrary } from './asset-library/AssetLibrary.tsx';
 import { SaveDestinationDialog } from './asset-library/SaveDestinationDialog.tsx';
 import type { MouseLookMode } from '@atc/input-runtime';
-import { characterPreset, weaponMode } from './three/catalog.ts';
+import { weaponMode } from './three/catalog.ts';
 
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
-  { id: 'world', label: 'World' },
   { id: 'graph', label: 'Graph' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'timing', label: 'Timing' },
@@ -41,8 +39,6 @@ function PanelBody({ id }: { id: PanelId }) {
   switch (id) {
     case 'inspector':
       return <TransitionInspector />;
-    case 'world':
-      return <WorldPanel />;
     case 'graph':
       return <StateGraph />;
     case 'timeline':
@@ -143,9 +139,6 @@ function DockBar({
 }) {
   const mode = useChamber((state) => state.workspaceMode);
   const setMode = useChamber((state) => state.setWorkspaceMode);
-  const worldMode = useChamber((state) => state.worldMode);
-  const setWorldMode = useChamber((state) => state.setWorldMode);
-  const setPanel = useChamber((state) => state.setPanel);
   const showLibrary = mode === 'asset-library';
   return (
     <nav className="workspace-switch" data-testid="workspace-switch">
@@ -166,17 +159,14 @@ function DockBar({
       >
         Inspector
       </button>
-      <button
-        type="button"
-        className={worldMode === 'world' ? 'is-active' : ''}
-        onClick={() => {
-          setWorldMode(worldMode === 'world' ? 'focused' : 'world');
-          setPanel('world');
-        }}
-        data-testid="toggle-world-mode"
-      >
-        {worldMode === 'world' ? 'World view' : 'Focused view'}
-      </button>
+      {/*
+        Scene composition is a separate page, not a mode of this one. A toggle
+        here meant the chamber had two answers to "which character is this
+        panel about", which is exactly what route identity removed.
+      */}
+      <Link className="workspace-switch__link" to="/scenes" data-testid="open-scenes">
+        Scenes
+      </Link>
       <button
         type="button"
         className={showLibrary ? 'is-active' : ''}
@@ -204,8 +194,8 @@ export function App() {
   const redo = useChamber((state) => state.redo);
   const exportUnity = useChamber((state) => state.exportUnity);
   const project = useChamber((state) => state.project);
-  const characterPresetId = useChamber((state) => state.characterPresetId);
   const weaponModeId = useChamber((state) => state.weaponModeId);
+  const presentation = useCharacterPresentation();
   const gripEditorMode = useChamber((state) => state.gripEditorMode);
   const setGripEditorMode = useChamber((state) => state.setGripEditorMode);
   const resetWeaponGrip = useChamber((state) => state.resetWeaponGrip);
@@ -214,7 +204,6 @@ export function App() {
 
   const workspaceMode = useChamber((state) => state.workspaceMode);
   const libraryDialog = useChamber((state) => state.libraryDialog);
-  const worldMode = useChamber((state) => state.worldMode);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   // Below the 900px breakpoint the hierarchy dock becomes a fixed overlay
@@ -226,9 +215,16 @@ export function App() {
   const [padAuto] = useState(() => detectTouchDevice());
   const [mouseLookMode, setMouseLookMode] = useState<MouseLookMode>('free');
   const [paused, setPaused] = useState(() => engine.isPaused);
+  /*
+   * A grip is editable when this Character's *authored* model declares one for
+   * the mode. Asking the model binding rather than a preview preset means the
+   * gizmo appears for the Character being edited, not for whatever the Viewport
+   * last happened to draw.
+   */
   const gripSupported = Boolean(
-    characterPreset(characterPresetId).weaponGrips?.[weaponModeId] &&
-    weaponMode(weaponModeId).heldItem,
+    presentation.model.effective.kind === 'repository-model' &&
+      presentation.model.effective.weaponGrips?.[weaponModeId] &&
+      weaponMode(weaponModeId).heldItem,
   );
 
   const toggleMouseLookMode = (): void => {
@@ -285,7 +281,7 @@ export function App() {
         </aside>
       )}
       <div className="app__viewport">
-        {worldMode === 'world' ? <WorldViewport /> : <Viewport />}
+        <Viewport />
         {!hideUi && <Hud />}
         {padVisible && <MobilePad />}
 
@@ -317,7 +313,7 @@ export function App() {
               {gripEditorMode && (
                 <button
                   type="button"
-                  onClick={() => resetWeaponGrip(characterPresetId, weaponModeId)}
+                  onClick={() => resetWeaponGrip(presentation.characterId, weaponModeId)}
                   data-testid="reset-grip"
                 >
                   Reset grip

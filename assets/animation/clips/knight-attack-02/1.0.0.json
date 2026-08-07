@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-attack-02",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight attack 02",
+    "description": "Quaternius Knight: \"HumanArmature|swordAttackJump\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's action.primary.02 clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "f913e9abbc63c9ca3b42142eeb8618b21484c32fed5bff99d5a71c9d59a9c4d3"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-attack-02",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.85,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.2,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [
+      {
+        "id": "a2-windup",
+        "kind": "AttackWindup",
+        "at": 0.2
+      },
+      {
+        "id": "a2-hit",
+        "kind": "AttackHit",
+        "at": 0.5
+      },
+      {
+        "id": "a2-recoil",
+        "kind": "AttackRecoil",
+        "at": 0.78
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.5
+        }
+      ],
+      "right": [
+        {
+          "start": 0.3,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 0.58,
+      "y2": 1
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|swordAttackJump"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

@@ -1,11 +1,11 @@
 /**
- * Canonical multi-instance world contract.
+ * The legacy multi-instance world contract.
  *
- * A `CharacterDefinition` is a reusable *definition*. A `RuntimeInstanceDefinition`
- * is a *use* of one: a placement, an identity, an intent binding, and an
- * explicitly scoped set of overrides. Two instances may reference the same
- * character — and therefore the same behaviour, motion set, rig, tuning and
- * clips — without either one copying a byte of it.
+ * Superseded by `scene.ts`. It survives, unchanged in meaning, for exactly two
+ * jobs: reading a project written before the Scene migration, and keeping the
+ * old runtime compiling until its tests have been migrated onto `SceneRuntime`.
+ * Nothing new should reference it — `migrateWorldToScenes` in `migration.ts` is
+ * the one supported way in, and it only ever runs outward.
  *
  * Nothing mutable lives here. Clocks, active states, buffered inputs, velocity
  * and root-motion accumulation belong to the runtime, which is why this file
@@ -14,12 +14,19 @@
  */
 import { Type, type Static } from '@sinclair/typebox';
 import { Id, ProtectionMetadata, SchemaVersion } from './common.ts';
-import { BUTTON_ACTIONS } from './input.ts';
+import { IntentTrackDefinition } from './intent-track.ts';
 
 /** Bounds keep a transform finite *and* inside a space a camera can find. */
 const WORLD_COORD = Type.Number({ minimum: -10000, maximum: 10000 });
 
-export const TransformDefinition = Type.Object(
+/**
+ * Position plus yaw.
+ *
+ * Renamed out of the way of `scene.ts`'s full position/rotation/scale
+ * transform, which is the one new code composes with. `migrateWorldToScenes`
+ * converts this to that, via `yawToQuaternion`.
+ */
+export const LegacyTransformDefinition = Type.Object(
   {
     /*
      * Bounded rather than a bare `Vec3`. An unbounded position is finite right
@@ -33,9 +40,9 @@ export const TransformDefinition = Type.Object(
     /** Radians. Pitch and roll are deliberately absent: the runtime is yaw-only. */
     yawRad: Type.Number({ minimum: -1000, maximum: 1000 }),
   },
-  { $id: 'TransformDefinition', additionalProperties: false },
+  { $id: 'LegacyTransformDefinition', additionalProperties: false },
 );
-export type TransformDefinition = Static<typeof TransformDefinition>;
+export type LegacyTransformDefinition = Static<typeof LegacyTransformDefinition>;
 
 /**
  * What an instance is made of.
@@ -81,62 +88,6 @@ export const IntentSourceDefinition = Type.Union(
 );
 export type IntentSourceDefinition = Static<typeof IntentSourceDefinition>;
 
-const ButtonMap = Type.Object(
-  Object.fromEntries(BUTTON_ACTIONS.map((action) => [action, Type.Optional(Type.Boolean())])),
-  { additionalProperties: false },
-);
-
-/**
- * One authored point on an intent track.
- *
- * Keyed by simulation tick, never by milliseconds: a track sampled from
- * wall-clock time would produce different intent on a 30Hz laptop and a 144Hz
- * desktop, and the whole reason this type exists is that it must not.
- */
-export const IntentTrackKeyframe = Type.Object(
-  {
-    tick: Type.Integer({ minimum: 0, maximum: 1_000_000 }),
-    move: Type.Optional(
-      Type.Object(
-        { x: Type.Number({ minimum: -1, maximum: 1 }), y: Type.Number({ minimum: -1, maximum: 1 }) },
-        { additionalProperties: false },
-      ),
-    ),
-    look: Type.Optional(
-      Type.Object(
-        { x: Type.Number({ minimum: -1, maximum: 1 }), y: Type.Number({ minimum: -1, maximum: 1 }) },
-        { additionalProperties: false },
-      ),
-    ),
-    buttons: Type.Optional(ButtonMap),
-  },
-  { $id: 'IntentTrackKeyframe', additionalProperties: false },
-);
-export type IntentTrackKeyframe = Static<typeof IntentTrackKeyframe>;
-
-/**
- * A deterministic authored intent track.
- *
- * Sampling holds the last keyframe's values until the next one (DECISION 0009):
- * step semantics, not interpolation. Interpolating analog sticks would be
- * defensible; interpolating a button press is not, and a track where the two
- * halves obeyed different rules would be a track nobody could read. Holding is
- * the rule that is the same for every field.
- */
-export const IntentTrackDefinition = Type.Object(
-  {
-    schemaVersion: SchemaVersion,
-    id: Id,
-    displayName: Type.String(),
-    loop: Type.Boolean(),
-    durationTicks: Type.Integer({ minimum: 1, maximum: 1_000_000 }),
-    keyframes: Type.Array(IntentTrackKeyframe, { minItems: 1 }),
-    protection: Type.Optional(ProtectionMetadata),
-  },
-  { $id: 'IntentTrackDefinition', additionalProperties: false },
-);
-export type IntentTrackDefinition = Static<typeof IntentTrackDefinition>;
-
 /**
  * Instance-scoped overrides.
  *
@@ -166,7 +117,7 @@ export const RuntimeInstanceDefinition = Type.Object(
     id: Id,
     displayName: Type.String(),
     source: RuntimeInstanceSource,
-    transform: TransformDefinition,
+    transform: LegacyTransformDefinition,
     intentSource: IntentSourceDefinition,
     /** A disabled instance does not tick. It stays inspectable. */
     enabled: Type.Boolean(),
@@ -199,7 +150,7 @@ export const WorldDefinition = Type.Object(
 export type WorldDefinition = Static<typeof WorldDefinition>;
 
 /** The transform a synthesized legacy instance opens at. */
-export const DEFAULT_INSTANCE_TRANSFORM: TransformDefinition = {
+export const DEFAULT_INSTANCE_TRANSFORM: LegacyTransformDefinition = {
   position: { x: 0, y: 2, z: 0 },
   yawRad: 0,
 };

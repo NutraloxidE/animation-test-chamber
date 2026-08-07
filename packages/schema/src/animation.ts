@@ -94,6 +94,32 @@ export const ClipTimeCurve = Type.Object(
 );
 export type ClipTimeCurve = Static<typeof ClipTimeCurve>;
 
+/**
+ * One animation take inside an imported file (work package §3.7).
+ *
+ * A file path alone is not enough to play anything: a GLTF holds many named
+ * animations, so "which take" is data the clip must carry. Without it the only
+ * way to reach a take was a renderer-side `stateId -> clip name` map, which is
+ * a second animation graph — one that can drift from the canonical one while
+ * every type check and route test still passes.
+ */
+export const ExternalAnimationSource = Type.Object(
+  {
+    /** The file the take lives in. May differ from the model's own file. */
+    assetPath: Type.String({ minLength: 1 }),
+    /** The take's name inside that file, verbatim, prefix included. */
+    animationName: Type.String({ minLength: 1 }),
+    /**
+     * Multiplier converting the take's translation keys into the rig's local
+     * scale. Quaternius' UE-exported library authors positions in centimetres
+     * against a metre-scaled rig, so playing it unscaled explodes the skeleton.
+     */
+    positionScale: Type.Optional(Type.Number({ minimum: 0.0001, maximum: 10000 })),
+  },
+  { $id: 'ExternalAnimationSource', additionalProperties: false },
+);
+export type ExternalAnimationSource = Static<typeof ExternalAnimationSource>;
+
 export const AnimationClipDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
@@ -102,6 +128,13 @@ export const AnimationClipDefinition = Type.Object(
     assetPath: Type.Union([Type.String(), Type.Null()]),
     /** Procedural generator name used when assetPath is null. */
     proceduralGenerator: Type.Optional(Type.String()),
+    /**
+     * The imported take this clip plays, when it plays one. Absent on a
+     * procedural clip; present on every clip an imported model animates with,
+     * which is what lets normal playback go through the motion set instead of
+     * through a hard-coded map.
+     */
+    externalSource: Type.Optional(ExternalAnimationSource),
     durationSec: Type.Number({ minimum: 0.01, maximum: 120 }),
     loop: Type.Boolean(),
     /** Optional nonlinear mapping from elapsed time to sampled animation time. */

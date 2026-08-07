@@ -33,16 +33,19 @@ export function createWorldRuntime(world?: WorldDefinition): WorldRuntime {
 }
 
 /**
- * The demo project as it was before it carried a world.
+ * The demo project as it was before it composed anything.
  *
- * The demo project now ships the acceptance world so a human opening the
- * chamber sees two instances. Legacy compatibility is therefore no longer the
- * default path, which is exactly why it needs a fixture of its own rather than
- * being assumed.
+ * The demo project ships the acceptance composition — as a Scene since the
+ * migration, as a World before it — so a human opening the chamber sees two
+ * instances. Legacy compatibility is therefore not the default path, which is
+ * exactly why it needs a fixture of its own rather than being assumed. Both
+ * `world` and `scenes` are stripped: leaving `scenes` would reach `worldOf`
+ * through the Scene adapter and produce the composed world this fixture exists
+ * to be the absence of.
  */
 export function legacyDemoProject(): ProjectDefinition {
   const { world: _world, ...rest } = loadDemoProject();
-  return rest as ProjectDefinition;
+  return { ...rest, scenes: [] } as ProjectDefinition;
 }
 
 export const CONTROLLED = 'controlled-humanoid';

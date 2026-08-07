@@ -189,6 +189,151 @@ Git conflict reporting are all keyed on these paths — which is why they must b
 stable.
 
 
+## Route-scoped editors
+
+There are two editing products, and the URL says which one you are in and what
+it is editing:
+
+```text
+/edit/rig/:characterId     tune one reusable Character Definition
+/edit/scene/:sceneId       compose one Scene Definition
+```
+
+The route parameter is the target, not a hint. Resolution is an exact id match
+and an unknown id renders a not-found state — never a fallback to the first
+item, because a page that always renders something is a page that can render the
+wrong thing while looking entirely correct. See DECISIONS/0012.
+
+The Rig Editor is the chamber that already existed; the route added an identity
+header and reversed the direction `activeCharacterId` travels. It is also the
+*only* Character selector: see "One Character selector, one animation graph"
+below for what that had to displace. The Scene Editor
+is a separate page with a Unity-like layout — Hierarchy, viewport, Inspector and
+Asset Panel — because a tab inside the chamber would have had to share the
+chamber's single-character session.
+
+Every persistent edit in either editor follows one path:
+
+```text
+Preview -> Stage -> Validate -> Apply to Repository
+```
+
+with git commit a separate action afterwards. See DECISIONS/0014.
+
+## One Character selector, one animation graph
+
+Two things a Character is shown *as* used to live outside the repository, and
+both are canonical data now. See DECISIONS/0019.
+
+**Which model.** `CharacterDefinition.model` is a `CharacterModelBinding`: either
+a procedural appearance named by preset id, or a repository model file with its
+scale, rotation, hand bone and weapon-grip defaults. It replaced a nullable
+`modelAssetPath` whose `null` meant "some procedural character, ask the
+renderer" — and the renderer answered from a web-only `CHARACTER_PRESETS`
+catalog that the route could not reach. That catalog was the app's real
+character list, so navigating between Characters changed the header and the
+document while leaving the model on screen alone.
+
+What remains renderer-side is appearance only: the colours and proportions of
+the procedurally generated meshes, keyed by the preset id the Character
+*authors*.
+
+**Which animation.** `AnimationClipDefinition.externalSource` names one take
+inside one file (`{ assetPath, animationName, positionScale? }`). Visible
+playback resolves through canonical data alone:
+
+```text
+state -> state.motionSlot -> motion set binding -> clip asset -> file + take
+```
+
+Before this there were two animation graphs: the Behavior chose the state, and
+`CLIP_FOR_STATE` / `CharacterPreset.clipMap` / `WeaponMode.clipMap` chose the
+animation. They could drift indefinitely while every gate stayed green, and one
+had — a weapon mode named a take absent from the file it loaded, so the previous
+clip simply stayed on screen. Weapon modes now carry presentation only; which
+clips a mode plays is a `contextualKey` on each Character's motion set.
+
+`resolveRigEditorCharacterPresentation` owns both resolutions, and the renderers
+choose neither a model nor a clip.
+
+### Ownership is computed once
+
+`describeCharacterBindings(project, registry)` is the only implementation of "who
+holds this reference". The Rig Editor's Character Overview, the save dialog's
+blast radius, the audit report and the tests all read it, so a SHARED BY N badge
+and the save it precedes cannot disagree. Holders are keyed by asset type, id
+*and version*, because publishing over a version reaches only that version's
+holders. Tuning ownership is computed like everything else — "tuning is
+per-Character" was true of the two-Character repository and is false now.
+
+### A preview override is not an identity
+
+`previewModelOverrideId` swaps the *appearance* on screen for debugging. It
+defaults to none, may name only a procedural appearance, resets on Character
+navigation, is not persisted, and is never staged or applied. It is labelled
+PREVIEW ONLY and never "Character": the control it replaced was labelled
+"character", which is how five appearances came to be mistaken for five
+Characters. `harness:repo-guard` fails a commit that reintroduces the old
+selector, or that removes the badges and the PREVIEW ONLY label.
+
+## GameObject Prefabs
+
+The three nouns above are being replaced by four, for a reason the entity union
+could not fix by getting better types: `kind` admits exactly one answer, so a
+character that also casts light had nowhere to live and every new capability
+needed a new top-level entity kind. See DECISIONS/0020, 0021 and 0022.
+
+```text
+GameObjectPrefabAsset          versioned, content-hashed, immutable
+  ↓ resolveGameObjectPrefab      variant chain → patches → nested expansion
+ResolvedGameObjectPrefab       deep-owned immutable
+  ↓ + GameObjectInstanceDefinition
+ResolvedGameObjectDefinition   one Prefab as one Scene placement sees it
+  ↓ instantiateGameObject
+RuntimeGameObject              every mutable byte, never serialized
+```
+
+What a thing *is* comes from its Components, not from a kind:
+
+```text
+Character                 ModelRenderer + Animator + CharacterMotor
+Camera                    Camera
+Light                     Light
+Animated prop             ModelRenderer + Animator
+Character with a lantern  the first row, plus Light
+```
+
+`GameObjectComponentDefinition` is a **closed** discriminated union with
+`additionalProperties: false` throughout, so an unknown component type and a
+misspelled field are both refusals. That is what keeps the objection this
+project raised against a general ECS answered: "what fields does this have?"
+still has exactly one answer, from the schema, for every consumer.
+
+`@atc/prefab-runtime` owns the registry, validation, resolution and the single
+usage graph every holder list reads. `@atc/game-object-runtime` owns the runtime
+layer and is engine-agnostic — it reads no browser global and composes the
+existing `ControllableCharacter` rather than duplicating the animation engine.
+
+**This is a seam, not a finished replacement.** `SceneDefinition` currently
+carries both `entities` and a derived `gameObjects`; the renderer, the Scene
+runtime, the editor routes and the API still read the first.
+`harness:game-objects` compares the two on every run so they cannot drift.
+`reports/gameobject-prefab-migration-audit.md` lists what remains.
+
+## The production model, in three nouns
+
+```text
+CharacterDefinition     reusable authored behaviour and animation references
+CharacterSceneEntity    one placement and one controller binding of it
+ControllableCharacter   the runtime instance built from the two
+```
+
+A Scene entity owns no rig mapping, behaviour graph, motion set or clip. A
+Character Definition owns no scene position, controller binding or runtime
+state. The third exists only at runtime and is never serialized. Every
+controller — human, AI, scripted, replay — reaches it as normalized intent and
+by no other route. See DECISIONS/0013 and 0015.
+
 ## Definitions and runtime instances
 
 A `CharacterDefinition` is a **definition**: reusable, shared, and never itself
@@ -223,8 +368,8 @@ Resolution splits in two. `ResolvedAnimationBundle` is the character-independent
 half — graph, clips, motion bindings, skeleton, provenance — and *is* shared by
 reference between every instance whose animation inputs agree. The
 `ResolvedProject` wrapper around it is built fresh per instance and is never
-shared, because it carries the character's own id, display name,
-`modelAssetPath` and capsule dimensions.
+shared, because it carries the character's own id, display name, model binding
+and capsule dimensions.
 
 The first version of this cached the whole `ResolvedProject`, which meant two
 *different* characters referencing one animation set received each other's body

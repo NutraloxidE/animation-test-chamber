@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-slide",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight slide",
+    "description": "Quaternius Knight: \"HumanArmature|Roll\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's state.slide clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "c9aff3b9c9e320b1bb18dc70d26526e92cb3a21a8e4314581098a2ae8b8e7d9b"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-slide",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.6,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Roll"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

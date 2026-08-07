@@ -1,9 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-
-const here = dirname(fileURLToPath(import.meta.url));
+import { PROJECT_PATH, resetRepositoryProject } from './repository.ts';
 
 /**
  * These tests drive the chamber the way a human does: open a panel, move a
@@ -25,13 +22,14 @@ async function openPanel(page: Page, id: string): Promise<void> {
 }
 
 /**
- * The Hierarchy dock (character/weapon/equipment) only defaults open above
+ * The Hierarchy dock (weapon/equipment; the Character is the route now) only
+ * defaults open above
  * the 900px breakpoint — below it, it would otherwise overlay and block the
  * rest of the narrow layout (PLAN Part VI, the same overlay-by-default bug
  * fixed for the bottom sheet).
  */
 async function openHierarchy(page: Page): Promise<void> {
-  if (!(await page.getByTestId('character-select').isVisible())) {
+  if (!(await page.getByTestId('weapon-mode-select').isVisible())) {
     await page.getByTestId('toggle-hierarchy').click();
   }
 }
@@ -42,7 +40,7 @@ async function openHierarchy(page: Page): Promise<void> {
  * area other overlays (the bottom sheet, its buttons) also need.
  */
 async function closeHierarchy(page: Page): Promise<void> {
-  if (await page.getByTestId('character-select').isVisible()) {
+  if (await page.getByTestId('weapon-mode-select').isVisible()) {
     await page.getByTestId('toggle-hierarchy').click();
   }
 }
@@ -72,18 +70,35 @@ async function advanceTicksUntil(
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
+  // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
   await expect(page.getByTestId('hud')).toBeVisible();
 });
 
 test('boots with the demo project and a running simulation', async ({ page }) => {
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.getByTestId('viewport-canvas').locator('canvas')).toBeVisible();
 
   // The tick counter proves the fixed-step loop is actually advancing.
   const hud = page.getByTestId('hud');
   const firstTick = await hud.textContent();
   await page.waitForTimeout(600);
   expect(await hud.textContent()).not.toBe(firstTick);
+});
+
+test('the native workspace uses the main three-dock layout', async ({ page }) => {
+  const hierarchy = await page.locator('.app__hierarchy').boundingBox();
+  const viewport = await page.locator('.app__viewport').boundingBox();
+  const inspector = await page.locator('.app__panels').boundingBox();
+  expect(hierarchy).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(inspector).not.toBeNull();
+  expect(Math.abs(hierarchy!.y - viewport!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(inspector!.y - viewport!.y)).toBeLessThanOrEqual(1);
+  expect(hierarchy!.x + hierarchy!.width).toBeLessThanOrEqual(viewport!.x + 1);
+  expect(viewport!.x + viewport!.width).toBeLessThanOrEqual(inspector!.x + 1);
+  expect(viewport!.height).toBeGreaterThan(600);
+  await expect(page.getByTestId('status-bar')).toBeVisible();
 });
 
 test('the character responds to keyboard input', async ({ page }) => {
@@ -112,10 +127,16 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('character and weapon presets can be selected', async ({ page }) => {
-  await openHierarchy(page);
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
+test('an imported Character plays its canonical takes, and its grip is editable', async ({ page }) => {
+  /*
+   * Switching Character is navigation now. It used to be a preset selector in
+   * the Hierarchy, which is exactly the hidden second selector the work package
+   * removed: it changed the model without changing the Character being edited.
+   */
+  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
+  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
   await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  await openHierarchy(page);
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
   );
@@ -133,7 +154,8 @@ test('character and weapon presets can be selected', async ({ page }) => {
   await expect(page.getByTestId('frame-step')).toBeEnabled();
   await page.getByTestId('frame-step').click();
   await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Character, weapon and equipment moved into the Hierarchy dock; only
+  // Weapon and equipment moved into the Hierarchy dock (and the Character is
+  // the route); only
   // viewport-controls' own body (e.g. the grip editor) collapses with it.
   await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
@@ -171,8 +193,9 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
+  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
+  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
   await openHierarchy(page);
-  await page.getByTestId('character-select').selectOption('quaternius-universal-base');
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   await closeHierarchy(page);
   // Fixed-tick driver (PLAN Part VII §27): both fixtures below are ≤160 ticks
@@ -326,11 +349,26 @@ test('the AI panel returns three proposals with no API key configured', async ({
 });
 
 test.describe('committing', () => {
-  // This test performs a real commit, and the API writes the result back to the
-  // canonical file. Snapshot and restore it so running the suite does not leave
-  // an extra revision in the working tree.
-  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
+  /*
+   * This test performs a real commit, and the API writes the result back to the
+   * canonical file — so the assertion has to read the checkout the *server* is
+   * writing to, not the one this spec file happens to sit in. Those are
+   * different directories under `pnpm harness:visual`.
+   *
+   * Snapshot and restore anyway: within one run the tests share a checkout, and
+   * an extra revision left behind changes what the next one opens against.
+   */
   let original: string;
+
+  /*
+   * Each committing test starts from the seed. Both tests here write, and the
+   * second one opens a page that seeds from the pristine source project — so
+   * without this it declares a baseline the first test already replaced and is
+   * refused as a conflict.
+   */
+  test.beforeEach(() => {
+    resetRepositoryProject();
+  });
 
   test.beforeAll(() => {
     original = readFileSync(PROJECT_PATH, 'utf8');
@@ -417,7 +455,6 @@ test.describe('committing', () => {
 });
 
 test.describe('static character drafts', () => {
-  const PROJECT_PATH = resolve(here, '../../projects/demo-character/project.json');
 
   /**
    * A character-override save never publishes an asset, so it is the one
@@ -432,7 +469,9 @@ test.describe('static character drafts', () => {
     context,
   }) => {
     await context.route('**/api/health', (route) => route.abort());
-    await page.goto('/');
+    // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     await openPanel(page, 'inspector');
@@ -491,7 +530,9 @@ test.describe('static character drafts', () => {
         }),
       );
     });
-    await page.goto('/');
+    // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     const banner = page.getByTestId('stale-character-draft-banner');

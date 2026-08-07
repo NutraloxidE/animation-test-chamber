@@ -1,4 +1,7 @@
-import type { AnimationGraphDefinition, ResolvedProject } from '@atc/schema';
+import type {
+  AnimationClipDefinition,
+  AnimationGraphDefinition,
+} from '@atc/schema';
 
 /**
  * The document as one weapon mode sees it.
@@ -13,10 +16,14 @@ import type { AnimationGraphDefinition, ResolvedProject } from '@atc/schema';
  * The graph itself is deliberately still not per weapon. Combo structure and
  * cancel routes are the character's, not the sword's.
  */
-export function resolveWeaponMode(
-  project: ResolvedProject,
-  weaponModeId: string,
-): ResolvedProject {
+export function resolveWeaponMode<
+  TDocument extends {
+    graph: AnimationGraphDefinition;
+    clips: AnimationClipDefinition[];
+    motionBindings: Record<string, string>;
+    contextualMotionBindings: Record<string, Record<string, string>>;
+  },
+>(project: TDocument, weaponModeId: string): TDocument {
   const graph = resolveGraph(project.graph, weaponModeId);
   const motionBindings: Record<string, string> = {
     ...project.motionBindings,

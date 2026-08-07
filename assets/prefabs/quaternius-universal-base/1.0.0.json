@@ -1,0 +1,108 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "quaternius-universal-base",
+    "version": "1.0.0",
+    "displayName": "Universal Base Superhero",
+    "description": "Migrated from Character \"quaternius-universal-base\".",
+    "tags": [
+      "character",
+      "humanoid"
+    ],
+    "createdAt": "2026-08-06T00:00:00.000Z",
+    "createdBy": "prefabs:migrate",
+    "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+  },
+  "derivation": {
+    "mode": "variant",
+    "parent": {
+      "assetType": "game-object-prefab",
+      "assetId": "humanoid-character-base",
+      "version": "1.0.0",
+      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+    },
+    "patches": [
+      {
+        "kind": "add-component",
+        "nodeId": "root",
+        "component": {
+          "schemaVersion": 1,
+          "componentId": "model",
+          "componentType": "model-renderer",
+          "enabled": true,
+          "model": {
+            "kind": "repository-model",
+            "assetPath": "/assets/characters/quaternius-universal-base/Superhero_Female_FullBody.gltf",
+            "scale": 1,
+            "rotationYRad": 0
+          },
+          "castShadow": true,
+          "receiveShadow": true
+        }
+      },
+      {
+        "kind": "patch-component",
+        "nodeId": "root",
+        "componentId": "animator",
+        "patches": [
+          {
+            "path": "/assignment/motionSet",
+            "op": "set",
+            "value": {
+              "assetType": "animation-motion-set",
+              "assetId": "quaternius-universal-motion-set",
+              "version": "1.0.0",
+              "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
+            }
+          },
+          {
+            "path": "/assignment/rig",
+            "op": "set",
+            "value": {
+              "assetType": "humanoid-rig",
+              "assetId": "quaternius-universal-rig",
+              "version": "1.0.0",
+              "contentHash": "10fc68780d556ab1d75ab2e3387b7711cd049a79808d5985485d670ba2a5956e"
+            }
+          },
+          {
+            "path": "/assignment/instanceOverrides",
+            "op": "set",
+            "value": []
+          }
+        ]
+      },
+      {
+        "kind": "add-component",
+        "nodeId": "root",
+        "component": {
+          "schemaVersion": 1,
+          "componentId": "equipment-sockets",
+          "componentType": "equipment-sockets",
+          "enabled": true,
+          "sockets": [
+            {
+              "socketId": "right-hand-sword",
+              "boneName": "hand_r",
+              "localPosition": [
+                0,
+                -0.035,
+                0
+              ],
+              "localRotation": [
+                0,
+                1.5707963267948966,
+                -0.18
+              ],
+              "acceptedItemTags": [
+                "sword"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "abstract": false
+}

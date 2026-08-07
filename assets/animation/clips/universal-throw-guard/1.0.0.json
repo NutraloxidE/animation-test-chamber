@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-throw-guard",
+    "version": "1.0.0",
+    "displayName": "Universal Base guard (throw)",
+    "description": "Universal Base: \"Idle_No_Loop\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's state.guard clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "4fbb384096d74f95163ba08243250434f2b2c9d4c2029648708938dccf72d959"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-throw-guard",
+    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "durationSec": 0.6,
+    "loop": true,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+      "animationName": "Idle_No_Loop"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

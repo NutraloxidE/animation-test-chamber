@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-magic-idle",
+    "version": "1.0.0",
+    "displayName": "Universal Base idle (magic)",
+    "description": "Universal Base: \"Rig|Spell_Simple_Idle_Loop\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's locomotion.idle clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "c460524773e09c22b689427ae388ed4efb74fc667c161554a26cd3a7313672ae"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-magic-idle",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 2,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Spell_Simple_Idle_Loop",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

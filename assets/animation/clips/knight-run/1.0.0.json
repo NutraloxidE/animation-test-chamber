@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-run",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight run",
+    "description": "Quaternius Knight: \"HumanArmature|Run\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's locomotion.run clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "3bf947fd04c4cb0b01b2b31ec9785d0aaed8faeb89d9fed055d736d7f47432fe"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-run",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.7,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 4.2
+    },
+    "rootMotionMode": "Hybrid",
+    "events": [
+      {
+        "id": "run-foot-l",
+        "kind": "FootContactLeft",
+        "at": 0.05
+      },
+      {
+        "id": "run-foot-r",
+        "kind": "FootContactRight",
+        "at": 0.55
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.3
+        }
+      ],
+      "right": [
+        {
+          "start": 0.5,
+          "end": 0.8
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Run"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

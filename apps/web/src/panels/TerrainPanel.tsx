@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { TERRAIN_PRESETS } from '@atc/terrain-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 import { Field, ToggleField } from './Field.tsx';
 
 /** Terrain tuning and live grounding debug (PLAN 11). */

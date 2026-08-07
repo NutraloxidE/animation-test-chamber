@@ -87,12 +87,18 @@ function issuesFor(manifest: CapabilityManifest): string[] {
 }
 
 describe('capability registry', () => {
-  it('registers the world capability and a second, unrelated one', () => {
+  it('registers several unrelated capabilities, each declared once', () => {
     const registry = createDefaultRegistry();
     const ids = registry.list().map((capability) => capability.id);
     expect(ids).toContain(WORLD_CAPABILITY_ID);
     expect(ids).toContain(REFERENCE_CAPABILITY.id);
-    expect(ids).toHaveLength(2);
+    // The route-scoped groups the editors are built on.
+    expect(ids).toContain('rig.edit');
+    expect(ids).toContain('scene.edit');
+    expect(ids).toContain('character.control');
+    // No duplicates: `register` throws on a repeated id, and this proves the
+    // default registry does not quietly hold two of anything.
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('exposes every world command through discovery', () => {

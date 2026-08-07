@@ -1,0 +1,60 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "default-scene-camera",
+      "version": "1.0.0",
+      "displayName": "Scene Camera",
+      "description": "Generated from a migrated Scene camera entity.",
+      "tags": [
+        "camera"
+      ],
+      "createdAt": "2026-08-06T00:00:00.000Z",
+      "createdBy": "prefabs:migrate",
+      "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+    },
+    "derivation": {
+      "mode": "base"
+    },
+    "abstract": false,
+    "root": {
+      "nodeId": "root",
+      "enabled": true,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "components": [
+        {
+          "schemaVersion": 1,
+          "componentId": "camera",
+          "componentType": "camera",
+          "enabled": true,
+          "projection": "perspective",
+          "fieldOfViewDeg": 60
+        }
+      ],
+      "children": [],
+      "displayName": "Camera"
+    }
+  }
+}

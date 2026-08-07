@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-run",
+    "version": "1.0.0",
+    "displayName": "Universal Base run",
+    "description": "Universal Base: \"Rig|Sprint_Loop\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's locomotion.run clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "3a7a1a4550a4c52f3f31fac7726cb96f0c918691abf371672cada6c0058b5704"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-run",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 0.7,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 4.2
+    },
+    "rootMotionMode": "Hybrid",
+    "events": [
+      {
+        "id": "run-foot-l",
+        "kind": "FootContactLeft",
+        "at": 0.05
+      },
+      {
+        "id": "run-foot-r",
+        "kind": "FootContactRight",
+        "at": 0.55
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.3
+        }
+      ],
+      "right": [
+        {
+          "start": 0.5,
+          "end": 0.8
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Sprint_Loop",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

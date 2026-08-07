@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-pistol-guard",
+    "version": "1.0.0",
+    "displayName": "Universal Base guard (pistol)",
+    "description": "Universal Base: \"Rig|Pistol_Aim_Neutral\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's state.guard clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "086090c07412eed316449699b08d4d7893cc9aa562bb4c9180b24d2657ed67f8"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-pistol-guard",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 0.6,
+    "loop": true,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Pistol_Aim_Neutral",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

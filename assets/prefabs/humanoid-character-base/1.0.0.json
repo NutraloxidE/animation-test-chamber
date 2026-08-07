@@ -1,0 +1,124 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "humanoid-character-base",
+    "version": "1.0.0",
+    "displayName": "Humanoid Character Base",
+    "description": "The shared humanoid composition: an Animator on the project behaviour, a CharacterMotor, and a capsule. Abstract — it carries no model, so it is a shape to inherit rather than a thing to place.",
+    "tags": [
+      "character",
+      "humanoid",
+      "base"
+    ],
+    "createdAt": "2026-08-06T00:00:00.000Z",
+    "createdBy": "prefabs:migrate",
+    "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": true,
+  "root": {
+    "nodeId": "root",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "animator",
+        "componentType": "animator",
+        "enabled": true,
+        "assignment": {
+          "behavior": {
+            "assetType": "animation-behavior",
+            "assetId": "humanoid-third-person-base",
+            "version": "1.0.0",
+            "contentHash": "0658a240431284d7ec50e8bf9d93d00c683009cd7adadf0aab37906d7ca58c66"
+          },
+          "motionSet": {
+            "assetType": "animation-motion-set",
+            "assetId": "demo-humanoid-motion-set",
+            "version": "1.0.0",
+            "contentHash": "973c67a41ed1ee36ea096111e8a84d00c15a3ba48372884b1ed28108541b750c"
+          },
+          "rig": {
+            "assetType": "humanoid-rig",
+            "assetId": "demo-humanoid-rig",
+            "version": "1.0.0",
+            "contentHash": "2f8c7909d85613f6872337d287261ea1f4ef5a43649be0c5a270736bb6d91f6d"
+          },
+          "tuning": {
+            "assetType": "animation-tuning",
+            "assetId": "demo-default-tuning",
+            "version": "1.0.0",
+            "contentHash": "9fe8797c590e5d01491417e7b56e992e6ae7ff3b2b5bb1efc539f7d411a82187"
+          },
+          "instanceOverrides": [
+            {
+              "path": "/graph/states/walk/speed",
+              "op": "set",
+              "value": 1.53
+            },
+            {
+              "path": "/graph/states/run/speed",
+              "op": "set",
+              "value": 1.21
+            }
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "character-motor",
+        "componentType": "character-motor",
+        "enabled": true,
+        "intentChannel": "primary",
+        "movementScale": 1,
+        "turnScale": 1
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "capsule",
+        "componentType": "capsule-collider",
+        "enabled": true,
+        "radius": 0.3,
+        "height": 1.8,
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "character",
+          "humanoid"
+        ]
+      }
+    ],
+    "children": [],
+    "displayName": "Humanoid"
+  }
+}

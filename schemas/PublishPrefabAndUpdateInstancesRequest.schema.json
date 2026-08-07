@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "PublishPrefabAndUpdateInstancesRequest",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "source",
+    "expected",
+    "targets"
+  ],
+  "properties": {
+    "source": {
+      "$id": "GameObjectPrefabReference",
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "assetType",
+        "assetId",
+        "version",
+        "contentHash"
+      ],
+      "properties": {
+        "assetType": {
+          "$id": "GameObjectPrefabAssetType",
+          "const": "game-object-prefab",
+          "type": "string"
+        },
+        "assetId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "type": "string"
+        },
+        "contentHash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      }
+    },
+    "expected": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "sourceContentHash",
+        "projectRevisionId",
+        "sceneInstanceReferences"
+      ],
+      "properties": {
+        "sourceContentHash": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "projectRevisionId": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sceneInstanceReferences": {
+          "type": "array",
+          "items": {
+            "$id": "SceneInstanceReference",
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "sceneId",
+              "gameObjectId",
+              "prefab"
+            ],
+            "properties": {
+              "sceneId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "gameObjectId": {
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "minLength": 1,
+                "maxLength": 96,
+                "type": "string"
+              },
+              "prefab": {
+                "$id": "GameObjectPrefabReference",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "assetType",
+                  "assetId",
+                  "version",
+                  "contentHash"
+                ],
+                "properties": {
+                  "assetType": {
+                    "$id": "GameObjectPrefabAssetType",
+                    "const": "game-object-prefab",
+                    "type": "string"
+                  },
+                  "assetId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
+                  },
+                  "version": {
+                    "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                    "type": "string"
+                  },
+                  "contentHash": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$id": "SceneInstanceTarget",
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sceneId",
+          "gameObjectId"
+        ],
+        "properties": {
+          "sceneId": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          },
+          "gameObjectId": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1,
+            "maxLength": 96,
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-magic-action-none",
+    "version": "1.0.0",
+    "displayName": "Universal Base action none (magic)",
+    "description": "Universal Base: \"Rig|Spell_Simple_Idle_Loop\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's state.action-none clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "f5630a5ac63bd9a3f1a4f061100adefb71448d262b9d3726e267f4ba0d0f82f2"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-magic-action-none",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 0.5,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Spell_Simple_Idle_Loop",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-walk",
+    "version": "1.0.0",
+    "displayName": "Universal Base walk",
+    "description": "Universal Base: \"Rig|Walk_Loop\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's locomotion.walk clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "d04010ad1d7fa87ea853e1dea23130e19ac8412357e3b679ec612acb1ffed345"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-walk",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 1,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 1.6
+    },
+    "rootMotionMode": "Hybrid",
+    "events": [
+      {
+        "id": "walk-foot-l",
+        "kind": "FootContactLeft",
+        "at": 0.02
+      },
+      {
+        "id": "walk-foot-r",
+        "kind": "FootContactRight",
+        "at": 0.52
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.45
+        }
+      ],
+      "right": [
+        {
+          "start": 0.5,
+          "end": 0.95
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Walk_Loop",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ButtonAction } from '@atc/schema';
 import type { VirtualPadState } from '@atc/input-runtime';
 import { useChamber } from '../store.ts';
+import type { ChamberEngine } from '../engine.ts';
+import type { InputMapDefinition } from '@atc/schema';
 
 const BUTTONS: { action: ButtonAction; label: string }[] = [
   { action: 'Jump', label: 'A' },
@@ -16,12 +18,14 @@ const BUTTONS: { action: ButtonAction; label: string }[] = [
  * buttons are tracked by pointer id, so steering, looking and attacking can all
  * happen at once. It writes into the same ActionSample as every other device.
  */
-export function MobilePad() {
-  const engine = useChamber((state) => state.engine);
+export function MobilePad({ engine: suppliedEngine, inputMap, hideUi: suppliedHideUi }: { engine?: ChamberEngine; inputMap?: InputMapDefinition; hideUi?: boolean } = {}) {
+  const storeEngine = useChamber((state) => state.engine);
   const project = useChamber((state) => state.project);
-  const hideUi = useChamber((state) => state.hideUiForRecording);
+  const storeHideUi = useChamber((state) => state.hideUiForRecording);
+  const engine = suppliedEngine ?? storeEngine;
+  const hideUi = suppliedHideUi ?? storeHideUi;
 
-  const layout = project.inputMap.mobilePad;
+  const layout = (inputMap ?? project.inputMap).mobilePad;
   const [stickVector, setStickVector] = useState({ x: 0, y: 0 });
   const [stickOrigin, setStickOrigin] = useState<{ x: number; y: number } | null>(null);
 

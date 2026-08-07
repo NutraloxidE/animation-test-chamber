@@ -1,5 +1,28 @@
-import type { ResolvedProject } from '@atc/schema';
+import type { AnimationGraphDefinition, PreferenceProfile } from '@atc/schema';
 import type { CanonicalPath, DiffReport } from '@atc/runtime-core';
+
+/**
+ * The document a proposal is computed against.
+ *
+ * This used to be `ResolvedProject`, which carried `characters` and
+ * `activeCharacterId` into every call site. The native animation workspace
+ * edits an exact Prefab Animator and has no Character to offer, and handing the
+ * provider a Character-shaped object purely to satisfy a type is the one
+ * compatibility shortcut the restoration forbids.
+ *
+ * So the parameter names what the providers actually read: the graph they tune
+ * and the blend preferences that bound the result. Protection is read through
+ * `canAiPropose`/`requiresHumanApproval`, which take an `unknown` root and walk
+ * the path — they never needed a project either.
+ *
+ * `ResolvedProject` still satisfies this structurally, so the legacy callers
+ * are unchanged; what changes is that a Character-free document now satisfies
+ * it too.
+ */
+export interface TunableAnimationDocument {
+  graph: AnimationGraphDefinition;
+  preferences: PreferenceProfile;
+}
 
 /** The three variants a proposal set always offers (PLAN 14.2). */
 export type ProposalVariant = 'A-responsive' | 'B-weighted' | 'C-preserve-original';
@@ -27,7 +50,7 @@ export interface AdjustmentProposal {
 }
 
 export interface ProposalContext {
-  project: ResolvedProject;
+  project: TunableAnimationDocument;
   /** Natural-language request from the human, in any language. */
   request: string;
   /** Path of the object being tuned, e.g. /graph/transitions/run-to-attack-01 */

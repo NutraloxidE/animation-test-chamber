@@ -15,6 +15,8 @@ export default defineConfig({
       '@atc/haptics-runtime': pkg('haptics-runtime'),
       '@atc/replay-runtime': pkg('replay-runtime'),
       '@atc/world-runtime': pkg('world-runtime'),
+      '@atc/character-control-runtime': pkg('character-control-runtime'),
+      '@atc/scene-runtime': pkg('scene-runtime'),
       '@atc/capability-runtime': pkg('capability-runtime'),
       '@atc/editor-core': pkg('editor-core'),
       '@atc/git-adapter': pkg('git-adapter'),
@@ -22,6 +24,8 @@ export default defineConfig({
       '@atc/acquisition-core': pkg('acquisition-core'),
       '@atc/unity-export': pkg('unity-export'),
       '@atc/repository-transaction': pkg('repository-transaction'),
+      '@atc/prefab-runtime': pkg('prefab-runtime'),
+      '@atc/game-object-runtime': pkg('game-object-runtime'),
     },
   },
   test: {

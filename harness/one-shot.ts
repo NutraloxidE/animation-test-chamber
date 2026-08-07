@@ -9,11 +9,17 @@
  */
 import { staticStages } from './check-static.ts';
 import { animationAssetStages } from './check-animation-assets.ts';
+import { prefabStages } from './check-prefabs.ts';
+import { gameObjectStages } from './check-game-objects.ts';
+import { gameObjectRendererStages } from './check-game-object-renderer.ts';
+import { sceneGameObjectCutoverStages } from './check-scene-gameobject-cutover.ts';
 import { transactionRecoveryStage } from './check-transaction-recovery.ts';
 import { worldStages } from './check-world.ts';
 import { capabilityStages } from './check-capabilities.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
+import { rigEditorPrerequisiteStages } from './check-rig-editor-prerequisites.ts';
+import { rigEditorNativeRestorationStages } from './check-rig-editor-native-restoration.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
 
 function vitestStage(name: string, directory: string, suggestion: string): StageResult {
@@ -51,12 +57,19 @@ function playwrightStage(): StageResult {
   return stage(
     'visual (playwright)',
     {
-      reproduce: 'npx playwright test',
+      reproduce: 'pnpm harness:visual',
       blocksCommit: true,
       suggestion: 'run `npx playwright test --ui` to inspect the failing view',
     },
     () => {
-      const { code, output } = run('npx', ['playwright', 'test', '--reporter=line']);
+      /*
+       * Through the isolating wrapper, never `playwright test` directly. The
+       * visual suite performs real writes through the real API, and run against
+       * the source checkout it modified the canonical demo project — leaving
+       * replay and animation-assets red for every later run. A one-shot stage
+       * that corrupts the inputs of the stages before it is worse than no stage.
+       */
+      const { code, output } = run('npx', ['tsx', 'harness/visual.ts']);
       if (code === 0) {
         return { ok: true, issues: [], output: output.split('\n').slice(-4).join('\n') };
       }
@@ -146,6 +159,38 @@ async function main(): Promise<void> {
     results.push(result);
   }
 
+  // Prefabs after the animation assets they reference and before the runtime
+  // that instantiates them: a Prefab whose Animator names a missing Motion Set
+  // would otherwise surface as a GameObject that will not tick, which is the
+  // symptom rather than the cause.
+  for (const result of prefabStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  for (const result of gameObjectStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  // The renderer projection last of the GameObject stages: it asserts what the
+  // production Viewport draws, and it can only mean anything once the objects
+  // it draws are known to resolve and to run.
+  for (const result of gameObjectRendererStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  /*
+   * The production Scene cutover, after the renderer projection it depends on.
+   * These are the stages that can tell a Scene Editor running on GameObjects
+   * from one still reading `entities` and merely agreeing with them — which is
+   * a distinction no earlier stage can make, because while the two views agree
+   * every assertion passes either way.
+   */
+  for (const result of sceneGameObjectCutoverStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
   // Also before the tests: an unresolved transaction from a prior crash
   // would make the write API read-only, which every later write-path test
   // would then fail for a reason that has nothing to do with what they test.
@@ -160,6 +205,18 @@ async function main(): Promise<void> {
     results.push(result);
   }
   for (const result of capabilityStages()) {
+    printStage(result);
+    results.push(result);
+  }
+
+  results.push(vitestStage('prefab API', 'tests/integration/api/prefabs.test.ts', 'fix exact Prefab API semantics'));
+  printStage(results.at(-1)!);
+
+  for (const result of rigEditorPrerequisiteStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  for (const result of rigEditorNativeRestorationStages()) {
     printStage(result);
     results.push(result);
   }

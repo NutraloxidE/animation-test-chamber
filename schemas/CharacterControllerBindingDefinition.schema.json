@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CharacterControllerBindingDefinition",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "playerIndex"
+      ],
+      "properties": {
+        "kind": {
+          "const": "human",
+          "type": "string"
+        },
+        "playerIndex": {
+          "minimum": 0,
+          "maximum": 7,
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "trackId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "script",
+          "type": "string"
+        },
+        "trackId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "channelId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ai",
+          "type": "string"
+        },
+        "channelId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind",
+        "replayId"
+      ],
+      "properties": {
+        "kind": {
+          "const": "replay",
+          "type": "string"
+        },
+        "replayId": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 96,
+          "type": "string"
+        }
+      }
+    },
+    {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "none",
+          "type": "string"
+        }
+      }
+    }
+  ]
+}

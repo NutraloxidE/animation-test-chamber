@@ -11,6 +11,7 @@ import { MovementProfile, CameraProfile, RootMotionProfile } from './movement.ts
 import { TerrainInteractionProfile } from './terrain.ts';
 import {
   AnimationBehaviorAsset,
+  AnimationAsset,
   AnimationClipAsset,
   AnimationMotionSetAsset,
   AnimationTuningProfileAsset,
@@ -19,11 +20,47 @@ import {
   HumanoidRigProfileAsset,
 } from './animation-assets.ts';
 import { SaveAnimationChangesRequest } from './animation-save.ts';
+import { AnimationSubjectDefinition } from './animation-subject.ts';
 import {
-  IntentTrackDefinition,
   RuntimeInstanceDefinition,
   WorldDefinition,
 } from './world.ts';
+import { IntentTrackDefinition } from './intent-track.ts';
+import {
+  CameraSceneEntity,
+  CharacterControllerBindingDefinition,
+  CharacterSceneEntity,
+  GameObjectInstanceBindings,
+  GameObjectInstanceDefinition,
+  GameObjectInstanceRelations,
+  GameObjectSceneOperation,
+  LightSceneEntity,
+  PlaceablePrefabAsset,
+  PropSceneEntity,
+  SceneDefinition,
+  SceneEntityDefinition,
+  SceneOperation,
+} from './scene.ts';
+import {
+  PublishAnimationAndUpdatePrefabsRequest,
+  PublishPrefabAndUpdateInstancesRequest,
+} from './prefab-save.ts';
+import {
+  BaseGameObjectPrefabAsset,
+  ForkGameObjectPrefabAsset,
+  GameObjectComponentDefinition,
+  GameObjectPrefabReference,
+  PrefabComponentOverride,
+  PrefabPatch,
+  RenderableModelBinding,
+  VariantGameObjectPrefabAsset,
+} from './prefab.ts';
+import {
+  ProtectionApproval,
+  RepositoryApplyExpected,
+  RepositoryApplyRequest,
+  RepositoryDocumentTarget,
+} from './repository-apply.ts';
 
 export interface ValidationIssue {
   path: string;
@@ -57,6 +94,7 @@ export const SCHEMA_REGISTRY = {
   CameraProfile,
   TerrainInteractionProfile,
   AnimationBehaviorAsset,
+  AnimationAsset,
   AnimationMotionSetAsset,
   AnimationClipAsset,
   HumanoidRigProfileAsset,
@@ -64,9 +102,41 @@ export const SCHEMA_REGISTRY = {
   AssetReference,
   CharacterAnimationAssignment,
   SaveAnimationChangesRequest,
+  AnimationSubjectDefinition,
   WorldDefinition,
   RuntimeInstanceDefinition,
   IntentTrackDefinition,
+  SceneDefinition,
+  SceneEntityDefinition,
+  CharacterSceneEntity,
+  PropSceneEntity,
+  LightSceneEntity,
+  CameraSceneEntity,
+  CharacterControllerBindingDefinition,
+  SceneOperation,
+  RepositoryDocumentTarget,
+  RepositoryApplyExpected,
+  ProtectionApproval,
+  RepositoryApplyRequest,
+  GameObjectPrefabReference,
+  RenderableModelBinding,
+  GameObjectComponentDefinition,
+  PrefabComponentOverride,
+  PrefabPatch,
+  // The three stored Prefab shapes are registered individually rather than as
+  // their union: each embeds the recursive `PrefabNodeDefinition`, whose `$id`
+  // is the target of a `$ref`, and one compiled schema cannot carry that `$id`
+  // twice. `derivation.mode` selects which name to validate against.
+  BaseGameObjectPrefabAsset,
+  ForkGameObjectPrefabAsset,
+  VariantGameObjectPrefabAsset,
+  GameObjectInstanceDefinition,
+  GameObjectInstanceBindings,
+  GameObjectInstanceRelations,
+  PlaceablePrefabAsset,
+  GameObjectSceneOperation,
+  PublishAnimationAndUpdatePrefabsRequest,
+  PublishPrefabAndUpdateInstancesRequest,
 } as const satisfies Record<string, TSchema>;
 
 export type SchemaName = keyof typeof SCHEMA_REGISTRY;
@@ -76,22 +146,47 @@ const ajv = new Ajv({ allErrors: true, strict: false, allowUnionTypes: true });
 
 const compiled = new Map<string, ValidateFunction>();
 
+/** Every `$ref` target named anywhere inside a schema. */
+function referencedIds(schema: unknown, into: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(schema)) {
+    for (const entry of schema) referencedIds(entry, into);
+    return into;
+  }
+  if (schema && typeof schema === 'object') {
+    for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+      if (key === '$ref' && typeof value === 'string') into.add(value);
+      else referencedIds(value, into);
+    }
+  }
+  return into;
+}
+
 /**
  * TypeBox inlines shared sub-schemas rather than emitting $refs, so a building
  * block like ProtectionMetadata appears many times inside one document, each
  * copy carrying the same $id. Ajv rejects that as an ambiguous reference. The
  * $id values are useful when emitting standalone JSON Schema files, so they stay
  * in the definitions and are stripped here instead.
+ *
+ * One kind of `$id` must survive: the one a `$ref` inside the same schema
+ * resolves against. `PrefabNodeDefinition` is recursive — a node's children may
+ * be nodes — and recursion is expressible only as a reference, so stripping its
+ * `$id` would leave a dangling `$ref` and Ajv would refuse to compile at all.
+ * Referenced ids are kept; every other id still goes.
  */
 export function stripSchemaIds<T>(schema: T): T {
+  return stripUnreferencedIds(schema, referencedIds(schema));
+}
+
+function stripUnreferencedIds<T>(schema: T, keep: Set<string>): T {
   if (Array.isArray(schema)) {
-    return schema.map((entry) => stripSchemaIds(entry)) as unknown as T;
+    return schema.map((entry) => stripUnreferencedIds(entry, keep)) as unknown as T;
   }
   if (schema && typeof schema === 'object') {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
-      if (key === '$id') continue;
-      out[key] = stripSchemaIds(value);
+      if (key === '$id' && !(typeof value === 'string' && keep.has(value))) continue;
+      out[key] = stripUnreferencedIds(value, keep);
     }
     return out as T;
   }
@@ -101,7 +196,15 @@ export function stripSchemaIds<T>(schema: T): T {
 function compile(name: SchemaName): ValidateFunction {
   const existing = compiled.get(name);
   if (existing) return existing;
-  const fn = ajv.compile(stripSchemaIds(SCHEMA_REGISTRY[name]) as object);
+  const schema = SCHEMA_REGISTRY[name];
+  for (const reference of referencedIds(schema)) {
+    if (ajv.getSchema(reference)) continue;
+    const dependency = Object.values(SCHEMA_REGISTRY).find(
+      (candidate) => candidate.$id === reference,
+    );
+    if (dependency) ajv.addSchema(stripSchemaIds(dependency) as object, reference);
+  }
+  const fn = ajv.compile(stripSchemaIds(schema) as object);
   compiled.set(name, fn);
   return fn;
 }
@@ -230,7 +333,418 @@ export function validateProjectReferences(project: unknown): ValidationResult {
 
   issues.push(...equipmentIssues(p.equipment ?? [], null));
   issues.push(...worldIssues(project, seenCharacters));
+  issues.push(...scenesIssues(project));
   return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Structural checks across a project's Scenes.
+ *
+ * Scene ids are unique *project-wide* rather than merely non-empty, because a
+ * route parameter is the authoritative target identity: two Scenes sharing an
+ * id would make `/edit/scene/x` name two documents, and whichever one the
+ * resolver reached first would be the one that got written.
+ */
+function scenesIssues(project: unknown): ValidationIssue[] {
+  const p = project as { scenes?: unknown[]; activeSceneId?: string };
+  if (!Array.isArray(p.scenes)) return [];
+
+  const issues: ValidationIssue[] = [];
+  const sceneIds = new Set<string>();
+  for (const scene of p.scenes) {
+    const id = (scene as { id?: string }).id ?? '';
+    if (sceneIds.has(id)) {
+      issues.push({
+        path: `/scenes/${id}`,
+        message: `duplicate scene id "${id}"`,
+        keyword: 'unique',
+      });
+    }
+    sceneIds.add(id);
+    /*
+     * The GameObject view, not the entity view (DECISION 0025).
+     *
+     * Project validation is a production check, and after the Scene cutover the
+     * production collection is `gameObjects`. Validating `entities` here would
+     * make the legacy mirror able to refuse a write that never touched it —
+     * which is exactly the "stale mirror is load-bearing" state the cutover
+     * removes. Its own validator still exists and is still exercised, from the
+     * migration path that produces it.
+     */
+    issues.push(...sceneGameObjectIssues(scene, `/scenes/${id}`));
+  }
+
+  if (p.activeSceneId !== undefined && !sceneIds.has(p.activeSceneId)) {
+    issues.push({
+      path: '/activeSceneId',
+      message: `references unknown scene "${p.activeSceneId}"`,
+      keyword: 'reference',
+    });
+  }
+  return issues;
+}
+
+/**
+ * Structural checks on one Scene's **entity** collection.
+ *
+ * The legacy validator, kept for the migration path and its tests. Production
+ * no longer runs it: after the Scene cutover (DECISION 0025) nothing reads
+ * `scene.entities`, so an entity mirror that has gone stale cannot affect a
+ * frame, an operation or a write — and continuing to refuse a project because
+ * of it would make the stale mirror load-bearing again by the back door.
+ *
+ * Still exported, and still exercised, because "the migration produced a valid
+ * entity view" remains a true and checkable claim about the documents that
+ * carry one.
+ */
+export function validateSceneReferences(
+  scene: unknown,
+  knownCharacterIds: ReadonlySet<string>,
+): ValidationResult {
+  const issues = sceneIssues(scene, knownCharacterIds, '/scene');
+  return { valid: issues.length === 0, issues };
+}
+
+/**
+ * Structural checks on one Scene's **GameObject** collection (§9).
+ *
+ * The production validator. It answers the questions a Scene of GameObjects can
+ * be wrong about without any Prefab knowledge at all — duplicate ids, a
+ * non-finite or non-unit transform, a script binding naming no track, a relation
+ * or an active camera pointing at something absent or disabled.
+ *
+ * What it deliberately does *not* answer is "does the resolved Prefab actually
+ * have a Camera Component". That needs the Prefab registry, which a schema
+ * package must not depend on, so it is checked one layer up — in the operation
+ * engine and again in the apply path, where the registry is in hand.
+ *
+ * Exported so a *staged* Scene can be checked before it is ever attached to a
+ * project: the command surface refuses a bad instance at the command, not at
+ * publication, and a refusal that arrives that late is one a caller has already
+ * built a UI on top of.
+ */
+export function validateSceneGameObjectReferences(scene: unknown): ValidationResult {
+  const issues = sceneGameObjectIssues(scene, '/scene');
+  return { valid: issues.length === 0, issues };
+}
+
+interface RawSceneGameObject {
+  id?: string;
+  enabled?: boolean;
+  prefab?: { assetId?: string; version?: string };
+  bindings?: { characterIntent?: { kind?: string; trackId?: string } };
+  relations?: { cameraTargetGameObjectId?: string };
+  componentOverrides?: { nodeId?: string; componentId?: string }[];
+  transform?: {
+    position?: Record<string, number>;
+    rotation?: Record<string, number>;
+    scale?: Record<string, number>;
+  };
+}
+
+function sceneGameObjectIssues(scene: unknown, base: string): ValidationIssue[] {
+  const s = scene as {
+    gameObjects?: RawSceneGameObject[];
+    intentTracks?: { id: string; durationTicks: number; keyframes: { tick: number }[] }[];
+    activeCameraGameObjectId?: string;
+  };
+  if (!s || typeof s !== 'object') return [];
+
+  const issues: ValidationIssue[] = [...intentTrackIssues(s.intentTracks ?? [], base)];
+  const trackIds = new Set((s.intentTracks ?? []).map((track) => track.id));
+  const gameObjects = s.gameObjects ?? [];
+
+  const enabled = new Map<string, boolean>();
+  for (const gameObject of gameObjects) {
+    const id = gameObject.id ?? '';
+    const path = `${base}/gameObjects/${id}`;
+    if (enabled.has(id)) {
+      issues.push({ path, message: `duplicate GameObject id "${id}"`, keyword: 'unique' });
+    }
+    enabled.set(id, gameObject.enabled ?? false);
+
+    if (!gameObject.prefab?.assetId || !gameObject.prefab.version) {
+      issues.push({
+        path: `${path}/prefab`,
+        message: `GameObject "${id}" names no exact Prefab version`,
+        keyword: 'reference',
+      });
+    }
+
+    const intent = gameObject.bindings?.characterIntent;
+    if (intent?.kind === 'script' && !trackIds.has(intent.trackId ?? '')) {
+      issues.push({
+        path: `${path}/bindings/characterIntent/trackId`,
+        message: `GameObject "${id}" references unknown intent track "${intent.trackId ?? ''}"`,
+        keyword: 'reference',
+      });
+    }
+
+    /*
+     * An override addresses a node and a Component by stable id. An override
+     * missing either is not a partial instruction the resolver could complete —
+     * it is an instruction with no target, and applying it would mean guessing
+     * which Component in the Prefab it meant.
+     */
+    for (const [index, override] of (gameObject.componentOverrides ?? []).entries()) {
+      if (!override.nodeId || !override.componentId) {
+        issues.push({
+          path: `${path}/componentOverrides/${index}`,
+          message: `GameObject "${id}" has a component override with no node/component target`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    issues.push(...transformIssues(gameObject.transform, path));
+  }
+
+  /*
+   * A relation — and the Scene's active camera — must name a GameObject that
+   * exists and is enabled. A camera aimed at a disabled object opens the Scene
+   * looking at nothing, which reads as a broken build rather than a broken
+   * document. Never left dangling (§8.3).
+   */
+  for (const gameObject of gameObjects) {
+    const target = gameObject.relations?.cameraTargetGameObjectId;
+    if (target === undefined) continue;
+    if (!enabled.has(target)) {
+      issues.push({
+        path: `${base}/gameObjects/${gameObject.id ?? ''}/relations/cameraTargetGameObjectId`,
+        message: `camera targets unknown GameObject "${target}"`,
+        keyword: 'reference',
+      });
+    }
+  }
+
+  const activeCameraId = s.activeCameraGameObjectId;
+  if (activeCameraId !== undefined) {
+    if (!enabled.has(activeCameraId)) {
+      issues.push({
+        path: `${base}/activeCameraGameObjectId`,
+        message: `references unknown GameObject "${activeCameraId}"`,
+        keyword: 'reference',
+      });
+    } else if (!enabled.get(activeCameraId)) {
+      issues.push({
+        path: `${base}/activeCameraGameObjectId`,
+        message: `references disabled GameObject "${activeCameraId}"`,
+        keyword: 'enabled',
+      });
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Intent tracks belong to the Scene, not to either view of its contents.
+ *
+ * Shared by both validators for exactly that reason: a track list that is fine
+ * under one view and broken under the other would be a contradiction the Scene
+ * document cannot express.
+ */
+function intentTrackIssues(
+  tracks: readonly { id: string; durationTicks: number; keyframes: { tick: number }[] }[],
+  base: string,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const seen = new Set<string>();
+  for (const track of tracks) {
+    if (seen.has(track.id)) {
+      issues.push({
+        path: `${base}/intentTracks/${track.id}`,
+        message: `duplicate intent track id "${track.id}"`,
+        keyword: 'unique',
+      });
+    }
+    seen.add(track.id);
+
+    /*
+     * Keyframes must be strictly ascending. Out-of-order keyframes are not a
+     * schema error and would still sample *something*, which is worse than
+     * failing: the track would play a different shape than the one the author
+     * can see written down.
+     */
+    let previous = -1;
+    for (const keyframe of track.keyframes ?? []) {
+      if (keyframe.tick <= previous) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe ticks must strictly ascend (saw ${keyframe.tick} after ${previous})`,
+          keyword: 'order',
+        });
+      }
+      previous = keyframe.tick;
+      if (keyframe.tick >= track.durationTicks) {
+        issues.push({
+          path: `${base}/intentTracks/${track.id}/keyframes`,
+          message: `keyframe at tick ${keyframe.tick} is outside durationTicks ${track.durationTicks}`,
+          keyword: 'range',
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+interface RawSceneEntity {
+  id?: string;
+  kind?: string;
+  enabled?: boolean;
+  characterId?: string;
+  controller?: { kind?: string; trackId?: string };
+  targetEntityId?: string;
+  asset?: { kind?: string; assetPath?: string };
+  transform?: {
+    position?: Record<string, number>;
+    rotation?: Record<string, number>;
+    scale?: Record<string, number>;
+  };
+}
+
+function sceneIssues(
+  scene: unknown,
+  characterIds: ReadonlySet<string>,
+  base: string,
+): ValidationIssue[] {
+  const s = scene as {
+    entities?: RawSceneEntity[];
+    intentTracks?: { id: string; durationTicks: number; keyframes: { tick: number }[] }[];
+    activeCameraEntityId?: string;
+  };
+  if (!s || typeof s !== 'object') return [];
+
+  const issues: ValidationIssue[] = [...intentTrackIssues(s.intentTracks ?? [], base)];
+  const entities = s.entities ?? [];
+  const trackIds = new Set((s.intentTracks ?? []).map((track) => track.id));
+
+  const enabled = new Map<string, boolean>();
+  for (const entity of entities) {
+    const id = entity.id ?? '';
+    const path = `${base}/entities/${id}`;
+    if (enabled.has(id)) {
+      issues.push({ path, message: `duplicate entity id "${id}"`, keyword: 'unique' });
+    }
+    enabled.set(id, entity.enabled ?? false);
+
+    if (entity.kind === 'character') {
+      if (!characterIds.has(entity.characterId ?? '')) {
+        issues.push({
+          path: `${path}/characterId`,
+          message: `entity "${id}" references unknown character "${entity.characterId ?? ''}"`,
+          keyword: 'reference',
+        });
+      }
+      if (entity.controller?.kind === 'script' && !trackIds.has(entity.controller.trackId ?? '')) {
+        issues.push({
+          path: `${path}/controller/trackId`,
+          message: `entity "${id}" references unknown intent track "${entity.controller.trackId ?? ''}"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    /*
+     * A prop whose asset is a `blob:` or `data:` URL resolves exactly once, in
+     * the tab that minted it. Such a scene looks correct to the person who
+     * authored it and is broken for everyone who opens the file afterwards,
+     * which is the failure worth refusing by name rather than discovering as a
+     * missing mesh.
+     */
+    if (entity.kind === 'prop' && entity.asset?.kind === 'model') {
+      const assetPath = entity.asset.assetPath ?? '';
+      if (/^(blob:|data:|https?:)/i.test(assetPath)) {
+        issues.push({
+          path: `${path}/asset/assetPath`,
+          message: `entity "${id}" stores a non-repository asset URL "${assetPath.slice(0, 32)}…"`,
+          keyword: 'reference',
+        });
+      }
+    }
+
+    issues.push(...transformIssues(entity.transform, path));
+  }
+
+  /*
+   * A camera target — and the scene's active camera — must name an entity that
+   * exists and is enabled. A camera aimed at a disabled entity opens the scene
+   * looking at nothing, which reads as a broken build rather than a broken
+   * document.
+   */
+  for (const entity of entities) {
+    if (entity.kind !== 'camera' || entity.targetEntityId === undefined) continue;
+    if (!enabled.has(entity.targetEntityId)) {
+      issues.push({
+        path: `${base}/entities/${entity.id ?? ''}/targetEntityId`,
+        message: `camera targets unknown entity "${entity.targetEntityId}"`,
+        keyword: 'reference',
+      });
+    }
+  }
+
+  const activeCameraId = s.activeCameraEntityId;
+  if (activeCameraId !== undefined) {
+    const camera = entities.find((entity) => entity.id === activeCameraId);
+    if (!camera) {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `references unknown entity "${activeCameraId}"`,
+        keyword: 'reference',
+      });
+    } else if (camera.kind !== 'camera') {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `entity "${activeCameraId}" is a ${camera.kind}, not a camera`,
+        keyword: 'reference',
+      });
+    } else if (!camera.enabled) {
+      issues.push({
+        path: `${base}/activeCameraEntityId`,
+        message: `references disabled camera "${activeCameraId}"`,
+        keyword: 'enabled',
+      });
+    }
+  }
+
+  return issues;
+}
+
+function transformIssues(
+  transform: RawSceneEntity['transform'],
+  base: string,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const field of ['position', 'rotation', 'scale'] as const) {
+    for (const [axis, value] of Object.entries(transform?.[field] ?? {})) {
+      if (!Number.isFinite(value)) {
+        issues.push({
+          path: `${base}/transform/${field}/${axis}`,
+          message: `transform ${field} ${axis} must be finite`,
+          keyword: 'finite',
+        });
+      }
+    }
+  }
+
+  /*
+   * The schema bounds each quaternion component to [-1, 1], which no JSON
+   * Schema can strengthen into "unit length". An un-normalized rotation is not
+   * garbage — it is a plausible-looking rotation that also scales everything it
+   * is applied to, and it would be discovered as a character that grows.
+   */
+  const rotation = transform?.rotation;
+  if (rotation && ['x', 'y', 'z', 'w'].every((axis) => Number.isFinite(rotation[axis]))) {
+    const magnitude = Math.hypot(rotation.x!, rotation.y!, rotation.z!, rotation.w!);
+    if (Math.abs(magnitude - 1) > 1e-3) {
+      issues.push({
+        path: `${base}/transform/rotation`,
+        message: `rotation quaternion must be unit length (magnitude ${magnitude.toFixed(4)})`,
+        keyword: 'normalized',
+      });
+    }
+  }
+  return issues;
 }
 
 /**

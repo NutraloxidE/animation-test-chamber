@@ -10,6 +10,10 @@ reports/*.md
 !reports/.gitkeep
 # The completion report is a deliverable, not a harness run artifact: it records
 # what was built and what was left, and is meant to be read from the repository.
+!reports/gameobject-prefab-migration-audit.md
+!reports/gameobject-prefab-production-switchover-audit.md
+!reports/gameobject-prefab-production-cutover-final-audit.md
+!reports/scene-gameobject-production-cutover-audit.md
 !reports/animation-assets-one-shot-report.md
 !reports/animation-asset-hardening-baseline.md
 !reports/animation-asset-published-baseline.json
@@ -26,6 +30,9 @@ reports/*.md
 !reports/pr14-critical-fixes.json
 !reports/pr14-replay-lifecycle.md
 !reports/pr14-replay-lifecycle.json
+!reports/repository-apply-hardening.md
+!reports/trace-baseline-resolution.md
+!reports/phase-11b-acceptance-closure.md
 # Asset transaction staging. Created and deleted within a single request; a
 # directory surviving here means a transaction died mid-flight.
 .chamber-asset-transactions/
@@ -35,3 +42,7 @@ playwright-report/
 .vite/
 coverage/
 tsconfig.tsbuildinfo
+!reports/rig-editor-restoration-prerequisites-audit.md
+!reports/rig-editor-main-ui-inventory.md
+!reports/rig-editor-native-restoration-progress.md
+!reports/rig-editor-native-restoration-audit.md

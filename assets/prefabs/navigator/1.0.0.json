@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "navigator",
+    "version": "1.0.0",
+    "displayName": "Navigator",
+    "description": "Migrated from Character \"demo-humanoid\".",
+    "tags": [
+      "character",
+      "humanoid"
+    ],
+    "createdAt": "2026-08-06T00:00:00.000Z",
+    "createdBy": "prefabs:migrate",
+    "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+  },
+  "derivation": {
+    "mode": "variant",
+    "parent": {
+      "assetType": "game-object-prefab",
+      "assetId": "humanoid-character-base",
+      "version": "1.0.0",
+      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+    },
+    "patches": [
+      {
+        "kind": "add-component",
+        "nodeId": "root",
+        "component": {
+          "schemaVersion": 1,
+          "componentId": "model",
+          "componentType": "model-renderer",
+          "enabled": true,
+          "model": {
+            "kind": "procedural-humanoid",
+            "presetId": "navigator"
+          },
+          "castShadow": true,
+          "receiveShadow": true
+        }
+      }
+    ]
+  },
+  "abstract": false
+}

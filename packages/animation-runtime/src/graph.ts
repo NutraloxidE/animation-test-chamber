@@ -526,3 +526,59 @@ export class AnimationGraphRuntime {
     );
   }
 }
+
+/**
+ * Which state a renderer should be showing, and how far into it.
+ *
+ * Two consumers derive this: the legacy chamber's `GltfCharacter`, which had it
+ * inline, and the GameObject runtime, which needs the same answer for a Prefab's
+ * Animator. Written twice they would drift — and the way they would drift is the
+ * worst available one, because both would still animate. One would simply be a
+ * frame behind the simulation, or hold an action a beat too long, and nothing on
+ * screen would say which of the two was wrong.
+ *
+ * The action layer wins while an action is running, *except* while that action
+ * is handing movement authority back — during a dodge recovery the character is
+ * already locomoting, and continuing to show the dodge is what made the feet
+ * slide.
+ */
+export function activeAnimationState(input: {
+  graph: AnimationGraphDefinition;
+  clips: readonly AnimationClipDefinition[];
+  motionBindings: Readonly<Record<string, string>>;
+  actionStateId: string | undefined;
+  actionNormalizedTime: number;
+  locomotionStateId: string | undefined;
+  locomotionNormalizedTime: number;
+}): { stateId: string; normalizedTime: number; actionActive: boolean; dodgeRecovery: boolean } {
+  const actionState = input.graph.states.find((entry) => entry.id === input.actionStateId);
+  const locomotionState = input.graph.states.find(
+    (entry) => entry.id === input.locomotionStateId,
+  );
+  // The state names a slot; the motion set says which clip that slot is.
+  const actionClip = input.clips.find(
+    (entry) => entry.id === (actionState ? input.motionBindings[actionState.motionSlot] : ''),
+  );
+  const dodgeRecovery = isDodgeRecoveryTransition(
+    actionState,
+    input.actionNormalizedTime,
+    locomotionState,
+    actionClip?.recoveryTransitionStartNormalized,
+  );
+  const actionActive =
+    input.actionStateId !== undefined &&
+    input.actionStateId !== '' &&
+    input.actionStateId !== 'action-none' &&
+    !dodgeRecovery;
+
+  return {
+    stateId: actionActive
+      ? input.actionStateId!
+      : (input.locomotionStateId === undefined || input.locomotionStateId === ''
+          ? 'idle'
+          : input.locomotionStateId),
+    normalizedTime: actionActive ? input.actionNormalizedTime : input.locomotionNormalizedTime,
+    actionActive,
+    dodgeRecovery,
+  };
+}

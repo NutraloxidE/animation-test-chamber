@@ -6,7 +6,9 @@
  * also what makes the static build genuinely browsable rather than a shell.
  */
 import type { AnimationAssetSummary } from '@atc/schema';
+import type { PrefabSummary } from '@atc/prefab-runtime';
 import { useChamber } from '../store.ts';
+import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 
 const TYPE_FILTERS: { id: string; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -15,6 +17,7 @@ const TYPE_FILTERS: { id: string; label: string }[] = [
   { id: 'animation-clip', label: 'Clips' },
   { id: 'humanoid-rig', label: 'Rig Profiles' },
   { id: 'animation-tuning', label: 'Tuning Profiles' },
+  { id: 'game-object-prefab', label: 'Prefabs' },
   { id: 'candidates', label: 'Candidates' },
 ];
 
@@ -80,6 +83,49 @@ function AssetCard({ summary }: { summary: AnimationAssetSummary }) {
           </span>
           <span className="asset-badge asset-badge--refs">
             {referencedBy} character{referencedBy === 1 ? '' : 's'}
+          </span>
+        </span>
+        {summary.tags.length > 0 && (
+          <span className="asset-card__tags">{summary.tags.join(' · ')}</span>
+        )}
+      </button>
+    </li>
+  );
+}
+
+function PrefabCard({ summary }: { summary: PrefabSummary }) {
+  const selection = useChamber((state) => state.librarySelection);
+  const select = useChamber((state) => state.selectLibraryAsset);
+  const selected =
+    selection?.assetType === 'game-object-prefab' &&
+    selection.assetId === summary.id &&
+    selection.version === summary.version;
+
+  return (
+    <li>
+      <button
+        type="button"
+        className={`asset-card${selected ? ' is-selected' : ''}${summary.valid ? '' : ' is-invalid'}`}
+        data-testid={`prefab-card-${summary.id}`}
+        onClick={() =>
+          select({
+            assetType: 'game-object-prefab',
+            assetId: summary.id,
+            version: summary.version,
+          })
+        }
+      >
+        <span className="asset-card__name">{summary.displayName}</span>
+        <span className="asset-card__meta">
+          <code>{summary.id}</code>
+          <span className="asset-card__version">v{summary.version}</span>
+        </span>
+        <span className="asset-card__badges">
+          <span className="asset-badge">prefab</span>
+          <span className="asset-badge asset-badge--derivation">{summary.derivation}</span>
+          {summary.abstract && <span className="asset-badge">abstract</span>}
+          <span className={`asset-badge asset-badge--${summary.valid ? 'valid' : 'invalid'}`}>
+            {summary.valid ? 'valid' : summary.issueCodes[0] ?? 'invalid'}
           </span>
         </span>
         {summary.tags.length > 0 && (
@@ -193,6 +239,13 @@ export function AssetBrowser() {
   useChamber((state) => state.activeCharacterId);
   useChamber((state) => state.revision);
   const summaries = useChamber((state) => state.librarySummaries)();
+  const prefabSummaries =
+    typeFilter === 'game-object-prefab' || typeFilter === 'all'
+      ? browserPrefabRegistry().summaries(search.trim() ? { text: search.trim() } : {})
+      : [];
+  const visibleAnimationSummaries =
+    typeFilter === 'game-object-prefab' ? [] : summaries;
+  const empty = visibleAnimationSummaries.length === 0 && prefabSummaries.length === 0;
 
   return (
     <div className="asset-browser" data-testid="asset-browser">
@@ -209,14 +262,17 @@ export function AssetBrowser() {
 
       {typeFilter === 'candidates' ? (
         <CandidateList />
-      ) : summaries.length === 0 ? (
+      ) : empty ? (
         <p className="muted" data-testid="asset-list-empty">
           Nothing matches. Clear the search or pick a different filter.
         </p>
       ) : (
         <ul className="asset-list" data-testid="asset-list">
-          {summaries.map((summary) => (
+          {visibleAnimationSummaries.map((summary) => (
             <AssetCard key={`${summary.assetType}:${summary.id}@${summary.version}`} summary={summary} />
+          ))}
+          {prefabSummaries.map((summary) => (
+            <PrefabCard key={`game-object-prefab:${summary.id}@${summary.version}`} summary={summary} />
           ))}
         </ul>
       )}

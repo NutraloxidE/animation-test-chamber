@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-fall",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight fall",
+    "description": "Quaternius Knight: \"HumanArmature|Jump\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's airborne.fall clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "4add7402be29164a8b137a766f64e0cca41092a2908af8f9aef42264c1f8a277"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-fall",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.8,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Jump"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

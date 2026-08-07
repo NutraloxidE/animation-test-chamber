@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "knight-jump",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight jump",
+    "description": "Quaternius Knight: \"HumanArmature|Jump\" from /assets/characters/quaternius-knight/KnightCharacter.glb. Timing inherited from the demo Character's airborne.jump clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "260d0be4afb720b1ab62e2cb4b8a58b24500d0c511e55876da347db22af0c7f4"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "knight-jump",
+    "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+    "durationSec": 0.5,
+    "loop": false,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "jump-takeoff",
+        "kind": "JumpTakeoff",
+        "at": 0.02
+      }
+    ],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "externalSource": {
+      "assetPath": "/assets/characters/quaternius-knight/KnightCharacter.glb",
+      "animationName": "HumanArmature|Jump"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-knight-rig"
+  ]
+}

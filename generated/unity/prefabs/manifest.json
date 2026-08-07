@@ -1,0 +1,106 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefabs": [
+    {
+      "id": "default-scene-camera",
+      "version": "1.0.0",
+      "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/default-scene-camera/1.0.0.json",
+      "sourcePath": "prefabs/default-scene-camera/1.0.0.json"
+    },
+    {
+      "id": "humanoid-character-base",
+      "version": "1.0.0",
+      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0",
+      "abstract": true,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/humanoid-character-base/1.0.0.json",
+      "sourcePath": "prefabs/humanoid-character-base/1.0.0.json"
+    },
+    {
+      "id": "navigator",
+      "version": "1.0.0",
+      "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/navigator/1.0.0.json",
+      "sourcePath": "prefabs/navigator/1.0.0.json"
+    },
+    {
+      "id": "quaternius-knight",
+      "version": "1.0.0",
+      "contentHash": "c7a7366ec8f73a27980948a5eeecc36f673575f0f3c0f44992fa04f05bddda78",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/quaternius-knight/1.0.0.json",
+      "sourcePath": "prefabs/quaternius-knight/1.0.0.json"
+    },
+    {
+      "id": "quaternius-universal-base",
+      "version": "1.0.0",
+      "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/quaternius-universal-base/1.0.0.json",
+      "sourcePath": "prefabs/quaternius-universal-base/1.0.0.json"
+    },
+    {
+      "id": "relay",
+      "version": "1.0.0",
+      "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/relay/1.0.0.json",
+      "sourcePath": "prefabs/relay/1.0.0.json"
+    },
+    {
+      "id": "sentinel",
+      "version": "1.0.0",
+      "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/sentinel/1.0.0.json",
+      "sourcePath": "prefabs/sentinel/1.0.0.json"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "two-humanoids-shared-animation",
+      "activeCameraGameObjectId": "scene-camera",
+      "gameObjects": [
+        {
+          "id": "controlled-humanoid",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "navigator",
+            "version": "1.0.0",
+            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+          }
+        },
+        {
+          "id": "scripted-humanoid",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "navigator",
+            "version": "1.0.0",
+            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+          }
+        },
+        {
+          "id": "scene-camera",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "default-scene-camera",
+            "version": "1.0.0",
+            "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+          }
+        }
+      ]
+    }
+  ]
+}

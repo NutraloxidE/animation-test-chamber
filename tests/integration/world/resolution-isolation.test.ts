@@ -3,7 +3,7 @@
  *
  * The bug these tests exist for: the world cached the whole `ResolvedProject`
  * under a key built from animation asset references. A `ResolvedProject`
- * carries the character's id, display name, `modelAssetPath` and capsule
+ * carries the character's id, display name, model binding and capsule
  * dimensions, so two *different* characters sharing one animation set received
  * each other's body — silently, and invisibly in a fixture where both
  * characters happen to look the same.
@@ -27,7 +27,7 @@ function twoBodiesOneAnimationSet(): ProjectDefinition {
     ...structuredClone(base),
     id: 'knight',
     displayName: 'Knight',
-    modelAssetPath: 'assets/models/knight.glb',
+    model: { kind: 'repository-model', assetPath: 'assets/models/knight.glb', scale: 1, rotationYRad: 0 },
     capsuleRadius: 0.4,
     capsuleHeight: 1.85,
   };
@@ -35,7 +35,7 @@ function twoBodiesOneAnimationSet(): ProjectDefinition {
     ...structuredClone(base),
     id: 'mage',
     displayName: 'Mage',
-    modelAssetPath: 'assets/models/mage.glb',
+    model: { kind: 'repository-model', assetPath: 'assets/models/mage.glb', scale: 1, rotationYRad: 0 },
     capsuleRadius: 0.3,
     capsuleHeight: 1.62,
   };
@@ -83,8 +83,18 @@ describe('animation resolution isolation', () => {
     expect(second.resolved.character.displayName).toBe('Mage');
 
     // The specific contamination the old cache produced.
-    expect(first.resolved.character.modelAssetPath).toBe('assets/models/knight.glb');
-    expect(second.resolved.character.modelAssetPath).toBe('assets/models/mage.glb');
+    expect(first.resolved.character.model).toEqual({
+      kind: 'repository-model',
+      assetPath: 'assets/models/knight.glb',
+      scale: 1,
+      rotationYRad: 0,
+    });
+    expect(second.resolved.character.model).toEqual({
+      kind: 'repository-model',
+      assetPath: 'assets/models/mage.glb',
+      scale: 1,
+      rotationYRad: 0,
+    });
     expect(first.resolved.character.capsuleHeight).toBe(1.85);
     expect(second.resolved.character.capsuleHeight).toBe(1.62);
     expect(first.resolved.character.capsuleRadius).toBe(0.4);
@@ -196,7 +206,15 @@ describe('animation resolution key stability', () => {
     for (const changed of [
       { ...knight, id: 'renamed' },
       { ...knight, displayName: 'Something Else' },
-      { ...knight, modelAssetPath: 'assets/models/other.glb' },
+      {
+        ...knight,
+        model: {
+          kind: 'repository-model' as const,
+          assetPath: 'assets/models/other.glb',
+          scale: 1,
+          rotationYRad: 0,
+        },
+      },
       { ...knight, capsuleRadius: 0.99 },
       { ...knight, capsuleHeight: 3.5 },
     ]) {

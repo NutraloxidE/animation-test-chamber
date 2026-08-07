@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-sword-idle",
+    "version": "1.0.0",
+    "displayName": "Universal Base idle (sword)",
+    "description": "Universal Base: \"Idle_No_Loop\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's locomotion.idle clip.",
+    "tags": [
+      "imported",
+      "cc0",
+      "loop"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "c48b5c300bb52f7cfce6d7d8cedf5289a4267a5078e00d4b3728f81db4ff6849"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-sword-idle",
+    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "durationSec": 2,
+    "loop": true,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "right": [
+        {
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+      "animationName": "Idle_No_Loop"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

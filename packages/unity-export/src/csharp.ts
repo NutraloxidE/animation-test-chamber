@@ -30,7 +30,26 @@ interface EmittedClass {
   lines: string[];
 }
 
-const RESERVED = new Set(['string', 'float', 'int', 'bool', 'object', 'event', 'base', 'params']);
+/**
+ * C# keywords, which cannot be bare field names.
+ *
+ * The list started as the handful the schemas happened to use and grew the
+ * moment a Prefab gained an `abstract` flag — a field name that produced C#
+ * which does not compile, in a file nothing in this repository compiles. A
+ * partial list is a trap that springs on whoever adds the next field, so this
+ * is the whole set rather than the fields in use today.
+ */
+const RESERVED = new Set([
+  'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch', 'char', 'checked',
+  'class', 'const', 'continue', 'decimal', 'default', 'delegate', 'do', 'double', 'else',
+  'enum', 'event', 'explicit', 'extern', 'false', 'finally', 'fixed', 'float', 'for',
+  'foreach', 'goto', 'if', 'implicit', 'in', 'int', 'interface', 'internal', 'is', 'lock',
+  'long', 'namespace', 'new', 'null', 'object', 'operator', 'out', 'override', 'params',
+  'private', 'protected', 'public', 'readonly', 'ref', 'return', 'sbyte', 'sealed', 'short',
+  'sizeof', 'stackalloc', 'static', 'string', 'struct', 'switch', 'this', 'throw', 'true',
+  'try', 'typeof', 'uint', 'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual',
+  'void', 'volatile', 'while',
+]);
 
 function pascalCase(input: string): string {
   return input

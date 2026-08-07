@@ -20,23 +20,34 @@ export default defineConfig({
       '@atc/haptics-runtime': resolve(repoRoot, 'packages/haptics-runtime/src/index.ts'),
       '@atc/replay-runtime': resolve(repoRoot, 'packages/replay-runtime/src/index.ts'),
       '@atc/world-runtime': resolve(repoRoot, 'packages/world-runtime/src/index.ts'),
+      '@atc/character-control-runtime': resolve(repoRoot, 'packages/character-control-runtime/src/index.ts'),
+      '@atc/scene-runtime': resolve(repoRoot, 'packages/scene-runtime/src/index.ts'),
       '@atc/capability-runtime': resolve(repoRoot, 'packages/capability-runtime/src/index.ts'),
       '@atc/editor-core': resolve(repoRoot, 'packages/editor-core/src/index.ts'),
       '@atc/ai-adapter': resolve(repoRoot, 'packages/ai-adapter/src/index.ts'),
       '@atc/acquisition-core': resolve(repoRoot, 'packages/acquisition-core/src/index.ts'),
+      '@atc/prefab-runtime': resolve(repoRoot, 'packages/prefab-runtime/src/index.ts'),
+      '@atc/game-object-runtime': resolve(repoRoot, 'packages/game-object-runtime/src/index.ts'),
       '@chamber/project': resolve(repoRoot, 'projects/demo-character/project.json'),
       '@chamber/animation-assets': resolve(repoRoot, 'generated/animation-assets/library-index.json'),
+      '@chamber/prefab-assets': resolve(repoRoot, 'generated/prefab-assets/library-index.json'),
     },
   },
   server: {
-    port: 5173,
+    /*
+     * Both ports are overridable so an isolated visual run can bind its own
+     * pair and proxy to its own API. Fixed ports would make that run reuse
+     * whatever API happened to be listening on 8787 — which, during an isolated
+     * run, is precisely the one pointed at the developer's real checkout.
+     */
+    port: Number(process.env.WEB_PORT ?? 5173),
     fs: {
       // Needed because sources and canonical data live above apps/web.
       allow: [repoRoot],
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8787',
+        target: `http://127.0.0.1:${process.env.API_PORT ?? 8787}`,
         changeOrigin: true,
       },
     },

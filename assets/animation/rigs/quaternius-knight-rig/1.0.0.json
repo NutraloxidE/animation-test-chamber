@@ -1,0 +1,333 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "humanoid-rig",
+    "id": "quaternius-knight-rig",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight rig",
+    "description": "The 31-bone armature inside KnightCharacter.glb. Read from the model, not restated.",
+    "tags": [
+      "humanoid",
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "a43a0ebd54713409ad97c2681fb3319397d553dc28dec1a9aa8667759e453e59"
+  },
+  "skeleton": {
+    "schemaVersion": 2,
+    "id": "quaternius-knight-rig",
+    "height": 6.394869,
+    "bones": [
+      {
+        "name": "Bone",
+        "parent": null,
+        "restPosition": {
+          "x": -0.003195,
+          "y": 0.195048,
+          "z": -0.005885
+        }
+      },
+      {
+        "name": "Foot.L",
+        "parent": "Bone",
+        "restPosition": {
+          "x": 0.531664,
+          "y": 0.225627,
+          "z": 0.05113
+        },
+        "humanoid": "LeftFoot"
+      },
+      {
+        "name": "Body",
+        "parent": "Bone",
+        "restPosition": {
+          "x": 0.002051,
+          "y": 2.312503,
+          "z": 0.311504
+        }
+      },
+      {
+        "name": "Hips",
+        "parent": "Body",
+        "restPosition": {
+          "x": 0.000001,
+          "y": 2.149802,
+          "z": 0.198832
+        },
+        "humanoid": "Hips"
+      },
+      {
+        "name": "Abdomen",
+        "parent": "Hips",
+        "restPosition": {
+          "x": 0.000001,
+          "y": 2.543159,
+          "z": 0.198832
+        },
+        "humanoid": "Spine"
+      },
+      {
+        "name": "Torso",
+        "parent": "Abdomen",
+        "restPosition": {
+          "x": 0.000001,
+          "y": 3.313835,
+          "z": 0.198832
+        },
+        "humanoid": "Chest"
+      },
+      {
+        "name": "Neck",
+        "parent": "Torso",
+        "restPosition": {
+          "x": 0.000001,
+          "y": 3.998767,
+          "z": 0.198832
+        }
+      },
+      {
+        "name": "Head",
+        "parent": "Neck",
+        "restPosition": {
+          "x": 0.000001,
+          "y": 4.323912,
+          "z": 0.198832
+        },
+        "humanoid": "Head"
+      },
+      {
+        "name": "Shoulder.L",
+        "parent": "Torso",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 3.681378,
+          "z": 0.116895
+        }
+      },
+      {
+        "name": "UpperArm.L",
+        "parent": "Shoulder.L",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 4.058538,
+          "z": 0.116895
+        }
+      },
+      {
+        "name": "LowerArm.L",
+        "parent": "UpperArm.L",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 5.074001,
+          "z": 0.116895
+        }
+      },
+      {
+        "name": "Palm.L",
+        "parent": "LowerArm.L",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 6.169921,
+          "z": 0.116895
+        },
+        "humanoid": "LeftHand"
+      },
+      {
+        "name": "MiddleHand.L",
+        "parent": "Palm.L",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 6.42779,
+          "z": 0.116895
+        }
+      },
+      {
+        "name": "Fingers.L",
+        "parent": "MiddleHand.L",
+        "restPosition": {
+          "x": 0.324608,
+          "y": 6.588427,
+          "z": 0.116895
+        }
+      },
+      {
+        "name": "Thumb.R",
+        "parent": "LowerArm.L",
+        "restPosition": {
+          "x": 0.543641,
+          "y": 5.950334,
+          "z": 0.058442
+        }
+      },
+      {
+        "name": "Thumb2.R",
+        "parent": "Thumb.R",
+        "restPosition": {
+          "x": 0.543641,
+          "y": 6.137992,
+          "z": 0.058442
+        }
+      },
+      {
+        "name": "Shoulder.R",
+        "parent": "Torso",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 3.682397,
+          "z": 0.124017
+        }
+      },
+      {
+        "name": "UpperArm.R",
+        "parent": "Shoulder.R",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 4.059557,
+          "z": 0.124017
+        }
+      },
+      {
+        "name": "LowerArm.R",
+        "parent": "UpperArm.R",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 4.992212,
+          "z": 0.124017
+        }
+      },
+      {
+        "name": "Palm.R",
+        "parent": "LowerArm.R",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 6.17141,
+          "z": 0.124017
+        },
+        "humanoid": "RightHand"
+      },
+      {
+        "name": "MiddleHand.R",
+        "parent": "Palm.R",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 6.42928,
+          "z": 0.124017
+        }
+      },
+      {
+        "name": "Fingers.R",
+        "parent": "MiddleHand.R",
+        "restPosition": {
+          "x": -0.329374,
+          "y": 6.589917,
+          "z": 0.124017
+        }
+      },
+      {
+        "name": "Thumb.L",
+        "parent": "LowerArm.R",
+        "restPosition": {
+          "x": -0.541401,
+          "y": 5.947566,
+          "z": 0.064785
+        }
+      },
+      {
+        "name": "Thumb2.L",
+        "parent": "Thumb.L",
+        "restPosition": {
+          "x": -0.541401,
+          "y": 6.135224,
+          "z": 0.064785
+        }
+      },
+      {
+        "name": "UpperLeg.L",
+        "parent": "Body",
+        "restPosition": {
+          "x": 0.528435,
+          "y": 1.932242,
+          "z": 0.128943
+        }
+      },
+      {
+        "name": "LowerLeg.L",
+        "parent": "UpperLeg.L",
+        "restPosition": {
+          "x": 0.528435,
+          "y": 2.879166,
+          "z": 0.128943
+        }
+      },
+      {
+        "name": "UpperLeg.R",
+        "parent": "Body",
+        "restPosition": {
+          "x": -0.537525,
+          "y": 2.026344,
+          "z": 0.128942
+        }
+      },
+      {
+        "name": "LowerLeg.R",
+        "parent": "UpperLeg.R",
+        "restPosition": {
+          "x": -0.537525,
+          "y": 2.973267,
+          "z": 0.128942
+        }
+      },
+      {
+        "name": "PoleTarget.L",
+        "parent": "Bone",
+        "restPosition": {
+          "x": 0.523306,
+          "y": 0.915819,
+          "z": 1.240554
+        }
+      },
+      {
+        "name": "Foot.R",
+        "parent": "Bone",
+        "restPosition": {
+          "x": -0.534295,
+          "y": 0.225627,
+          "z": 0.051129
+        },
+        "humanoid": "RightFoot"
+      },
+      {
+        "name": "PoleTarget.R",
+        "parent": "Bone",
+        "restPosition": {
+          "x": -0.542654,
+          "y": 1.009922,
+          "z": 1.240553
+        }
+      }
+    ],
+    "hipsBone": "Hips",
+    "leftFootBone": "Foot.L",
+    "rightFootBone": "Foot.R"
+  },
+  "compatibilityKey": "quaternius-knight",
+  "coordinateSystem": {
+    "upAxis": "Y",
+    "forwardAxis": "+Z",
+    "handedness": "right",
+    "unitMeters": 1
+  },
+  "humanoidBones": {
+    "hips": "Hips",
+    "spine": "Abdomen",
+    "chest": "Torso",
+    "head": "Head",
+    "leftFoot": "Foot.L",
+    "rightFoot": "Foot.R",
+    "leftHand": "Palm.L",
+    "rightHand": "Palm.R"
+  },
+  "retargetStatus": "retarget-compatible"
+}

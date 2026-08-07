@@ -89,7 +89,7 @@ export class BrowserInputSampler {
     if (this.attached || typeof window === 'undefined') return;
     this.attached = true;
     window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('keyup', this.onKeyUp, true);
     window.addEventListener('blur', this.onBlur);
     (target as HTMLElement).addEventListener('mousemove', this.onMouseMove as EventListener);
     window.addEventListener('mousedown', this.onMouseDown);
@@ -100,11 +100,12 @@ export class BrowserInputSampler {
     if (!this.attached || typeof window === 'undefined') return;
     this.attached = false;
     window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('keyup', this.onKeyUp, true);
     window.removeEventListener('blur', this.onBlur);
     (target as HTMLElement).removeEventListener('mousemove', this.onMouseMove as EventListener);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mouseup', this.onMouseUp);
+    this.onBlur();
   }
 
   setMouseLookMode(mode: MouseLookMode): void {

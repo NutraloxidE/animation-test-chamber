@@ -36,8 +36,13 @@ function listFiles(directory: string, out: string[] = []): string[] {
   for (const entry of entries) {
     if (entry === 'node_modules' || entry === '.git' || entry === 'dist') continue;
     const path = resolve(full, entry);
+    // Repository-relative and forward-slashed, on every platform. `relative`
+    // returns backslashes on Windows, and every rule here compares against
+    // literal `packages/…` prefixes — so the exemptions silently stopped
+    // matching and the guard reported the packages that legitimately own a
+    // Simulation as violations.
     if (statSync(path).isDirectory()) listFiles(relative(REPO_ROOT, path), out);
-    else out.push(relative(REPO_ROOT, path));
+    else out.push(relative(REPO_ROOT, path).split('\\').join('/'));
   }
   return out;
 }
@@ -185,15 +190,55 @@ export function schemaConstraintStage(): StageResult {
       const issues: StageIssue[] = [];
       const schemaFiles = listFiles('packages/schema/src').filter((file) => file.endsWith('.ts'));
 
+      /** Property names declared as `name: Type.Optional(...)`. */
+      const optionalFieldNames = (source: string): Set<string> =>
+        new Set(
+          [...source.matchAll(/^\s*([A-Za-z_$][\w$]*):\s*Type\.Optional\(/gm)].map(
+            (match) => match[1]!,
+          ),
+        );
+
+      /** Property names declared with any other value — i.e. required ones. */
+      const requiredFieldNames = (source: string): Set<string> => {
+        const optional = optionalFieldNames(source);
+        return new Set(
+          [...source.matchAll(/^\s*([A-Za-z_$][\w$]*):\s*\S/gm)]
+            .map((match) => match[1]!)
+            .filter((name) => !optional.has(name)),
+        );
+      };
+
+      /*
+       * `additionalProperties: false` is what stops unknown fields creeping in,
+       * and the count of them across the package must never fall.
+       *
+       * Counted package-wide as well as per file, because a per-file count
+       * alone cannot tell a deleted constraint from a *moved* one: extracting a
+       * type into a new module drops the old file's count to zero and reads as
+       * five constraints vanishing, which trains everyone to ignore the guard.
+       * The package total is the number that actually answers "did a strict
+       * object stop being strict?", so a per-file drop is only reported when
+       * the total dropped with it.
+       */
+      const strictTotal = (files: (readonly [string, string | null])[]): number =>
+        files.reduce(
+          (sum, [, text]) => sum + (text?.match(/additionalProperties:\s*false/g) ?? []).length,
+          0,
+        );
+      const headSources = schemaFiles.map(
+        (file) => [file, readAtRevision('HEAD', file)] as const,
+      );
+      const workingSources = schemaFiles.map((file) => [file, readRepoFile(file)] as const);
+      const packageLostConstraints = strictTotal(workingSources) < strictTotal(headSources);
+
       for (const file of schemaFiles) {
         const before = readAtRevision('HEAD', file);
         const after = readRepoFile(file);
         if (before === null || after === null) continue;
 
-        // additionalProperties: false is what stops unknown fields creeping in.
         const strictBefore = (before.match(/additionalProperties:\s*false/g) ?? []).length;
         const strictAfter = (after.match(/additionalProperties:\s*false/g) ?? []).length;
-        if (strictAfter < strictBefore) {
+        if (strictAfter < strictBefore && packageLostConstraints) {
           issues.push({
             files: [file],
             expected: `${strictBefore} strict object(s)`,
@@ -202,15 +247,26 @@ export function schemaConstraintStage(): StageResult {
           });
         }
 
-        const requiredBefore = (before.match(/Type\.Optional\(/g) ?? []).length;
-        const requiredAfter = (after.match(/Type\.Optional\(/g) ?? []).length;
-        if (requiredAfter > requiredBefore + 2) {
-          issues.push({
-            files: [file],
-            expected: 'required fields to stay required',
-            actual: `${requiredAfter - requiredBefore} more fields became optional`,
-            message: `${file} made several fields optional at once`,
-          });
+        /*
+         * A required field that became optional, named.
+         *
+         * This used to compare raw `Type.Optional(` counts and fire whenever a
+         * file gained more than two of them — which reports "several fields
+         * became optional" for a file that added a *new type* with optional
+         * members, and says nothing at all when one existing field is quietly
+         * relaxed while another is deleted. Neither number is the question. The
+         * question is whether a field that was required at HEAD is optional
+         * now, so that is what is compared, by name.
+         */
+        for (const name of optionalFieldNames(after)) {
+          if (requiredFieldNames(before).has(name)) {
+            issues.push({
+              files: [file],
+              expected: `"${name}" to stay required`,
+              actual: 'it is now optional',
+              message: `${file} relaxed "${name}" from required to optional`,
+            });
+          }
         }
       }
 
@@ -585,7 +641,14 @@ export function worldContractGuardStage(): StageResult {
           { test: /\bfrom\s+['"]three/, label: 'three' },
           { test: /\bfrom\s+['"]hono/, label: 'hono' },
           { test: /\bfrom\s+['"]node:fs/, label: 'node:fs' },
-          { test: /\b(document|window)\./, label: 'a DOM global' },
+          /*
+           * Not preceded by a dot or an identifier character, so `document.`
+           * still fails while `result.document.id` does not. The unqualified
+           * pattern flagged an `OperationResult` field named `document`, which
+           * is a false positive of the kind that teaches people to ignore a
+           * guard.
+           */
+          { test: /(?<![.\w$])(document|window)\./, label: 'a DOM global' },
           { test: /apps\/(web|api)/, label: 'an app import' },
         ]) {
           if (pattern.test.test(code)) {
@@ -642,8 +705,626 @@ export function worldContractGuardStage(): StageResult {
   );
 }
 
+/**
+ * Every workspace package must be resolvable everywhere it is consumed.
+ *
+ * A package's path is written down in four independent places — `tsconfig.base
+ * .json` for the compiler, `vitest.config.ts` for the tests, `apps/web/vite
+ * .config.ts` for the browser, and the package's own directory — and nothing
+ * made them agree. Adding a package to three of them typechecks, lints and
+ * passes every test, then fails at `pnpm dev` with a Vite import error, because
+ * the browser is the one consumer no Node-side check exercises.
+ *
+ * The list of directories under `packages/` is the authority here: a package
+ * that exists and is missing from any alias map is the failure, in whichever
+ * direction it happens.
+ */
+export function workspaceAliasStage(): StageResult {
+  return stage(
+    'every workspace package resolves in every consumer',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'add the package to tsconfig.base.json, vitest.config.ts and apps/web/vite.config.ts — the browser is the consumer no Node-side check catches',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      const packages = listFiles('packages')
+        .filter((file) => file.endsWith('/package.json'))
+        .map((file) => file.slice('packages/'.length, -'/package.json'.length))
+        .filter((name) => !name.includes('/'))
+        .sort();
+
+      /*
+       * The web app deliberately aliases only what reaches the browser — it has
+       * no business resolving the git adapter or the Unity exporter — but that
+       * set is the *transitive* closure of its dependencies, not the declared
+       * list. A package pulled in through another package still has to resolve,
+       * and a direct-dependency rule would miss exactly the case that produced
+       * this stage: `@atc/scene-runtime` arrives via `@atc/world-runtime`, is
+       * imported in the browser, and is named nowhere in apps/web/package.json.
+       *
+       * `tsconfig` and `vitest` compile and run the whole workspace, so they
+       * must carry every package.
+       *
+       * Matched on the alias *key* rather than the path, because vitest builds
+       * its paths through a helper and a path-shaped search would report every
+       * package as missing.
+       */
+      const atcDependencies = (packageJsonPath: string): string[] =>
+        Object.keys(
+          (JSON.parse(readRepoFile(packageJsonPath) ?? '{}') as {
+            dependencies?: Record<string, string>;
+          }).dependencies ?? {},
+        )
+          .filter((name) => name.startsWith('@atc/'))
+          .map((name) => name.slice('@atc/'.length));
+
+      const reachableFromWeb = new Set<string>();
+      const queue = atcDependencies('apps/web/package.json');
+      while (queue.length > 0) {
+        const name = queue.shift()!;
+        if (reachableFromWeb.has(name)) continue;
+        reachableFromWeb.add(name);
+        queue.push(...atcDependencies(`packages/${name}/package.json`));
+      }
+
+      const consumers: { file: string; required: (name: string) => boolean }[] = [
+        { file: 'tsconfig.base.json', required: () => true },
+        { file: 'vitest.config.ts', required: () => true },
+        {
+          file: 'apps/web/vite.config.ts',
+          required: (name) => reachableFromWeb.has(name),
+        },
+      ];
+
+      for (const consumer of consumers) {
+        const source = readRepoFile(consumer.file);
+        if (source === null) {
+          issues.push({
+            files: [consumer.file],
+            expected: 'the alias map to exist',
+            actual: 'file not found',
+            message: `${consumer.file} is missing`,
+          });
+          continue;
+        }
+        for (const name of packages) {
+          if (!consumer.required(name)) continue;
+          if (source.includes(`'@atc/${name}'`) || source.includes(`"@atc/${name}"`)) continue;
+          issues.push({
+            files: [consumer.file, `packages/${name}/package.json`],
+            expected: `an alias for @atc/${name}`,
+            actual: 'no alias',
+            message: `${consumer.file} cannot resolve @atc/${name}`,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${packages.length} package(s) checked` };
+    },
+  );
+}
+
+/**
+ * Character control must go through `ControllableCharacter`.
+ *
+ * The browser app is the one place a direct `Simulation.step(deviceSample)` is
+ * tempting, because the device is right there — and it was exactly what the web
+ * engine did. The cost is not abstract: the one controller a human actually
+ * uses becomes the one controller that skips the boundary every other
+ * controller is tested against, so "human and AI behave identically" stops
+ * being checkable in the direction that matters.
+ *
+ * The runtime packages that legitimately own a `Simulation` are exempt by name
+ * rather than by a broad substring rule, so the exemption stays visible.
+ */
+export function characterControlBoundaryStage(): StageResult {
+  return stage(
+    'no direct device-to-Simulation control path',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'route the input through a CharacterIntentSource and ControllableCharacter.step, as apps/web/src/engine.ts does',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+      const owners = [
+        'packages/character-control-runtime/',
+        'packages/replay-runtime/',
+        'packages/world-runtime/',
+      ];
+
+      const files = [...listFiles('apps'), ...listFiles('packages')].filter(
+        (file) =>
+          (file.endsWith('.ts') || file.endsWith('.tsx')) &&
+          !owners.some((owner) => file.startsWith(owner)),
+      );
+
+      for (const file of files) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const [index, line] of source.split('\n').entries()) {
+          // `this.simulation.step(...)` and friends. `runtime.step()` is a
+          // scene/world clock, not a character, and is left alone.
+          if (/\bsimulation\.step\s*\(/i.test(line) && !line.trimStart().startsWith('*')) {
+            issues.push({
+              files: [file],
+              expected: 'intent through ControllableCharacter',
+              actual: `${file}:${index + 1}`,
+              message: `${file} steps a Simulation directly`,
+            });
+          }
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${files.length} file(s) checked` };
+    },
+  );
+}
+
+/**
+ * No second Character selector, and no second animation graph (work package §10).
+ *
+ * Both regressions this guards against are *additions that look harmless*. A
+ * `CHARACTER_PRESETS`-style catalog carrying model files reads like renderer
+ * configuration until a selector is pointed at it, at which point the app has two
+ * answers to "which Character is this" and the canonical one loses. A
+ * `stateId -> clip name` map reads like a convenience until it is what playback
+ * uses, at which point the repository's motion set is decoration.
+ *
+ * Neither shows up as a failing test: the route tests still pass, typecheck still
+ * passes, and the screen still renders. So they are checked mechanically here.
+ */
+export function characterSelectorBoundaryStage(): StageResult {
+  return stage(
+    'no second Character selector, and no renderer-side clip map',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      blocksCommit: true,
+      suggestion:
+        'the route is the Character selector (CharacterDefinition.model owns the model); playback resolves state -> motionSlot -> motion set -> clip asset. A preview override must be named previewModelOverride* and labelled PREVIEW ONLY.',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /*
+       * The declared migration adapters and the tests that assert the retirement
+       * are exempt: they must be able to *name* what was retired. Everything else
+       * in the app and the packages may not.
+       */
+      const allowed = [
+        'harness/repo-guard.ts',
+        'harness/generate-imported-character-assets.ts',
+        'packages/schema/src/migration.ts',
+      ];
+
+      const files = [...listFiles('apps'), ...listFiles('packages')].filter(
+        (file) =>
+          (file.endsWith('.ts') || file.endsWith('.tsx')) &&
+          !allowed.includes(file),
+      );
+
+      const forbidden: { pattern: RegExp; message: string; expected: string }[] = [
+        {
+          pattern: /\bCHARACTER_PRESETS\b/,
+          message: 'declares or reads CHARACTER_PRESETS, the retired second Character catalog',
+          expected: 'the route Character and CharacterDefinition.model',
+        },
+        {
+          pattern: /\bsetCharacterPreset\b|\bcharacterPresetId\b/,
+          message:
+            'names a character preset as selection state; a preview override must be previewModelOverride*',
+          expected: 'previewModelOverrideId / setPreviewModelOverride',
+        },
+        {
+          pattern: /\bCLIP_FOR_STATE\b/,
+          message: 'declares a web-only stateId -> clip name map',
+          expected: 'canonical motion-set bindings',
+        },
+        {
+          pattern: /\bclipMap\b/,
+          message: 'carries a clipMap; imported takes belong to clip assets',
+          expected: 'AnimationClipDefinition.externalSource',
+        },
+      ];
+
+      for (const file of files) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const [index, line] of source.split('\n').entries()) {
+          const trimmed = line.trimStart();
+          // Prose may discuss what was retired; code may not reintroduce it.
+          if (trimmed.startsWith('*') || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue;
+          for (const rule of forbidden) {
+            if (!rule.pattern.test(line)) continue;
+            issues.push({
+              files: [file],
+              expected: rule.expected,
+              actual: `${file}:${index + 1}`,
+              message: `${file} ${rule.message}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * The positive half. The rules above can all be satisfied by deleting the
+       * feature, so the guard also insists the replacements are still there — a
+       * Character Overview with ownership badges, and a preview override that says
+       * PREVIEW ONLY.
+       */
+      const required: { file: string; needle: string; message: string }[] = [
+        {
+          file: 'packages/animation-asset-runtime/src/bindings.ts',
+          needle: 'describeCharacterBindings',
+          message: 'the single Character binding inventory is missing',
+        },
+        {
+          file: 'apps/web/src/rig-editor/CharacterOverview.tsx',
+          needle: 'ONLY THIS CHARACTER',
+          message: 'the Character Overview no longer states exclusive ownership',
+        },
+        {
+          file: 'apps/web/src/rig-editor/CharacterOverview.tsx',
+          needle: 'SHARED BY',
+          message: 'the Character Overview no longer states shared ownership',
+        },
+        {
+          file: 'apps/web/src/panels/Hierarchy.tsx',
+          needle: 'PREVIEW ONLY',
+          message: 'the preview model override is no longer labelled PREVIEW ONLY',
+        },
+      ];
+
+      for (const rule of required) {
+        const source = readRepoFile(rule.file);
+        if (source === null || !source.includes(rule.needle)) {
+          issues.push({
+            files: [rule.file],
+            expected: `${rule.file} to contain "${rule.needle}"`,
+            actual: source === null ? 'the file is missing' : 'the text is absent',
+            message: rule.message,
+          });
+        }
+      }
+
+      return { ok: issues.length === 0, issues, output: `${files.length} file(s) checked` };
+    },
+  );
+}
+
+/**
+ * The GameObject Prefab system exists, and canonical documents stay canonical
+ * (work package §17).
+ *
+ * Two halves, and the positive half is the unusual one. A guard that only
+ * forbids things cannot tell "the Prefab system was never built" from "the
+ * Prefab system is fine", so this one also asserts that each load-bearing piece
+ * is present by name: a refactor that deletes the resolver fails here rather
+ * than passing quietly because nothing forbidden was added.
+ *
+ * The negative half — forbidding production reads of `Project.characters`,
+ * `SceneEntityDefinition.kind` and the rest of the retired vocabulary — is
+ * deliberately *not* here yet. Those are still the fields the renderer, the
+ * Scene runtime and the API read, so a guard forbidding them today would fail
+ * on the code it is meant to protect. It lands with the production switchover;
+ * `reports/gameobject-prefab-migration-audit.md` records that as the open item.
+ */
+export function prefabSystemGuardStage(): StageResult {
+  return stage(
+    'gameobject prefab system present and canonical',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'a missing piece means the Prefab spine was removed; a runtime field means a tick wrote itself into a document',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /** Each load-bearing symbol, and the file that must still declare it. */
+      const required: { file: string; symbols: string[] }[] = [
+        {
+          file: 'packages/schema/src/prefab.ts',
+          symbols: [
+            'GameObjectPrefabReference',
+            'BaseGameObjectPrefabAsset',
+            'VariantGameObjectPrefabAsset',
+            'GameObjectComponentDefinition',
+            'GAME_OBJECT_COMPONENT_TYPES',
+            'PrefabNodeDefinition',
+            'PrefabComponentOverride',
+            'isCharacterComposition',
+          ],
+        },
+        {
+          file: 'packages/schema/src/scene.ts',
+          symbols: ['GameObjectInstanceDefinition', 'PlaceablePrefabAsset', 'GameObjectSceneOperation'],
+        },
+        { file: 'packages/prefab-runtime/src/registry.ts', symbols: ['PrefabAssetRegistry'] },
+        { file: 'packages/prefab-runtime/src/resolution.ts', symbols: ['resolveGameObjectPrefab'] },
+        { file: 'packages/prefab-runtime/src/usage.ts', symbols: ['describePrefabUsage'] },
+        { file: 'packages/game-object-runtime/src/runtime.ts', symbols: ['RuntimeGameObject'] },
+        { file: 'packages/game-object-runtime/src/scene.ts', symbols: ['instantiateScene'] },
+      ];
+
+      for (const entry of required) {
+        const source = readRepoFile(entry.file);
+        if (source === null) {
+          issues.push({
+            files: [entry.file],
+            expected: 'the file to exist',
+            actual: 'it does not',
+            message: `${entry.file} is missing; the Prefab spine is incomplete`,
+          });
+          continue;
+        }
+        for (const symbol of entry.symbols) {
+          if (!source.includes(symbol)) {
+            issues.push({
+              files: [entry.file],
+              expected: `${entry.file} to declare ${symbol}`,
+              actual: 'it does not',
+              message: `${symbol} has been removed from ${entry.file}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * Runtime state is never canonical (§3.6). Checked against the files on
+       * disk rather than against the schema, because the schema can only refuse
+       * what it describes — and `CanonicalPatch.value` is `unknown` by
+       * necessity, which is exactly the hole a mixer handle would fit through.
+       */
+      const RUNTIME_FIELDS = [
+        'animationTime',
+        'velocity',
+        'mixer',
+        'activeState',
+        'transitionProgress',
+        'runtimeHandle',
+        'inputBuffer',
+      ];
+      const canonicalFiles = [
+        ...listFiles('assets/prefabs').filter((file) => file.endsWith('.json')),
+        ...listFiles('projects').filter((file) => file.endsWith('.json')),
+      ];
+      for (const file of canonicalFiles) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        for (const field of RUNTIME_FIELDS) {
+          if (new RegExp(`"${field}"\\s*:`).test(source)) {
+            issues.push({
+              files: [file],
+              expected: 'a canonical document with no runtime state',
+              actual: `it contains "${field}"`,
+              message: `${file} stores runtime state in a canonical document`,
+            });
+          }
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${required.length} module(s) and ${canonicalFiles.length} canonical file(s) checked`,
+      };
+    },
+  );
+}
+
+/**
+ * The production Scene path reads and writes GameObjects (work package §16).
+ *
+ * Two halves, and both are needed for the same reason the Prefab guard needs
+ * both: a guard that only forbids cannot tell "the cutover was never done" from
+ * "the cutover is fine", and a guard that only requires cannot tell "the cutover
+ * was done" from "the cutover was done and then something quietly reintroduced
+ * the entity path beside it".
+ *
+ * The negative half is scoped to the *production* Scene modules by name. The
+ * entity vocabulary is not forbidden repository-wide — the migration still reads
+ * `entities` to produce a GameObject view from a Scene that has none, the legacy
+ * operation engine still exists so its tests can exercise it, and the Unity
+ * exporter has not been cut over yet. What must not happen is a Scene Editor, a
+ * Scene viewport or an apply path reaching for it again.
+ *
+ * The canonical schema deletion is deliberately *not* required here: it is the
+ * next package's job, and requiring it now would fail on the very documents this
+ * guard is meant to protect.
+ */
+export function sceneCutoverGuardStage(): StageResult {
+  return stage(
+    'the production Scene path reads and writes gameObjects',
+    {
+      reproduce: 'pnpm harness:repo-guard',
+      suggestion:
+        'a forbidden symbol in a production Scene module means the entity path is being reintroduced; a missing required one means the cutover was undone',
+    },
+    () => {
+      const issues: StageIssue[] = [];
+
+      /**
+       * The retired vocabulary, and the modules that may no longer name it.
+       *
+       * Matched as whole words so a comment *about* the migration — of which
+       * these files contain many, deliberately — does not trip the guard on a
+       * substring. What is being detected is a production module reaching for
+       * the collection, not a module explaining why it does not.
+       */
+      const FORBIDDEN = [
+        'scene\\.entities',
+        'SceneEntityDefinition',
+        'CharacterSceneEntity',
+        'PropSceneEntity',
+        'LightSceneEntity',
+        'CameraSceneEntity',
+        'entity\\.kind',
+        'activeCameraEntityId',
+        'scene\\.place_asset',
+        'scene\\.delete_entity',
+        'scene\\.duplicate_entity',
+        'scene\\.rename_entity',
+        'scene\\.set_character_source',
+        'scene\\.bind_controller',
+        'scene\\.reorder_entity',
+        'applySceneOperation',
+        'validateSceneReferences',
+      ];
+
+      /**
+       * Production Scene modules.
+       *
+       * Everything under the Scene Editor, the production renderer projection
+       * it draws through, and the repository apply path that writes what it
+       * edits. Legacy migration, legacy fixtures and legacy compatibility tests
+       * are outside this set by construction — they are not in these
+       * directories.
+       */
+      const productionFiles = [
+        ...listFiles('apps/web/src/scene-editor'),
+        ...listFiles('apps/web/src/game-objects'),
+        'apps/api/src/routes/repository-apply.ts',
+        'packages/editor-core/src/game-object-operations.ts',
+        'packages/editor-core/src/apply-request.ts',
+      ].filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'));
+
+      for (const file of productionFiles) {
+        const source = readRepoFile(file);
+        if (source === null) continue;
+        /*
+         * Comments are stripped before matching. These files explain the
+         * cutover at length — "it does not iterate scene.entities" is a
+         * sentence worth keeping — and a guard that could not tell an
+         * explanation from a read would push the explanations out of the code.
+         */
+        const code = source
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/(^|[^:])\/\/.*$/gm, '$1');
+        for (const symbol of FORBIDDEN) {
+          if (new RegExp(`\\b${symbol}\\b`).test(code)) {
+            issues.push({
+              files: [file],
+              expected: `${file} to address GameObjects only`,
+              actual: `it references ${symbol.replace(/\\/g, '')}`,
+              message: `${file} reaches for the retired entity path`,
+            });
+          }
+        }
+      }
+
+      /** What the cutover must still contain, by name. */
+      const required: { file: string; symbols: string[] }[] = [
+        {
+          file: 'apps/web/src/scene-editor/use-scene-runtime.ts',
+          symbols: ['instantiateScene', 'RuntimeScene'],
+        },
+        {
+          file: 'apps/web/src/scene-editor/viewport/SceneViewport.tsx',
+          symbols: ['GameObjectRenderer', 'projectRuntimeScene'],
+        },
+        {
+          file: 'apps/web/src/scene-editor/use-scene-session.ts',
+          symbols: ['applySceneGameObjectOperation'],
+        },
+        {
+          file: 'apps/api/src/routes/repository-apply.ts',
+          symbols: ['applySceneGameObjectOperation', 'changedGameObjectIds'],
+        },
+        {
+          file: 'packages/editor-core/src/game-object-operations.ts',
+          symbols: [
+            'scene.place_prefab',
+            'scene.delete_game_object',
+            'scene.duplicate_game_object',
+            'scene.rename_game_object',
+            'scene.set_prefab_source',
+            'scene.set_component_override',
+            'scene.clear_component_override',
+            'scene.set_instance_binding',
+            'scene.set_relation',
+            'scene.reorder_game_object',
+          ],
+        },
+        {
+          file: 'harness/check-scene-gameobject-cutover.ts',
+          symbols: ['sceneGameObjectCutoverStages'],
+        },
+        {
+          file: 'harness/one-shot.ts',
+          symbols: ['sceneGameObjectCutoverStages'],
+        },
+        {
+          file: 'apps/web/src/game-objects/AnimatedRepositoryModel.tsx',
+          symbols: ['AnimationMixer', 'cloneSkinnedScene'],
+        },
+      ];
+
+      for (const entry of required) {
+        const source = readRepoFile(entry.file);
+        if (source === null) {
+          issues.push({
+            files: [entry.file],
+            expected: 'the file to exist',
+            actual: 'it does not',
+            message: `${entry.file} is missing; the Scene cutover is incomplete`,
+          });
+          continue;
+        }
+        for (const symbol of entry.symbols) {
+          if (!source.includes(symbol)) {
+            issues.push({
+              files: [entry.file],
+              expected: `${entry.file} to reference ${symbol}`,
+              actual: 'it does not',
+              message: `${symbol} has been removed from ${entry.file}`,
+            });
+          }
+        }
+      }
+
+      /*
+       * No reverse generation, anywhere (§9.2). A production write that
+       * regenerated `entities` from `gameObjects` would make the dual source of
+       * truth permanent — so the assignment is forbidden outright rather than
+       * scoped, and the migration is exempted by name because it goes the other
+       * way and only for a Scene that has no GameObject view at all.
+       */
+      const REVERSE_GENERATION = /entities\s*:\s*\(?\s*(scene|document)\??\.gameObjects/;
+      for (const file of [
+        ...listFiles('apps/web/src'),
+        ...listFiles('apps/api/src'),
+        ...listFiles('packages/editor-core/src'),
+      ].filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'))) {
+        const source = readRepoFile(file);
+        if (source !== null && REVERSE_GENERATION.test(source)) {
+          issues.push({
+            files: [file],
+            expected: 'gameObjects never to be reverse-generated into entities',
+            actual: 'it derives entities from gameObjects',
+            message: `${file} reverse-generates the legacy entity mirror`,
+          });
+        }
+      }
+
+      return {
+        ok: issues.length === 0,
+        issues,
+        output: `${productionFiles.length} production Scene file(s) and ${required.length} required module(s) checked`,
+      };
+    },
+  );
+}
+
 export function repoGuardStages(): StageResult[] {
   return [
+    workspaceAliasStage(),
+    characterControlBoundaryStage(),
+    characterSelectorBoundaryStage(),
     protectedValuesStage(),
     testIntegrityStage(),
     schemaConstraintStage(),
@@ -653,6 +1334,8 @@ export function repoGuardStages(): StageResult[] {
     publishedAssetImmutabilityStage(),
     stateNameDependenceStage(),
     worldContractGuardStage(),
+    prefabSystemGuardStage(),
+    sceneCutoverGuardStage(),
   ];
 }
 

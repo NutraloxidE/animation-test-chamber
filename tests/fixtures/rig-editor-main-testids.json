@@ -1,0 +1,250 @@
+{
+  "donorSha": "2e5b2a21a269f41aad7f14c00b0cded91233f33f",
+  "description": "Animation-workspace test identities present on the UI donor. Phase T preservation gate.",
+  "staticByFile": {
+    "App.tsx": [
+      "frame-step",
+      "grip-editor-select",
+      "hud",
+      "reset-grip",
+      "sheet-handle",
+      "stale-character-draft-banner",
+      "status-bar",
+      "toggle-camera-control",
+      "toggle-hierarchy",
+      "toggle-inspector",
+      "toggle-pad",
+      "toggle-pause",
+      "toggle-world-mode",
+      "viewport-controls",
+      "workspace-switch"
+    ],
+    "panels/TransitionInspector.tsx": [
+      "action-input-list",
+      "blend-filter",
+      "blend-list",
+      "blend-sort",
+      "clip-select",
+      "transition-inspector",
+      "transition-select"
+    ],
+    "panels/StateGraph.tsx": [
+      "layer-mix",
+      "state-graph"
+    ],
+    "panels/Timeline.tsx": [
+      "timeline"
+    ],
+    "panels/MotionTimingPanel.tsx": [
+      "motion-timing",
+      "timing-control-1",
+      "timing-control-2",
+      "timing-curve",
+      "timing-save-warning",
+      "timing-stage",
+      "timing-stage-status",
+      "weapon-curves",
+      "weapon-curves-shared"
+    ],
+    "panels/ReplayPanel.tsx": [
+      "play-replay",
+      "replay-panel"
+    ],
+    "panels/TerrainPanel.tsx": [
+      "terrain-panel",
+      "terrain-select"
+    ],
+    "panels/AiPanel.tsx": [
+      "ai-panel",
+      "request-proposals"
+    ],
+    "panels/DiffPanel.tsx": [
+      "commit-button",
+      "diff-panel",
+      "stage-all"
+    ],
+    "panels/CapabilityPanel.tsx": [
+      "capability-panel"
+    ],
+    "panels/AcquisitionPanel.tsx": [
+      "acquisition-panel"
+    ],
+    "panels/Hierarchy.tsx": [
+      "character-select",
+      "hierarchy",
+      "weapon-mode-select"
+    ],
+    "panels/MobilePad.tsx": [
+      "mobile-pad",
+      "mobile-stick"
+    ],
+    "three/Viewport.tsx": [
+      "viewport-canvas"
+    ],
+    "components/world/WorldPanel.tsx": [
+      "world-camera-target",
+      "world-duplicate",
+      "world-focus",
+      "world-inspector",
+      "world-inspector-behavior",
+      "world-inspector-character",
+      "world-inspector-id",
+      "world-instance-list",
+      "world-message",
+      "world-panel",
+      "world-revert",
+      "world-runtime-state",
+      "world-state-action",
+      "world-state-events",
+      "world-state-intent",
+      "world-state-locomotion",
+      "world-state-position",
+      "world-tick"
+    ],
+    "components/world/WorldViewport.tsx": [
+      "world-viewport-canvas"
+    ],
+    "asset-library/AssetLibrary.tsx": [
+      "asset-library",
+      "asset-library-crumbs",
+      "asset-library-errors",
+      "asset-library-static-badge",
+      "library-character-select",
+      "library-pane-detail",
+      "library-pane-list",
+      "library-pane-types"
+    ],
+    "asset-library/SaveDestinationDialog.tsx": [
+      "save-destination-cancel",
+      "save-destination-changes",
+      "save-destination-clip-list",
+      "save-destination-clip-section",
+      "save-destination-dialog",
+      "save-destination-empty",
+      "save-destination-graph-section",
+      "save-destination-new-id",
+      "save-destination-preview",
+      "save-destination-shared-warning",
+      "save-destination-submit",
+      "save-destination-unresolved-warning"
+    ]
+  },
+  "templatedByFile": {
+    "App.tsx": [
+      "stale-character-draft-discard-${draft.characterId}",
+      "tab-${panel.id}"
+    ],
+    "panels/StateGraph.tsx": [
+      "graph-live-${layer.id}"
+    ],
+    "panels/MotionTimingPanel.tsx": [
+      "timing-value-${key}",
+      "weapon-curve-${mode.id}"
+    ],
+    "panels/MobilePad.tsx": [
+      "pad-${button.action}"
+    ],
+    "components/world/WorldPanel.tsx": [
+      "world-field-${field.id}",
+      "world-field-${field.id}-${axis}",
+      "world-field-${field.id}-input",
+      "world-instance-${instance.id}"
+    ],
+    "asset-library/SaveDestinationDialog.tsx": [
+      "save-destination-clip-${option.kind}",
+      "save-destination-graph-${option.kind}"
+    ]
+  },
+  "allStatic": [
+    "acquisition-panel",
+    "action-input-list",
+    "ai-panel",
+    "asset-library",
+    "asset-library-crumbs",
+    "asset-library-errors",
+    "asset-library-static-badge",
+    "blend-filter",
+    "blend-list",
+    "blend-sort",
+    "capability-panel",
+    "character-select",
+    "clip-select",
+    "commit-button",
+    "diff-panel",
+    "frame-step",
+    "grip-editor-select",
+    "hierarchy",
+    "hud",
+    "layer-mix",
+    "library-character-select",
+    "library-pane-detail",
+    "library-pane-list",
+    "library-pane-types",
+    "mobile-pad",
+    "mobile-stick",
+    "motion-timing",
+    "play-replay",
+    "replay-panel",
+    "request-proposals",
+    "reset-grip",
+    "save-destination-cancel",
+    "save-destination-changes",
+    "save-destination-clip-list",
+    "save-destination-clip-section",
+    "save-destination-dialog",
+    "save-destination-empty",
+    "save-destination-graph-section",
+    "save-destination-new-id",
+    "save-destination-preview",
+    "save-destination-shared-warning",
+    "save-destination-submit",
+    "save-destination-unresolved-warning",
+    "sheet-handle",
+    "stage-all",
+    "stale-character-draft-banner",
+    "state-graph",
+    "status-bar",
+    "terrain-panel",
+    "terrain-select",
+    "timeline",
+    "timing-control-1",
+    "timing-control-2",
+    "timing-curve",
+    "timing-save-warning",
+    "timing-stage",
+    "timing-stage-status",
+    "toggle-camera-control",
+    "toggle-hierarchy",
+    "toggle-inspector",
+    "toggle-pad",
+    "toggle-pause",
+    "toggle-world-mode",
+    "transition-inspector",
+    "transition-select",
+    "viewport-canvas",
+    "viewport-controls",
+    "weapon-curves",
+    "weapon-curves-shared",
+    "weapon-mode-select",
+    "workspace-switch",
+    "world-camera-target",
+    "world-duplicate",
+    "world-focus",
+    "world-inspector",
+    "world-inspector-behavior",
+    "world-inspector-character",
+    "world-inspector-id",
+    "world-instance-list",
+    "world-message",
+    "world-panel",
+    "world-revert",
+    "world-runtime-state",
+    "world-state-action",
+    "world-state-events",
+    "world-state-intent",
+    "world-state-locomotion",
+    "world-state-position",
+    "world-tick",
+    "world-viewport-canvas"
+  ]
+}

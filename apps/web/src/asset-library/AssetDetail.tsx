@@ -12,6 +12,7 @@ import type {
   AnimationTuningProfileAsset,
   AssetReference,
   HumanoidRigProfileAsset,
+  GameObjectPrefabReference,
 } from '@atc/schema';
 import {
   checkMotionSetCompatibility,
@@ -21,6 +22,14 @@ import {
 } from '@atc/animation-asset-runtime';
 import { getAtPath } from '@atc/runtime-core';
 import { useChamber } from '../store.ts';
+import {
+  checkPrefabDeletePolicy,
+  describePrefabUsage,
+  directDependencies,
+  resolveGameObjectPrefab,
+  walkResolvedNodes,
+} from '@atc/prefab-runtime';
+import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { DependencyView } from './DependencyView.tsx';
 import { MotionSetEditor } from './MotionSetEditor.tsx';
 import { VersionDiff } from './VersionDiff.tsx';
@@ -417,6 +426,94 @@ function TuningDetail({ reference }: { reference: AssetReference }) {
   );
 }
 
+function PrefabDetail({ selection }: { selection: { assetId: string; version: string } }) {
+  const registry = browserPrefabRegistry();
+  const scenes = useChamber((state) => state.canonicalProject.scenes);
+  if (!registry.versionsOf(selection.assetId).includes(selection.version)) {
+    return <p className="asset-warning">This exact Prefab version is no longer available.</p>;
+  }
+  const reference: GameObjectPrefabReference = registry.referenceTo(
+    selection.assetId,
+    selection.version,
+  );
+  const document = registry.get(reference);
+  const validation = registry.validate(reference);
+  const resolution = resolveGameObjectPrefab(registry, reference);
+  const usage = describePrefabUsage({ prefabRegistry: registry, scenes }).find(
+    (entry) => entry.prefab.assetId === reference.assetId && entry.prefab.version === reference.version,
+  );
+  const policy = checkPrefabDeletePolicy({ registry, reference, scenes });
+
+  return (
+    <div className="asset-detail" data-testid="prefab-detail">
+      <header className="asset-detail__header">
+        <h2>{document.metadata.displayName}</h2>
+        <p className="muted">{document.metadata.description}</p>
+        <dl className="asset-facts">
+          <div><dt>Exact reference</dt><dd><code>{reference.assetId}@{reference.version}</code></dd></div>
+          <div><dt>Content hash</dt><dd><code>{reference.contentHash}</code></dd></div>
+          <div><dt>Derivation</dt><dd>{document.derivation.mode}</dd></div>
+          <div><dt>Placeable</dt><dd>{document.abstract ? 'no — abstract' : 'yes'}</dd></div>
+        </dl>
+      </header>
+      {'parent' in document.derivation && (
+        <section data-testid="prefab-parent">
+          <h4>Parent</h4>
+          <code>{document.derivation.parent.assetId}@{document.derivation.parent.version}</code>
+          <p>{document.derivation.patches.length} stored patch(es)</p>
+        </section>
+      )}
+      <section data-testid="prefab-components">
+        <h4>Components</h4>
+        <ul>
+          {walkResolvedNodes(resolution.prefab.root).flatMap((node) =>
+            node.components.map((component) => (
+              <li key={`${node.nodePath}/${component.componentId}`}>
+                <code>{node.nodePath}</code> — {component.componentType} ({component.componentId})
+              </li>
+            )),
+          )}
+        </ul>
+      </section>
+      <section data-testid="prefab-dependencies">
+        <h4>Dependencies</h4>
+        <ul>
+          {directDependencies(document).map((dependency) => (
+            <li key={`${dependency.assetType}:${dependency.assetId}@${dependency.version}`}>
+              <code>{dependency.assetType}:{dependency.assetId}@{dependency.version}</code>
+            </li>
+          ))}
+          {(usage?.animationReferences ?? []).map((dependency) => (
+            <li key={`resolved:${dependency.assetType}:${dependency.assetId}@${dependency.version}`}>
+              <code>{dependency.assetType}:{dependency.assetId}@{dependency.version}</code>
+              {' (resolved)'}
+            </li>
+          ))}
+          {(usage?.modelAssetPaths ?? []).map((path) => (
+            <li key={path}><code>{path}</code></li>
+          ))}
+        </ul>
+      </section>
+      <section data-testid="prefab-usage">
+        <h4>Usage</h4>
+        <p>{usage?.sceneInstances.length ?? 0} Scene instance(s); {usage?.nestedBy.length ?? 0} nesting Prefab(s); {usage?.variantChildren.length ?? 0} variant child(ren).</p>
+      </section>
+      <section data-testid="prefab-validation">
+        <h4>Validation</h4>
+        <p>{validation.valid && resolution.issues.length === 0 ? 'valid' : 'invalid'}</p>
+        {[...validation.issues, ...resolution.issues].map((issue, index) => (
+          <p className="asset-warning" key={`${issue.code}-${index}`}>{issue.code}: {issue.message}</p>
+        ))}
+      </section>
+      <section data-testid="prefab-delete-policy">
+        <h4>Delete policy</h4>
+        <p>{policy.allowed ? 'May be deleted.' : 'Deletion blocked.'}</p>
+        {policy.blockers.map((blocker, index) => <p key={index}>{blocker.message}</p>)}
+      </section>
+    </div>
+  );
+}
+
 export function AssetDetail() {
   const selection = useChamber((state) => state.librarySelection);
   const registry = useChamber((state) => state.registry);
@@ -428,6 +525,10 @@ export function AssetDetail() {
         <p className="muted">Select an asset to see what it is, what it needs, and who uses it.</p>
       </div>
     );
+  }
+
+  if (selection.assetType === 'game-object-prefab') {
+    return <PrefabDetail selection={selection} />;
   }
 
   const selectionKey: AssetReference = {

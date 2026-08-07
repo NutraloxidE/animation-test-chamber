@@ -10,6 +10,7 @@
   "dependencies": {
     "@atc/schema": "workspace:*",
     "@atc/runtime-core": "workspace:*",
-    "@atc/animation-runtime": "workspace:*"
+    "@atc/animation-runtime": "workspace:*",
+    "@atc/prefab-runtime": "workspace:*"
   }
 }

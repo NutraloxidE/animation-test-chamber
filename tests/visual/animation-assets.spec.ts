@@ -10,7 +10,9 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 async function openLibrary(page: Page): Promise<void> {
-  await page.goto('/');
+  // `/` is the Prefab inventory now; the authoring workspace opens from a
+  // Prefab's Animator, which is where the chamber lives.
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
   await expect(page.getByTestId('hud')).toBeVisible();
   await page.getByTestId('workspace-asset-library').click();
   await expect(page.getByTestId('asset-library')).toBeVisible();
@@ -43,6 +45,24 @@ test('lists the migrated assets and filters by type', async ({ page }) => {
   await showPane(page, 'list');
   await expect(page.getByTestId('asset-card-humanoid-third-person-base')).toHaveCount(0);
   await expect(page.getByTestId('asset-card-idle')).toBeVisible();
+});
+
+test('browses Prefabs with exact identity, usage, validation and delete policy', async ({ page }) => {
+  await showPane(page, 'types');
+  await page.getByTestId('asset-type-game-object-prefab').click();
+  await showPane(page, 'list');
+  await expect(page.getByTestId('prefab-card-navigator')).toBeVisible();
+  await expect(page.getByTestId('asset-card-idle')).toHaveCount(0);
+
+  await page.getByTestId('prefab-card-navigator').click();
+  await showPane(page, 'detail');
+  await expect(page.getByTestId('prefab-detail')).toContainText('navigator@1.0.0');
+  await expect(page.getByTestId('prefab-components')).toContainText('animator');
+  await expect(page.getByTestId('prefab-dependencies')).toContainText('animation-behavior');
+  await expect(page.getByTestId('prefab-usage')).toContainText('2 Scene instance(s)');
+  await expect(page.getByTestId('prefab-validation')).toContainText('valid');
+  await expect(page.getByTestId('prefab-delete-policy')).toContainText('Deletion blocked');
+  await expect(page.getByTestId('prefab-delete-policy')).toContainText('controlled-humanoid');
 });
 
 test('search matches a motion slot name, not just the asset id', async ({ page }) => {

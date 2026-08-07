@@ -1,4 +1,9 @@
-import type { ResolvedProject, TerrainPreset, SemanticEventKind } from '@atc/schema';
+import type {
+  CameraProfile,
+  HapticProfile,
+  TerrainPreset,
+  SemanticEventKind,
+} from '@atc/schema';
 import { FixedStepAccumulator } from '@atc/runtime-core';
 import {
   BrowserInputSampler,
@@ -9,11 +14,18 @@ import {
 } from '@atc/input-runtime';
 import { findTerrainPreset } from '@atc/terrain-runtime';
 import {
+  ControllableCharacter,
+  InjectedCharacterIntentSource,
+} from '@atc/character-control-runtime';
+import { IDENTITY_ROTATION, UNIT_SCALE } from '@atc/schema';
+import {
   ReplayRecorder,
   Simulation,
   defaultEquipped,
   frameAt,
   runReplay,
+  type CharacterSimulationDocument,
+  type ReplayDocument,
   type RootMotionTrack,
   type ReplayTrace,
   type TickRecord,
@@ -51,13 +63,48 @@ export interface EngineSnapshot {
  * React only sees a throttled snapshot, so dragging a slider never competes
  * with the simulation for frame budget.
  */
+/**
+ * What the preview engine needs from a document.
+ *
+ * The simulation's own needs plus the four things the engine reads directly:
+ * the camera limits it clamps pitch against, the haptic profile it plays, the
+ * terrain preset it starts on, and the repository revision it stamps into a
+ * recording so a replay can say what it was recorded against.
+ *
+ * Still no Character. `ResolvedProject` satisfies this structurally, so the
+ * legacy chamber constructs the engine exactly as before, and the animation
+ * chamber's Character-free document constructs it too.
+ */
+export interface ChamberEngineDocument extends CharacterSimulationDocument {
+  camera: CameraProfile;
+  haptics: HapticProfile;
+  defaultTerrainPresetId: string;
+  revisionId: string;
+}
+
 export class ChamberEngine {
-  private simulation: Simulation;
+  /**
+   * The live preview character.
+   *
+   * A `ControllableCharacter`, not a bare `Simulation`, because the chamber's
+   * live preview is a *character being controlled* and must go through the same
+   * boundary as every other controller (work package §10.6). The device sampler
+   * used to call `simulation.step(sample)` directly, which meant the one
+   * controller a human actually uses was the one controller that skipped the
+   * abstraction everything else is tested against.
+   */
+  private controllable: ControllableCharacter;
+  /**
+   * The host polls the device once per frame and injects the result. The
+   * character never reaches for the keyboard itself.
+   */
+  private readonly intentSource = new InjectedCharacterIntentSource(0);
+  private tickIndex = 0;
   private readonly accumulator = new FixedStepAccumulator();
   private readonly sampler: BrowserInputSampler;
   private haptics: HapticPlayer;
 
-  private project: ResolvedProject;
+  private project: ChamberEngineDocument;
   private terrain: TerrainPreset;
 
   private recorder: ReplayRecorder | null = null;
@@ -84,29 +131,52 @@ export class ChamberEngine {
 
   private listeners = new Set<() => void>();
 
-  constructor(project: ResolvedProject) {
+  constructor(project: ChamberEngineDocument) {
     this.project = project;
     this.equipped = defaultEquipped(project);
     this.terrain = findTerrainPreset(project.defaultTerrainPresetId);
-    this.simulation = this.createSimulation();
+    this.controllable = this.createControllable();
     this.sampler = new BrowserInputSampler(project.inputMap);
     this.haptics = new HapticPlayer(project.haptics, detectCapability(readActiveGamepad()), () =>
       readActiveGamepad() as unknown as { id: string; vibrationActuator?: never } | null,
     );
   }
 
-  private createSimulation(): Simulation {
-    return new Simulation({
-      project: this.project,
+  /**
+   * The underlying simulation, for the many pass-through setters below.
+   *
+   * A getter rather than a second stored reference: two references to one
+   * simulation is exactly how a `reset()` leaves half the engine talking to the
+   * discarded one.
+   */
+  private get simulation(): Simulation {
+    return this.controllable.simulation;
+  }
+
+  private createControllable(
+    overrides: {
+      seed?: number;
+      initialPosition?: { x: number; y: number; z: number };
+      initialYawRad?: number;
+    } = {},
+  ): ControllableCharacter {
+    const yaw = overrides.initialYawRad ?? 0;
+    const half = yaw / 2;
+    return new ControllableCharacter({
+      instanceId: 'rig-preview',
+      resolvedProject: this.project,
       terrain: this.terrain,
-      seed: 1,
-      initialPosition: { x: 0, y: 2, z: 0 },
-      initialYawRad: 0,
+      intentSource: this.intentSource,
+      seed: overrides.seed ?? 1,
+      initialTransform: {
+        position: overrides.initialPosition ?? { x: 0, y: 2, z: 0 },
+        rotation: yaw === 0 ? { ...IDENTITY_ROTATION } : { x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) },
+        scale: { ...UNIT_SCALE },
+      },
       cameraYawRad: this.cameraYaw,
       upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
       actionRootMotionTracks: this.actionRootMotionTracks,
-      weaponModeId: this.weaponModeId,
-      equipped: this.equipped,
+      overrides: { weaponModeId: this.weaponModeId, equipped: this.equipped },
     });
   }
 
@@ -128,7 +198,7 @@ export class ChamberEngine {
   }
 
   /** Applies edited canonical data to the running preview without a restart. */
-  setProject(project: ResolvedProject): void {
+  setProject(project: ChamberEngineDocument): void {
     this.project = project;
     this.simulation.updateProject(project);
     this.sampler.setInputMap(project.inputMap);
@@ -153,7 +223,7 @@ export class ChamberEngine {
     return this.terrain;
   }
 
-  get currentProject(): ResolvedProject {
+  get currentProject(): ChamberEngineDocument {
     return this.project;
   }
 
@@ -224,7 +294,9 @@ export class ChamberEngine {
   }
 
   reset(): void {
-    this.simulation = this.createSimulation();
+    this.controllable = this.createControllable();
+    this.intentSource.reset();
+    this.tickIndex = 0;
     this.accumulator.reset();
     this.lastRecord = null;
     this.replayTick = 0;
@@ -267,18 +339,13 @@ export class ChamberEngine {
     this.mode = 'replay';
     this.terrain = findTerrainPreset(replay.terrainPresetId);
     this.cameraYaw = replay.cameraYawRad;
-    this.simulation = new Simulation({
-      project: this.project,
-      terrain: this.terrain,
+    this.controllable = this.createControllable({
       seed: replay.seed,
       initialPosition: replay.initialPosition,
       initialYawRad: replay.initialYawRad,
-      cameraYawRad: replay.cameraYawRad,
-      upperBodyActionRootMotionEnabled: this.upperBodyActionRootMotionEnabled,
-      actionRootMotionTracks: this.actionRootMotionTracks,
-      weaponModeId: this.weaponModeId,
-      equipped: this.equipped,
     });
+    this.intentSource.reset();
+    this.tickIndex = 0;
     this.accumulator.reset();
     this.notify();
   }
@@ -290,7 +357,7 @@ export class ChamberEngine {
   }
 
   /** Runs a replay headlessly against a document, for comparison panels. */
-  traceFor(document: ResolvedProject, replay: ReplayDefinition): ReplayTrace {
+  traceFor(document: ReplayDocument, replay: ReplayDefinition): ReplayTrace {
     return runReplay(document, replay);
   }
 
@@ -367,7 +434,14 @@ export class ChamberEngine {
 
     this.recorder?.record(sample);
 
-    const record = this.simulation.step(sample);
+    /*
+     * Device sample -> intent source -> ControllableCharacter. The engine never
+     * steps the simulation itself, so a replay frame and a keypress travel the
+     * identical path and a scripted test of the same motion is writable.
+     */
+    this.intentSource.inject(sample);
+    const record = this.controllable.step(this.tickIndex, { cameraYawRad: this.cameraYaw }).record;
+    this.tickIndex += 1;
     this.lastRecord = record;
 
     for (const event of record.events) {

@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-sword-attack-02-recovery",
+    "version": "1.0.0",
+    "displayName": "Universal Base attack 02 recovery (sword)",
+    "description": "Universal Base: \"Sword_Regular_B_Rec\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's state.attack-02-recovery clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "a2614ea94fe7ff11968f24ad8e2ca331ba194e1a49e335251221dcb355c206b8"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-sword-attack-02-recovery",
+    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "durationSec": 1.0333333,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0.55
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+      "animationName": "Sword_Regular_B_Rec"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

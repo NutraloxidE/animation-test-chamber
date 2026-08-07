@@ -1,0 +1,173 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-motion-set",
+    "id": "quaternius-knight-motion-set",
+    "version": "1.0.0",
+    "displayName": "Quaternius Knight motion set",
+    "description": "Canonical bindings from the shared Behavior's motion slots to takes inside Quaternius Knight's imported animation files.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "0f5cdff2290de16e37bbd5239c1dcfb326cf20802cd1244b8350a7ce0b983b6b"
+  },
+  "compatibleBehaviorIds": [
+    "humanoid-third-person-base"
+  ],
+  "rig": {
+    "assetType": "humanoid-rig",
+    "assetId": "quaternius-knight-rig",
+    "version": "1.0.0",
+    "contentHash": "a43a0ebd54713409ad97c2681fb3319397d553dc28dec1a9aa8667759e453e59"
+  },
+  "bindings": [
+    {
+      "motionSlot": "locomotion.idle",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-idle",
+        "version": "1.0.0",
+        "contentHash": "9d244677330967899a391ff88781d078e7c01c402811df6111ecf201f5547d15"
+      }
+    },
+    {
+      "motionSlot": "locomotion.walk",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-walk",
+        "version": "1.0.0",
+        "contentHash": "65a152157ae0513afc67eb86fdc39f148d83991467adcc44ae871f48b1077a3e"
+      }
+    },
+    {
+      "motionSlot": "locomotion.run",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-run",
+        "version": "1.0.0",
+        "contentHash": "3bf947fd04c4cb0b01b2b31ec9785d0aaed8faeb89d9fed055d736d7f47432fe"
+      }
+    },
+    {
+      "motionSlot": "airborne.jump",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-jump",
+        "version": "1.0.0",
+        "contentHash": "260d0be4afb720b1ab62e2cb4b8a58b24500d0c511e55876da347db22af0c7f4"
+      }
+    },
+    {
+      "motionSlot": "airborne.fall",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-fall",
+        "version": "1.0.0",
+        "contentHash": "4add7402be29164a8b137a766f64e0cca41092a2908af8f9aef42264c1f8a277"
+      }
+    },
+    {
+      "motionSlot": "airborne.land",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-land",
+        "version": "1.0.0",
+        "contentHash": "86280aa1da793e906d4145b6f3fd7be246e9074b7ad31e44411d10289d98fb9d"
+      }
+    },
+    {
+      "motionSlot": "state.slide",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-slide",
+        "version": "1.0.0",
+        "contentHash": "c9aff3b9c9e320b1bb18dc70d26526e92cb3a21a8e4314581098a2ae8b8e7d9b"
+      }
+    },
+    {
+      "motionSlot": "state.action-none",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-action-none",
+        "version": "1.0.0",
+        "contentHash": "20a1ed809181c40b1ff642cc1bdc8d869837de6655accd78537fda7d67e8038d"
+      }
+    },
+    {
+      "motionSlot": "action.primary.01",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-attack-01",
+        "version": "1.0.0",
+        "contentHash": "4eaa9489ca0bfc9557c5370aee6c0c3bedaf1650136e96f302ddd56185e51e28"
+      }
+    },
+    {
+      "motionSlot": "state.attack-01-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-attack-01-recovery",
+        "version": "1.0.0",
+        "contentHash": "832a46bccc8cd7accd3f010c9b9cdb6b36e8735236783584fbd35b132edff81b"
+      }
+    },
+    {
+      "motionSlot": "action.primary.02",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-attack-02",
+        "version": "1.0.0",
+        "contentHash": "f913e9abbc63c9ca3b42142eeb8618b21484c32fed5bff99d5a71c9d59a9c4d3"
+      }
+    },
+    {
+      "motionSlot": "state.attack-02-recovery",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-attack-02-recovery",
+        "version": "1.0.0",
+        "contentHash": "2f058f193643155ce6ba6829eec73c65ea18d6af2386d0e35258d1f85c75009f"
+      }
+    },
+    {
+      "motionSlot": "mobility.dodge",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-dodge",
+        "version": "1.0.0",
+        "contentHash": "735601eff881e16e1b4a450ebb903447c0b44d0000e63d9953b451e09762b253"
+      }
+    },
+    {
+      "motionSlot": "state.guard",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-guard",
+        "version": "1.0.0",
+        "contentHash": "57f77a52bdb53733c4af4ad9337ced74c2266b3ff9e62f052b973a97cd6eacf6"
+      }
+    },
+    {
+      "motionSlot": "state.guard-shield",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-guard-shield",
+        "version": "1.0.0",
+        "contentHash": "90af0f30111cbcb2716dce8b3ac085c744c7bad6a6dab0efd55beea74012de7c"
+      }
+    },
+    {
+      "motionSlot": "state.hit",
+      "clip": {
+        "assetType": "animation-clip",
+        "assetId": "knight-hit",
+        "version": "1.0.0",
+        "contentHash": "3c78fb769730ee869286734e9b8cc95a9143639d150a3ce845e43f2d735beba7"
+      }
+    }
+  ],
+  "fallbackBindings": []
+}

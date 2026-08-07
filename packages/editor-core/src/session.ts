@@ -74,9 +74,10 @@ function valuesEqual(left: unknown, right: unknown): boolean {
  * changed by an AI patch, a UI slider, or an API call without a human
  * explicitly unlocking it.
  */
-export class EditSession {
-  private repository: ResolvedProject;
-  private preview: ResolvedProject;
+export class EditSession<TDocument extends object = ResolvedProject> {
+  private repository: TDocument;
+  private preview: TDocument;
+  private readonly validator: (document: TDocument) => ValidationResult;
   private readonly staged = new Set<CanonicalPath>();
   private readonly stagedValues = new Map<CanonicalPath, unknown>();
   private readonly stagedProvenance = new Map<CanonicalPath, ValueProvenance>();
@@ -104,9 +105,20 @@ export class EditSession {
     '/character/',
   ];
 
-  constructor(repository: ResolvedProject) {
+  /**
+   * @param repository the baseline document every value is measured against.
+   * @param validator structural validation for `TDocument`. The default only
+   *   suits the default type argument; a session over any other document — the
+   *   animation chamber's Character-free document, for instance — must supply
+   *   its own, because "resolved project references" is not a statement about
+   *   a document that has no project in it.
+   */
+  constructor(repository: TDocument, validator?: (document: TDocument) => ValidationResult) {
     this.repository = repository;
     this.preview = repository;
+    this.validator =
+      validator ??
+      ((document) => validateResolvedProjectReferences(document as unknown as ResolvedProject));
   }
 
   static isAssetOwnedPath(path: CanonicalPath): boolean {
@@ -137,12 +149,12 @@ export class EditSession {
     return document;
   }
 
-  get repositoryProject(): ResolvedProject {
+  get repositoryProject(): TDocument {
     return this.repository;
   }
 
   /** The document the live preview renders from. */
-  get previewProject(): ResolvedProject {
+  get previewProject(): TDocument {
     return this.preview;
   }
 
@@ -331,7 +343,7 @@ export class EditSession {
    * The document that would be committed: repository plus only the staged
    * paths. Unstaged preview edits stay local to the session.
    */
-  buildStagedDocument(): ResolvedProject {
+  buildStagedDocument(): TDocument {
     let document = this.repository;
     for (const path of this.stagedPaths) {
       const value = this.stagedValues.get(path);
@@ -341,7 +353,7 @@ export class EditSession {
     return this.attachProvenance(document);
   }
 
-  private attachProvenance(document: ResolvedProject): ResolvedProject {
+  private attachProvenance(document: TDocument): TDocument {
     let next = document;
     for (const path of this.stagedPaths) {
       const record = this.stagedProvenance.get(path);
@@ -366,7 +378,7 @@ export class EditSession {
    * carry.
    */
   validate(): ValidationResult {
-    return validateResolvedProjectReferences(this.buildStagedDocument());
+    return this.validator(this.buildStagedDocument());
   }
 
   validateStagedProject(canonicalRepository: ProjectDefinition): ValidationResult {
@@ -384,7 +396,7 @@ export class EditSession {
    * the Git adapter reports success, so the session never claims a commit that
    * did not land.
    */
-  acceptCommitted(document: ResolvedProject): void {
+  acceptCommitted(document: TDocument): void {
     this.repository = document;
     this.preview = document;
     this.staged.clear();

@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-jump",
+    "version": "1.0.0",
+    "displayName": "Universal Base jump",
+    "description": "Universal Base: \"Rig|Jump_Start\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's airborne.jump clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "114cbec5852e3d704b3550099d08851e748b97c27f8e2510dec535213c17a4f1"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-jump",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+    "durationSec": 0.5,
+    "loop": false,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "InPlace",
+    "events": [
+      {
+        "id": "jump-takeoff",
+        "kind": "JumpTakeoff",
+        "at": 0.02
+      }
+    ],
+    "footContacts": {
+      "left": [],
+      "right": []
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Jump_Start",
+      "positionScale": 100
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

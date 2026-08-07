@@ -1,5 +1,5 @@
 /**
- * Unity world export.
+ * Unity scene export.
  *
  * The property worth asserting is the one the whole contract is about: two
  * instances of one character must export as two small objects plus one set of
@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { buildUnityBundle } from '@atc/unity-export';
 import { REPLAY_FIXTURES } from '@atc/replay-runtime';
 import { loadResolvedDemoProject } from '../../fixtures/project.ts';
-import { CONTROLLED, SCRIPTED } from '../../fixtures/world.ts';
+import { CONTROLLED_ENTITY, SCRIPTED_ENTITY } from '../../fixtures/scene.ts';
 
 function bundle() {
   // A fixed generated-at stamp: the default is `new Date()`, and a bundle that
@@ -24,27 +24,30 @@ function projectDocument(files: { path: string; content: string }[]) {
   // The bundle nests the document under `project` beside its generated-file
   // marker, so a human opening the file can see it is generated output.
   return (JSON.parse(file.content) as { project: unknown }).project as {
-    world?: {
-      instances: { id: string; source: { characterId: string }; transform: unknown }[];
+    scenes: {
+      id: string;
+      entities: { id: string; kind: string; characterId?: string; transform: unknown }[];
       intentTracks: { id: string }[];
-    };
+    }[];
     characters: { id: string; animation: unknown }[];
   };
 }
 
-describe('unity world export', () => {
-  it('exports the world contract with stable instance ids', () => {
+describe('unity scene export', () => {
+  it('exports the scene contract with stable entity ids', () => {
     const document = projectDocument(bundle());
-    expect(document.world).toBeDefined();
-    expect(document.world!.instances.map((entry) => entry.id)).toEqual([CONTROLLED, SCRIPTED]);
-    expect(document.world!.intentTracks.map((entry) => entry.id)).toEqual([
-      'scripted-locomotion-cycle',
-    ]);
+    const scene = document.scenes[0];
+    expect(scene).toBeDefined();
+    const characters = scene!.entities.filter((entry) => entry.kind === 'character');
+    expect(characters.map((entry) => entry.id)).toEqual([CONTROLLED_ENTITY, SCRIPTED_ENTITY]);
+    expect(scene!.intentTracks.map((entry) => entry.id)).toEqual(['scripted-locomotion-cycle']);
   });
 
-  it('exports two instances of one character without duplicating the character', () => {
+  it('exports two entities of one character without duplicating the character', () => {
     const document = projectDocument(bundle());
-    const characterIds = document.world!.instances.map((entry) => entry.source.characterId);
+    const characterIds = document
+      .scenes[0]!.entities.filter((entry) => entry.kind === 'character')
+      .map((entry) => entry.characterId!);
     expect(new Set(characterIds).size).toBe(1);
     // One character definition in the bundle, referenced twice.
     expect(document.characters.filter((entry) => entry.id === characterIds[0]!)).toHaveLength(1);
@@ -73,18 +76,28 @@ describe('unity world export', () => {
     }
   });
 
-  it('ships an adapter seam for instances rather than an implementation', () => {
+  it('ships an adapter seam for entities rather than an implementation', () => {
     const files = bundle();
-    const adapter = files.find((entry) => entry.path.endsWith('Runtime/IChamberWorld.cs'))!.content;
-    expect(adapter).toContain('void SpawnInstance(');
-    expect(adapter).toContain('void BindIntentSource(');
+    const adapter = files.find((entry) => entry.path.endsWith('Runtime/IChamberScene.cs'))!.content;
+    expect(adapter).toContain('void SpawnEntity(');
+    expect(adapter).toContain('void BindController(');
     expect(adapter).toContain('ChamberStateMachine StateMachineFor(');
     expect(adapter).toContain('Observe()');
+
+    /*
+     * The control seam must be intent, not playback. An adapter offering a
+     * "play this clip" entry point would let Unity skip the transition rules
+     * the character was tuned with, which is the whole thing
+     * ControllableCharacter exists to prevent on the web side.
+     */
+    expect(adapter).toContain('void InjectIntent(');
+    expect(adapter).not.toContain('PlayAnimation(');
+    expect(adapter).not.toContain('ForceState(');
 
     // The README must say what is missing. An adapter that quietly did less
     // than the browser is the failure mode this repository keeps writing down.
     const readme = files.find((entry) => entry.path.endsWith('AnimationTestChamberAdapter/README.md'))!.content;
-    expect(readme).toContain('No instance spawning is implemented');
+    expect(readme).toContain('No entity spawning is implemented');
     expect(readme).toContain('No Animator Controller is generated');
   });
 

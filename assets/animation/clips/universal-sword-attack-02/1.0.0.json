@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "schemaVersion": 2,
+    "assetType": "animation-clip",
+    "id": "universal-sword-attack-02",
+    "version": "1.0.0",
+    "displayName": "Universal Base attack 02 (sword)",
+    "description": "Universal Base: \"Sword_Regular_B\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's action.primary.02 clip.",
+    "tags": [
+      "imported",
+      "cc0"
+    ],
+    "createdAt": "2026-08-05T00:00:00.000Z",
+    "createdBy": "imported-character-asset-authoring",
+    "contentHash": "4f5c580dd1c1e758ced5e5c82177b8a03e7e96742e1df347bdc245b79f732e87"
+  },
+  "clip": {
+    "schemaVersion": 2,
+    "id": "universal-sword-attack-02",
+    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "durationSec": 0.85,
+    "loop": false,
+    "inputAcceptanceStartNormalized": 0.61,
+    "rootDisplacement": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "rootMotionMode": "RootMotion",
+    "events": [
+      {
+        "id": "a2-windup",
+        "kind": "AttackWindup",
+        "at": 0.2
+      },
+      {
+        "id": "a2-hit",
+        "kind": "AttackHit",
+        "at": 0.5
+      },
+      {
+        "id": "a2-recoil",
+        "kind": "AttackRecoil",
+        "at": 0.78
+      }
+    ],
+    "footContacts": {
+      "left": [
+        {
+          "start": 0,
+          "end": 0.5
+        }
+      ],
+      "right": [
+        {
+          "start": 0.3,
+          "end": 1
+        }
+      ]
+    },
+    "timeCurve": {
+      "x1": 0,
+      "y1": 0,
+      "x2": 0.58,
+      "y2": 1
+    },
+    "externalSource": {
+      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+      "animationName": "Sword_Regular_B"
+    }
+  },
+  "compatibleRigIds": [
+    "quaternius-universal-rig"
+  ]
+}

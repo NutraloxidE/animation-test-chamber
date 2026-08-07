@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { compareTraces } from '@atc/replay-runtime';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 
 /**
  * Replay controls and comparison (PLAN 8.5, 13). The point of this panel is that
@@ -19,6 +19,7 @@ export function ReplayPanel() {
   const ghostEnabled = useChamber((state) => state.ghostEnabled);
   const setGhostEnabled = useChamber((state) => state.setGhostEnabled);
   const compareSlots = useChamber((state) => state.compareSlots);
+  const proposalSlots = compareSlots.filter((slot) => slot.proposal !== null).length;
   const activeCompareSlot = useChamber((state) => state.activeCompareSlot);
   const activateCompareSlot = useChamber((state) => state.activateCompareSlot);
   const buildCompareSlots = useChamber((state) => state.buildCompareSlots);
@@ -169,9 +170,21 @@ export function ReplayPanel() {
         </p>
       </section>
 
-      <section className="compare">
-        <h3>A / B / C</h3>
-        <button type="button" onClick={buildCompareSlots}>
+      {/*
+        The heading is derived, not fixed.
+
+        It used to read "A / B / C" unconditionally, which was a lie whenever
+        the set was the two baselines: a reader saw three-variant framing over
+        a before/after pair. §6.4 forbids exactly that, so the title states how
+        many proposal columns are actually present.
+      */}
+      <section className="compare" data-testid="replay-compare">
+        <h3 data-testid="replay-compare-title">
+          {proposalSlots === 0
+            ? 'Repository / Preview'
+            : `Repository / Preview / ${proposalSlots} proposal(s)`}
+        </h3>
+        <button type="button" onClick={buildCompareSlots} data-testid="rebuild-compare-slots">
           Rebuild comparison set
         </button>
         {compareSlots.length === 0 ? (
@@ -182,6 +195,8 @@ export function ReplayPanel() {
               <button
                 type="button"
                 key={slot.label}
+                data-testid={`replay-compare-slot-${index}`}
+                data-proposal={slot.proposal ? slot.proposal.variant : 'none'}
                 className={`slot${activeCompareSlot === index ? ' is-active' : ''}`}
                 onClick={() => activateCompareSlot(index)}
               >

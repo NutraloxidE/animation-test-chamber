@@ -62,6 +62,9 @@ namespace AnimationTestChamber.Generated
         public string revisionId;
         public List<CharacterDefinition> characters;
         public string activeCharacterId;
+        public List<SceneDefinition> scenes;
+        // optional
+        public string activeSceneId;
         // optional
         public WorldDefinition world;
         public InputMapDefinition inputMap;
@@ -86,12 +89,26 @@ namespace AnimationTestChamber.Generated
         public int schemaVersion;
         public string id;
         public string displayName;
-        public string modelAssetPath;
+        public CharacterModelBinding model;
         public float capsuleRadius;
         public float capsuleHeight;
         public CharacterAnimationAssignment animation;
         // optional
         public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class CharacterModelBinding
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string presetId;
+        public string assetPath;
+        public float scale;
+        public float rotationYRad;
+        public string rightHandBone;
+        public string weaponGrips;
     }
 
     [Serializable]
@@ -160,47 +177,56 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
-    public class WorldDefinition
+    public class SceneDefinition
     {
         public int schemaVersion;
         public string id;
         public string displayName;
-        public List<RuntimeInstanceDefinition> instances;
+        public List<SceneEntityDefinition> entities;
+        // optional
+        public List<GameObjectInstanceDefinition> gameObjects;
         public List<IntentTrackDefinition> intentTracks;
-        public string focusedInstanceId;
-        public string cameraTargetInstanceId;
+        // optional
+        public string activeCameraEntityId;
+        // optional
+        public string activeCameraGameObjectId;
         // optional
         public ProtectionMetadata protection;
     }
 
     [Serializable]
-    public class RuntimeInstanceDefinition
+    public class SceneEntityDefinition
     {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
         public int schemaVersion;
         public string id;
         public string displayName;
-        public RuntimeInstanceSource source;
-        public TransformDefinition transform;
-        public IntentSourceDefinition intentSource;
         public bool enabled;
-        // optional
-        public RuntimeInstanceOverrides overrides;
-        // optional
+        public TransformDefinition transform;
         public ProtectionMetadata protection;
-    }
-
-    [Serializable]
-    public class RuntimeInstanceSource
-    {
         public string kind;
         public string characterId;
+        public CharacterControllerBindingDefinition controller;
+        public CharacterInstanceOverrides overrides;
+        public SceneAssetReference asset;
+        public string /* directional | point | spot */ lightType;
+        public float intensity;
+        public string color;
+        public float range;
+        public float spotAngleRad;
+        public string /* perspective | orthographic */ projection;
+        public float fieldOfViewDeg;
+        public float orthographicSize;
+        public string targetEntityId;
     }
 
     [Serializable]
     public class TransformDefinition
     {
         public TransformDefinitionPosition position;
-        public float yawRad;
+        public TransformDefinitionRotation rotation;
+        public TransformDefinitionScale scale;
     }
 
     [Serializable]
@@ -212,18 +238,36 @@ namespace AnimationTestChamber.Generated
     }
 
     [Serializable]
-    public class IntentSourceDefinition
+    public class TransformDefinitionRotation
+    {
+        public float x;
+        public float y;
+        public float z;
+        public float w;
+    }
+
+    [Serializable]
+    public class TransformDefinitionScale
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
+    [Serializable]
+    public class CharacterControllerBindingDefinition
     {
         // Flattened discriminated union: check `kind` before reading the
         // other fields. Unity JsonUtility cannot express polymorphism.
         public string kind;
         public int playerIndex;
         public string trackId;
+        public string channelId;
         public string replayId;
     }
 
     [Serializable]
-    public class RuntimeInstanceOverrides
+    public class CharacterInstanceOverrides
     {
         // optional
         public float moveSpeedScale;
@@ -233,6 +277,64 @@ namespace AnimationTestChamber.Generated
         public string weaponModeId;
         // optional
         public string equipped;
+    }
+
+    [Serializable]
+    public class SceneAssetReference
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string assetPath;
+        public string assetId;
+        public string version;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public bool enabled;
+        public GameObjectPrefabReference prefab;
+        public TransformDefinition transform;
+        public List<PrefabComponentOverride> componentOverrides;
+        public GameObjectInstanceBindings bindings;
+        public GameObjectInstanceRelations relations;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class GameObjectPrefabReference
+    {
+        public string assetType;
+        public string assetId;
+        public string version;
+        public string contentHash;
+    }
+
+    [Serializable]
+    public class PrefabComponentOverride
+    {
+        public string nodeId;
+        public string componentId;
+        public List<CanonicalPatch> patches;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceBindings
+    {
+        // optional
+        public CharacterControllerBindingDefinition characterIntent;
+    }
+
+    [Serializable]
+    public class GameObjectInstanceRelations
+    {
+        // optional
+        public string cameraTargetGameObjectId;
     }
 
     [Serializable]
@@ -293,6 +395,82 @@ namespace AnimationTestChamber.Generated
         public bool Interact;
         // optional
         public bool Pause;
+    }
+
+    [Serializable]
+    public class WorldDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public List<RuntimeInstanceDefinition> instances;
+        public List<IntentTrackDefinition> intentTracks;
+        public string focusedInstanceId;
+        public string cameraTargetInstanceId;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceDefinition
+    {
+        public int schemaVersion;
+        public string id;
+        public string displayName;
+        public RuntimeInstanceSource source;
+        public LegacyTransformDefinition transform;
+        public IntentSourceDefinition intentSource;
+        public bool enabled;
+        // optional
+        public RuntimeInstanceOverrides overrides;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceSource
+    {
+        public string kind;
+        public string characterId;
+    }
+
+    [Serializable]
+    public class LegacyTransformDefinition
+    {
+        public LegacyTransformDefinitionPosition position;
+        public float yawRad;
+    }
+
+    [Serializable]
+    public class LegacyTransformDefinitionPosition
+    {
+        public float x;
+        public float y;
+        public float z;
+    }
+
+    [Serializable]
+    public class IntentSourceDefinition
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public int playerIndex;
+        public string trackId;
+        public string replayId;
+    }
+
+    [Serializable]
+    public class RuntimeInstanceOverrides
+    {
+        // optional
+        public float moveSpeedScale;
+        // optional
+        public int seed;
+        // optional
+        public string weaponModeId;
+        // optional
+        public string equipped;
     }
 
     [Serializable]
@@ -695,7 +873,7 @@ namespace AnimationTestChamber.Generated
     public class TransitionCondition
     {
         public string parameter;
-        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ operator;
+        public string /* equals | notEquals | greaterThan | lessThan | greaterOrEqual | lessOrEqual | buffered */ @operator;
         public string value;
     }
 
@@ -786,6 +964,139 @@ namespace AnimationTestChamber.Generated
         public float lookX;
         public float lookY;
         public int buttons;
+    }
+
+    [Serializable]
+    public class BaseGameObjectPrefabAsset
+    {
+        public GameObjectPrefabMetadata metadata;
+        public BaseGameObjectPrefabAssetDerivation derivation;
+        public bool @abstract;
+        public PrefabNodeDefinition root;
+    }
+
+    [Serializable]
+    public class GameObjectPrefabMetadata
+    {
+        public int schemaVersion;
+        public string assetType;
+        public string id;
+        public string version;
+        public string displayName;
+        public string description;
+        public List<string> tags;
+        public string createdAt;
+        public string createdBy;
+        public string contentHash;
+        // optional
+        public ProtectionMetadata protection;
+        // optional
+        public ValueProvenance provenance;
+        // optional
+        public PrefabDerivationProvenance assetProvenance;
+    }
+
+    [Serializable]
+    public class PrefabDerivationProvenance
+    {
+        // optional
+        public GameObjectPrefabReference forkedFrom;
+        // optional
+        public GameObjectPrefabReference duplicatedFrom;
+        // optional
+        public string promotedFromCandidateId;
+        // optional
+        public int migratedFromSchemaVersion;
+        // optional
+        public string note;
+    }
+
+    [Serializable]
+    public class BaseGameObjectPrefabAssetDerivation
+    {
+        public string mode;
+    }
+
+    [Serializable]
+    public class PrefabNodeDefinition
+    {
+        public string nodeId;
+        public string displayName;
+        public bool enabled;
+        public TransformDefinition transform;
+        public List<GameObjectComponentDefinition> components;
+        public List<PrefabNodeDefinitionChildrenItem> children;
+        // optional
+        public ProtectionMetadata protection;
+    }
+
+    [Serializable]
+    public class GameObjectComponentDefinition
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public int schemaVersion;
+        public string componentId;
+        public string componentType;
+        public bool enabled;
+        public ProtectionMetadata protection;
+        public RenderableModelBinding model;
+        public bool castShadow;
+        public bool receiveShadow;
+        public CharacterAnimationAssignment assignment;
+        public string defaultContextKey;
+        public string intentChannel;
+        public float movementScale;
+        public float turnScale;
+        public float radius;
+        public float height;
+        public Vec3 center;
+        public List<EquipmentSocketDefinition> sockets;
+        public string /* perspective | orthographic */ projection;
+        public float fieldOfViewDeg;
+        public float orthographicSize;
+        public string /* directional | point | spot */ lightType;
+        public float intensity;
+        public string color;
+        public float range;
+        public float spotAngleRad;
+        public List<string> tags;
+    }
+
+    [Serializable]
+    public class RenderableModelBinding
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string presetId;
+        public string assetPath;
+        public float scale;
+        public float rotationYRad;
+    }
+
+    [Serializable]
+    public class EquipmentSocketDefinition
+    {
+        public string socketId;
+        // optional
+        public string boneName;
+        public List<string> localPosition;
+        public List<string> localRotation;
+        public List<string> acceptedItemTags;
+    }
+
+    [Serializable]
+    public class PrefabNodeDefinitionChildrenItem
+    {
+        // Flattened discriminated union: check `kind` before reading the
+        // other fields. Unity JsonUtility cannot express polymorphism.
+        public string kind;
+        public string node;
+        public string instanceId;
+        public GameObjectPrefabReference prefab;
+        public TransformDefinition transform;
+        public List<PrefabComponentOverride> overrides;
     }
 
 }

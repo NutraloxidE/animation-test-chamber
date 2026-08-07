@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "GameObjectPrefabReference",
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "assetType",
+    "assetId",
+    "version",
+    "contentHash"
+  ],
+  "properties": {
+    "assetType": {
+      "$id": "GameObjectPrefabAssetType",
+      "const": "game-object-prefab",
+      "type": "string"
+    },
+    "assetId": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 96,
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "type": "string"
+    },
+    "contentHash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    }
+  }
+}

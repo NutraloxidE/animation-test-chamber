@@ -9,6 +9,9 @@
  */
 import { WORLD_COMMANDS } from './world-commands.ts';
 import { REFERENCE_CAPABILITY } from './reference-capability.ts';
+import { RIG_CAPABILITY } from './rig-capability.ts';
+import { SCENE_CAPABILITY } from './scene-capability.ts';
+import { CHARACTER_CONTROL_CAPABILITY } from './character-control-capability.ts';
 import type { CapabilityManifest } from './manifest.ts';
 import { CapabilityRegistry } from './registry.ts';
 
@@ -141,5 +144,13 @@ export function createDefaultRegistry(): CapabilityRegistry {
   const registry = new CapabilityRegistry();
   registry.register(WORLD_CAPABILITY);
   registry.register(REFERENCE_CAPABILITY);
+  /*
+   * The three route-scoped groups. They are registered alongside the world
+   * capability rather than replacing it, because `world.*` still backs the
+   * un-migrated tests and retires with `@atc/world-runtime`.
+   */
+  registry.register(RIG_CAPABILITY);
+  registry.register(SCENE_CAPABILITY);
+  registry.register(CHARACTER_CONTROL_CAPABILITY);
   return registry;
 }

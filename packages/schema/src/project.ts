@@ -7,15 +7,85 @@ import { CameraProfile, MovementProfile, RootMotionProfile } from './movement.ts
 import { TerrainInteractionProfile } from './terrain.ts';
 import { HapticProfile } from './haptics.ts';
 import { CandidateAsset } from './acquisition.ts';
+import { SceneDefinition } from './scene.ts';
 import { WorldDefinition } from './world.ts';
+
+/**
+ * A procedural appearance generated in code, named by preset id.
+ *
+ * The appearance is code, but *which* appearance a Character wears is authored
+ * data — that is the whole distinction this binding exists to draw. Before it,
+ * the answer lived in a web-only catalog the route could not reach, so two
+ * Characters could look identical while claiming to be different, and a
+ * different-looking preview could be mistaken for a different Character.
+ */
+const ProceduralHumanoidBinding = Type.Object(
+  {
+    kind: Type.Literal('procedural-humanoid'),
+    /** Appearance preset id, resolved by the renderer against its own catalog. */
+    presetId: Id,
+  },
+  { additionalProperties: false },
+);
+
+/** An imported model file in the repository, with the transform it needs. */
+const RepositoryModelBinding = Type.Object(
+  {
+    kind: Type.Literal('repository-model'),
+    /** Path the web app can fetch, e.g. `/assets/characters/<id>/<file>.glb`. */
+    assetPath: Type.String({ minLength: 1 }),
+    scale: Type.Number({ minimum: 0.001, maximum: 1000 }),
+    rotationYRad: Type.Number({ minimum: -Math.PI * 2, maximum: Math.PI * 2 }),
+    /** Bone a held item attaches to. Absent means this model holds nothing. */
+    rightHandBone: Type.Optional(Type.String({ minLength: 1 })),
+    /**
+     * Where a held item sits in that bone's local space, per weapon mode.
+     *
+     * Authored defaults, not session state. These were preset fields, which
+     * meant a grip a human had positioned by hand belonged to a preview record
+     * rather than to the Character — so it could not be reviewed, and the
+     * transient in-browser override was the only place it existed.
+     */
+    weaponGrips: Type.Optional(
+      Type.Record(
+        Type.String({ minLength: 1 }),
+        Type.Object(
+          {
+            position: Type.Tuple([Type.Number(), Type.Number(), Type.Number()]),
+            rotation: Type.Tuple([Type.Number(), Type.Number(), Type.Number()]),
+          },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+/**
+ * How a Character is *shown* — authored, not previewed.
+ *
+ * Model choice is Character identity (work package §3.2). It is stored beside
+ * the animation references rather than resolved from a renderer-side catalog,
+ * so `/edit/rig/<id>` and the Viewport cannot disagree about who is on screen.
+ */
+export const CharacterModelBinding = Type.Union(
+  [ProceduralHumanoidBinding, RepositoryModelBinding],
+  { $id: 'CharacterModelBinding' },
+);
+export type CharacterModelBinding = Static<typeof CharacterModelBinding>;
 
 export const CharacterDefinition = Type.Object(
   {
     schemaVersion: SchemaVersion,
     id: Id,
     displayName: Type.String(),
-    /** null selects the procedural fallback character so the app boots assetless. */
-    modelAssetPath: Type.Union([Type.String(), Type.Null()]),
+    /**
+     * The one authored answer to "which model is this?". Replaces the old
+     * nullable `modelAssetPath`, whose `null` meant "some procedural character,
+     * ask the renderer" — a question only a web-only catalog could answer.
+     */
+    model: CharacterModelBinding,
     /** Meters; used for capsule probes and step-up checks. */
     capsuleRadius: Type.Number({ minimum: 0.05, maximum: 2 }),
     capsuleHeight: Type.Number({ minimum: 0.2, maximum: 4 }),
@@ -123,14 +193,30 @@ export const ProjectDefinition = Type.Object(
     /** Which character the chamber opens with. */
     activeCharacterId: Id,
     /**
-     * Optional multi-instance world.
+     * Every Scene in the project.
      *
-     * Optional because `characters` is not being replaced: a project that
-     * predates this field still opens, and resolves through
-     * `synthesizeLegacyWorld` into a one-instance world built from
-     * `activeCharacterId`. The focused chamber is therefore a *view over a
-     * one-instance world* rather than a second runtime kept alive alongside
-     * this one.
+     * May be empty, and an empty list is not a degenerate case: a repository
+     * that only authors reusable Characters is a legitimate shape, and the Rig
+     * Editor needs no Scene to open one. The old singular optional `world` is
+     * gone — `scenes` replaced it — and a document still carrying `world` is a
+     * legacy document, read only through `loadProjectDocument`.
+     */
+    scenes: Type.Array(SceneDefinition),
+    /**
+     * Which Scene the Scene list opens on.
+     *
+     * A *navigation preference*, nothing more. `/edit/scene/:sceneId` resolves
+     * its target from the route and never consults this field, so a stale or
+     * absent `activeSceneId` cannot cause one Scene's edits to land in another.
+     */
+    activeSceneId: Type.Optional(Id),
+    /**
+     * The legacy multi-instance world.
+     *
+     * @deprecated Migration-only, and removed once `@atc/world-runtime` retires.
+     * Production code must read `scenes` — `harness:repo-guard` fails a new
+     * reference to this field. It stays declared for exactly as long as the old
+     * runtime and its un-migrated tests still parse documents that contain it.
      */
     world: Type.Optional(WorldDefinition),
     inputMap: InputMapDefinition,

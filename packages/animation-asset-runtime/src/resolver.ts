@@ -15,6 +15,7 @@
 import type {
   AnimationClipDefinition,
   AnimationGraphDefinition,
+  AnimationSubjectDefinition,
   AssetIssue,
   AssetReference,
   CanonicalPatch,
@@ -36,6 +37,18 @@ export interface ResolveRequest {
   project: ProjectDefinition;
   /** Defaults to the project's active character. */
   characterId?: string;
+  /**
+   * An explicit character to resolve, for callers whose definition does not
+   * live in `project.characters`.
+   *
+   * A Prefab's Animator component carries the same `CharacterAnimationAssignment`
+   * a `CharacterDefinition` does, and resolving it must run the *same* engine —
+   * a second resolver for Prefabs would be a second answer to "what does this
+   * behaviour do". This field is how the GameObject runtime borrows this one
+   * without inventing a character in the project document to hold the
+   * assignment. Wins over `characterId` when both are given.
+   */
+  character?: CharacterDefinition;
   /** Unsaved chamber edits, applied last so the preview shows them. */
   previewOverrides?: readonly CanonicalPatch[];
 }
@@ -239,6 +252,7 @@ export function resolveCharacterAnimation(request: ResolveRequest): ResolveResul
 /** The character a request resolves for: the named one, or the active one. */
 export function characterFor(request: ResolveRequest): CharacterDefinition {
   return (
+    request.character ??
     request.project.characters.find((entry) => entry.id === request.characterId) ??
     activeCharacter(request.project)
   );
@@ -273,6 +287,30 @@ export interface ResolveBundleResult {
   issues: AssetIssue[];
 }
 
+export interface ResolvedAnimationSubject {
+  subject: AnimationSubjectDefinition;
+  bundle: ResolvedAnimationBundle;
+}
+
+export interface ResolveAnimationSubjectResult {
+  resolved: ResolvedAnimationSubject;
+  issues: AssetIssue[];
+}
+
+/** Character-free animation resolution for an exact Prefab Animator subject. */
+export function resolveAnimationSubject(request: {
+  subject: AnimationSubjectDefinition;
+  animationRegistry: AnimationAssetRegistry;
+  previewOverrides?: readonly CanonicalPatch[];
+}): ResolveAnimationSubjectResult {
+  const { bundle, issues } = resolveAnimationAssignmentBundle({
+    registry: request.animationRegistry,
+    assignment: request.subject.animator.assignment,
+    previewOverrides: request.previewOverrides,
+  });
+  return { resolved: { subject: request.subject, bundle }, issues };
+}
+
 /**
  * Resolves the character-independent half.
  *
@@ -281,13 +319,25 @@ export interface ResolveBundleResult {
  * carries the character's identity or body.
  */
 export function resolveCharacterAnimationBundle(request: ResolveRequest): ResolveBundleResult {
-  const { registry } = request;
   const character: CharacterDefinition = characterFor(request);
+  return resolveAnimationAssignmentBundle({
+    registry: request.registry,
+    assignment: character.animation,
+    previewOverrides: request.previewOverrides,
+  });
+}
+
+function resolveAnimationAssignmentBundle(request: {
+  registry: AnimationAssetRegistry;
+  assignment: CharacterDefinition['animation'];
+  previewOverrides?: readonly CanonicalPatch[];
+}): ResolveBundleResult {
+  const { registry, assignment } = request;
 
   const issues: AssetIssue[] = [];
   const resolution: ResolvedValue[] = [];
 
-  const behavior = resolveBehaviorAsset(registry, character.animation.behavior);
+  const behavior = resolveBehaviorAsset(registry, assignment.behavior);
   issues.push(...behavior.issues);
   resolution.push(...behavior.resolved);
 
@@ -295,7 +345,7 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
 
   const motion = resolveMotionSet(
     registry,
-    character.animation.motionSet,
+    assignment.motionSet,
     behavior.asset.motionSlots ?? [],
   );
   issues.push(...motion.issues);
@@ -303,7 +353,7 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
     resolution.push({
       value: clipId,
       source: 'motion-set',
-      sourceAsset: character.animation.motionSet,
+      sourceAsset: assignment.motionSet,
       canonicalPath: `/motionBindings/${slot}`,
     });
   }
@@ -312,23 +362,23 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
     const compatibility = checkMotionSetCompatibility(
       registry,
       behavior.asset,
-      registry.getMotionSet(character.animation.motionSet),
-      character.animation.rig,
+      registry.getMotionSet(assignment.motionSet),
+      assignment.rig,
     );
     issues.push(...compatibility.issues);
   }
 
   // Tuning: values only. Structural change is a variant's job, and saying so
   // here is what keeps a tuning profile from becoming a second, weaker variant.
-  if (character.animation.tuning) {
-    const tuningIssues = registry.checkReference(character.animation.tuning);
+  if (assignment.tuning) {
+    const tuningIssues = registry.checkReference(assignment.tuning);
     if (tuningIssues.length > 0) {
       issues.push(...tuningIssues);
     } else {
-      const tuning = registry.getTuning(character.animation.tuning);
+      const tuning = registry.getTuning(assignment.tuning);
       const application = applyPatches(graph, tuning.patches, {
         source: 'tuning-profile',
-        sourceAsset: character.animation.tuning,
+        sourceAsset: assignment.tuning,
         requireExistingPath: true,
         valuesOnly: true,
       });
@@ -341,7 +391,7 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
           severity: 'error',
           message: `tuning ${rejection.patch.op} ${rejection.patch.path}: ${rejection.reason}`,
           path: rejection.patch.path,
-          reference: character.animation.tuning,
+          reference: assignment.tuning,
         });
       }
     }
@@ -355,7 +405,7 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
   };
 
   for (const [source, patches] of [
-    ['character-override', character.animation.instanceOverrides],
+    ['character-override', assignment.instanceOverrides],
     ['preview-session', request.previewOverrides ?? []],
   ] as const) {
     if (patches.length === 0) continue;
@@ -377,9 +427,9 @@ export function resolveCharacterAnimationBundle(request: ResolveRequest): Resolv
 
   // The skeleton comes from the rig asset, not the character, so two characters
   // on one rig cannot disagree about how many bones they have.
-  const rigIssues = registry.checkReference(character.animation.rig);
+  const rigIssues = registry.checkReference(assignment.rig);
   issues.push(...rigIssues);
-  const rig = rigIssues.length === 0 ? registry.getRig(character.animation.rig) : undefined;
+  const rig = rigIssues.length === 0 ? registry.getRig(assignment.rig) : undefined;
 
   const bundle: ResolvedAnimationBundle = {
     graph: animation.graph,

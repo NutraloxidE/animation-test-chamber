@@ -1,0 +1,15 @@
+{
+  "name": "@atc/character-control-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@atc/schema": "workspace:*",
+    "@atc/animation-runtime": "workspace:*",
+    "@atc/input-runtime": "workspace:*",
+    "@atc/replay-runtime": "workspace:*",
+    "@atc/terrain-runtime": "workspace:*"
+  }
+}
