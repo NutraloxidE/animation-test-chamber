@@ -128,6 +128,7 @@ export function AnimationWorkspaceRoute(): JSX.Element {
         authoring,
         repository,
         engine: held.engine,
+        prefabRegistry: registry,
       });
       setFailure(null);
       setFacade(created);

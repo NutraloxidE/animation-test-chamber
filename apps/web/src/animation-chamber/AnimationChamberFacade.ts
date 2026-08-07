@@ -19,11 +19,7 @@
  * Prefab node Animator, and the document is built from it.
  */
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type {
-  AnimationSubjectDefinition,
-  CapabilityProfile,
-  ValidationResult,
-} from '@atc/schema';
+import type { AnimationSubjectDefinition, CapabilityProfile } from '@atc/schema';
 import type { CanonicalPath } from '@atc/runtime-core';
 import { EditSession } from '@atc/editor-core';
 import type { AnimationAuthoringSession } from '../prefab-editor/animation-authoring-session.ts';
@@ -34,6 +30,9 @@ import { detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
 import { RuleBasedProvider, type AdjustmentProposal } from '@atc/ai-adapter';
 import { setAtPath } from '@atc/runtime-core';
 import { backendAvailable } from '../backend.ts';
+import type { PrefabAssetRegistry } from '@atc/prefab-runtime';
+import { AnimationPublicationController } from './AnimationPublicationController.ts';
+import { validateAnimationChamberDocument } from './animation-document-validation.ts';
 import {
   materializeAnimationChamberDocument,
   type AnimationChamberDocument,
@@ -151,6 +150,16 @@ export interface AnimationChamberState {
    * permission.
    */
   backendOnline: boolean | null;
+
+  /**
+   * The publication boundary for this subject (§7.2).
+   *
+   * An object rather than flattened fields, because publication has its own
+   * lifecycle — open, choose, submit, refuse or publish — and folding that into
+   * the chamber's flat state is how "has not chosen a destination yet" and
+   * "explicitly chose publish-only" end up indistinguishable.
+   */
+  publication: AnimationPublicationController;
 }
 
 export interface AnimationChamberActions {
@@ -240,21 +249,11 @@ function selectedReplay(state: AnimationChamberState): ReplayDefinition | undefi
   );
 }
 
-/**
- * A chamber document is not a resolved project, so "resolved project
- * references" is not a claim about it. Structural validation of the graph the
- * document carries belongs to the asset resolver, which has already run by the
- * time a session exists — so the session-level validator reports success and
- * defers, rather than asserting something it cannot check.
- */
-function validateChamberDocument(): ValidationResult {
-  return { valid: true, issues: [] };
-}
-
 export function createAnimationChamberFacade(input: {
   authoring: AnimationAuthoringSession;
   repository: AnimationChamberRepositoryDefaults;
   engine: ChamberEngine;
+  prefabRegistry: PrefabAssetRegistry;
   initialPanel?: AnimationPanelId;
 }): AnimationChamberFacade {
   const { authoring, repository } = input;
@@ -262,8 +261,28 @@ export function createAnimationChamberFacade(input: {
     resolved: authoring.resolved,
     repository,
   });
-  const session = new EditSession<AnimationChamberDocument>(document, validateChamberDocument);
+  /*
+   * A real validator, not a stub that reports success.
+   *
+   * Asset *resolution* did happen upstream and cannot be undone from here, but
+   * everything an edit can break — a transition re-pointed at a state that
+   * does not exist, a binding naming a clip the subject does not carry, a value
+   * driven outside its range — is checked, because a document called valid by
+   * something that checked nothing is worse than an unvalidated one.
+   */
+  const session = new EditSession<AnimationChamberDocument>(
+    document,
+    validateAnimationChamberDocument,
+  );
   const { engine } = input;
+
+  const publication = new AnimationPublicationController({
+    session,
+    prefabRegistry: input.prefabRegistry,
+    animationRegistry: authoring.animationRegistry,
+    projectRevisionId: repository.revisionId,
+    backendAvailable,
+  });
 
   const firstState = document.graph.states[0]?.id ?? '';
   const firstTransition = document.graph.transitions[0]?.id ?? '';
@@ -317,6 +336,8 @@ export function createAnimationChamberFacade(input: {
       ghostEnabled: false,
       compareSlots: [],
       activeCompareSlot: -1,
+
+      publication,
 
       proposals: [],
       aiBusy: false,

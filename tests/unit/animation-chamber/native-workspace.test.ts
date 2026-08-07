@@ -280,6 +280,7 @@ describe('the panel registry', () => {
       'replay',
       'terrain',
       'ai',
+      'diff',
       'capability',
     ]);
   });
@@ -514,7 +515,7 @@ describe('the facade and the running engine agree', () => {
         return { dispose: () => {} };
       },
     });
-    const facade = createAnimationChamberFacade({ authoring, repository, engine });
+    const facade = createAnimationChamberFacade({ authoring, repository, engine, prefabRegistry: registry });
     return { facade, engine, store: facade.store };
   }
 
@@ -636,6 +637,7 @@ describe('replay is subject-local', () => {
       }),
       repository,
       engine,
+      prefabRegistry: registry,
     });
 
     const state = facade.store.getState();

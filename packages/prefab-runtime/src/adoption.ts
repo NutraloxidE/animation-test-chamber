@@ -56,6 +56,15 @@ export interface AnimationPublicationPlan {
   nonTargets: GameObjectPrefabReference[];
   protectedTargets: GameObjectPrefabReference[];
   expectedWrites: string[];
+  /**
+   * Why this plan would refuse, if it would.
+   *
+   * Carried on the plan rather than left to the caller to recompute, because
+   * the client renders the plan and the server acts on it, and a stale-snapshot
+   * conflict the surface never showed is one the human never got to settle.
+   * Non-empty means zero writes.
+   */
+  conflicts: AdoptionConflict[];
   request: PublishAnimationAndUpdatePrefabsRequest;
 }
 
@@ -101,6 +110,7 @@ export function createAnimationPublicationPlan(input: {
       assetFilePath(input.request.source.assetType, input.request.source.assetId, input.request.source.version),
       ...selectedTargets.map((target) => prefabAssetFilePath(target.assetId, target.version)),
     ],
+    conflicts: adoption.conflicts,
     request: input.request,
   };
 }

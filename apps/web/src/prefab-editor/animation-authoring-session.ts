@@ -15,6 +15,17 @@ export interface AnimationAuthoringSession<TEngine extends DisposableAnimationPr
   subject: AnimationSubjectDefinition;
   resolved: ResolvedAnimationSubject;
   engine: TEngine;
+  /**
+   * The registry the subject resolved against.
+   *
+   * Kept on the session because publication needs the *stored* asset — the
+   * resolved document is a join and cannot be written back — and the session is
+   * the one thing that already knows which registry produced it. A second
+   * registry reached for independently could disagree, and the disagreement
+   * would surface as publishing a draft built from assets the preview never
+   * used.
+   */
+  animationRegistry: AnimationAssetRegistry;
   baseRevisionId: string;
   previewOverrides: readonly CanonicalPatch[];
   stagedChanges: unknown;
@@ -42,6 +53,7 @@ export function createAnimationAuthoringSession<TEngine extends DisposableAnimat
     subject: input.subject,
     resolved: result.resolved,
     engine,
+    animationRegistry: input.animationRegistry,
     baseRevisionId: input.baseRevisionId,
     previewOverrides: input.previewOverrides ?? [],
     stagedChanges: null,

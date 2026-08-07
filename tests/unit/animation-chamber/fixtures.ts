@@ -102,7 +102,7 @@ export interface ChamberFixture {
 
 /** A live facade over one exact subject, engine included. */
 export function chamber(options: SubjectFixtureOptions = {}): ChamberFixture {
-  const { animationRegistry } = subjectFixture(options);
+  const { animationRegistry, registry } = subjectFixture(options);
   const subject = subjectOf(options);
   const repository = repositoryDefaults();
   let engine!: ChamberEngine;
@@ -115,7 +115,7 @@ export function chamber(options: SubjectFixtureOptions = {}): ChamberFixture {
       return { dispose: () => {} };
     },
   });
-  const facade = createAnimationChamberFacade({ authoring, repository, engine });
+  const facade = createAnimationChamberFacade({ authoring, repository, engine, prefabRegistry: registry });
   return { facade, engine, store: facade.store, subject };
 }
 
