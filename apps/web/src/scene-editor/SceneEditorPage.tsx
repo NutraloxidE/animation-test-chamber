@@ -955,7 +955,7 @@ function ComponentOverrideEditor({
   handle: SceneSessionHandle;
 }): JSX.Element {
   const [refusal, setRefusal] = useState<string | null>(null);
-  const fields = overridableFields(component.componentType);
+  const fields = overridableFields(component.definition);
   const existing = instance.componentOverrides.find(
     (override) => override.nodeId === nodeId && override.componentId === component.componentId,
   );

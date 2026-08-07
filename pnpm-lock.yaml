@@ -117,6 +117,12 @@ importers:
       '@atc/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
+      '@atc/game-object-runtime':
+        specifier: workspace:*
+        version: link:../../packages/game-object-runtime
+      '@atc/gameplay':
+        specifier: workspace:*
+        version: link:../../packages/gameplay
       '@atc/haptics-runtime':
         specifier: workspace:*
         version: link:../../packages/haptics-runtime
@@ -268,6 +274,9 @@ importers:
       '@atc/character-control-runtime':
         specifier: workspace:*
         version: link:../character-control-runtime
+      '@atc/gameplay-sdk':
+        specifier: workspace:*
+        version: link:../gameplay-sdk
       '@atc/prefab-runtime':
         specifier: workspace:*
         version: link:../prefab-runtime
@@ -283,6 +292,18 @@ importers:
       '@atc/terrain-runtime':
         specifier: workspace:*
         version: link:../terrain-runtime
+
+  packages/gameplay:
+    dependencies:
+      '@atc/gameplay-sdk':
+        specifier: workspace:*
+        version: link:../gameplay-sdk
+
+  packages/gameplay-sdk:
+    dependencies:
+      '@atc/schema':
+        specifier: workspace:*
+        version: link:../schema
 
   packages/git-adapter:
     dependencies:
@@ -322,6 +343,9 @@ importers:
       '@atc/animation-asset-runtime':
         specifier: workspace:*
         version: link:../animation-asset-runtime
+      '@atc/gameplay-sdk':
+        specifier: workspace:*
+        version: link:../gameplay-sdk
       '@atc/runtime-core':
         specifier: workspace:*
         version: link:../runtime-core

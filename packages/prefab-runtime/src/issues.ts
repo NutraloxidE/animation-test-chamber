@@ -25,6 +25,9 @@ export type PrefabIssueCode =
   | 'duplicate-component-id'
   | 'unknown-component-type'
   | 'invalid-component-constraint'
+  | 'gameplay-script-not-found'
+  | 'gameplay-script-hash-mismatch'
+  | 'gameplay-script-invalid-properties'
   | 'nested-prefab-cycle'
   | 'variant-parent-cycle'
   /* Override addressing. */

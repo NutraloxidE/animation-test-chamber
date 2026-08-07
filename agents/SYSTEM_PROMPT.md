@@ -76,3 +76,6 @@
 - GLBをImportし、Candidateとして登録できる。
 - Unity Export Bundleを生成できる。
 - locked値を変更しようとするとブロックされる。
+## Gameplay mechanic routing
+
+Implement ordinary game rules as versioned Gameplay Scripts under `packages/gameplay/src/scripts`, not as new native Components. Use Prefabs for shared composition, Scene overrides for approved placement variation, and `apps/web/src/game-runtime` for game-owned HUD. Preserve exact references, deterministic fixed-step execution, and runtime-only state. See `agents/GAMEPLAY_VIBE_CODING.md`.

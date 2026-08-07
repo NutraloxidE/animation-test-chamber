@@ -26,6 +26,7 @@
  */
 import type { CanonicalPatch, GameObjectComponentDefinition } from '@atc/schema';
 import { getAtPath } from '@atc/runtime-core';
+import { gameplayScriptRegistry } from '@atc/gameplay';
 
 export type OverrideFieldKind = 'boolean' | 'number' | 'text' | 'color' | 'enum';
 
@@ -143,7 +144,21 @@ const FIELDS: Record<string, readonly OverrideField[]> = {
 };
 
 /** What the Inspector may offer for this Component type. Empty is a valid answer. */
-export function overridableFields(componentType: string): readonly OverrideField[] {
+export function overridableFields(component: string | GameObjectComponentDefinition): readonly OverrideField[] {
+  const componentType = typeof component === 'string' ? component : component.componentType;
+  if (typeof component !== 'string' && component.componentType === 'script') {
+    const entry = gameplayScriptRegistry.resolve(component.script);
+    if (!entry) return [];
+    return [ENABLED, ...Object.entries(entry.definition.properties).filter(([, descriptor]) => descriptor.instanceOverride).map(([key, descriptor]) => ({
+      path: `/properties/${key}`,
+      label: key,
+      kind: descriptor.kind === 'boolean' ? 'boolean' as const : descriptor.kind === 'number' ? 'number' as const : descriptor.kind === 'enum' ? 'enum' as const : 'text' as const,
+      min: descriptor.min,
+      max: descriptor.max,
+      step: descriptor.step,
+      options: descriptor.values,
+    }))];
+  }
   return FIELDS[componentType] ?? [];
 }
 

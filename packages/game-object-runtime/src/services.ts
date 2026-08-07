@@ -20,6 +20,7 @@ import type {
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import type { CharacterIntentSource } from '@atc/character-control-runtime';
 import type { PrefabAssetRegistry } from '@atc/prefab-runtime';
+import type { GameplayScriptRegistry, GameplayWorld } from '@atc/gameplay-sdk';
 
 /** Fixed-step clock. The runtime owns no wall clock; ticks arrive from outside. */
 export interface RuntimeClock {
@@ -51,4 +52,6 @@ export interface GameObjectRuntimeServices {
   logger?: RuntimeLogger;
   /** Ground the character motor probes against. */
   terrain?: TerrainPreset;
+  gameplayRegistry?: GameplayScriptRegistry;
+  gameplayWorld?: GameplayWorld;
 }

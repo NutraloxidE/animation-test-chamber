@@ -40,6 +40,6 @@ export function buildPrefabLibraryIndex(registry: PrefabAssetRegistry): PrefabLi
  * The browser's only route to a `PrefabAssetRegistry`, and deliberately the
  * same class the harness and the API build — one resolver, three hosts.
  */
-export function registryFromPrefabLibraryIndex(index: PrefabLibraryIndex): PrefabAssetRegistry {
-  return new Registry(index.assets);
+export function registryFromPrefabLibraryIndex(index: PrefabLibraryIndex, gameplayRegistry?: import('@atc/gameplay-sdk').GameplayScriptRegistry): PrefabAssetRegistry {
+  return new Registry(index.assets, gameplayRegistry);
 }

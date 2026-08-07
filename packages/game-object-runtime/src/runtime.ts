@@ -63,6 +63,7 @@ import {
 } from './components.ts';
 import type { ResolvedGameObjectDefinition } from './definition.ts';
 import type { GameObjectRuntimeServices } from './services.ts';
+import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
 
 /** What the host supplies per tick. Seconds come from the clock, not from here. */
 export interface GameObjectStepContext {
@@ -376,6 +377,18 @@ export class RuntimeGameObject {
 
   componentRuntime(componentId: string): RuntimeComponent | undefined {
     return this.components.find((component) => component.componentId === componentId);
+  }
+
+  start(context: GameObjectStepContext): void {
+    const step = { tick: context.tick, deltaSeconds: this.services.clock.fixedDeltaSeconds };
+    for (const component of this.components) if (component instanceof GameplayScriptRuntime) component.start(step);
+    for (const child of this.children) child.start(context);
+  }
+
+  dispatchGameplayEvent(context: GameObjectStepContext, event: import('@atc/gameplay-sdk').GameplayEvent): void {
+    const step = { tick: context.tick, deltaSeconds: this.services.clock.fixedDeltaSeconds };
+    for (const component of this.components) if (component instanceof GameplayScriptRuntime) component.event(step, event);
+    for (const child of this.children) child.dispatchGameplayEvent(context, event);
   }
 
   /** This object and every descendant, in deterministic declaration order. */

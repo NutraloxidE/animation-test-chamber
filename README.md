@@ -171,3 +171,8 @@ See [`reports/one-shot-report.md`](reports/one-shot-report.md) after running the
 harness, and the "Known limitations" section of
 [`ARCHITECTURE.md`](ARCHITECTURE.md) for an honest account of what is
 implemented, what falls back, and what is scaffolding.
+# Game front door and gameplay scripts
+
+`/` plays the active canonical Scene with no editor chrome. Exact play links use `/play/:sceneId`; editors are explicit under `/edit/...`.
+
+Ordinary game mechanics live in `packages/gameplay/src/scripts/<id>/<version>.ts`. See `agents/GAMEPLAY_VIBE_CODING.md`, then run `pnpm gameplay:generate && pnpm harness:gameplay`.

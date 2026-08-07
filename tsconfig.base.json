@@ -40,6 +40,8 @@
       "@atc/repository-transaction": ["packages/repository-transaction/src/index.ts"],
       "@atc/prefab-runtime": ["packages/prefab-runtime/src/index.ts"],
       "@atc/game-object-runtime": ["packages/game-object-runtime/src/index.ts"]
+      ,"@atc/gameplay-sdk": ["packages/gameplay-sdk/src/index.ts"]
+      ,"@atc/gameplay": ["packages/gameplay/src/index.ts"]
     }
   }
 }

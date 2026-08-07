@@ -7,7 +7,7 @@
  * carefully it is scaled.
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useChamber } from '../store.ts';
 import { rigEditorPath } from '../app/routes.ts';
 import { AssetBrowser, AssetTypeFilter } from './AssetBrowser.tsx';
@@ -23,7 +23,9 @@ export function AssetLibrary() {
   const backendOnline = useChamber((state) => state.backendOnline);
   const characters = useChamber((state) => state.canonicalProject.characters);
   const activeCharacterId = useChamber((state) => state.activeCharacterId);
+  const setActiveCharacter = useChamber((state) => state.setActiveCharacter);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // The narrow layout needs somewhere to remember how deep the reader is. The
   // selection alone cannot say it: picking an asset and then going back to the
@@ -48,7 +50,7 @@ export function AssetLibrary() {
              * plain `setActiveCharacter` here was therefore undone on the very
              * next render — the control looked live and did nothing.
              */
-            onChange={(event) => navigate(rigEditorPath(event.target.value))}
+            onChange={(event) => location.pathname === '/edit/assets' ? setActiveCharacter(event.target.value) : navigate(rigEditorPath(event.target.value))}
             data-testid="library-character-select"
           >
             {characters.map((character) => (

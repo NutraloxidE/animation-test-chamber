@@ -10,9 +10,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 async function openLibrary(page: Page): Promise<void> {
-  // `/` is the Prefab inventory now; the authoring workspace opens from a
-  // Prefab's Animator, which is where the chamber lives.
-  await page.goto('/edit/prefab/navigator/animation/root/animator');
+  // The game owns `/`; the full repository Asset Library is an explicit editor route.
+  await page.goto('/edit/assets');
   await expect(page.getByTestId('hud')).toBeVisible();
   await page.getByTestId('workspace-asset-library').click();
   await expect(page.getByTestId('asset-library')).toBeVisible();

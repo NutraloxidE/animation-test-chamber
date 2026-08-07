@@ -1753,6 +1753,172 @@
                     }
                   }
                 }
+              },
+              {
+                "$id": "ScriptComponent",
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "schemaVersion",
+                  "componentId",
+                  "componentType",
+                  "enabled",
+                  "script",
+                  "properties"
+                ],
+                "properties": {
+                  "schemaVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "componentId": {
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "minLength": 1,
+                    "maxLength": 96,
+                    "type": "string"
+                  },
+                  "componentType": {
+                    "const": "script",
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "protection": {
+                    "$id": "ProtectionMetadata",
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "level"
+                    ],
+                    "properties": {
+                      "level": {
+                        "$id": "ProtectionLevel",
+                        "anyOf": [
+                          {
+                            "const": "editable",
+                            "type": "string"
+                          },
+                          {
+                            "const": "approval-required",
+                            "type": "string"
+                          },
+                          {
+                            "const": "locked",
+                            "type": "string"
+                          },
+                          {
+                            "const": "invariant",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "setBy": {
+                        "type": "string"
+                      },
+                      "setAt": {
+                        "type": "string"
+                      },
+                      "fields": {
+                        "type": "object",
+                        "patternProperties": {
+                          "^(.*)$": {
+                            "$id": "ProtectionLevel",
+                            "anyOf": [
+                              {
+                                "const": "editable",
+                                "type": "string"
+                              },
+                              {
+                                "const": "approval-required",
+                                "type": "string"
+                              },
+                              {
+                                "const": "locked",
+                                "type": "string"
+                              },
+                              {
+                                "const": "invariant",
+                                "type": "string"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "script": {
+                    "$id": "GameplayScriptReference",
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "assetType",
+                      "assetId",
+                      "version",
+                      "contentHash"
+                    ],
+                    "properties": {
+                      "assetType": {
+                        "const": "gameplay-script",
+                        "type": "string"
+                      },
+                      "assetId": {
+                        "pattern": "^[a-z0-9][a-z0-9-]*$",
+                        "minLength": 1,
+                        "maxLength": 96,
+                        "type": "string"
+                      },
+                      "version": {
+                        "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                        "type": "string"
+                      },
+                      "contentHash": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "properties": {
+                    "$id": "JsonObject",
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$id": "JsonValue",
+                        "anyOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "JsonValue"
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "patternProperties": {
+                              "^(.*)$": {
+                                "$ref": "JsonValue"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
               }
             ]
           }

@@ -25,6 +25,7 @@ import {
   validateAgainst,
 } from '@atc/schema';
 import { type PrefabIssue, prefabError } from './issues.ts';
+import { validateProperties, type GameplayScriptRegistry } from '@atc/gameplay-sdk';
 
 /**
  * Field names that only ever exist because something wrote runtime state into a
@@ -44,6 +45,12 @@ const RUNTIME_STATE_FIELDS = new Set([
   'runtimeHandle',
   'inputBuffer',
   'currentAction',
+  'currentHp',
+  'hp',
+  'dead',
+  'stamina',
+  'cooldownRemaining',
+  'lastDamageTick',
   'skeletonInstance',
 ]);
 
@@ -83,6 +90,7 @@ export function nestedPrefabReferences(root: PrefabNodeDefinition): GameObjectPr
 function checkComponent(
   component: GameObjectComponentDefinition,
   nodeId: string,
+  gameplayRegistry?: GameplayScriptRegistry,
 ): PrefabIssue[] {
   const issues: PrefabIssue[] = [];
   const at = `/nodes/${nodeId}/components/${component.componentId}`;
@@ -141,6 +149,19 @@ function checkComponent(
       }
       break;
     }
+    case 'script': {
+      const entry = gameplayRegistry?.find(component.script);
+      if (!entry) {
+        issues.push(prefabError('gameplay-script-not-found', `${component.script.assetId}@${component.script.version} is unavailable`, { path: at }));
+      } else if (entry.reference.contentHash !== component.script.contentHash) {
+        issues.push(prefabError('gameplay-script-hash-mismatch', `${component.script.assetId}@${component.script.version} hash mismatch`, { path: at }));
+      } else {
+        for (const issue of validateProperties(entry.definition.properties, component.properties)) {
+          issues.push(prefabError('gameplay-script-invalid-properties', issue.message, { path: `${at}/properties${issue.path}` }));
+        }
+      }
+      break;
+    }
     case 'animator':
     case 'character-motor':
       break;
@@ -172,6 +193,7 @@ function findRuntimeState(value: unknown, path: string, into: PrefabIssue[]): vo
 export interface ValidatePrefabDocumentOptions {
   /** Repository path the document was loaded from, when there is one. */
   filePath?: string;
+  gameplayRegistry?: GameplayScriptRegistry;
 }
 
 /**
@@ -251,7 +273,7 @@ export function validatePrefabDocument(
         );
         continue;
       }
-      issues.push(...checkComponent(component, node.nodeId));
+      issues.push(...checkComponent(component, node.nodeId, options.gameplayRegistry));
     }
 
     const instanceIds = new Set<string>();

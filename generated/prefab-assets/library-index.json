@@ -61,6 +61,82 @@
       }
     },
     {
+      "id": "gameplay-navigator",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "gameplay-navigator",
+          "version": "1.0.0",
+          "displayName": "Gameplay Navigator",
+          "description": "Navigator composition with deterministic Health and Stamina gameplay scripts.",
+          "tags": [
+            "character",
+            "humanoid",
+            "gameplay-demo"
+          ],
+          "createdAt": "2026-08-08T00:00:00.000Z",
+          "createdBy": "gameplay-vibe-coding-platform",
+          "contentHash": "bacaff36252f5ecac033adbbbf76d63aa3715013caeeb0cce49c09b1fd503371"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "navigator",
+            "version": "1.0.0",
+            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+          },
+          "patches": [
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "health",
+                "componentType": "script",
+                "enabled": true,
+                "script": {
+                  "assetType": "gameplay-script",
+                  "assetId": "health",
+                  "version": "1.0.0",
+                  "contentHash": "4a0bcb103eed8f88870ab2a025966f51f0ec51848cdc843b361571236aab91c7"
+                },
+                "properties": {
+                  "maxHp": 100,
+                  "regenPerSecond": 1
+                }
+              }
+            },
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "stamina",
+                "componentType": "script",
+                "enabled": true,
+                "script": {
+                  "assetType": "gameplay-script",
+                  "assetId": "stamina",
+                  "version": "1.0.0",
+                  "contentHash": "fd9d5256dbdf0ca73be54db0250e7c335a25f914b4bcd9b4145b45eb4c9b8cfb"
+                },
+                "properties": {
+                  "maxStamina": 100,
+                  "drainPerSecond": 20,
+                  "regenPerSecond": 10,
+                  "startsSprinting": false
+                }
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
       "id": "humanoid-character-base",
       "version": "1.0.0",
       "document": {
@@ -627,6 +703,33 @@
         "camera",
         "root",
         "Camera"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "gameplay-navigator",
+      "version": "1.0.0",
+      "contentHash": "bacaff36252f5ecac033adbbbf76d63aa3715013caeeb0cce49c09b1fd503371",
+      "displayName": "Gameplay Navigator",
+      "description": "Navigator composition with deterministic Health and Stamina gameplay scripts.",
+      "tags": [
+        "character",
+        "humanoid",
+        "gameplay-demo"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "gameplay-navigator",
+        "Gameplay Navigator",
+        "Navigator composition with deterministic Health and Stamina gameplay scripts.",
+        "character",
+        "humanoid",
+        "gameplay-demo",
+        "navigator"
       ],
       "valid": true,
       "issueCodes": []

@@ -35,6 +35,8 @@
  */
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES, prefabAnimationWorkspacePath, prefabEditorPath, rigEditorPath, sceneEditorPath } from './routes.ts';
+import { PlayScenePage } from '../game-runtime/PlayScenePage.tsx';
+import { App } from '../App.tsx';
 import { NotFoundPage } from './NotFoundPage.tsx';
 import { SceneEditorPage } from '../scene-editor/SceneEditorPage.tsx';
 import { defaultSceneEditorSceneId } from '../scene-editor/resolve-scene-editor-target.ts';
@@ -98,15 +100,13 @@ function LegacyRigRedirect(): JSX.Element {
  * `replace`, so the redirect does not sit in history — Back should leave the
  * app, not bounce through `/` and immediately forward again.
  */
-function RootRedirect(): JSX.Element {
-  return <Navigate to={ROUTES.prefabs} replace />;
-}
-
 export function AppRouter(): JSX.Element {
   return (
     <BrowserRouter useTransitions={false}>
       <Routes>
-        <Route path={ROUTES.root} element={<RootRedirect />} />
+        <Route path={ROUTES.root} element={<PlayScenePage />} />
+        <Route path={ROUTES.playScene} element={<PlayScenePage />} />
+        <Route path={ROUTES.assets} element={<App />} />
         <Route path={ROUTES.prefabs} element={<PrefabListPage />} />
         <Route path={ROUTES.prefabEditor} element={<PrefabEditorPage />} />
         {/*
