@@ -72,7 +72,7 @@ async function advanceTicksUntil(
 test.beforeEach(async ({ page }) => {
   // `/` is the Prefab inventory now; the authoring workspace opens from a
   // Prefab's Animator, which is where the chamber lives.
-  await page.goto('/edit/prefab/navigator?component=animator');
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
   await expect(page.getByTestId('hud')).toBeVisible();
 });
 
@@ -456,7 +456,7 @@ test.describe('static character drafts', () => {
     await context.route('**/api/health', (route) => route.abort());
     // `/` is the Prefab inventory now; the authoring workspace opens from a
   // Prefab's Animator, which is where the chamber lives.
-  await page.goto('/edit/prefab/navigator?component=animator');
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     await openPanel(page, 'inspector');
@@ -517,7 +517,7 @@ test.describe('static character drafts', () => {
     });
     // `/` is the Prefab inventory now; the authoring workspace opens from a
   // Prefab's Animator, which is where the chamber lives.
-  await page.goto('/edit/prefab/navigator?component=animator');
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
     const banner = page.getByTestId('stale-character-draft-banner');

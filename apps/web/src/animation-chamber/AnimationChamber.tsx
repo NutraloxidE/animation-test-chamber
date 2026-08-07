@@ -267,8 +267,8 @@ export function AnimationChamber(): JSX.Element {
   return (
     <div className={`animation-chamber${cleanCapture ? ' animation-chamber--clean' : ''}`} data-testid="animation-chamber">
       {!cleanCapture && <div className="animation-workspace-toolbar" data-testid="animation-workspace-toolbar">
-        <button type="button" aria-pressed={showHierarchy} onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
-        <button type="button" aria-pressed={showLibrary} onClick={() => setShowLibrary(!showLibrary)}>Asset Library</button>
+        <button type="button" data-testid="toggle-hierarchy" aria-pressed={showHierarchy} onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
+        <button type="button" data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'} aria-pressed={showLibrary} onClick={() => setShowLibrary(!showLibrary)}>{showLibrary ? 'Chamber' : 'Asset Library'}</button>
         <button type="button" data-testid="toggle-camera-control" onClick={() => setCameraMode(cameraMode === 'follow' ? 'orbit' : 'follow')}>Camera: {cameraMode}</button>
         <button type="button" data-testid="toggle-mobile-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>Mobile pad</button>
         <button type="button" data-testid="clean-capture" onClick={() => setCleanCapture(true)}>Clean capture</button>

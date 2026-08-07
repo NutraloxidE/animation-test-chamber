@@ -243,7 +243,7 @@ test.describe('scene authoring', () => {
   });
 
   test('the prefab editor still opens and identifies its exact prefab', async ({ page }) => {
-    await page.goto('/edit/prefab/navigator?component=animator');
+    await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('prefab-target-id')).toContainText('navigator');
     // The chamber itself is unchanged underneath the route.
     await expect(page.getByTestId('hud')).toBeVisible();

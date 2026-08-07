@@ -142,9 +142,9 @@ test('every legacy rig route redirects to the Prefab its Character became', asyn
   for (const prefab of PREFABS) {
     await page.goto(`/edit/rig/${prefab.legacyCharacterId}`);
     await expect(page).toHaveURL(
-      new RegExp(`/edit/prefab/${prefab.prefabId}\\?component=animator$`),
+      new RegExp(`/edit/prefab/${prefab.prefabId}/animation/[^/]+/[^/]+$`),
     );
-    await expect(page.getByTestId('prefab-target-id')).toContainText(prefab.prefabId);
+    await expect(page.getByTestId('animation-subject-prefab')).toContainText(prefab.prefabId);
     // The old editor must not have mounted on the way through.
     await expect(page.getByTestId('rig-target-header')).toHaveCount(0);
   }
