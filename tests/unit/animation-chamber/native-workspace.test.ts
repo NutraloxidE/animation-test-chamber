@@ -19,7 +19,7 @@
  * old source is gone, and `World` had already been dropped once — so the
  * inventory is compared against the donor's list rather than a copy of ours.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { animationSubjectFromPrefab } from '@atc/prefab-runtime';
@@ -572,6 +572,7 @@ describe('the facade and the running engine agree', () => {
 
   it('sends a motion context change to the engine as well as the store', () => {
     const { engine, store } = chamber();
+    const rootMotion = vi.spyOn(engine, 'setUpperBodyActionRootMotionEnabled');
     store.getState().setMotionContext('sword');
 
     expect(store.getState().motionContextId).toBe('sword');
@@ -579,6 +580,10 @@ describe('the facade and the running engine agree', () => {
     // it too, and the two must be the same context.
     expect(engine.snapshot()).toBeDefined();
     expect(store.getState().project.motionContextKeys).toContain('sword');
+    expect(rootMotion).toHaveBeenLastCalledWith(true);
+
+    store.getState().setMotionContext('unarmed');
+    expect(rootMotion).toHaveBeenLastCalledWith(false);
   });
 
   it('records a capability refresh on the facade', () => {

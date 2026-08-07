@@ -43,6 +43,7 @@ import {
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
 } from './AnimationChamberDocument.ts';
+import { weaponMode } from '../three/catalog.ts';
 
 
 /**
@@ -295,6 +296,11 @@ export function createAnimationChamberFacade(input: {
     backendAvailable,
   });
   const previewWorld = new AnimationPreviewWorldSession(authoring.subject.subjectId);
+  const initialMotionContext = document.motionContextKeys[0] ?? '';
+  engine.setWeaponModeId(initialMotionContext);
+  engine.setUpperBodyActionRootMotionEnabled(
+    weaponMode(initialMotionContext).usesAttackRootMotion === true,
+  );
 
   const firstState = document.graph.states[0]?.id ?? '';
   const firstTransition = document.graph.transitions[0]?.id ?? '';
@@ -363,7 +369,7 @@ export function createAnimationChamberFacade(input: {
       selectedStateId: firstState,
       selectedTransitionId: firstTransition,
       selectedReplayId: '',
-      motionContextId: document.motionContextKeys[0] ?? '',
+      motionContextId: initialMotionContext,
 
       setPanel: (panel) => set({ activePanel: panel }),
       setTerrainPreset: (id) => {
@@ -480,6 +486,9 @@ export function createAnimationChamberFacade(input: {
          * that is the viewport's problem to state.
          */
         engine.setWeaponModeId(id);
+        engine.setUpperBodyActionRootMotionEnabled(
+          weaponMode(id).usesAttackRootMotion === true,
+        );
         set({ motionContextId: id });
       },
 
