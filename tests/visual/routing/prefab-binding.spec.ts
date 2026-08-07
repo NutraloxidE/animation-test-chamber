@@ -163,6 +163,17 @@ test('the bare rig route lists every exact Animator workspace', async ({ page })
   await expect(page.getByTestId('animation-subject-prefab')).toContainText('navigator');
 });
 
+test('the Universal Base workspace exposes and plays its unarmed punch context', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/edit/prefab/quaternius-universal-base/animation/root/animator');
+
+  const context = page.getByTestId('weapon-mode-select');
+  await expect(context.locator('option[value="unarmed"]')).toHaveText('unarmed');
+  await context.selectOption('unarmed');
+  await page.keyboard.press('KeyJ');
+  await expect(page.getByTestId('hud-action')).toHaveText('attack-01');
+});
+
 test('an unmapped legacy character id is a not-found, not a guess', async ({ page }) => {
   await page.goto('/edit/rig/no-such-character');
   await expect(page.getByTestId('route-not-found')).toBeVisible();

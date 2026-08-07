@@ -123,6 +123,14 @@ describe('preview model override', () => {
 describe('canonical clip resolution for imported models', () => {
   const imported = ['quaternius-knight', 'quaternius-universal-base'];
 
+  it('exposes the default punch bindings as the unarmed motion context', () => {
+    const resolved = loadResolvedDemoProject('quaternius-universal-base');
+
+    expect(resolved.motionContextKeys).toContain('unarmed');
+    expect(presentationOf('quaternius-universal-base', 'unarmed').takeByStateId['attack-01']!.animationName)
+      .toBe('Rig|Punch_Jab');
+  });
+
   it('resolves a take for every graph state, through the motion set', () => {
     for (const id of imported) {
       const presentation = presentationOf(id);

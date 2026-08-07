@@ -164,10 +164,13 @@ function resolveMotionSet(
     return next ? resolveSlot(next, contextKey, depth + 1) : undefined;
   };
 
+  // Unkeyed bindings are the default empty-hands context. Expose that context
+  // alongside authored overrides so a Motion Set does not lose its base takes
+  // (notably Universal Base's punch) from the native context selector.
   const contextKeys = [
     ...new Set(
-      motionSet.bindings
-        .map((binding) => binding.contextualKey)
+      ['unarmed', ...motionSet.bindings
+        .map((binding) => binding.contextualKey)]
         .filter((key): key is string => key !== undefined),
     ),
   ].sort();
