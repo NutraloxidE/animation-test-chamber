@@ -220,7 +220,7 @@ export function AnimationWorkspaceRoute(): JSX.Element {
    */
   return (
     <AnimationChamberProvider key={subjectKey} facade={facade}>
-      <main data-testid="prefab-animation-workspace">
+      <main className="prefab-animation-workspace" data-testid="prefab-animation-workspace">
         <AnimationChamber />
       </main>
     </AnimationChamberProvider>

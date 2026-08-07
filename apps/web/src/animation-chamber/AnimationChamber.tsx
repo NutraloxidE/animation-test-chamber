@@ -189,13 +189,17 @@ function Hud(): JSX.Element {
 }
 
 /** Pause, frame-step, slow motion and reset, preserved from the donor. */
-function PreviewControls(): JSX.Element {
+function PreviewControls({ cameraMode, setCameraMode, mobilePad, setMobilePad, cleanCapture }: { cameraMode: MouseLookMode; setCameraMode: (mode: MouseLookMode) => void; mobilePad: boolean; setMobilePad: (visible: boolean) => void; cleanCapture: () => void }): JSX.Element {
   const controls = useAnimationChamber((state) => state.engine);
   const [paused, setPaused] = useState(() => controls.isPaused);
   const [slow, setSlow] = useState(false);
 
   return (
-    <div className="viewport-controls" data-testid="viewport-controls">
+    <details className="viewport-controls" data-testid="viewport-controls" open>
+      <summary>Controls</summary>
+      <div className="viewport-controls__body">
+      <button type="button" data-testid="toggle-camera-control" onClick={() => { const next = cameraMode === 'free' ? 'drag' : 'free'; controls.setMouseLookMode(next); setCameraMode(next); }}>Camera: {cameraMode === 'free' ? 'Mouse move' : 'Click-drag'}</button>
+      <button type="button" data-testid="toggle-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>{mobilePad ? 'Hide pad' : 'Show pad'}</button>
       <button
         type="button"
         data-testid="toggle-pause"
@@ -239,7 +243,10 @@ function PreviewControls(): JSX.Element {
       >
         Reset
       </button>
-    </div>
+      <button type="button" onClick={cleanCapture}>Clean capture</button>
+      <button type="button" disabled title="Exports committed repository state only; unavailable until the API server exposes native export.">Unity export</button>
+      </div>
+    </details>
   );
 }
 
@@ -250,6 +257,8 @@ export function AnimationChamber(): JSX.Element {
   const document = useAnimationChamber((state) => state.project);
   const statusMessage = useAnimationChamber((state) => state.statusMessage);
   const [showHierarchy, setShowHierarchy] = useState(true);
+  const [showInspector, setShowInspector] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [cleanCapture, setCleanCapture] = useState(false);
   const [mobilePad, setMobilePad] = useState(false);
@@ -267,29 +276,24 @@ export function AnimationChamber(): JSX.Element {
   useAnimationPreviewClock(engine, { enabled: !viewportDrives });
 
   return (
-    <div className={`animation-chamber${cleanCapture ? ' animation-chamber--clean' : ''}`} data-testid="animation-chamber">
-      {!cleanCapture && <div className="animation-workspace-toolbar" data-testid="animation-workspace-toolbar">
-        <button type="button" data-testid="toggle-hierarchy" aria-pressed={showHierarchy} onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
-        <button type="button" data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'} aria-pressed={showLibrary} onClick={() => setShowLibrary(!showLibrary)}>{showLibrary ? 'Chamber' : 'Asset Library'}</button>
-        <button type="button" data-testid="toggle-camera-control" onClick={() => { const next = cameraMode === 'free' ? 'drag' : 'free'; engine.setMouseLookMode(next); setCameraMode(next); }}>Camera: {cameraMode === 'free' ? 'Mouse move' : 'Click-drag'}</button>
-        <button type="button" data-testid="toggle-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>{mobilePad ? 'Hide pad' : 'Show pad'}</button>
-        <button type="button" data-testid="clean-capture" onClick={() => setCleanCapture(true)}>Clean capture</button>
-        <button type="button" disabled title="Exports committed repository state only; unavailable until the API server exposes native export.">Unity export</button>
-      </div>}
-      {!cleanCapture && showHierarchy && <PrefabAnimationHierarchy />}
-      {!cleanCapture && <SubjectConflictBanner />}
-      <SubjectHeader />
-
-      {viewportDrives && (
-        <div className="animation-viewport" data-testid="animation-viewport">
-          <AnimationSubjectViewport />
-        </div>
-      )}
-      <Hud />
-      <PreviewControls />
-      {!cleanCapture && mobilePad && <MobilePad engine={engine} inputMap={document.inputMap} hideUi={false} />}
-
-      <nav className="panel-tabs" data-testid="animation-panel-tabs">
+    <div className={`app animation-chamber${cleanCapture ? ' app--clean animation-chamber--clean' : ''}`} data-testid="animation-chamber">
+      {!cleanCapture && <nav className="workspace-switch" data-testid="animation-workspace-toolbar">
+        <span className="workspace-switch__title">Animation Test Chamber</span>
+        <button type="button" className={showHierarchy ? 'is-active' : ''} data-testid="toggle-hierarchy" onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
+        <button type="button" className={showInspector ? 'is-active' : ''} data-testid="toggle-inspector" onClick={() => setShowInspector(!showInspector)}>Inspector</button>
+        <button type="button" className={activePanel === 'world' ? 'is-active' : ''} data-testid="toggle-world-mode" onClick={() => setPanel(activePanel === 'world' ? 'inspector' : 'world')}>{activePanel === 'world' ? 'World view' : 'Focused view'}</button>
+        <button type="button" className={showLibrary ? 'is-active' : ''} data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'} onClick={() => setShowLibrary(!showLibrary)}>Project (Assets)</button>
+      </nav>}
+      {!cleanCapture && showHierarchy && <aside className="app__hierarchy"><PrefabAnimationHierarchy /></aside>}
+      <div className="app__viewport">
+        {viewportDrives && <div className="animation-viewport" data-testid="animation-viewport"><AnimationSubjectViewport /></div>}
+        {!cleanCapture && <><Hud /><PreviewControls cameraMode={cameraMode} setCameraMode={setCameraMode} mobilePad={mobilePad} setMobilePad={setMobilePad} cleanCapture={() => setCleanCapture(true)} /><SubjectHeader /></>}
+        {!cleanCapture && mobilePad && <MobilePad engine={engine} inputMap={document.inputMap} hideUi={false} />}
+        {cleanCapture && <button className="restore-ui" type="button" onClick={() => setCleanCapture(false)}>Show UI</button>}
+      </div>
+      {!cleanCapture && showInspector && <button type="button" className="sheet-handle" data-testid="sheet-handle" onClick={() => setSheetOpen(!sheetOpen)}>{sheetOpen ? 'Close panels ▾' : 'Open panels ▴'}</button>}
+      {!cleanCapture && showInspector && <aside className={`app__panels${sheetOpen ? ' is-open' : ''}`}>
+      <nav className="tabs" data-testid="animation-panel-tabs">
         {ANIMATION_PANELS.map((panel) => (
           <button
             type="button"
@@ -305,17 +309,13 @@ export function AnimationChamber(): JSX.Element {
         ))}
       </nav>
 
-      <div className="panel-body" data-testid="animation-panel-body">
+      <div className="app__panel-body" data-testid="animation-panel-body">
         <PanelBody id={activePanel} />
       </div>
-
-      {statusMessage !== '' && (
-        <p className="status-bar" data-testid="status-bar">
-          {statusMessage}
-        </p>
-      )}
-      {!cleanCapture && showLibrary && <AnimationAssetLibrary />}
-      {cleanCapture && <button className="clean-capture-exit" type="button" onClick={() => setCleanCapture(false)}>Show UI</button>}
+      </aside>}
+      {!cleanCapture && showLibrary && <section className="app__library-dock"><AnimationAssetLibrary /></section>}
+      {!cleanCapture && <SubjectConflictBanner />}
+      {!cleanCapture && <footer className="status" data-testid="status-bar">{statusMessage}</footer>}
     </div>
   );
 }

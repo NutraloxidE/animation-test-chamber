@@ -86,6 +86,21 @@ test('boots with the demo project and a running simulation', async ({ page }) =>
   expect(await hud.textContent()).not.toBe(firstTick);
 });
 
+test('the native workspace uses the main three-dock layout', async ({ page }) => {
+  const hierarchy = await page.locator('.app__hierarchy').boundingBox();
+  const viewport = await page.locator('.app__viewport').boundingBox();
+  const inspector = await page.locator('.app__panels').boundingBox();
+  expect(hierarchy).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(inspector).not.toBeNull();
+  expect(Math.abs(hierarchy!.y - viewport!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(inspector!.y - viewport!.y)).toBeLessThanOrEqual(1);
+  expect(hierarchy!.x + hierarchy!.width).toBeLessThanOrEqual(viewport!.x + 1);
+  expect(viewport!.x + viewport!.width).toBeLessThanOrEqual(inspector!.x + 1);
+  expect(viewport!.height).toBeGreaterThan(600);
+  await expect(page.getByTestId('status-bar')).toBeVisible();
+});
+
 test('the character responds to keyboard input', async ({ page }) => {
   const hud = page.getByTestId('hud');
   await expect(hud).toContainText('idle');
