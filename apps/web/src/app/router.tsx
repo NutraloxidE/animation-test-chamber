@@ -34,7 +34,7 @@
  * at default priority.
  */
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { ROUTES, prefabEditorPath, rigEditorPath, sceneEditorPath } from './routes.ts';
+import { ROUTES, prefabAnimationWorkspacePath, prefabEditorPath, rigEditorPath, sceneEditorPath } from './routes.ts';
 import { NotFoundPage } from './NotFoundPage.tsx';
 import { SceneEditorPage } from '../scene-editor/SceneEditorPage.tsx';
 import { defaultSceneEditorSceneId } from '../scene-editor/resolve-scene-editor-target.ts';
@@ -42,7 +42,7 @@ import { CharacterListPage, SceneListPage } from './ListPages.tsx';
 import { PrefabListPage } from '../prefab-editor/PrefabListPage.tsx';
 import { PrefabEditorPage } from '../prefab-editor/PrefabEditorPage.tsx';
 import { AnimationWorkspaceRoute } from '../prefab-editor/AnimationWorkspaceRoute.tsx';
-import { prefabRedirectForLegacyCharacterId } from '../prefab-editor/resolve-prefab-editor-target.ts';
+import { legacyRigWorkspaceRedirect } from '../prefab-editor/resolve-prefab-editor-target.ts';
 import { browserPrefabRegistry } from '../game-objects/prefab-registry.ts';
 import { routeId } from './routes.ts';
 import { useParams } from 'react-router-dom';
@@ -62,19 +62,28 @@ import { useParams } from 'react-router-dom';
  */
 function LegacyRigRedirect(): JSX.Element {
   const characterId = routeId(useParams().characterId);
-  const prefabId = prefabRedirectForLegacyCharacterId(browserPrefabRegistry(), characterId);
-  if (prefabId === null) {
+  const result = legacyRigWorkspaceRedirect(browserPrefabRegistry(), characterId);
+  if (result.status === 'resolved') {
+    return <Navigate to={prefabAnimationWorkspacePath(result.prefabId, result.nodeId, result.componentId)} replace />;
+  }
+  if (result.status === 'ambiguous') {
+    return (
+      <section className="empty-state" data-testid="legacy-rig-ambiguous">
+        <h2>Choose an exact Animator</h2>
+        <p>This legacy URL maps to more than one Animator, so none was guessed.</p>
+        <ul>{result.candidates.map((candidate) => <li key={`${candidate.nodeId}/${candidate.componentId}`}><a href={prefabAnimationWorkspacePath(result.prefabId, candidate.nodeId, candidate.componentId)}>{candidate.nodeDisplayName}: {candidate.nodeId}/{candidate.componentId}</a></li>)}</ul>
+      </section>
+    );
+  }
+  {
     return (
       <NotFoundPage
-        title={characterId === null ? 'No character named in the URL' : `No Prefab for "${characterId}"`}
-        detail="Rig routes are redirects to the Prefab a Character became. They never open an editor of their own."
+        title={result.status === 'no-animator' ? `No Animator in "${result.prefabId}"` : characterId === null ? 'No character named in the URL' : `No Prefab for "${characterId}"`}
+        detail="Rig routes redirect only when the exact native Animator is deterministic. They never open an editor of their own."
         links={[{ to: ROUTES.prefabs, label: 'Prefabs' }]}
       />
     );
   }
-  // `replace`, so Back from the Prefab Editor leaves rather than bouncing
-  // through the legacy URL and forward again.
-  return <Navigate to={prefabEditorPath(prefabId, 'animator')} replace />;
 }
 
 /**

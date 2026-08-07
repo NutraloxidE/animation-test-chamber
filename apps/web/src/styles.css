@@ -2822,3 +2822,22 @@ button.link {
 .prefab-editor__workspace > h3 {
   margin: 0.5rem 0.75rem;
 }
+
+/* Native exact-subject workspace docks. */
+.animation-workspace-toolbar,
+.animation-chamber .button-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.animation-hierarchy { max-height: 18rem; overflow: auto; border: 1px solid var(--border, #334155); padding: .75rem; }
+.animation-hierarchy ul { list-style: none; padding-left: 1rem; }
+.animation-hierarchy li > small { display: block; }
+.animation-hierarchy a { margin-left: .5rem; }
+.animation-asset-library { border-top: 1px solid var(--border, #334155); padding: .75rem; max-height: 18rem; overflow: auto; }
+.preview-world-instances { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.preview-world-instances fieldset label { display: block; margin: .25rem 0; }
+.subject-conflict-banner { border: 1px solid #f59e0b; background: #422006; padding: .75rem; }
+.animation-chamber--clean > :not(.animation-viewport):not(.clean-capture-exit) { display: none; }
+.clean-capture-exit { position: fixed; right: 1rem; bottom: 1rem; z-index: 30; }
+@media (max-width: 900px) {
+  .animation-hierarchy { position: fixed; inset: 3rem auto 0 0; width: min(90vw, 24rem); max-height: none; z-index: 25; background: #0f172a; }
+  .animation-asset-library { max-height: 45vh; }
+  .panel-tabs { overflow-x: auto; }
+}

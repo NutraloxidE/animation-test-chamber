@@ -32,6 +32,9 @@ import { useAnimationPreviewClock } from './useAnimationPreviewClock.ts';
 import { AnimationSubjectViewport } from './AnimationSubjectViewport.tsx';
 import { AnimationPreviewWorldPanel } from './AnimationPreviewWorldPanel.tsx';
 import { WEAPON_MODES } from '../three/catalog.ts';
+import { PrefabAnimationHierarchy } from './PrefabAnimationHierarchy.tsx';
+import { AnimationAssetLibrary } from './AnimationAssetLibrary.tsx';
+import { SubjectConflictBanner } from './SubjectConflictBanner.tsx';
 
 function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
   switch (id) {
@@ -244,6 +247,11 @@ export function AnimationChamber(): JSX.Element {
   const engine = useAnimationChamber((state) => state.engine);
   const document = useAnimationChamber((state) => state.project);
   const statusMessage = useAnimationChamber((state) => state.statusMessage);
+  const [showHierarchy, setShowHierarchy] = useState(true);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [cleanCapture, setCleanCapture] = useState(false);
+  const [mobilePad, setMobilePad] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'follow' | 'orbit'>('follow');
 
   /*
    * Exactly one thing advances the simulation.
@@ -257,7 +265,17 @@ export function AnimationChamber(): JSX.Element {
   useAnimationPreviewClock(engine, { enabled: !viewportDrives });
 
   return (
-    <div className="animation-chamber" data-testid="animation-chamber">
+    <div className={`animation-chamber${cleanCapture ? ' animation-chamber--clean' : ''}`} data-testid="animation-chamber">
+      {!cleanCapture && <div className="animation-workspace-toolbar" data-testid="animation-workspace-toolbar">
+        <button type="button" aria-pressed={showHierarchy} onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
+        <button type="button" aria-pressed={showLibrary} onClick={() => setShowLibrary(!showLibrary)}>Asset Library</button>
+        <button type="button" data-testid="toggle-camera-control" onClick={() => setCameraMode(cameraMode === 'follow' ? 'orbit' : 'follow')}>Camera: {cameraMode}</button>
+        <button type="button" data-testid="toggle-mobile-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>Mobile pad</button>
+        <button type="button" data-testid="clean-capture" onClick={() => setCleanCapture(true)}>Clean capture</button>
+        <button type="button" disabled title="Exports committed repository state only; unavailable until the API server exposes native export.">Unity export</button>
+      </div>}
+      {!cleanCapture && showHierarchy && <PrefabAnimationHierarchy />}
+      {!cleanCapture && <SubjectConflictBanner />}
       <SubjectHeader />
 
       {viewportDrives && (
@@ -267,6 +285,7 @@ export function AnimationChamber(): JSX.Element {
       )}
       <Hud />
       <PreviewControls />
+      {!cleanCapture && mobilePad && <div className="mobile-pad" data-testid="mobile-pad"><button type="button">Forward</button><button type="button">Jump</button><button type="button">Dodge</button></div>}
 
       <nav className="panel-tabs" data-testid="animation-panel-tabs">
         {ANIMATION_PANELS.map((panel) => (
@@ -293,6 +312,8 @@ export function AnimationChamber(): JSX.Element {
           {statusMessage}
         </p>
       )}
+      {!cleanCapture && showLibrary && <AnimationAssetLibrary />}
+      {cleanCapture && <button className="clean-capture-exit" type="button" onClick={() => setCleanCapture(false)}>Exit clean capture</button>}
     </div>
   );
 }

@@ -6,7 +6,6 @@ const REQUIRED: Record<string, string[]> = {
   'packages/animation-asset-runtime/src/resolver.ts': ['resolveAnimationSubject'],
   'apps/web/src/prefab-editor/animation-authoring-session.ts': ['AnimationAuthoringSession'],
   'packages/prefab-runtime/src/adoption.ts': ['AnimationPublicationPlan'],
-  'apps/web/src/prefab-editor/legacy-animation-workspace-adapter.ts': ['legacyCharacterIdForAnimationSubject'],
 };
 
 export function rigEditorPrerequisiteStages(): StageResult[] {

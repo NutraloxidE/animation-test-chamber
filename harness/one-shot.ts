@@ -19,6 +19,7 @@ import { capabilityStages } from './check-capabilities.ts';
 import { repoGuardStages } from './repo-guard.ts';
 import { buildStage } from './build.ts';
 import { rigEditorPrerequisiteStages } from './check-rig-editor-prerequisites.ts';
+import { rigEditorNativeRestorationStages } from './check-rig-editor-native-restoration.ts';
 import { printStage, run, stage, writeRepoFile, type StageResult } from './lib.ts';
 
 function vitestStage(name: string, directory: string, suggestion: string): StageResult {
@@ -212,6 +213,10 @@ async function main(): Promise<void> {
   printStage(results.at(-1)!);
 
   for (const result of rigEditorPrerequisiteStages()) {
+    printStage(result);
+    results.push(result);
+  }
+  for (const result of rigEditorNativeRestorationStages()) {
     printStage(result);
     results.push(result);
   }
