@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CandidateAsset, LicenseFlag } from '@atc/schema';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 import { backendAvailable, NO_BACKEND_MESSAGE } from '../backend.ts';
 
 const FLAGS: LicenseFlag[] = ['unknown', 'allowed', 'forbidden'];
@@ -22,6 +22,7 @@ interface ImportResponse {
 export function AcquisitionPanel() {
   const setStatus = useChamber((state) => state.setStatus);
   const offline = useChamber((state) => state.backendOnline) === false;
+  const subject = useChamber((state) => state.subject);
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [license, setLicense] = useState({
@@ -169,6 +170,24 @@ export function AcquisitionPanel() {
             An imported asset never replaces a live clip. It stays a candidate until a human marks it
             HumanAccepted.
           </p>
+          <div className="button-row" data-testid="acquisition-candidate-actions">
+            <button
+              type="button"
+              onClick={() => setStatus(`Candidate ${result.candidate!.id} is ready for Asset Library review.`)}
+            >
+              Open in Asset Library
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setStatus(
+                  `Assignment planning only: ${result.candidate!.id} -> ${subject.source.prefab.assetId}@${subject.source.prefab.version}/${subject.source.nodeId}/${subject.source.componentId}. No assignment was changed.`,
+                )
+              }
+            >
+              Plan assignment to current Animator
+            </button>
+          </div>
           {result.candidate.issues.length > 0 && (
             <ul className="findings">
               {result.candidate.issues.map((issue, index) => (

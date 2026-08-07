@@ -282,6 +282,7 @@ describe('the panel registry', () => {
       'ai',
       'diff',
       'capability',
+      'acquisition',
     ]);
   });
 

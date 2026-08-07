@@ -33,7 +33,7 @@ export const ANIMATION_PANELS: readonly AnimationPanelDescriptor[] = [
   { id: 'ai', label: 'AI', implemented: true },
   { id: 'diff', label: 'Diff', implemented: true },
   { id: 'capability', label: 'Haptics', implemented: true },
-  { id: 'acquisition', label: 'Import', implemented: false },
+  { id: 'acquisition', label: 'Import', implemented: true },
 ] as const;
 
 export const ANIMATION_PANEL_IDS: readonly AnimationPanelId[] = ANIMATION_PANELS.map(

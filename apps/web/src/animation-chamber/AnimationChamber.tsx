@@ -23,6 +23,7 @@ import { TerrainPanel } from '../panels/TerrainPanel.tsx';
 import { CapabilityPanel } from '../panels/CapabilityPanel.tsx';
 import { AiPanel } from '../panels/AiPanel.tsx';
 import { DiffPanel } from '../panels/DiffPanel.tsx';
+import { AcquisitionPanel } from '../panels/AcquisitionPanel.tsx';
 import { ANIMATION_PANELS } from './AnimationPanelRegistry.ts';
 import type { AnimationPanelId } from './AnimationChamberFacade.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
@@ -51,6 +52,8 @@ function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
       return <AiPanel />;
     case 'diff':
       return <DiffPanel />;
+    case 'acquisition':
+      return <AcquisitionPanel />;
     default:
       return <PanelNotYetNative id={id} />;
   }
