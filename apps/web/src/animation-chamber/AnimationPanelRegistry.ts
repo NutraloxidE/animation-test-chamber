@@ -30,7 +30,7 @@ export const ANIMATION_PANELS: readonly AnimationPanelDescriptor[] = [
   { id: 'timing', label: 'Timing', implemented: true },
   { id: 'replay', label: 'Replay', implemented: true },
   { id: 'terrain', label: 'Terrain', implemented: true },
-  { id: 'ai', label: 'AI', implemented: false },
+  { id: 'ai', label: 'AI', implemented: true },
   { id: 'diff', label: 'Diff', implemented: false },
   { id: 'capability', label: 'Haptics', implemented: true },
   { id: 'acquisition', label: 'Import', implemented: false },

@@ -270,7 +270,7 @@ describe('the panel registry', () => {
     });
   });
 
-  it('wires exactly the first vertical slice so far', () => {
+  it('wires exactly the panels reached so far', () => {
     const wired = ANIMATION_PANELS.filter((panel) => panel.implemented).map((panel) => panel.id);
     expect(wired).toEqual([
       'inspector',
@@ -279,6 +279,7 @@ describe('the panel registry', () => {
       'timing',
       'replay',
       'terrain',
+      'ai',
       'capability',
     ]);
   });

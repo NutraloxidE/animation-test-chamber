@@ -21,6 +21,7 @@ import { MotionTimingPanel } from '../panels/MotionTimingPanel.tsx';
 import { ReplayPanel } from '../panels/ReplayPanel.tsx';
 import { TerrainPanel } from '../panels/TerrainPanel.tsx';
 import { CapabilityPanel } from '../panels/CapabilityPanel.tsx';
+import { AiPanel } from '../panels/AiPanel.tsx';
 import { ANIMATION_PANELS } from './AnimationPanelRegistry.ts';
 import type { AnimationPanelId } from './AnimationChamberFacade.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
@@ -45,6 +46,8 @@ function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
       return <TerrainPanel />;
     case 'capability':
       return <CapabilityPanel />;
+    case 'ai':
+      return <AiPanel />;
     default:
       return <PanelNotYetNative id={id} />;
   }

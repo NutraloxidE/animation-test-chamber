@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useChamber } from '../store.ts';
+import { useChamber } from './chamber-source.ts';
 
 const EXAMPLES = [
   '攻撃の初動を速くし、重量感は残す',

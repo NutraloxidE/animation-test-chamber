@@ -44,3 +44,5 @@ coverage/
 tsconfig.tsbuildinfo
 !reports/rig-editor-restoration-prerequisites-audit.md
 !reports/rig-editor-main-ui-inventory.md
+!reports/rig-editor-native-restoration-progress.md
+!reports/rig-editor-native-restoration-audit.md

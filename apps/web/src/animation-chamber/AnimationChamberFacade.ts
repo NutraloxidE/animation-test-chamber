@@ -31,12 +31,24 @@ import type { ChamberEngine } from '../engine.ts';
 import type { ReplayDefinition } from '@atc/schema';
 import type { ReplayTrace } from '@atc/replay-runtime';
 import { detectCapability, readActiveGamepad } from '@atc/haptics-runtime';
+import { RuleBasedProvider, type AdjustmentProposal } from '@atc/ai-adapter';
+import { setAtPath } from '@atc/runtime-core';
+import { backendAvailable } from '../backend.ts';
 import {
   materializeAnimationChamberDocument,
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
 } from './AnimationChamberDocument.ts';
 
+
+/**
+ * The provider a static deployment falls back to.
+ *
+ * Module-level rather than per-facade: it is stateless rule evaluation over
+ * whatever document it is handed, so one instance serves every subject and
+ * nothing about a previous subject survives in it.
+ */
+const LOCAL_AI = new RuleBasedProvider();
 
 export type AnimationPanelId =
   | 'inspector'
@@ -117,6 +129,28 @@ export interface AnimationChamberState {
   ghostEnabled: boolean;
   compareSlots: AnimationCompareSlot[];
   activeCompareSlot: number;
+
+  /*
+   * AI, all of it subject-local (§6.1).
+   *
+   * The facade is rebuilt whenever subject identity changes, so "proposals
+   * reset on subject switch" is a property of where this lives rather than a
+   * cleanup step somebody has to remember. A proposal generated for one exact
+   * Animator can never be applied to another, because there is no path from
+   * this store to another subject's session.
+   */
+  proposals: AdjustmentProposal[];
+  aiBusy: boolean;
+  aiMessage: string;
+
+  /**
+   * Whether the API server answered the last probe.
+   *
+   * `null` while the probe is in flight. Panels that can only *claim* a
+   * repository write with a server read this; nothing here treats it as
+   * permission.
+   */
+  backendOnline: boolean | null;
 }
 
 export interface AnimationChamberActions {
@@ -133,6 +167,10 @@ export interface AnimationChamberActions {
   setGhostEnabled(enabled: boolean): void;
   buildCompareSlots(): void;
   activateCompareSlot(index: number): void;
+
+  requestProposals(request: string): Promise<void>;
+  applyProposal(proposal: AdjustmentProposal, approved: boolean): void;
+  refreshBackendState(): Promise<void>;
 
   setPreviewValue(path: CanonicalPath, value: unknown, options?: { intent?: string }): void;
   resetToRepository(path: CanonicalPath): void;
@@ -160,6 +198,23 @@ export interface AnimationCompareSlot {
   label: string;
   document: AnimationChamberDocument;
   trace: ReplayTrace | null;
+  /**
+   * The proposal this slot previews, or `null` for the two baselines.
+   *
+   * Present so a reader can tell a genuine A/B/C comparison from the
+   * two-slot repository/preview one. §6.4 forbids labelling the latter as the
+   * former, and the honest way to keep that true is to make the difference
+   * data rather than prose.
+   */
+  proposal: AdjustmentProposal | null;
+  /**
+   * The subject this slot was built for.
+   *
+   * A slot outlives nothing — the facade dies with the subject — but asserting
+   * the identity is cheaper than trusting that, and it is what the isolation
+   * test reads.
+   */
+  subjectId: string;
 }
 
 export type AnimationChamberStore = StoreApi<AnimationChamberState & AnimationChamberActions>;
@@ -263,6 +318,11 @@ export function createAnimationChamberFacade(input: {
       compareSlots: [],
       activeCompareSlot: -1,
 
+      proposals: [],
+      aiBusy: false,
+      aiMessage: '',
+      backendOnline: null,
+
       revision: 0,
 
       activePanel: input.initialPanel ?? 'inspector',
@@ -314,18 +374,51 @@ export function createAnimationChamberFacade(input: {
       buildCompareSlots: () => {
         const replay = selectedReplay(get());
         if (!replay) return;
+        const subjectId = authoring.subject.subjectId;
+        /*
+         * Every slot is a version of *this* document run against *the same*
+         * replay — so the same terrain, seed, inputs and start state — and
+         * activating one re-seeds the single engine. That is what makes the
+         * comparison a comparison rather than three independent simulations
+         * that happen to be shown next to each other.
+         */
         const slots: AnimationCompareSlot[] = [
           {
             label: 'Repository',
             document: session.repositoryProject,
             trace: engine.traceFor(session.repositoryProject, replay),
+            proposal: null,
+            subjectId,
           },
           {
             label: 'Preview',
             document: session.previewProject,
             trace: engine.traceFor(session.previewProject, replay),
+            proposal: null,
+            subjectId,
           },
         ];
+
+        /*
+         * The proposal columns. Each one is the *preview* document with that
+         * proposal's changes written into a copy — not applied to the session,
+         * which would make looking at a variant indistinguishable from taking
+         * it.
+         */
+        for (const proposal of get().proposals) {
+          let document = session.previewProject;
+          for (const change of proposal.changes) {
+            document = setAtPath(document, change.path, change.after);
+          }
+          slots.push({
+            label: proposal.title,
+            document,
+            trace: engine.traceFor(document, replay),
+            proposal,
+            subjectId,
+          });
+        }
+
         set({ compareSlots: slots, activeCompareSlot: 0 });
       },
 
@@ -358,6 +451,144 @@ export function createAnimationChamberFacade(input: {
 
       statusMessage: '',
       setStatus: (message) => set({ statusMessage: message }),
+
+      refreshBackendState: async () => {
+        set({ backendOnline: await backendAvailable() });
+      },
+
+      /**
+       * Ask for A/B/C proposals against the current exact target (§6.2).
+       *
+       * The target is not "the subject" in the abstract: it is this subject's
+       * currently selected transition, in this session's preview document, with
+       * this session's protection state — which is why the request is built
+       * here rather than assembled by the panel. A panel that composed its own
+       * context could name a path from a document it is no longer showing.
+       */
+      requestProposals: async (request) => {
+        set({ aiBusy: true, aiMessage: '' });
+        const { selectedTransitionId, selectedStateId, selectedReplayId, terrainPresetId } = get();
+        /*
+         * A transition when one is selected, otherwise the state. Both are
+         * exact ids from this subject's own graph; neither is a guess.
+         */
+        const targetPath =
+          selectedTransitionId !== ''
+            ? `/graph/transitions/${selectedTransitionId}`
+            : `/graph/states/${selectedStateId}`;
+        const context = {
+          project: session.previewProject,
+          request,
+          targetPath,
+          ...(selectedReplayId ? { replayId: selectedReplayId } : {}),
+          ...(terrainPresetId ? { terrainPresetId } : {}),
+        };
+
+        const finish = (proposals: AdjustmentProposal[], aiMessage: string): void => {
+          set({ proposals, aiBusy: false, aiMessage });
+          // Rebuilt here rather than lazily, so the Replay panel's slots and
+          // the proposal list can never disagree about how many variants exist.
+          get().buildCompareSlots();
+        };
+
+        /*
+         * The rule-based provider is pure computation over the document, so a
+         * static deployment runs it in the browser rather than losing AI
+         * entirely. Only the key-holding provider needs the server.
+         */
+        if (!(await backendAvailable())) {
+          set({ backendOnline: false });
+          try {
+            finish(
+              await LOCAL_AI.proposeAdjustments(context),
+              `Proposals from the ${LOCAL_AI.id} provider, running in the browser.`,
+            );
+          } catch (error) {
+            set({
+              aiBusy: false,
+              aiMessage: `Proposal failed: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+          return;
+        }
+
+        set({ backendOnline: true });
+        try {
+          const response = await fetch('/api/ai/propose', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              document: context.project,
+              request,
+              targetPath,
+              ...(selectedReplayId ? { replayId: selectedReplayId } : {}),
+              ...(terrainPresetId ? { terrainPresetId } : {}),
+            }),
+          });
+          const payload = (await response.json()) as {
+            proposals?: AdjustmentProposal[];
+            provider?: string;
+            error?: string;
+          };
+          if (payload.error) {
+            set({ aiBusy: false, aiMessage: payload.error });
+            return;
+          }
+          const proposals = payload.proposals ?? [];
+          finish(proposals, `${proposals.length} proposal(s) from the ${payload.provider} provider.`);
+        } catch (error) {
+          set({
+            aiBusy: false,
+            aiMessage: `Could not reach the API server: ${
+              error instanceof Error ? error.message : String(error)
+            }. Start it with \`pnpm dev:api\`.`,
+          });
+        }
+      },
+
+      /**
+       * Take a proposal into the preview (§6.3).
+       *
+       * Every change goes through `setPreviewValue`, which is the same
+       * protection gate a human edit passes: an AI proposal has no privileged
+       * route into the document, and a protected path is refused here exactly
+       * as it would be refused from the Inspector. `approved` authorises only
+       * the changes the proposal itself marked approval-required; it does not
+       * authorise a repository write, which is a separate decision made in the
+       * publication surface.
+       */
+      applyProposal: (proposal, approved) => {
+        let accepted = 0;
+        let refused = 0;
+        let lastReason = '';
+        for (const change of proposal.changes) {
+          // Recorded on apply rather than on generation, so "reset to AI
+          // proposal" returns the variant the human actually took.
+          session.recordAiProposal(change.path, change.after);
+          const outcome = session.setPreviewValue({
+            path: change.path,
+            value: change.after,
+            actor: 'ai',
+            approved,
+            replayId: get().selectedReplayId,
+          });
+          if (outcome.applied) accepted += 1;
+          else {
+            refused += 1;
+            lastReason = outcome.reason;
+          }
+        }
+        // One sync for the whole proposal: the engine should see the variant,
+        // not each field on its way in.
+        applied();
+        set({
+          statusMessage:
+            refused === 0
+              ? `Applied ${accepted} change(s) from ${proposal.title} to the preview. ` +
+                'Nothing was written to the repository.'
+              : `Applied ${accepted}, refused ${refused}. ${lastReason}`,
+        });
+      },
 
       setPreviewValue: (path, value, options) => {
         const outcome = session.setPreviewValue({

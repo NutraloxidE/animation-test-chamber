@@ -1,4 +1,4 @@
-import type { ResolvedProject, TransitionDefinition } from '@atc/schema';
+import type { TransitionDefinition } from '@atc/schema';
 import {
   canAiEdit,
   canAiPropose,
@@ -18,6 +18,7 @@ import type {
   ProposedChange,
   RegressionReport,
   Review,
+  TunableAnimationDocument,
 } from './types.ts';
 
 /**
@@ -101,7 +102,12 @@ interface FieldRule {
   min: number;
   max: number;
   /** Change per unit of intent, per variant strength. */
-  compute: (current: number, intent: Intent, strength: number, project: ResolvedProject) => number;
+  compute: (
+    current: number,
+    intent: Intent,
+    strength: number,
+    project: TunableAnimationDocument,
+  ) => number;
   reason: string;
 }
 
@@ -357,7 +363,7 @@ export class RuleBasedProvider implements AiProvider {
   }
 }
 
-function requiresApproval(project: ResolvedProject, targetPath: CanonicalPath): boolean {
+function requiresApproval(project: TunableAnimationDocument, targetPath: CanonicalPath): boolean {
   const target = getAtPath(project, targetPath);
   const protection = (target as { protection?: { level?: string } } | undefined)?.protection;
   return protection?.level === 'approval-required';
