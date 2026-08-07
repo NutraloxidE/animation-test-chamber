@@ -49,6 +49,8 @@ export default defineConfig({
     // WebGL in headless Chromium needs software rendering in a container.
     launchOptions: {
       ...(executablePath ? { executablePath } : {}),
+      // Host controllers make keyboard-only tests nondeterministic because the
+      // production sampler correctly merges every connected input device.
       args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
     },
   },
@@ -88,7 +90,7 @@ export default defineConfig({
       reuseExistingServer: !ISOLATED,
       timeout: 90_000,
       stdout: 'ignore',
-      env: { WEB_PORT: String(WEB_PORT), API_PORT: String(API_PORT) },
+      env: { WEB_PORT: String(WEB_PORT), API_PORT: String(API_PORT), VITE_ATC_VISUAL_TEST: '1' },
     },
   ],
 });

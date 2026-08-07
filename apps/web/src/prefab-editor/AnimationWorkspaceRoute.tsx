@@ -115,12 +115,10 @@ export function AnimationWorkspaceRoute(): JSX.Element {
           const engine = new ChamberEngine(
             materializeAnimationChamberDocument({ resolved, repository }),
           );
-          engine.attachInput();
           held.engine = engine;
-          // Detaching is the session's job: the sampler holds window listeners,
-          // and a subject switch that left them attached would have two
-          // subjects sampling one keyboard.
-          return { dispose: () => engine.detachInput() };
+          // The mounted viewport owns browser input and the test-driver
+          // registration, so a hidden or replaced session cannot sample it.
+          return { dispose: () => undefined };
         },
       });
       if (!held.engine) throw new Error('the authoring session did not create a preview engine');
@@ -222,7 +220,9 @@ export function AnimationWorkspaceRoute(): JSX.Element {
    */
   return (
     <AnimationChamberProvider key={subjectKey} facade={facade}>
-      <AnimationChamber />
+      <main data-testid="prefab-animation-workspace">
+        <AnimationChamber />
+      </main>
     </AnimationChamberProvider>
   );
 }

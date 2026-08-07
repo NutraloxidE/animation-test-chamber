@@ -36,11 +36,16 @@ function NodeRow({ node, prefabId, currentNodeId, currentComponentId }: { node: 
 
 export function PrefabAnimationHierarchy(): JSX.Element {
   const subject = useAnimationChamber((state) => state.subject);
+  const contexts = useAnimationChamber((state) => state.project.motionContextKeys);
+  const context = useAnimationChamber((state) => state.motionContextId);
+  const setContext = useAnimationChamber((state) => state.setMotionContext);
+  const setStatus = useAnimationChamber((state) => state.setStatus);
   const registry = browserPrefabRegistry();
   const resolved = resolveGameObjectPrefab(registry, subject.source.prefab);
   return (
     <aside className="animation-hierarchy" data-testid="animation-hierarchy">
       <header><h3>Prefab Hierarchy</h3><code data-testid="animation-hierarchy-prefab">{subject.source.prefab.assetId}@{subject.source.prefab.version}</code></header>
+      <label>Motion context <select data-testid="weapon-mode-select" value={context} onChange={(event) => { setContext(event.target.value); setStatus(`${event.target.options[event.target.selectedIndex]?.text ?? event.target.value} context selected for the exact Animator.`); }}>{contexts.map((id) => <option key={id} value={id}>{id === 'sword' ? 'Sword' : id}</option>)}</select></label>
       <ul><NodeRow node={resolved.prefab.root} prefabId={subject.source.prefab.assetId} currentNodeId={subject.source.nodeId} currentComponentId={subject.source.componentId} /></ul>
     </aside>
   );

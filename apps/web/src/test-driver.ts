@@ -2,6 +2,22 @@
 import type { SimulationState } from '@atc/replay-runtime';
 import type { WorldObservation } from '@atc/world-runtime';
 import { useChamber } from './store.ts';
+import type { ChamberEngine } from './engine.ts';
+
+let activeEngine: ChamberEngine | null = null;
+
+/** Point browser automation at the engine owned by the currently mounted workspace. */
+export function registerTestEngine(engine: ChamberEngine): () => void {
+  if (!import.meta.env.DEV) return () => undefined;
+  activeEngine = engine;
+  return () => {
+    if (activeEngine === engine) activeEngine = null;
+  };
+}
+
+function testEngine(): ChamberEngine {
+  return activeEngine ?? useChamber.getState().engine;
+}
 
 /**
  * Fixed-tick test driver (PLAN Part VII §27). Lets a Playwright test replace
@@ -46,16 +62,19 @@ function flushReact(): Promise<void> {
 
 export function installTestDriver(): void {
   if (!import.meta.env.DEV) return;
+  if (import.meta.env.VITE_ATC_VISUAL_TEST === '1') {
+    Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [] });
+  }
   window.__ATC_TEST__ = {
     enable() {
-      useChamber.getState().engine.testDriven = true;
+      testEngine().testDriven = true;
     },
     advanceTicks(count) {
-      useChamber.getState().engine.advanceTicksForTest(count);
+      testEngine().advanceTicksForTest(count);
     },
     flushReact,
     getSnapshot() {
-      return useChamber.getState().engine.simulationState;
+      return testEngine().simulationState;
     },
     enableWorld() {
       useChamber.getState().worldEngine.testDriven = true;

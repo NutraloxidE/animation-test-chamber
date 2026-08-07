@@ -35,6 +35,8 @@ import { WEAPON_MODES } from '../three/catalog.ts';
 import { PrefabAnimationHierarchy } from './PrefabAnimationHierarchy.tsx';
 import { AnimationAssetLibrary } from './AnimationAssetLibrary.tsx';
 import { SubjectConflictBanner } from './SubjectConflictBanner.tsx';
+import { MobilePad } from '../panels/MobilePad.tsx';
+import type { MouseLookMode } from '@atc/input-runtime';
 
 function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
   switch (id) {
@@ -251,7 +253,7 @@ export function AnimationChamber(): JSX.Element {
   const [showLibrary, setShowLibrary] = useState(false);
   const [cleanCapture, setCleanCapture] = useState(false);
   const [mobilePad, setMobilePad] = useState(false);
-  const [cameraMode, setCameraMode] = useState<'follow' | 'orbit'>('follow');
+  const [cameraMode, setCameraMode] = useState<MouseLookMode>('free');
 
   /*
    * Exactly one thing advances the simulation.
@@ -269,8 +271,8 @@ export function AnimationChamber(): JSX.Element {
       {!cleanCapture && <div className="animation-workspace-toolbar" data-testid="animation-workspace-toolbar">
         <button type="button" data-testid="toggle-hierarchy" aria-pressed={showHierarchy} onClick={() => setShowHierarchy(!showHierarchy)}>Hierarchy</button>
         <button type="button" data-testid={showLibrary ? 'workspace-chamber' : 'workspace-asset-library'} aria-pressed={showLibrary} onClick={() => setShowLibrary(!showLibrary)}>{showLibrary ? 'Chamber' : 'Asset Library'}</button>
-        <button type="button" data-testid="toggle-camera-control" onClick={() => setCameraMode(cameraMode === 'follow' ? 'orbit' : 'follow')}>Camera: {cameraMode}</button>
-        <button type="button" data-testid="toggle-mobile-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>Mobile pad</button>
+        <button type="button" data-testid="toggle-camera-control" onClick={() => { const next = cameraMode === 'free' ? 'drag' : 'free'; engine.setMouseLookMode(next); setCameraMode(next); }}>Camera: {cameraMode === 'free' ? 'Mouse move' : 'Click-drag'}</button>
+        <button type="button" data-testid="toggle-pad" aria-pressed={mobilePad} onClick={() => setMobilePad(!mobilePad)}>{mobilePad ? 'Hide pad' : 'Show pad'}</button>
         <button type="button" data-testid="clean-capture" onClick={() => setCleanCapture(true)}>Clean capture</button>
         <button type="button" disabled title="Exports committed repository state only; unavailable until the API server exposes native export.">Unity export</button>
       </div>}
@@ -285,7 +287,7 @@ export function AnimationChamber(): JSX.Element {
       )}
       <Hud />
       <PreviewControls />
-      {!cleanCapture && mobilePad && <div className="mobile-pad" data-testid="mobile-pad"><button type="button">Forward</button><button type="button">Jump</button><button type="button">Dodge</button></div>}
+      {!cleanCapture && mobilePad && <MobilePad engine={engine} inputMap={document.inputMap} hideUi={false} />}
 
       <nav className="panel-tabs" data-testid="animation-panel-tabs">
         {ANIMATION_PANELS.map((panel) => (
@@ -293,7 +295,7 @@ export function AnimationChamber(): JSX.Element {
             type="button"
             key={panel.id}
             className={panel.id === activePanel ? 'is-active' : ''}
-            data-testid={`animation-panel-tab-${panel.id}`}
+            data-testid={`tab-${panel.id}`}
             data-implemented={panel.implemented ? 'true' : 'false'}
             aria-pressed={panel.id === activePanel}
             onClick={() => setPanel(panel.id)}
@@ -308,12 +310,12 @@ export function AnimationChamber(): JSX.Element {
       </div>
 
       {statusMessage !== '' && (
-        <p className="status-bar" data-testid="animation-status-bar">
+        <p className="status-bar" data-testid="status-bar">
           {statusMessage}
         </p>
       )}
       {!cleanCapture && showLibrary && <AnimationAssetLibrary />}
-      {cleanCapture && <button className="clean-capture-exit" type="button" onClick={() => setCleanCapture(false)}>Exit clean capture</button>}
+      {cleanCapture && <button className="clean-capture-exit" type="button" onClick={() => setCleanCapture(false)}>Show UI</button>}
     </div>
   );
 }

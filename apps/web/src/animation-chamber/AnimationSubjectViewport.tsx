@@ -24,6 +24,7 @@ import { WEAPON_MODES, weaponMode } from '../three/catalog.ts';
 import { resolveWeaponGrip } from '../rig-editor/resolve-character-presentation.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
 import { resolveAnimationSubjectPresentation } from './resolve-subject-presentation.ts';
+import { registerTestEngine } from '../test-driver.ts';
 
 /**
  * What a context the presentation catalogue does not know looks like.
@@ -90,6 +91,15 @@ export function AnimationSubjectViewport(): JSX.Element | null {
     presentation && knownContext
       ? resolveWeaponGrip({ model: presentation.model.effective, weaponModeId: context.id })
       : undefined;
+
+  useEffect(() => {
+    engine.attachInput();
+    const unregister = registerTestEngine(engine);
+    return () => {
+      unregister();
+      engine.detachInput();
+    };
+  }, [engine]);
 
   useEffect(() => {
     const update = (): void => {
