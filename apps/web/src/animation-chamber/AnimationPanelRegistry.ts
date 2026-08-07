@@ -24,7 +24,7 @@ export interface AnimationPanelDescriptor {
 
 export const ANIMATION_PANELS: readonly AnimationPanelDescriptor[] = [
   { id: 'inspector', label: 'Inspector', implemented: true },
-  { id: 'world', label: 'World', implemented: false },
+  { id: 'world', label: 'World', implemented: true },
   { id: 'graph', label: 'Graph', implemented: true },
   { id: 'timeline', label: 'Timeline', implemented: true },
   { id: 'timing', label: 'Timing', implemented: true },

@@ -73,6 +73,8 @@ export function AnimationSubjectViewport(): JSX.Element | null {
 
   const refreshCapability = useAnimationChamber((state) => state.refreshCapability);
   const ghostEnabled = useAnimationChamber((state) => state.ghostEnabled);
+  const activePanel = useAnimationChamber((state) => state.activePanel);
+  const previewWorld = useAnimationChamber((state) => state.previewWorld);
 
   const presentation = resolveAnimationSubjectPresentation({ document, motionContextId });
   /*
@@ -137,15 +139,21 @@ export function AnimationSubjectViewport(): JSX.Element | null {
         fresh renderer rather than reusing the previous one's mixer, cloned
         skeleton and attachment state.
       */}
-      <Character
-        key={`${presentation.characterId}:${
-          effective.kind === 'repository-model' ? effective.assetPath : effective.presetId
-        }`}
-        engine={engine}
-        presentation={presentation}
-        weapon={context}
-        grip={grip}
-      />
+      {(activePanel === 'world' ? previewWorld.instances : [{ id: 'focused', enabled: true, position: { x: 0, y: 0, z: 0 }, yawDeg: 0 }])
+        .filter((instance) => instance.enabled)
+        .map((instance) => (
+          <group key={instance.id} position={[instance.position.x, instance.position.y, instance.position.z]} rotation-y={THREE.MathUtils.degToRad(instance.yawDeg)}>
+            <Character
+              key={`${presentation.characterId}:${instance.id}:${
+                effective.kind === 'repository-model' ? effective.assetPath : effective.presetId
+              }`}
+              engine={engine}
+              presentation={presentation}
+              weapon={context}
+              grip={grip}
+            />
+          </group>
+        ))}
       {/*
         The ghost is a second *body* in this scene, never a second scene. It
         reads the same engine's ghost trace, so there is one canvas, one

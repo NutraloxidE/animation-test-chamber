@@ -30,12 +30,15 @@ import { useAnimationChamber } from './useAnimationChamber.ts';
 import { presentationAvailability, viewportOwnsSimulation } from './AnimationChamberDocument.ts';
 import { useAnimationPreviewClock } from './useAnimationPreviewClock.ts';
 import { AnimationSubjectViewport } from './AnimationSubjectViewport.tsx';
+import { AnimationPreviewWorldPanel } from './AnimationPreviewWorldPanel.tsx';
 import { WEAPON_MODES } from '../three/catalog.ts';
 
 function PanelBody({ id }: { id: AnimationPanelId }): JSX.Element {
   switch (id) {
     case 'inspector':
       return <TransitionInspector />;
+    case 'world':
+      return <AnimationPreviewWorldPanel />;
     case 'graph':
       return <StateGraph />;
     case 'timeline':

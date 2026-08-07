@@ -34,6 +34,11 @@ import type { PrefabAssetRegistry } from '@atc/prefab-runtime';
 import { AnimationPublicationController } from './AnimationPublicationController.ts';
 import { validateAnimationChamberDocument } from './animation-document-validation.ts';
 import {
+  AnimationPreviewWorldSession,
+  type PreviewWorldInstance,
+  type PreviewWorldState,
+} from './AnimationPreviewWorldSession.ts';
+import {
   materializeAnimationChamberDocument,
   type AnimationChamberDocument,
   type AnimationChamberRepositoryDefaults,
@@ -160,6 +165,7 @@ export interface AnimationChamberState {
    * "explicitly chose publish-only" end up indistinguishable.
    */
   publication: AnimationPublicationController;
+  previewWorld: PreviewWorldState;
 }
 
 export interface AnimationChamberActions {
@@ -180,6 +186,11 @@ export interface AnimationChamberActions {
   requestProposals(request: string): Promise<void>;
   applyProposal(proposal: AdjustmentProposal, approved: boolean): void;
   refreshBackendState(): Promise<void>;
+  duplicatePreviewWorldInstance(): void;
+  updatePreviewWorldInstance(id: string, patch: Partial<Omit<PreviewWorldInstance, 'id'>>): void;
+  focusPreviewWorldInstance(id: string): void;
+  targetPreviewWorldCamera(id: string): void;
+  revertPreviewWorld(): void;
 
   setPreviewValue(path: CanonicalPath, value: unknown, options?: { intent?: string }): void;
   resetToRepository(path: CanonicalPath): void;
@@ -283,6 +294,7 @@ export function createAnimationChamberFacade(input: {
     projectRevisionId: repository.revisionId,
     backendAvailable,
   });
+  const previewWorld = new AnimationPreviewWorldSession(authoring.subject.subjectId);
 
   const firstState = document.graph.states[0]?.id ?? '';
   const firstTransition = document.graph.transitions[0]?.id ?? '';
@@ -338,6 +350,7 @@ export function createAnimationChamberFacade(input: {
       activeCompareSlot: -1,
 
       publication,
+      previewWorld: previewWorld.state,
 
       proposals: [],
       aiBusy: false,
@@ -475,6 +488,26 @@ export function createAnimationChamberFacade(input: {
 
       refreshBackendState: async () => {
         set({ backendOnline: await backendAvailable() });
+      },
+      duplicatePreviewWorldInstance: () => {
+        previewWorld.duplicate();
+        set({ previewWorld: previewWorld.state });
+      },
+      updatePreviewWorldInstance: (id, patch) => {
+        previewWorld.update(id, patch);
+        set({ previewWorld: previewWorld.state });
+      },
+      focusPreviewWorldInstance: (id) => {
+        previewWorld.focus(id);
+        set({ previewWorld: previewWorld.state });
+      },
+      targetPreviewWorldCamera: (id) => {
+        previewWorld.targetCamera(id);
+        set({ previewWorld: previewWorld.state });
+      },
+      revertPreviewWorld: () => {
+        previewWorld.revert();
+        set({ previewWorld: previewWorld.state });
       },
 
       /**

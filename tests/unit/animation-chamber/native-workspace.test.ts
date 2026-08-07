@@ -274,6 +274,7 @@ describe('the panel registry', () => {
     const wired = ANIMATION_PANELS.filter((panel) => panel.implemented).map((panel) => panel.id);
     expect(wired).toEqual([
       'inspector',
+      'world',
       'graph',
       'timeline',
       'timing',
