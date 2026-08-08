@@ -20,6 +20,79 @@ The repository started as an animation tuning chamber, and that workflow remains
 part of the system. It now also contains the runtime and extension layer needed
 to build game mechanics without adding a new engine Component for every rule.
 
+## AI: START HERE
+
+If you are a coding agent asked to build or change a game in this repository,
+use this as your boot sequence before editing code:
+
+1. Read this README completely.
+2. Read [`agents/GAMEPLAY_VIBE_CODING.md`](agents/GAMEPLAY_VIBE_CODING.md).
+3. Inspect the closest existing Gameplay Script before inventing a new pattern:
+   - [`packages/gameplay/src/scripts/health/`](packages/gameplay/src/scripts/health/)
+   - [`packages/gameplay/src/scripts/stamina/`](packages/gameplay/src/scripts/stamina/)
+   - [`packages/gameplay/src/scripts/air-dash/`](packages/gameplay/src/scripts/air-dash/)
+4. If the request changes CharacterMotor movement, also read
+   [`agents/skills/add-character-movement.md`](agents/skills/add-character-movement.md).
+5. Prefer extending **game code and authored data** over changing engine code.
+6. Do not create a mechanic-named native Component, central runtime switch,
+   renderer special case or Simulation branch for an ordinary game mechanic.
+7. Preserve canonical/runtime separation and deterministic fixed-tick behaviour.
+8. After implementation, regenerate derived gameplay data and run focused tests.
+9. Before claiming a substantial feature complete, run the repository-wide
+   harness.
+
+Default verification sequence:
+
+```bash
+pnpm gameplay:generate
+pnpm gameplay:check
+pnpm typecheck
+pnpm lint
+pnpm harness:one-shot
+```
+
+### AI implementation routing
+
+Translate the user's request into the narrowest existing extension surface
+before touching engine internals.
+
+```text
+"add double jump"
+  → Gameplay Script
+  → ctx.self.character.command(...)
+  → optional gameplay.* animation parameter
+  → animation asset change only if visuals need a new state
+
+"add poison damage"
+  → Gameplay Script
+  → Gameplay events / runtime state
+  → no engine Component
+
+"add knockback when the enemy is hit"
+  → Gameplay Script
+  → ctx.world.get(target)?.character?.command({ type: 'impulse', ... })
+  → no direct velocity or transform write
+
+"add a moving platform"
+  → Gameplay Script
+  → ctx.self.transform
+  → do not use Character Motion unless the object has CharacterMotor authority
+
+"add HP and stamina bars"
+  → existing Gameplay Script state/events
+  → apps/web/src/game-ui/
+  → do not add editor chrome
+
+"place three enemies in this level"
+  → Prefab + Scene authored data
+  → do not hard-code level composition in the renderer
+```
+
+If an ordinary gameplay request appears to require edits across schema,
+renderer, runtime factories and Simulation, stop and inspect the existing SDK and
+Gameplay Script examples first. That is usually a sign that the feature is being
+implemented at the wrong layer.
+
 ## What this repository is
 
 This is currently designed as a **repository-distributed engine**, not as a
@@ -364,6 +437,19 @@ A useful default routing table is:
 
 A normal game mechanic should **not** require a mechanic-named native Component,
 a new central runtime switch, a router edit or a renderer special case.
+
+### Before editing engine code
+
+An AI should be able to answer all of these before changing a native runtime
+package for a game feature:
+
+- Why can this not be represented as a Gameplay Script?
+- Why can it not use an existing Character Motion or transform command?
+- Why is the capability reusable across unrelated game mechanics?
+- Which deterministic authority should own it?
+- Which schema, runtime, host/editor/export and harness surfaces must change?
+
+If those questions do not have clear answers, keep the feature in game code.
 
 ## What protects the architecture
 
