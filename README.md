@@ -1,5 +1,9 @@
 # Animation Test Chamber
 
+> **Human readers / 人間向け:** [English guide](README-forhuman-en.md) · [日本語ガイド](README-forhuman-jp.md)
+>
+> **Coding agents:** continue with this README. It is intentionally implementation-oriented.
+
 An **AI-native game development harness** for building browser-playable games by
 editing one repository.
 
