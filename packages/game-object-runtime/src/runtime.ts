@@ -352,7 +352,7 @@ export class RuntimeGameObject {
    * `undefined` means there is no Animator, which is not a failure — a crate
    * with a mesh and no Animator is a perfectly ordinary GameObject.
    */
-  get animationState(): { stateId: string; normalizedTime: number } | undefined {
+  get animationState(): { stateId: string; normalizedTime: number; blendDurationSec: number } | undefined {
     const animator = this.animator;
     if (!animator?.enabled) return undefined;
 
@@ -368,11 +368,16 @@ export class RuntimeGameObject {
         locomotionStateId: record.locomotionState,
         locomotionNormalizedTime: record.locomotionNormalizedTime,
       });
-      return { stateId: active.stateId, normalizedTime: active.normalizedTime };
+      const layer = this.character.simulation.graphRuntime.getLayer(active.actionActive ? 'action' : 'locomotion');
+      return {
+        stateId: active.stateId,
+        normalizedTime: active.normalizedTime,
+        blendDurationSec: layer.blendDurationSec,
+      };
     }
 
     const stateId = animator.playback.initialStateId;
-    return { stateId, normalizedTime: animator.normalizedTimeFor(stateId) ?? 0 };
+    return { stateId, normalizedTime: animator.normalizedTimeFor(stateId) ?? 0, blendDurationSec: 0 };
   }
 
   componentRuntime(componentId: string): RuntimeComponent | undefined {

@@ -498,6 +498,7 @@ function migrateEntity(
       const prefab = cameraPrefabFor(camera, context);
       return {
         ...common,
+        transform: IDENTITY_TRANSFORM,
         prefab,
         bindings: {},
         relations:
@@ -536,7 +537,12 @@ function cameraPrefabFor(
   camera: CameraSceneEntity,
   context: SceneMigrationContext,
 ): GameObjectPrefabReference {
-  const key = JSON.stringify([camera.projection, camera.fieldOfViewDeg, camera.orthographicSize]);
+  const key = JSON.stringify([
+    camera.projection,
+    camera.fieldOfViewDeg,
+    camera.orthographicSize,
+    camera.transform,
+  ]);
   const existing = context.cameraPrefabs.get(key);
   if (existing) return existing;
 
@@ -550,26 +556,36 @@ function cameraPrefabFor(
       {
         id,
         displayName: 'Scene Camera',
-        description: 'Generated from a migrated Scene camera entity.',
+        description: 'Reusable target-follow camera rig: an empty root with an offset Camera child.',
         tags: ['camera'],
         createdAt: MIGRATION_TIMESTAMP,
         createdBy: MIGRATION_AUTHOR,
       },
       node({
-        displayName: 'Camera',
-        components: [
+        displayName: 'Camera Rig',
+        children: [
           {
-            schemaVersion: 1,
-            componentId: COMPONENT_IDS.camera,
-            componentType: 'camera',
-            enabled: true,
-            projection: camera.projection,
-            ...(camera.fieldOfViewDeg !== undefined
-              ? { fieldOfViewDeg: camera.fieldOfViewDeg }
-              : {}),
-            ...(camera.orthographicSize !== undefined
-              ? { orthographicSize: camera.orthographicSize }
-              : {}),
+            kind: 'inline',
+            node: node({
+              nodeId: 'camera',
+              displayName: 'Camera',
+              transform: camera.transform,
+              components: [
+                {
+                  schemaVersion: 1,
+                  componentId: COMPONENT_IDS.camera,
+                  componentType: 'camera',
+                  enabled: true,
+                  projection: camera.projection,
+                  ...(camera.fieldOfViewDeg !== undefined
+                    ? { fieldOfViewDeg: camera.fieldOfViewDeg }
+                    : {}),
+                  ...(camera.orthographicSize !== undefined
+                    ? { orthographicSize: camera.orthographicSize }
+                    : {}),
+                },
+              ],
+            }),
           },
         ],
       }),

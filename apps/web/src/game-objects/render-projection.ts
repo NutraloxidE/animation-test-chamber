@@ -94,6 +94,8 @@ export interface RenderAnimatorFact {
   /** The state playing right now, and how far into it, this frame. */
   stateId: string;
   normalizedTime: number;
+  /** Duration authored on the transition that entered this state. */
+  blendDurationSec: number;
   /** Seconds of animation elapsed. Advanced by the shared Scene clock (§10.3). */
   animationSeconds: number;
 }
@@ -249,6 +251,7 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
             playback: animator.playback,
             stateId: playing?.stateId ?? animator.playback.initialStateId,
             normalizedTime: playing?.normalizedTime ?? 0,
+            blendDurationSec: playing?.blendDurationSec ?? 0,
             animationSeconds: animator.animationSeconds,
           }
         : undefined,

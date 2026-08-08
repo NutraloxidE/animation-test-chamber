@@ -944,8 +944,8 @@
           "transform": {
             "position": {
               "x": 0,
-              "y": 2,
-              "z": 6
+              "y": 0,
+              "z": 0
             },
             "rotation": {
               "x": 0,
@@ -964,7 +964,7 @@
             "assetType": "game-object-prefab",
             "assetId": "default-scene-camera",
             "version": "1.0.0",
-            "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+            "contentHash": "8bcb017228ffd062d6d6a3c052de91704d2277bf2ab36d8d15c80e164520343f"
           },
           "bindings": {},
           "relations": {

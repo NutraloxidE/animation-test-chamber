@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera } from '@react-three/drei';
+import * as THREE from 'three';
 import { useParams } from 'react-router-dom';
-import type { PrefabComponentOverride, SceneDefinition } from '@atc/schema';
+import type { CameraProfile, PrefabComponentOverride, SceneDefinition } from '@atc/schema';
 import { FixedStepAccumulator } from '@atc/runtime-core';
 import { BrowserInputSampler } from '@atc/input-runtime';
 import { instantiateScene, type RuntimeScene } from '@atc/game-object-runtime';
@@ -24,7 +25,6 @@ import { isPlayTestDriven, registerPlayRuntime } from '../test-driver.ts';
 const TWO_HUMANOIDS_SCENE_ID = 'two-humanoids-shared-animation';
 const GAMEPLAY_NAVIGATOR_PREFAB_ID = 'gameplay-navigator';
 const QUATERNIUS_PREFAB_ID = 'quaternius-universal-base';
-const QUATERNIUS_PREFAB_VERSION = '1.0.0';
 
 /**
  * The Two Humanoids play demo keeps Gameplay Navigator's scripts and controller
@@ -38,7 +38,9 @@ function preparePlayScene(scene: SceneDefinition, prefabRegistry: PrefabAssetReg
   if (scene.id !== TWO_HUMANOIDS_SCENE_ID || !scene.gameObjects) return scene;
   if (!scene.gameObjects.some((object) => object.prefab.assetId === GAMEPLAY_NAVIGATOR_PREFAB_ID)) return scene;
 
-  const quaterniusReference = prefabRegistry.referenceTo(QUATERNIUS_PREFAB_ID, QUATERNIUS_PREFAB_VERSION);
+  const quaterniusVersion = prefabRegistry.latestVersion(QUATERNIUS_PREFAB_ID);
+  if (!quaterniusVersion) throw new Error(`${QUATERNIUS_PREFAB_ID} is unavailable`);
+  const quaterniusReference = prefabRegistry.referenceTo(QUATERNIUS_PREFAB_ID, quaterniusVersion);
   const quaternius = resolveGameObjectPrefab(prefabRegistry, quaterniusReference);
   const errors = quaternius.issues.filter((issue) => issue.severity === 'error');
   if (errors.length > 0) {
@@ -58,12 +60,23 @@ function preparePlayScene(scene: SceneDefinition, prefabRegistry: PrefabAssetReg
     {
       nodeId: 'root',
       componentId: 'model',
-      patches: [{ path: '/model', op: 'set', value: structuredClone(model.model) }],
+      patches: [
+        { path: '/enabled', op: 'set', value: model.enabled },
+        { path: '/model', op: 'set', value: structuredClone(model.model) },
+        { path: '/castShadow', op: 'set', value: model.castShadow },
+        { path: '/receiveShadow', op: 'set', value: model.receiveShadow },
+      ],
     },
     {
       nodeId: 'root',
       componentId: 'animator',
-      patches: [{ path: '/assignment', op: 'set', value: structuredClone(animator.assignment) }],
+      patches: [
+        { path: '/enabled', op: 'set', value: animator.enabled },
+        { path: '/assignment', op: 'set', value: structuredClone(animator.assignment) },
+        ...(animator.defaultContextKey === undefined
+          ? []
+          : [{ path: '/defaultContextKey', op: 'set' as const, value: animator.defaultContextKey }]),
+      ],
     },
   ];
 
@@ -86,57 +99,50 @@ function preparePlayScene(scene: SceneDefinition, prefabRegistry: PrefabAssetReg
   };
 }
 
-function PlayClock({ runtime, sampler, onFrame }: { runtime: RuntimeScene; sampler: BrowserInputSampler; onFrame: () => void }) {
+type PlayCameraState = { yaw: number; pitch: number };
+
+function PlayClock({ runtime, sampler, onFrame, cameraState, cameraProfile }: { runtime: RuntimeScene; sampler: BrowserInputSampler; onFrame: () => void; cameraState: PlayCameraState | undefined; cameraProfile: CameraProfile | undefined }) {
   const accumulator = useRef(new FixedStepAccumulator());
   const { camera } = useThree();
   useFrame((_, delta) => {
     if (isPlayTestDriven()) return;
     const steps = accumulator.current.advance(delta);
     if (!steps) return;
-    runtime.injectHumanIntent(0, sampler.sample());
-    const { x, y, z, w } = camera.quaternion;
-    const cameraYawRad = Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
-    for (let index = 0; index < steps; index += 1) runtime.step({ cameraYawRad });
+    for (let index = 0; index < steps; index += 1) {
+      const sample = sampler.sample();
+      runtime.injectHumanIntent(0, sample);
+      if (cameraState && cameraProfile) {
+        cameraState.yaw -= sample.lookX;
+        cameraState.pitch = Math.min(cameraProfile.maxPitchRad, Math.max(cameraProfile.minPitchRad, cameraState.pitch + sample.lookY));
+      }
+      const { x, y, z, w } = camera.quaternion;
+      const cameraYawRad = cameraState?.yaw ?? Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
+      runtime.step({ cameraYawRad });
+    }
     onFrame();
   }, -1);
   return null;
 }
 
-/**
- * Camera following is presentation only. The authored relation selects the
- * target; the host preserves the authored camera-to-target offset and translates
- * the Three camera after Simulation has stepped. No camera state enters the
- * canonical Scene or Character simulation.
- */
-function CameraFollow({ runtime }: { runtime: RuntimeScene }) {
+/** Any camera-rig root with a target relation uses the Rig Editor orbit/follow behavior. */
+function TargetCameraFollow({ runtime, profile, state }: { runtime: RuntimeScene; profile: CameraProfile; state: PlayCameraState }) {
   const { camera } = useThree();
-  const follow = useMemo(() => {
-    const authoredCamera = runtime.activeCamera;
-    const targetId = authoredCamera?.definition.relations.cameraTargetGameObjectId;
-    const target = targetId ? runtime.get(targetId) : undefined;
-    if (!authoredCamera || !targetId || !target) return null;
-    const cameraPosition = authoredCamera.worldTransform.position;
-    const targetPosition = target.worldTransform.position;
-    return {
-      targetId,
-      offset: {
-        x: cameraPosition.x - targetPosition.x,
-        y: cameraPosition.y - targetPosition.y,
-        z: cameraPosition.z - targetPosition.z,
-      },
-    };
-  }, [runtime]);
+  const smoothed = useRef(new THREE.Vector3(0, 3, -6));
+  const targetId = runtime.activeCamera?.definition.relations.cameraTargetGameObjectId;
 
-  useFrame(() => {
-    if (!follow) return;
-    const target = runtime.get(follow.targetId);
+  useFrame((_, delta) => {
+    const target = targetId ? runtime.get(targetId) : undefined;
     if (!target) return;
     const position = target.worldTransform.position;
-    camera.position.set(
-      position.x + follow.offset.x,
-      position.y + follow.offset.y,
-      position.z + follow.offset.z,
+    const desired = new THREE.Vector3(
+      position.x - Math.sin(state.yaw) * profile.distance * Math.cos(state.pitch),
+      position.y + profile.height + Math.sin(state.pitch) * profile.distance,
+      position.z - Math.cos(state.yaw) * profile.distance * Math.cos(state.pitch),
     );
+    const alpha = profile.followLagSec <= 0 ? 1 : 1 - Math.exp(-delta / profile.followLagSec);
+    smoothed.current.lerp(desired, alpha);
+    camera.position.copy(smoothed.current);
+    camera.lookAt(position.x, position.y + profile.lookAtHeight, position.z);
   });
   return null;
 }
@@ -151,15 +157,17 @@ function AuthoredCamera({ projection }: { projection: SceneRenderProjection }) {
     : <PerspectiveCamera {...common} fov={node.camera.fieldOfViewDeg ?? 60} />;
 }
 
-function PlayCanvas({ runtime, sampler, sceneId, activeCameraGameObjectId }: { runtime: RuntimeScene; sampler: BrowserInputSampler; sceneId: string; activeCameraGameObjectId?: string }) {
+function PlayCanvas({ runtime, sampler, sceneId, activeCameraGameObjectId, cameraProfile }: { runtime: RuntimeScene; sampler: BrowserInputSampler; sceneId: string; activeCameraGameObjectId?: string; cameraProfile: CameraProfile }) {
   const [frame, setFrame] = useState(0);
+  const cameraState = useRef<PlayCameraState>({ yaw: 0, pitch: 0.25 });
+  const followsTarget = runtime.activeCamera?.definition.relations.cameraTargetGameObjectId !== undefined;
   const projection = useMemo(() => projectRuntimeScene(runtime, activeCameraGameObjectId), [runtime, activeCameraGameObjectId, frame]);
   if (!projection.activeCamera) return <p data-testid="play-camera-unavailable">Scene “{sceneId}” has no valid authored active Camera.</p>;
   return (
     <Canvas data-testid="play-canvas">
       <AuthoredCamera projection={projection} />
-      <PlayClock runtime={runtime} sampler={sampler} onFrame={() => setFrame((value) => value + 1)} />
-      <CameraFollow runtime={runtime} />
+      <PlayClock runtime={runtime} sampler={sampler} onFrame={() => setFrame((value) => value + 1)} cameraState={followsTarget ? cameraState.current : undefined} cameraProfile={followsTarget ? cameraProfile : undefined} />
+      {followsTarget && <TargetCameraFollow runtime={runtime} profile={cameraProfile} state={cameraState.current} />}
       <ambientLight intensity={0.5} />
       <GameObjectRenderer projection={projection} />
     </Canvas>
@@ -195,7 +203,7 @@ export function PlayScenePage(): JSX.Element {
   if (!scene || error) return <main className="play-surface play-surface--error" data-testid="play-surface"><p>{error ?? `Scene “${sceneId ?? ''}” is unavailable.`}</p></main>;
   return (
     <main className="play-surface" data-testid="play-surface" data-scene-id={scene.id}>
-      {runtime && <PlayCanvas runtime={runtime} sampler={sampler} sceneId={scene.id} activeCameraGameObjectId={scene.activeCameraGameObjectId} />}
+      {runtime && <PlayCanvas runtime={runtime} sampler={sampler} sceneId={scene.id} activeCameraGameObjectId={scene.activeCameraGameObjectId} cameraProfile={project.camera} />}
       <GameOverlay sceneName={scene.displayName} />
     </main>
   );

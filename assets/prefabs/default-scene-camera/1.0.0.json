@@ -5,13 +5,13 @@
     "id": "default-scene-camera",
     "version": "1.0.0",
     "displayName": "Scene Camera",
-    "description": "Generated from a migrated Scene camera entity.",
+    "description": "Reusable target-follow camera rig: an empty root with an offset Camera child.",
     "tags": [
       "camera"
     ],
     "createdAt": "2026-08-06T00:00:00.000Z",
     "createdBy": "prefabs:migrate",
-    "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+    "contentHash": "8bcb017228ffd062d6d6a3c052de91704d2277bf2ab36d8d15c80e164520343f"
   },
   "derivation": {
     "mode": "base"
@@ -38,17 +38,46 @@
         "z": 1
       }
     },
-    "components": [
+    "components": [],
+    "children": [
       {
-        "schemaVersion": 1,
-        "componentId": "camera",
-        "componentType": "camera",
-        "enabled": true,
-        "projection": "perspective",
-        "fieldOfViewDeg": 60
+        "kind": "inline",
+        "node": {
+          "nodeId": "camera",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 2,
+              "z": 6
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "camera",
+              "componentType": "camera",
+              "enabled": true,
+              "projection": "perspective",
+              "fieldOfViewDeg": 60
+            }
+          ],
+          "children": [],
+          "displayName": "Camera"
+        }
       }
     ],
-    "children": [],
-    "displayName": "Camera"
+    "displayName": "Camera Rig"
   }
 }

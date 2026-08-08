@@ -40,6 +40,7 @@
  * tick, and a paused Scene stays paused instead of drifting.
  */
 import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import * as THREE from 'three';
@@ -53,6 +54,8 @@ function takeKey(source: ExternalAnimationSource): string {
 
 export interface AnimatedRepositoryModelProps {
   assetPath: string;
+  scale: number;
+  rotationYRad: number;
   castShadow: boolean;
   receiveShadow: boolean;
   animator: RenderAnimatorFact;
@@ -63,6 +66,8 @@ export interface AnimatedRepositoryModelProps {
 
 export function AnimatedRepositoryModel({
   assetPath,
+  scale,
+  rotationYRad,
   castShadow,
   receiveShadow,
   animator,
@@ -223,17 +228,24 @@ export function AnimatedRepositoryModel({
         .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
         .play();
       next.clampWhenFinished = !loop;
-      currentAction.current?.stop();
+      currentAction.current?.crossFadeTo(next, animator.blendDurationSec, false);
       currentAction.current = next;
       currentTake.current = key;
     }
-    const action = currentAction.current;
-    if (!action) return;
-    action.time = animator.normalizedTime * action.getClip().duration;
-    // `update(0)` applies the seek without advancing wall-clock time, so the
-    // pose on screen is exactly the one the simulation is at.
-    mixer.update(0);
-  }, [key, clipsByTake, mixer, scene, animator.normalizedTime, animator.stateId, animator.playback.loopByStateId]);
+  }, [key, clipsByTake, mixer, scene, animator.stateId, animator.blendDurationSec, animator.playback.loopByStateId]);
 
-  return <primitive object={scene} />;
+  useFrame((_, delta) => {
+    mixer.update(delta);
+    const action = currentAction.current;
+    if (!action || currentTake.current !== key) return;
+    action.time = animator.normalizedTime * action.getClip().duration;
+    // Apply the simulation-owned clock after advancing Three's cross-fade.
+    mixer.update(0);
+  });
+
+  return (
+    <group scale={[scale, scale, scale]} rotation-y={rotationYRad}>
+      <primitive object={scene} />
+    </group>
+  );
 }
