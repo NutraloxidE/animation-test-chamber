@@ -386,9 +386,13 @@ export class RuntimeGameObject {
   }
 
   dispatchGameplayEvent(context: GameObjectStepContext, event: import('@atc/gameplay-sdk').GameplayEvent): void {
+    this.dispatchOwnGameplayEvent(context, event);
+    for (const child of this.children) child.dispatchGameplayEvent(context, event);
+  }
+
+  dispatchOwnGameplayEvent(context: GameObjectStepContext, event: import('@atc/gameplay-sdk').GameplayEvent): void {
     const step = { tick: context.tick, deltaSeconds: this.services.clock.fixedDeltaSeconds };
     for (const component of this.components) if (component instanceof GameplayScriptRuntime) component.event(step, event);
-    for (const child of this.children) child.dispatchGameplayEvent(context, event);
   }
 
   /** This object and every descendant, in deterministic declaration order. */

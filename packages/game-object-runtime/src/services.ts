@@ -20,7 +20,7 @@ import type {
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import type { CharacterIntentSource } from '@atc/character-control-runtime';
 import type { PrefabAssetRegistry } from '@atc/prefab-runtime';
-import type { GameplayScriptRegistry, GameplayWorld } from '@atc/gameplay-sdk';
+import type { GameplayObjectApi, GameplayScriptRegistry, GameplayWorld } from '@atc/gameplay-sdk';
 
 /** Fixed-step clock. The runtime owns no wall clock; ticks arrive from outside. */
 export interface RuntimeClock {
@@ -54,4 +54,5 @@ export interface GameObjectRuntimeServices {
   terrain?: TerrainPreset;
   gameplayRegistry?: GameplayScriptRegistry;
   gameplayWorld?: GameplayWorld;
+  gameplayObject?: (runtimeNodeId: string, componentId: string) => GameplayObjectApi | undefined;
 }

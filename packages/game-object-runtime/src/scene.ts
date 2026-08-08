@@ -23,7 +23,7 @@ import { resolveGameObjectInstance, resolveSceneGameObjects } from './definition
 import { ComponentRuntimeRegistry } from './components.ts';
 import { RuntimeGameObject, instantiateGameObject, type GameObjectStepContext } from './runtime.ts';
 import type { GameObjectRuntimeServices } from './services.ts';
-import type { GameplayEvent, GameplayObjectView, GameplayWorld } from '@atc/gameplay-sdk';
+import type { GameplayEvent, GameplayObjectApi, GameplayObjectView, GameplayWorld } from '@atc/gameplay-sdk';
 import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
 
 export interface InstantiateSceneOptions {
@@ -62,7 +62,7 @@ export class RuntimeScene {
     this.id = options.scene.id;
     this.gameplayWorld = {
       get: (id) => this.objectView(id),
-      findByTag: (tag) => this.gameObjects.flatMap((root) => root.walk()).filter((object) => object.definition.root.components.some((component) => component.componentType === 'tags' && component.tags.includes(tag))).map((object) => ({ id: object.id, tags: this.tagsOf(object), transform: object.worldTransform })),
+      findByTag: (tag) => this.gameObjects.flatMap((root) => root.walk()).filter((object) => object.definition.root.components.some((component) => component.componentType === 'tags' && component.tags.includes(tag))).map((object) => this.gameplayObject(object.id, 'world')!),
       emit: (target, event) => { this.guardBudget(this.pendingEvents.length, 'event'); this.pendingEvents.push({ target, event: structuredClone(event) }); },
       spawn: (request) => { this.guardBudget(this.pendingSpawns.length, 'spawn'); this.pendingSpawns.push(request); },
       despawn: (id) => { this.guardBudget(this.pendingDespawns.length, 'despawn'); this.pendingDespawns.push(id); },
@@ -70,10 +70,29 @@ export class RuntimeScene {
     this.build();
   }
 
-  private runtimeServices(): GameObjectRuntimeServices { return { ...this.options.services, gameplayWorld: this.gameplayWorld }; }
+  private runtimeServices(): GameObjectRuntimeServices { return { ...this.options.services, gameplayWorld: this.gameplayWorld, gameplayObject: (id, componentId) => this.gameplayObject(id, componentId) }; }
   private guardBudget(count: number, operation: string): void { if (count >= this.maxOperationsPerTick) throw new Error(`gameplay ${operation} budget exceeded in scene "${this.id}"`); }
   private tagsOf(object: RuntimeGameObject): string[] { return object.definition.root.components.flatMap((component) => component.componentType === 'tags' ? component.tags : []); }
-  private objectView(id: string): GameplayObjectView | undefined { const object = this.get(id) ?? this.gameObjects.flatMap((root) => root.walk()).find((entry) => entry.id === id); return object ? { id: object.id, tags: this.tagsOf(object), transform: object.worldTransform } : undefined; }
+  private objectView(id: string): GameplayObjectView | undefined { return this.gameplayObject(id, 'world'); }
+  getRuntimeNode(runtimeNodeId: string): RuntimeGameObject | undefined { return this.gameObjects.flatMap((root) => root.walk()).find((entry) => entry.id === runtimeNodeId); }
+  private gameplayObject(id: string, componentId: string): GameplayObjectApi | undefined {
+    const object = this.getRuntimeNode(id);
+    if (!object) return undefined;
+    const ok = { ok: true } as const;
+    const refused = { ok: false, code: 'simulation-owned-transform' as const, message: 'use ctx.self.character.command(...) instead' };
+    return {
+      id: object.id,
+      tags: this.tagsOf(object),
+      worldTransform: () => object.worldTransform,
+      transform: {
+        world: () => object.worldTransform,
+        local: () => structuredClone(object.localTransform),
+        setLocal: (transform) => { if (object.character) return refused; object.setLocalTransform(transform); return ok; },
+        translateLocal: (delta) => { if (object.character) return refused; object.localTransform.position.x += delta.x; object.localTransform.position.y += delta.y; object.localTransform.position.z += delta.z; return ok; },
+      },
+      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, componentId), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
+    };
+  }
 
   private build(): void {
     const resolved = resolveSceneGameObjects({
@@ -136,7 +155,7 @@ export class RuntimeScene {
 
   step(context: Omit<GameObjectStepContext, 'tick'> & { tick?: number }): void {
     const tick = context.tick ?? this.tick;
-    for (const queued of this.queuedEvents) this.objectsById.get(queued.target)?.dispatchGameplayEvent({ tick, cameraYawRad: context.cameraYawRad }, queued.event);
+    for (const queued of this.queuedEvents) this.getRuntimeNode(queued.target)?.dispatchOwnGameplayEvent({ tick, cameraYawRad: context.cameraYawRad }, queued.event);
     this.queuedEvents = [];
     for (const gameObject of this.objectsById.values()) {
       gameObject.step({ tick, cameraYawRad: context.cameraYawRad });

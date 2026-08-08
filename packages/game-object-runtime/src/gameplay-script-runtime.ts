@@ -53,7 +53,11 @@ export class GameplayScriptRuntime implements RuntimeComponent {
     this.context.services.logger?.warn(`[${code}] ${this.context.gameObjectId}/${this.componentId}: ${message}`);
   }
 
-  private gameplayContext(step: RuntimeComponentStepContext): GameplayContext { return { ...step, random: this.random, world: this.context.services.gameplayWorld ?? unavailableWorld }; }
+  private gameplayContext(step: RuntimeComponentStepContext): GameplayContext {
+    const runtimeSelf = this.context.services.gameplayObject?.(this.context.gameObjectId, this.componentId);
+    const self = runtimeSelf ?? { id: this.context.gameObjectId, tags: [], worldTransform: () => { throw new Error('gameplay runtime node is unavailable'); }, transform: { world: () => { throw new Error('gameplay runtime node is unavailable'); }, local: () => { throw new Error('gameplay runtime node is unavailable'); }, setLocal: () => ({ ok: false as const, code: 'target-not-found' as const, message: 'gameplay runtime node is unavailable' }), translateLocal: () => ({ ok: false as const, code: 'target-not-found' as const, message: 'gameplay runtime node is unavailable' }) } };
+    return { ...step, random: this.random, self, world: this.context.services.gameplayWorld ?? unavailableWorld };
+  }
 
   start(step: RuntimeComponentStepContext): void {
     if (!this.enabled || this.started) return;

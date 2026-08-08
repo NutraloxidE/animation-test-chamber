@@ -19,6 +19,7 @@
     "harness:gameplay": "vitest run tests/unit/gameplay",
     "harness:play-surface": "tsx harness/check-play-surface.ts",
     "harness:vibe-coding": "tsx harness/check-vibe-coding.ts",
+    "harness:character-motion": "tsx harness/check-character-motion.ts",
     "assets:animation:index": "tsx harness/generate-animation-asset-index.ts",
     "assets:animation:imported": "tsx harness/generate-imported-character-assets.ts",
     "assets:animation:migrate": "tsx harness/migrate-animation-assets.ts",

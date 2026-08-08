@@ -191,6 +191,9 @@ async function main(): Promise<void> {
     results.push(result);
   }
 
+  results.push(vitestStage('character motion', 'tests/unit/character-motion', 'fix the typed Character Motion command boundary'));
+  printStage(results.at(-1)!);
+
   // Also before the tests: an unresolved transaction from a prior crash
   // would make the write API read-only, which every later write-path test
   // would then fail for a reason that has nothing to do with what they test.

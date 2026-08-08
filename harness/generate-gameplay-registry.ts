@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const scriptsRoot = resolve(root, 'packages/gameplay/src/scripts');
@@ -19,6 +20,8 @@ const entries = await Promise.all(sources.map(async (file, index) => {
   const version = parts.pop();
   const id = parts.join('/');
   if (!id || !version) throw new Error(`invalid gameplay script path: ${file}`);
+  const definition = (await import(`${pathToFileURL(file).href}?identity-check=${Date.now()}-${index}`)).default;
+  if (definition?.id !== id || definition?.version !== version) throw new Error(`gameplay script identity mismatch: path=${id}@${version}, descriptor=${definition?.id}@${definition?.version}`);
   return { id, version, hash: createHash('sha256').update(normalized, 'utf8').digest('hex'), importName: `script${index}`, importPath: `./scripts/${id}/${version}.ts` };
 }));
 

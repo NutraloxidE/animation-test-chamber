@@ -35,7 +35,9 @@ import {
   type CharacterSimulationDocument,
   type RootMotionTrack,
   type TickRecord,
+  type ExternalMotionFrame,
 } from '@atc/replay-runtime';
+import type { CharacterMotionCommand, GameplayCharacterSnapshot, GameplayCommandResult } from '@atc/gameplay-sdk';
 import { ACTION_LAYER, LOCOMOTION_LAYER, type LayerId } from '@atc/animation-runtime';
 import {
   NeutralCharacterIntentSource,
@@ -132,6 +134,11 @@ export class ControllableCharacter {
   private lastIntentValue: CharacterIntent = neutralIntent();
   private lastRecordValue: TickRecord | null = null;
   private enabledValue = true;
+  private sequence = 0;
+  private pending: Array<{ command: CharacterMotionCommand; componentId: string; key: string }> = [];
+  private overrides: Array<{ command: Extract<CharacterMotionCommand, { type: 'motion-override' }>; componentId: string; key: string; remainingTicks: number }> = [];
+  private scales: Array<{ command: Extract<CharacterMotionCommand, { type: 'movement-scale' }>; componentId: string; key: string; remainingTicks: number }> = [];
+  private parameters = new Map<string, { value: boolean | number | string; remainingTicks?: number }>();
 
   constructor(private readonly options: ControllableCharacterOptions) {
     this.instanceId = options.instanceId;
@@ -226,16 +233,66 @@ export class ControllableCharacter {
     source.inject?.(intent);
   }
 
+  enqueueCommand(command: CharacterMotionCommand, componentId: string): GameplayCommandResult {
+    if (!validCommand(command)) return { ok: false, code: 'invalid-command', message: 'motion command contains invalid values' };
+    if (this.pending.length >= 64) return { ok: false, code: 'operation-budget-exceeded', message: 'character command budget exceeded' };
+    this.pending.push({ command: structuredClone(command), componentId, key: `${componentId}/${'key' in command ? command.key : this.sequence++}` });
+    return { ok: true };
+  }
+
+  setGameplayParameter(name: string, value: boolean | number | string, durationTicks?: number): GameplayCommandResult {
+    if (!/^gameplay\.[A-Za-z][A-Za-z0-9._-]*$/.test(name) || (durationTicks !== undefined && (!Number.isInteger(durationTicks) || durationTicks <= 0))) return { ok: false, code: 'invalid-parameter-name', message: 'parameter must be gameplay.* with a positive integer duration' };
+    this.parameters.set(name, { value, ...(durationTicks === undefined ? {} : { remainingTicks: durationTicks }) });
+    return { ok: true };
+  }
+
+  clearGameplayParameter(name: string): GameplayCommandResult { this.parameters.delete(name); return { ok: true }; }
+
   /** Advances exactly one fixed step. */
   step(tick: number, context: CharacterControlContext): CharacterTickRecord {
     this.simulationValue.setCameraYaw(context.cameraYawRad);
     const intent = this.source.sample(tick);
     this.lastIntentValue = intent;
-    const record = this.simulationValue.step(intent);
+    const frame = this.consumeCommands(context.cameraYawRad);
+    const record = this.simulationValue.step(intent, frame);
     this.lastRecordValue = record;
     this.tickIndex = tick + 1;
     return { tick, intent, record };
   }
+
+  private consumeCommands(cameraYawRad: number): ExternalMotionFrame {
+    let teleport: ExternalMotionFrame['teleport'];
+    let impulse = { x: 0, y: 0, z: 0 };
+    for (const entry of this.pending.sort((a, b) => a.key.localeCompare(b.key))) {
+      const command = entry.command;
+      if (command.type === 'impulse') impulse = add(impulse, inWorld(command.deltaVelocity, command.space, this.simulationValue.state.yawRad, cameraYawRad));
+      else if (command.type === 'teleport' && !teleport) teleport = { position: command.position, ...(command.yawRad === undefined ? {} : { yawRad: command.yawRad }), clearVelocity: command.velocity === 'clear' };
+      else if (command.type === 'motion-override') this.replaceTimed(this.overrides, { command, componentId: entry.componentId, key: entry.key, remainingTicks: command.durationTicks });
+      else if (command.type === 'movement-scale') this.replaceTimed(this.scales, { command, componentId: entry.componentId, key: entry.key, remainingTicks: command.durationTicks });
+    }
+    this.pending = [];
+    const sortedOverrides = [...this.overrides].sort((a, b) => (b.command.priority ?? 0) - (a.command.priority ?? 0) || a.key.localeCompare(b.key));
+    const replacement = sortedOverrides.find((x) => x.command.horizontal === 'replace');
+    const vertical = sortedOverrides.find((x) => x.command.vertical === 'replace');
+    let additive = impulse;
+    for (const entry of [...this.overrides].sort((a, b) => a.key.localeCompare(b.key))) if (entry.command.horizontal === 'add' || entry.command.vertical === 'add') {
+      const value = inWorld(entry.command.velocity, entry.command.space, this.simulationValue.state.yawRad, cameraYawRad);
+      additive = add(additive, { x: entry.command.horizontal === 'add' ? value.x : 0, y: entry.command.vertical === 'add' ? value.y : 0, z: entry.command.horizontal === 'add' ? value.z : 0 });
+    }
+    const scale = [...this.scales].sort((a, b) => (b.command.priority ?? 0) - (a.command.priority ?? 0) || a.key.localeCompare(b.key))[0];
+    const parameters = Object.fromEntries([...this.parameters].map(([name, entry]) => [name, entry.value]));
+    const frame: ExternalMotionFrame = { addVelocity: additive, gameplayParameters: parameters, ...(teleport ? { teleport } : {}), ...(scale ? { speedScale: scale.command.speedScale, accelerationScale: scale.command.accelerationScale ?? 1, turnScale: scale.command.turnScale ?? 1 } : {}) };
+    if (replacement) frame.replaceHorizontal = inWorld(replacement.command.velocity, replacement.command.space, this.simulationValue.state.yawRad, cameraYawRad);
+    if (vertical) frame.replaceVertical = inWorld(vertical.command.velocity, vertical.command.space, this.simulationValue.state.yawRad, cameraYawRad).y;
+    for (const entry of this.overrides) entry.remainingTicks -= 1;
+    for (const entry of this.scales) entry.remainingTicks -= 1;
+    this.overrides = this.overrides.filter((entry) => entry.remainingTicks > 0);
+    this.scales = this.scales.filter((entry) => entry.remainingTicks > 0);
+    for (const [name, entry] of this.parameters) if (entry.remainingTicks !== undefined && --entry.remainingTicks <= 0) this.parameters.delete(name);
+    return frame;
+  }
+
+  private replaceTimed<T extends { componentId: string; command: { key: string } }>(items: T[], next: T): void { const index = items.findIndex((item) => item.componentId === next.componentId && item.command.key === next.command.key); if (index < 0) items.push(next); else items[index] = next; }
 
   layerState(layer: LayerId) {
     return this.simulationValue.layerState(layer);
@@ -273,6 +330,11 @@ export class ControllableCharacter {
     };
   }
 
+  gameplaySnapshot(): GameplayCharacterSnapshot {
+    const observed = this.observe();
+    return { tick: observed.tick, worldTransform: observed.transform, velocity: observed.velocity, grounded: observed.grounded, locomotionStateId: observed.locomotionStateId, actionStateId: observed.actionStateId, intentSourceKind: observed.intentSourceKind, gameplayParameters: Object.fromEntries([...this.parameters].map(([name, entry]) => [name, entry.value])), activeMotionOverrides: this.overrides.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })), activeMovementScales: this.scales.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })) };
+  }
+
   /**
    * Rebuilds this character at tick 0 from its authored spawn transform.
    *
@@ -286,6 +348,11 @@ export class ControllableCharacter {
     return new ControllableCharacter(this.options);
   }
 }
+
+function validVec(value: { x: number; y: number; z: number }): boolean { return Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.z); }
+function validCommand(command: CharacterMotionCommand): boolean { if (command.type === 'impulse') return validVec(command.deltaVelocity); if (command.type === 'teleport') return validVec(command.position) && (command.yawRad === undefined || Number.isFinite(command.yawRad)); if (!command.key || !Number.isInteger(command.durationTicks) || command.durationTicks <= 0 || Math.abs(command.priority ?? 0) > 1000) return false; return command.type === 'movement-scale' ? [command.speedScale, command.accelerationScale ?? 1, command.turnScale ?? 1].every((x) => Number.isFinite(x) && x >= 0) : validVec(command.velocity); }
+function add(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
+function inWorld(value: { x: number; y: number; z: number }, space: 'world' | 'facing' | 'camera', facing: number, camera: number) { if (space === 'world') return { ...value }; const yaw = space === 'facing' ? facing : camera; const cos = Math.cos(yaw); const sin = Math.sin(yaw); return { x: value.x * cos + value.z * sin, y: value.y, z: -value.x * sin + value.z * cos }; }
 
 function yawAsQuaternion(yawRad: number): TransformDefinition['rotation'] {
   const half = yawRad / 2;
