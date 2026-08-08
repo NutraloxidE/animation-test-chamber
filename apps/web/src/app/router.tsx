@@ -130,8 +130,9 @@ export function AppRouter(): JSX.Element {
           element={
             <NotFoundPage
               title="No such page"
-              detail="The editor has two routes: /edit/prefab/:prefabId and /edit/scene/:sceneId."
+              detail="The editor has three routes: /edit/rig, /edit/prefab/:prefabId, and /edit/scene/:sceneId."
               links={[
+                { to: '/edit/rig', label: 'Rig Editor' },
                 { to: ROUTES.prefabs, label: 'Prefabs' },
                 { to: ROUTES.scenes, label: 'Scenes' },
               ]}
