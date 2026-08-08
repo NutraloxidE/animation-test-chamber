@@ -174,7 +174,7 @@ describe('planning an animation adoption', () => {
 });
 
 describe('planning a prefab adoption', () => {
-  const navigator = usage.find((entry) => entry.prefab.assetId === 'navigator')!;
+  const navigator = usage.find((entry) => entry.prefab.assetId === 'gameplay-navigator')!;
 
   it('re-points exactly the named Scene instance', () => {
     expect(navigator.sceneInstances.length).toBeGreaterThan(1);

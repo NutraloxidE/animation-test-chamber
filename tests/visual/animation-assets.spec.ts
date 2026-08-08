@@ -50,12 +50,12 @@ test('browses Prefabs with exact identity, usage, validation and delete policy',
   await showPane(page, 'types');
   await page.getByTestId('asset-type-game-object-prefab').click();
   await showPane(page, 'list');
-  await expect(page.getByTestId('prefab-card-navigator')).toBeVisible();
+  await expect(page.getByTestId('prefab-card-gameplay-navigator')).toBeVisible();
   await expect(page.getByTestId('asset-card-idle')).toHaveCount(0);
 
-  await page.getByTestId('prefab-card-navigator').click();
+  await page.getByTestId('prefab-card-gameplay-navigator').click();
   await showPane(page, 'detail');
-  await expect(page.getByTestId('prefab-detail')).toContainText('navigator@1.0.0');
+  await expect(page.getByTestId('prefab-detail')).toContainText('gameplay-navigator@1.0.0');
   await expect(page.getByTestId('prefab-components')).toContainText('animator');
   await expect(page.getByTestId('prefab-dependencies')).toContainText('animation-behavior');
   await expect(page.getByTestId('prefab-usage')).toContainText('2 Scene instance(s)');

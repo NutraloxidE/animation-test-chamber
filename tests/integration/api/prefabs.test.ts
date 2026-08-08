@@ -217,7 +217,7 @@ function exactAnimationRequest(source: AssetReference, targetId: string) {
 }
 
 function prefabAdoptionRequest(targets: Array<{ sceneId: string; gameObjectId: string }>) {
-  const source = registry().referenceTo('navigator', '1.0.0');
+  const source = registry().referenceTo('gameplay-navigator', '1.0.0');
   const current = project();
   const holders = current.scenes.flatMap((scene) =>
     (scene.gameObjects ?? [])
@@ -306,7 +306,7 @@ describe('Prefab API exact identity', () => {
   });
 
   it('reports exact usage and delete blockers', async () => {
-    const reference = registry().referenceTo('navigator', '1.0.0');
+    const reference = registry().referenceTo('gameplay-navigator', '1.0.0');
     const app = api();
 
     const usageResponse = await app.request(
@@ -473,7 +473,7 @@ describe('Prefab to Scene exact-target adoption', () => {
     expect(after.revisionId).not.toBe(before.revisionId);
     const afterScene = after.scenes.find((scene) => scene.id === target.sceneId)!;
     expect(afterScene.gameObjects?.find((gameObject) => gameObject.id === target.gameObjectId)?.prefab)
-      .toMatchObject({ assetId: 'navigator', version: '1.0.1' });
+      .toMatchObject({ assetId: 'gameplay-navigator', version: '1.0.1' });
     expect(
       JSON.stringify(
         afterScene.gameObjects?.find((gameObject) => gameObject.id === 'scripted-humanoid'),

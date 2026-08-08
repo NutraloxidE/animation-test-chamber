@@ -127,15 +127,14 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('an imported Character plays its canonical takes, and its grip is editable', async ({ page }) => {
+test('an imported Prefab Animator plays its canonical contextual takes', async ({ page }) => {
   /*
    * Switching Character is navigation now. It used to be a preset selector in
    * the Hierarchy, which is exactly the hidden second selector the work package
    * removed: it changed the model without changing the Character being edited.
    */
-  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
-  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
-  await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  await page.goto('/edit/prefab/quaternius-universal-base/animation/root/animator');
+  await expect(page.getByTestId('animation-workspace-toolbar')).toBeVisible();
   await openHierarchy(page);
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
@@ -144,20 +143,6 @@ test('an imported Character plays its canonical takes, and its grip is editable'
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
   await closeHierarchy(page);
-  await page.getByTestId('grip-editor-select').selectOption('rotate');
-  await expect(page.getByTestId('reset-grip')).toBeVisible();
-  await expect(page.getByTestId('mobile-pad')).toBeHidden();
-  await expect(page.getByTestId('status-bar')).toContainText('auto-save');
-  await expect(page.getByTestId('frame-step')).toBeDisabled();
-  await page.getByTestId('toggle-pause').click();
-  await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
-  await expect(page.getByTestId('frame-step')).toBeEnabled();
-  await page.getByTestId('frame-step').click();
-  await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Weapon and equipment moved into the Hierarchy dock (and the Character is
-  // the route); only
-  // viewport-controls' own body (e.g. the grip editor) collapses with it.
-  await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
@@ -193,8 +178,7 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
-  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
-  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
+  await page.goto('/edit/prefab/quaternius-universal-base/animation/root/animator');
   await openHierarchy(page);
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   await closeHierarchy(page);

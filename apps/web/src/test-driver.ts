@@ -3,8 +3,23 @@ import type { SimulationState } from '@atc/replay-runtime';
 import type { WorldObservation } from '@atc/world-runtime';
 import { useChamber } from './store.ts';
 import type { ChamberEngine } from './engine.ts';
+import type { RuntimeScene } from '@atc/game-object-runtime';
+import type { CharacterIntent } from '@atc/character-control-runtime';
+import type { GameplayCharacterSnapshot } from '@atc/gameplay-sdk';
+import type { JsonObject } from '@atc/schema';
 
 let activeEngine: ChamberEngine | null = null;
+let activePlayRuntime: RuntimeScene | null = null;
+let playTestDriven = false;
+
+export function registerPlayRuntime(runtime: RuntimeScene): () => void {
+  if (!import.meta.env.DEV) return () => undefined;
+  activePlayRuntime = runtime;
+  playTestDriven = false;
+  return () => { if (activePlayRuntime === runtime) activePlayRuntime = null; };
+}
+
+export function isPlayTestDriven(): boolean { return playTestDriven; }
 
 /** Point browser automation at the engine owned by the currently mounted workspace. */
 export function registerTestEngine(engine: ChamberEngine): () => void {
@@ -46,6 +61,12 @@ export interface AtcTestDriver {
   enableWorld(): void;
   advanceWorldTicks(count: number): void;
   observeWorld(): WorldObservation;
+  enablePlay(): void;
+  injectPlayIntent(playerIndex: number, intent: CharacterIntent): void;
+  advancePlayTicks(count: number, cameraYawRad?: number): void;
+  sendPlayEvent(targetNodeId: string, type: string, payload?: JsonObject): void;
+  getPlayGameplaySnapshot(): ReturnType<RuntimeScene['gameplaySnapshot']>;
+  getPlayCharacterSnapshot(runtimeNodeId: string): GameplayCharacterSnapshot | undefined;
 }
 
 declare global {
@@ -86,5 +107,11 @@ export function installTestDriver(): void {
     observeWorld() {
       return useChamber.getState().worldEngine.observe();
     },
+    enablePlay() { playTestDriven = true; },
+    injectPlayIntent(playerIndex, intent) { activePlayRuntime?.injectHumanIntent(playerIndex, intent); },
+    advancePlayTicks(count, cameraYawRad = 0) { for (let index = 0; index < count; index += 1) activePlayRuntime?.step({ cameraYawRad }); },
+    sendPlayEvent(targetNodeId, type, payload = {}) { activePlayRuntime?.emit(targetNodeId, { type, payload }); },
+    getPlayGameplaySnapshot() { return activePlayRuntime?.gameplaySnapshot() ?? {}; },
+    getPlayCharacterSnapshot(runtimeNodeId) { return activePlayRuntime?.getRuntimeNode(runtimeNodeId)?.character?.gameplaySnapshot(); },
   };
 }

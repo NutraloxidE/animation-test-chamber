@@ -25,6 +25,7 @@ import { RuntimeGameObject, instantiateGameObject, type GameObjectStepContext } 
 import type { GameObjectRuntimeServices } from './services.ts';
 import type { GameplayEvent, GameplayObjectApi, GameplayObjectView, GameplayWorld } from '@atc/gameplay-sdk';
 import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
+import { AiInjectedCharacterIntentSource, InjectedCharacterIntentSource, type CharacterIntent } from '@atc/character-control-runtime';
 
 export interface InstantiateSceneOptions {
   scene: SceneDefinition;
@@ -70,12 +71,12 @@ export class RuntimeScene {
     this.build();
   }
 
-  private runtimeServices(): GameObjectRuntimeServices { return { ...this.options.services, gameplayWorld: this.gameplayWorld, gameplayObject: (id, componentId) => this.gameplayObject(id, componentId) }; }
+  private runtimeServices(): GameObjectRuntimeServices { return { ...this.options.services, gameplayWorld: this.gameplayWorld, gameplaySceneId: this.id, gameplayObject: (id, originKey) => this.gameplayObject(id, originKey) }; }
   private guardBudget(count: number, operation: string): void { if (count >= this.maxOperationsPerTick) throw new Error(`gameplay ${operation} budget exceeded in scene "${this.id}"`); }
   private tagsOf(object: RuntimeGameObject): string[] { return object.definition.root.components.flatMap((component) => component.componentType === 'tags' ? component.tags : []); }
   private objectView(id: string): GameplayObjectView | undefined { return this.gameplayObject(id, 'world'); }
   getRuntimeNode(runtimeNodeId: string): RuntimeGameObject | undefined { return this.gameObjects.flatMap((root) => root.walk()).find((entry) => entry.id === runtimeNodeId); }
-  private gameplayObject(id: string, componentId: string): GameplayObjectApi | undefined {
+  private gameplayObject(id: string, originKey: string): GameplayObjectApi | undefined {
     const object = this.getRuntimeNode(id);
     if (!object) return undefined;
     const ok = { ok: true } as const;
@@ -90,7 +91,7 @@ export class RuntimeScene {
         setLocal: (transform) => { if (object.character) return refused; object.setLocalTransform(transform); return ok; },
         translateLocal: (delta) => { if (object.character) return refused; object.localTransform.position.x += delta.x; object.localTransform.position.y += delta.y; object.localTransform.position.z += delta.z; return ok; },
       },
-      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, componentId), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
+      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, originKey), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
     };
   }
 
@@ -145,6 +146,13 @@ export class RuntimeScene {
 
   get(gameObjectId: string): RuntimeGameObject | undefined {
     return this.objectsById.get(gameObjectId);
+  }
+
+  injectHumanIntent(playerIndex: number, intent: CharacterIntent): void {
+    for (const object of this.gameObjects.flatMap((root) => root.walk())) {
+      const source = object.intentSource;
+      if (source instanceof InjectedCharacterIntentSource && !(source instanceof AiInjectedCharacterIntentSource) && source.playerIndex === playerIndex) source.inject(intent);
+    }
   }
 
   /** The camera the Scene plays through, by GameObject id. */

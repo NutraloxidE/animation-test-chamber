@@ -114,6 +114,9 @@ importers:
       '@atc/capability-runtime':
         specifier: workspace:*
         version: link:../../packages/capability-runtime
+      '@atc/character-control-runtime':
+        specifier: workspace:*
+        version: link:../../packages/character-control-runtime
       '@atc/editor-core':
         specifier: workspace:*
         version: link:../../packages/editor-core
@@ -123,6 +126,9 @@ importers:
       '@atc/gameplay':
         specifier: workspace:*
         version: link:../../packages/gameplay
+      '@atc/gameplay-sdk':
+        specifier: workspace:*
+        version: link:../../packages/gameplay-sdk
       '@atc/haptics-runtime':
         specifier: workspace:*
         version: link:../../packages/haptics-runtime
@@ -235,6 +241,9 @@ importers:
       '@atc/animation-runtime':
         specifier: workspace:*
         version: link:../animation-runtime
+      '@atc/gameplay-sdk':
+        specifier: workspace:*
+        version: link:../gameplay-sdk
       '@atc/input-runtime':
         specifier: workspace:*
         version: link:../input-runtime

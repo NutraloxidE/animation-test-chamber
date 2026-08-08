@@ -54,5 +54,6 @@ export interface GameObjectRuntimeServices {
   terrain?: TerrainPreset;
   gameplayRegistry?: GameplayScriptRegistry;
   gameplayWorld?: GameplayWorld;
-  gameplayObject?: (runtimeNodeId: string, componentId: string) => GameplayObjectApi | undefined;
+  gameplaySceneId?: string;
+  gameplayObject?: (runtimeNodeId: string, originKey: string) => GameplayObjectApi | undefined;
 }

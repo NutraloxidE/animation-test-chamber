@@ -235,13 +235,14 @@ export class ControllableCharacter {
 
   enqueueCommand(command: CharacterMotionCommand, componentId: string): GameplayCommandResult {
     if (!validCommand(command)) return { ok: false, code: 'invalid-command', message: 'motion command contains invalid values' };
+    if (this.pending.filter((entry) => entry.componentId === componentId).length >= 16) return { ok: false, code: 'operation-budget-exceeded', message: 'script character command budget exceeded' };
     if (this.pending.length >= 64) return { ok: false, code: 'operation-budget-exceeded', message: 'character command budget exceeded' };
     this.pending.push({ command: structuredClone(command), componentId, key: `${componentId}/${'key' in command ? command.key : this.sequence++}` });
     return { ok: true };
   }
 
   setGameplayParameter(name: string, value: boolean | number | string, durationTicks?: number): GameplayCommandResult {
-    if (!/^gameplay\.[A-Za-z][A-Za-z0-9._-]*$/.test(name) || (durationTicks !== undefined && (!Number.isInteger(durationTicks) || durationTicks <= 0))) return { ok: false, code: 'invalid-parameter-name', message: 'parameter must be gameplay.* with a positive integer duration' };
+    if (!/^gameplay\.[A-Za-z][A-Za-z0-9._-]*$/.test(name) || (typeof value === 'number' && !Number.isFinite(value)) || (durationTicks !== undefined && (!Number.isInteger(durationTicks) || durationTicks <= 0))) return { ok: false, code: 'invalid-parameter-name', message: 'parameter must be gameplay.*, finite, and have a positive integer duration' };
     this.parameters.set(name, { value, ...(durationTicks === undefined ? {} : { remainingTicks: durationTicks }) });
     return { ok: true };
   }
@@ -279,11 +280,20 @@ export class ControllableCharacter {
       const value = inWorld(entry.command.velocity, entry.command.space, this.simulationValue.state.yawRad, cameraYawRad);
       additive = add(additive, { x: entry.command.horizontal === 'add' ? value.x : 0, y: entry.command.vertical === 'add' ? value.y : 0, z: entry.command.horizontal === 'add' ? value.z : 0 });
     }
-    const scale = [...this.scales].sort((a, b) => (b.command.priority ?? 0) - (a.command.priority ?? 0) || a.key.localeCompare(b.key))[0];
+    const sortedScales = [...this.scales].sort((a, b) => (b.command.priority ?? 0) - (a.command.priority ?? 0) || a.key.localeCompare(b.key));
+    const speedScale = sortedScales[0]?.command.speedScale;
+    const accelerationScale = sortedScales.find((entry) => entry.command.accelerationScale !== undefined)?.command.accelerationScale;
+    const turnScale = sortedScales.find((entry) => entry.command.turnScale !== undefined)?.command.turnScale;
     const parameters = Object.fromEntries([...this.parameters].map(([name, entry]) => [name, entry.value]));
-    const frame: ExternalMotionFrame = { addVelocity: additive, gameplayParameters: parameters, ...(teleport ? { teleport } : {}), ...(scale ? { speedScale: scale.command.speedScale, accelerationScale: scale.command.accelerationScale ?? 1, turnScale: scale.command.turnScale ?? 1 } : {}) };
-    if (replacement) frame.replaceHorizontal = inWorld(replacement.command.velocity, replacement.command.space, this.simulationValue.state.yawRad, cameraYawRad);
+    const frame: ExternalMotionFrame = { addVelocity: additive, gameplayParameters: parameters, ...(teleport ? { teleport } : {}), ...(speedScale === undefined ? {} : { speedScale }), ...(accelerationScale === undefined ? {} : { accelerationScale }), ...(turnScale === undefined ? {} : { turnScale }) };
+    const replacementVelocity = replacement ? inWorld(replacement.command.velocity, replacement.command.space, this.simulationValue.state.yawRad, cameraYawRad) : undefined;
+    if (replacementVelocity) frame.replaceHorizontal = replacementVelocity;
     if (vertical) frame.replaceVertical = inWorld(vertical.command.velocity, vertical.command.space, this.simulationValue.state.yawRad, cameraYawRad).y;
+    const facing = sortedOverrides.find((entry) => entry.command.facing !== undefined && entry.command.facing !== 'preserve');
+    if (facing?.command.facing === 'velocity') {
+      const velocity = inWorld(facing.command.velocity, facing.command.space, this.simulationValue.state.yawRad, cameraYawRad);
+      if (Math.hypot(velocity.x, velocity.z) > 1e-6) frame.facingYawRad = Math.atan2(velocity.x, velocity.z);
+    } else if (facing?.command.facing && typeof facing.command.facing === 'object') frame.facingYawRad = facing.command.facing.yawRad;
     for (const entry of this.overrides) entry.remainingTicks -= 1;
     for (const entry of this.scales) entry.remainingTicks -= 1;
     this.overrides = this.overrides.filter((entry) => entry.remainingTicks > 0);

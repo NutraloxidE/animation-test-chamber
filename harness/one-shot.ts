@@ -53,6 +53,15 @@ function vitestStage(name: string, directory: string, suggestion: string): Stage
   );
 }
 
+function commandStage(name: string, script: string): StageResult {
+  return stage(name, { reproduce: `pnpm ${script}`, suggestion: `fix ${name} contracts` }, () => {
+    const { code, output } = run('pnpm', [script]);
+    return code === 0
+      ? { ok: true, issues: [], output: output.split('\n').slice(-4).join('\n') }
+      : { ok: false, issues: [{ files: [], expected: `${script} to pass`, actual: output.split('\n').slice(-20).join('\n'), message: `${script} failed` }], output };
+  });
+}
+
 function playwrightStage(): StageResult {
   return stage(
     'visual (playwright)',
@@ -191,8 +200,10 @@ async function main(): Promise<void> {
     results.push(result);
   }
 
-  results.push(vitestStage('character motion', 'tests/unit/character-motion', 'fix the typed Character Motion command boundary'));
-  printStage(results.at(-1)!);
+  for (const [name, script] of [['gameplay', 'harness:gameplay'], ['play surface', 'harness:play-surface'], ['vibe coding', 'harness:vibe-coding'], ['character motion', 'harness:character-motion']] as const) {
+    results.push(commandStage(name, script));
+    printStage(results.at(-1)!);
+  }
 
   // Also before the tests: an unresolved transaction from a prior crash
   // would make the write API read-only, which every later write-path test

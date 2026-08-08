@@ -9,7 +9,7 @@
     "tags": ["character", "humanoid", "gameplay-demo"],
     "createdAt": "2026-08-08T00:00:00.000Z",
     "createdBy": "gameplay-vibe-coding-platform",
-    "contentHash": "bacaff36252f5ecac033adbbbf76d63aa3715013caeeb0cce49c09b1fd503371"
+    "contentHash": "ff542872379c41f9144b0cc5dd3b4dfc96eab271f27d5ab5668fca078dc7c58c"
   },
   "derivation": {
     "mode": "variant",
@@ -42,6 +42,18 @@
           "enabled": true,
           "script": { "assetType": "gameplay-script", "assetId": "stamina", "version": "1.0.0", "contentHash": "fd9d5256dbdf0ca73be54db0250e7c335a25f914b4bcd9b4145b45eb4c9b8cfb" },
           "properties": { "maxStamina": 100, "drainPerSecond": 20, "regenPerSecond": 10, "startsSprinting": false }
+        }
+      },
+      {
+        "kind": "add-component",
+        "nodeId": "root",
+        "component": {
+          "schemaVersion": 1,
+          "componentId": "air-dash",
+          "componentType": "script",
+          "enabled": true,
+          "script": { "assetType": "gameplay-script", "assetId": "air-dash", "version": "1.0.0", "contentHash": "a33fe764d6262949bab3b134f62469d75b384644dde66a53a92a0ddde36c00a3" },
+          "properties": { "speed": 10, "durationSeconds": 0.18, "cooldownSeconds": 0.8, "allowGrounded": true }
         }
       }
     ]

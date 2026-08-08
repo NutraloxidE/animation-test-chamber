@@ -54,9 +54,17 @@ export class GameplayScriptRuntime implements RuntimeComponent {
   }
 
   private gameplayContext(step: RuntimeComponentStepContext): GameplayContext {
-    const runtimeSelf = this.context.services.gameplayObject?.(this.context.gameObjectId, this.componentId);
+    const rootGameObjectId = this.context.gameObjectId.split('/')[0]!;
+    const originKey = `${this.context.services.gameplaySceneId ?? 'standalone'}/${rootGameObjectId}/${this.context.gameObjectId}/${this.componentId}/${this.script.assetId}@${this.script.version}`;
+    const runtimeSelf = this.context.services.gameplayObject?.(this.context.gameObjectId, originKey);
     const self = runtimeSelf ?? { id: this.context.gameObjectId, tags: [], worldTransform: () => { throw new Error('gameplay runtime node is unavailable'); }, transform: { world: () => { throw new Error('gameplay runtime node is unavailable'); }, local: () => { throw new Error('gameplay runtime node is unavailable'); }, setLocal: () => ({ ok: false as const, code: 'target-not-found' as const, message: 'gameplay runtime node is unavailable' }), translateLocal: () => ({ ok: false as const, code: 'target-not-found' as const, message: 'gameplay runtime node is unavailable' }) } };
-    return { ...step, random: this.random, self, world: this.context.services.gameplayWorld ?? unavailableWorld };
+    const baseWorld = this.context.services.gameplayWorld ?? unavailableWorld;
+    const world = this.context.services.gameplayObject ? {
+      ...baseWorld,
+      get: (id: string) => this.context.services.gameplayObject?.(id, originKey),
+      findByTag: (tag: string) => baseWorld.findByTag(tag).flatMap((entry) => this.context.services.gameplayObject?.(entry.id, originKey) ?? []),
+    } : baseWorld;
+    return { ...step, random: this.random, self, world };
   }
 
   start(step: RuntimeComponentStepContext): void {

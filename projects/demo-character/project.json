@@ -886,9 +886,9 @@
           "componentOverrides": [],
           "prefab": {
             "assetType": "game-object-prefab",
-            "assetId": "navigator",
+            "assetId": "gameplay-navigator",
             "version": "1.0.0",
-            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            "contentHash": "ff542872379c41f9144b0cc5dd3b4dfc96eab271f27d5ab5668fca078dc7c58c"
           },
           "bindings": {
             "characterIntent": {
@@ -924,9 +924,9 @@
           "componentOverrides": [],
           "prefab": {
             "assetType": "game-object-prefab",
-            "assetId": "navigator",
+            "assetId": "gameplay-navigator",
             "version": "1.0.0",
-            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            "contentHash": "ff542872379c41f9144b0cc5dd3b4dfc96eab271f27d5ab5668fca078dc7c58c"
           },
           "bindings": {
             "characterIntent": {
