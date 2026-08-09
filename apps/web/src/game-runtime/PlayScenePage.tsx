@@ -18,9 +18,15 @@ import {
   type SceneRenderProjection,
 } from "../game-objects/render-projection.ts";
 import { GameOverlay } from "../game-ui/GameOverlay.tsx";
-import { isPlayTestDriven, registerPlayRuntime } from "../test-driver.ts";
-
-type PlayCameraState = { yaw: number; pitch: number };
+import {
+  isPlayTestDriven,
+  registerPlayRuntime,
+  registerPlayThreeScene,
+} from "../test-driver.ts";
+import {
+  authoredFollowCameraState,
+  type PlayCameraState,
+} from "./camera-follow.ts";
 
 function PlayClock({
   runtime,
@@ -73,13 +79,15 @@ function TargetCameraFollow({
   runtime,
   profile,
   state,
+  initialPosition,
 }: {
   runtime: RuntimeScene;
   profile: CameraProfile;
   state: PlayCameraState;
+  initialPosition: THREE.Vector3;
 }) {
   const { camera } = useThree();
-  const smoothed = useRef(new THREE.Vector3(0, 3, -6));
+  const smoothed = useRef(initialPosition.clone());
   const targetId =
     runtime.activeCamera?.definition.relations.cameraTargetGameObjectId;
 
@@ -102,6 +110,12 @@ function TargetCameraFollow({
     camera.position.copy(smoothed.current);
     camera.lookAt(position.x, position.y + profile.lookAtHeight, position.z);
   });
+  return null;
+}
+
+function PlayThreeSceneRegistration() {
+  const { scene, camera } = useThree();
+  useEffect(() => registerPlayThreeScene(scene, camera), [scene, camera]);
   return null;
 }
 
@@ -135,39 +149,6 @@ function AuthoredCamera({ projection }: { projection: SceneRenderProjection }) {
   );
 }
 
-/** Browser-visible evidence derived from the same projection the renderer consumes. */
-function PlayRenderEvidence({
-  projection,
-  output,
-}: {
-  projection: SceneRenderProjection;
-  output: { current: HTMLOutputElement | null };
-}) {
-  const { camera } = useThree();
-  useFrame(() => {
-    if (!output.current) return;
-    output.current.dataset.cameraPosition = JSON.stringify(
-      camera.position.toArray(),
-    );
-    output.current.dataset.cameraYaw = String(
-      new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ").y,
-    );
-    output.current.dataset.renderedObjects = JSON.stringify(
-      projection.nodes
-        .filter((node) => node.model !== undefined)
-        .map((node) => ({
-          id: node.gameObjectId,
-          position: node.worldTransform.position,
-          model: node.model?.binding,
-          animationState: node.animator?.stateId,
-          animationTime: node.animator?.normalizedTime,
-          blendWeight: node.animator?.blendWeight,
-        })),
-    );
-  });
-  return null;
-}
-
 function PlayCanvas({
   runtime,
   sampler,
@@ -182,14 +163,39 @@ function PlayCanvas({
   cameraProfile: CameraProfile;
 }) {
   const [frame, setFrame] = useState(0);
-  const cameraState = useRef<PlayCameraState>({ yaw: 0, pitch: 0.25 });
-  const evidence = useRef<HTMLOutputElement | null>(null);
   const followsTarget =
     runtime.activeCamera?.definition.relations.cameraTargetGameObjectId !==
     undefined;
   const projection = useMemo(
     () => projectRuntimeScene(runtime, activeCameraGameObjectId),
     [runtime, activeCameraGameObjectId, frame],
+  );
+  const authoredCameraPosition =
+    projection.activeCamera?.worldTransform.position;
+  const targetId =
+    runtime.activeCamera?.definition.relations.cameraTargetGameObjectId;
+  const targetPosition = targetId
+    ? runtime.get(targetId)?.worldTransform.position
+    : undefined;
+  // This fallback is only for malformed follow relations; a valid authored
+  // camera and target always determine the initial orbit state.
+  const cameraState = useRef<PlayCameraState>(
+    authoredCameraPosition && targetPosition
+      ? authoredFollowCameraState(
+          authoredCameraPosition,
+          targetPosition,
+          cameraProfile,
+        )
+      : { yaw: 0, pitch: 0 },
+  );
+  const initialCameraPosition = useRef(
+    authoredCameraPosition
+      ? new THREE.Vector3(
+          authoredCameraPosition.x,
+          authoredCameraPosition.y,
+          authoredCameraPosition.z,
+        )
+      : new THREE.Vector3(),
   );
   if (!projection.activeCamera)
     return (
@@ -201,6 +207,7 @@ function PlayCanvas({
     <>
       <Canvas data-testid="play-canvas">
         <AuthoredCamera projection={projection} />
+        <PlayThreeSceneRegistration />
         <PlayClock
           runtime={runtime}
           sampler={sampler}
@@ -213,13 +220,12 @@ function PlayCanvas({
             runtime={runtime}
             profile={cameraProfile}
             state={cameraState.current}
+            initialPosition={initialCameraPosition.current}
           />
         )}
-        <PlayRenderEvidence projection={projection} output={evidence} />
         <ambientLight intensity={0.5} />
         <GameObjectRenderer projection={projection} />
       </Canvas>
-      <output ref={evidence} hidden data-testid="play-render-evidence" />
     </>
   );
 }

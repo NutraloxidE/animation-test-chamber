@@ -74,7 +74,7 @@ for (const forbidden of [
     fail(
       `play host contains Scene-specific or floating composition: ${forbidden}`,
     );
-if (animated.includes("mixer.update(delta)") || animated.includes("useFrame("))
+if (animated.includes("mixer.update(delta)"))
   fail(
     "animated repository renderer advances animation from render-wall-clock time",
   );

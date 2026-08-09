@@ -104,7 +104,9 @@ export interface LayerRuntimeState {
   normalizedTime: number;
   /** State being blended out of, if any. */
   previousStateId: string | null;
+  previousTimeSec: number;
   previousNormalizedTime: number;
+  previousPlaybackSpeed: number;
   blendElapsedSec: number;
   blendDurationSec: number;
   /** 1 = fully in the current state. */
@@ -128,7 +130,9 @@ export const EMPTY_LAYER_STATE: LayerRuntimeState = Object.freeze({
   timeSec: 0,
   normalizedTime: 0,
   previousStateId: null,
+  previousTimeSec: 0,
   previousNormalizedTime: 0,
+  previousPlaybackSpeed: 1,
   blendElapsedSec: 0,
   blendDurationSec: 0,
   blendWeight: 1,
@@ -326,7 +330,9 @@ export class AnimationGraphRuntime {
       timeSec: startTime,
       normalizedTime: startOffsetNormalized,
       previousStateId: previous ? previous.stateId : null,
+      previousTimeSec: previous ? previous.timeSec : 0,
       previousNormalizedTime: previous ? previous.normalizedTime : 0,
+      previousPlaybackSpeed: previous ? previous.playbackSpeed : 1,
       blendElapsedSec: 0,
       blendDurationSec,
       blendWeight: blendDurationSec > 0 ? 0 : 1,
@@ -468,6 +474,19 @@ export class AnimationGraphRuntime {
     }
 
     if (layer.blendDurationSec > 0 && layer.blendWeight < 1) {
+      const previousClip = layer.previousStateId
+        ? this.getClipFor(layer.previousStateId)
+        : undefined;
+      if (previousClip) {
+        layer.previousTimeSec +=
+          FIXED_DT *
+          layer.previousPlaybackSpeed *
+          (this.speedScales.get(layerId) ?? 1);
+        layer.previousNormalizedTime = normalizedTimeOf(
+          previousClip,
+          layer.previousTimeSec,
+        );
+      }
       layer.blendElapsedSec += FIXED_DT;
       layer.blendWeight = clamp01(layer.blendElapsedSec / layer.blendDurationSec);
       if (layer.blendWeight >= 1) {

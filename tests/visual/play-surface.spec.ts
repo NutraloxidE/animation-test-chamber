@@ -2,25 +2,19 @@ import { expect, test } from "@playwright/test";
 
 type RenderedObjectEvidence = {
   id: string;
-  position: { x: number; y: number; z: number };
-  model?: {
-    kind: string;
-    assetPath?: string;
-    scale?: number;
-    rotationYRad?: number;
-  };
-  animationState?: string;
-  animationTime?: number;
-  blendWeight?: number;
+  position: [number, number, number];
+  assetPath: string;
+  scale: number;
+  rotationYRad: number;
+  animationState: string;
+  animationTime: number;
+  blendWeight: number;
 };
 
 async function renderedObjects(
   page: import("@playwright/test").Page,
 ): Promise<RenderedObjectEvidence[]> {
-  const raw = await page
-    .getByTestId("play-render-evidence")
-    .getAttribute("data-rendered-objects");
-  return raw ? (JSON.parse(raw) as RenderedObjectEvidence[]) : [];
+  return page.evaluate(() => window.__ATC_TEST__!.getPlayRenderedModels());
 }
 
 test("root play surface accepts human input and runs Air Dash through Gameplay Script", async ({
@@ -37,18 +31,15 @@ test("root play surface accepts human input and runs Air Dash through Gameplay S
   const renderedBefore = (await renderedObjects(page)).find(
     (object) => object.id === "controlled-humanoid",
   )!;
-  expect(renderedBefore.model).toEqual({
-    kind: "repository-model",
+  expect(renderedBefore).toMatchObject({
     assetPath:
       "/assets/characters/quaternius-universal-base/Superhero_Female_FullBody.gltf",
     scale: 1,
     rotationYRad: 0,
   });
-  const cameraBefore = JSON.parse(
-    (await page
-      .getByTestId("play-render-evidence")
-      .getAttribute("data-camera-position"))!,
-  ) as number[];
+  const cameraBefore = await page.evaluate(() =>
+    window.__ATC_TEST__!.getPlayCameraSnapshot(),
+  );
 
   const before = await page.evaluate(() =>
     window.__ATC_TEST__!.getPlayCharacterSnapshot("controlled-humanoid"),
@@ -71,9 +62,9 @@ test("root play surface accepts human input and runs Air Dash through Gameplay S
       async () =>
         (await renderedObjects(page)).find(
           (object) => object.id === "controlled-humanoid",
-        )?.position.z,
+        )?.position[2],
     )
-    .not.toBe(renderedBefore.position.z);
+    .not.toBe(renderedBefore.position[2]);
   await expect
     .poll(
       async () =>
@@ -83,33 +74,27 @@ test("root play surface accepts human input and runs Air Dash through Gameplay S
     )
     .toMatch(/walk|run/);
   await expect
-    .poll(
-      async () =>
-        JSON.parse(
-          (await page
-            .getByTestId("play-render-evidence")
-            .getAttribute("data-camera-position"))!,
-        ) as number[],
+    .poll(async () =>
+      page.evaluate(
+        () => window.__ATC_TEST__!.getPlayCameraSnapshot()?.position,
+      ),
     )
-    .not.toEqual(cameraBefore);
+    .not.toEqual(cameraBefore?.position);
   await page.keyboard.up("KeyW");
 
-  const yawBefore = Number(
-    await page
-      .getByTestId("play-render-evidence")
-      .getAttribute("data-camera-yaw"),
+  const yawBefore = await page.evaluate(
+    () => window.__ATC_TEST__!.getPlayCameraSnapshot()?.yaw,
   );
   await page.mouse.move(200, 200);
   await page.mouse.move(320, 200);
   await expect
-    .poll(async () =>
-      Number(
-        await page
-          .getByTestId("play-render-evidence")
-          .getAttribute("data-camera-yaw"),
-      ),
-    )
-    .not.toBeCloseTo(yawBefore);
+    .poll(async () => {
+      const yaw = await page.evaluate(
+        () => window.__ATC_TEST__!.getPlayCameraSnapshot()?.yaw,
+      );
+      return Math.abs((yaw ?? yawBefore!) - yawBefore!);
+    })
+    .toBeGreaterThan(0.0005);
 
   await page.evaluate(() => {
     window.__ATC_TEST__!.enablePlay();

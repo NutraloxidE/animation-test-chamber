@@ -48,6 +48,7 @@ import type {
   RenderAnimatorFact,
   RenderProjectionIssue,
 } from "./render-projection.ts";
+import { deterministicBlendWeights } from "./animation-blend.ts";
 
 /** A take's identity: the file it lives in plus its name inside that file. */
 function takeKey(source: ExternalAnimationSource): string {
@@ -234,10 +235,15 @@ export function AnimatedRepositoryModel({
     const previousClip = previousSource
       ? clipsByTake.get(takeKey(previousSource))
       : undefined;
-    if (previousClip && previousClip !== clip && animator.blendWeight < 1) {
+    const weights = deterministicBlendWeights(
+      previousSource ? takeKey(previousSource) : undefined,
+      key,
+      animator.blendWeight,
+    );
+    if (previousClip && weights.previous > 0) {
       const previous = mixer.clipAction(previousClip, scene).reset().play();
       previous.time = animator.previousNormalizedTime * previousClip.duration;
-      previous.setEffectiveWeight(1 - animator.blendWeight);
+      previous.setEffectiveWeight(weights.previous);
     }
 
     const loop = animator.playback.loopByStateId[animator.stateId] ?? true;
@@ -248,12 +254,26 @@ export function AnimatedRepositoryModel({
       .play();
     next.clampWhenFinished = !loop;
     next.time = animator.normalizedTime * clip.duration;
-    next.setEffectiveWeight(animator.blendWeight);
+    next.setEffectiveWeight(weights.current);
     mixer.update(0);
   }, [key, clipsByTake, mixer, scene, animator]);
 
   return (
-    <group scale={[scale, scale, scale]} rotation-y={rotationYRad}>
+    <group
+      name={`${gameObjectId}:repository-model`}
+      scale={[scale, scale, scale]}
+      rotation-y={rotationYRad}
+      userData={{
+        atcRenderedModel: true,
+        atcGameObjectId: gameObjectId,
+        atcModelAssetPath: assetPath,
+        atcModelScale: scale,
+        atcModelRotationYRad: rotationYRad,
+        atcAnimationState: animator.stateId,
+        atcAnimationTime: animator.normalizedTime,
+        atcBlendWeight: animator.blendWeight,
+      }}
+    >
       <primitive object={scene} />
     </group>
   );
