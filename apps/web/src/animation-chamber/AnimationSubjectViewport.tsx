@@ -21,7 +21,6 @@ import { Character } from '../three/Character.tsx';
 import { TerrainMesh } from '../three/TerrainMesh.tsx';
 import { DebugOverlays } from '../three/DebugOverlays.tsx';
 import { WEAPON_MODES, weaponMode } from '../three/catalog.ts';
-import { resolveWeaponGrip } from '../rig-editor/resolve-character-presentation.ts';
 import { useAnimationChamber } from './useAnimationChamber.ts';
 import { resolveAnimationSubjectPresentation } from './resolve-subject-presentation.ts';
 import { registerTestEngine } from '../test-driver.ts';
@@ -87,10 +86,14 @@ export function AnimationSubjectViewport(): JSX.Element | null {
    */
   const knownContext = WEAPON_MODES.some((mode) => mode.id === motionContextId);
   const context = knownContext ? weaponMode(motionContextId) : UNKNOWN_CONTEXT_PRESENTATION;
-  const grip =
-    presentation && knownContext
-      ? resolveWeaponGrip({ model: presentation.model.effective, weaponModeId: context.id })
-      : undefined;
+  const socket = knownContext
+    ? document.presentation.equipmentSockets?.sockets.find((candidate) =>
+        candidate.acceptedItemTags.includes(context.id),
+      )
+    : undefined;
+  const grip = socket
+    ? { position: socket.localPosition, rotation: socket.localRotation }
+    : undefined;
 
   useEffect(() => {
     engine.attachInput();
@@ -161,6 +164,7 @@ export function AnimationSubjectViewport(): JSX.Element | null {
               presentation={presentation}
               weapon={context}
               grip={grip}
+              attachmentBoneName={socket?.boneName}
             />
           </group>
         ))}

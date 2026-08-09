@@ -49,6 +49,7 @@ export function GltfCharacter({
   presentation,
   weapon,
   grip,
+  attachmentBoneName,
   gripEditorMode,
   onGripChange,
 }: {
@@ -58,6 +59,7 @@ export function GltfCharacter({
   presentation: ResolvedCharacterPresentation;
   weapon: WeaponMode;
   grip?: WeaponGrip;
+  attachmentBoneName?: string;
   gripEditorMode?: 'translate' | 'rotate' | null;
   onGripChange?(grip: WeaponGrip): void;
 }) {
@@ -284,7 +286,8 @@ export function GltfCharacter({
     }
   });
 
-  const hand = model.rightHandBone ? modelScene.getObjectByName(model.rightHandBone) : undefined;
+  const handBoneName = attachmentBoneName ?? model.rightHandBone;
+  const hand = handBoneName ? modelScene.getObjectByName(handBoneName) : undefined;
   return (
     <>
       <group ref={root}>

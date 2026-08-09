@@ -13,7 +13,7 @@ transform the existing placeholder sword already uses.
 ## Outputs
 
 - The weapon rendered inside the right-hand bone, gripped at the handle
-- A grip entry per character preset it supports
+- An EquipmentSocket per character Prefab it supports
 
 ## The existing placeholder is the reference
 
@@ -25,11 +25,18 @@ the palm, blade up +Y, flat of the blade in the XY plane — and every existing
 grip value keeps working. If a new mesh is authored around its own centre, offset
 it inside its own component; do not compensate in the grip.
 
-## Where it attaches
+## Source of truth
 
-- `GltfCharacter.tsx` portals the weapon into `character.rightHandBone` and
-  applies `grip.position` / `grip.rotation`. That is the only mounting path for
-  rigged characters.
+- The character Prefab's `EquipmentSockets` Component is the only source of
+  truth for new work. Select the socket whose `acceptedItemTags` contains the
+  weapon id, portal the weapon into its `boneName`, and apply `localPosition` /
+  `localRotation` unchanged.
+- For the existing sword, reuse `right-hand-sword`. The current authored values
+  live in `assets/prefabs/quaternius-knight/1.0.0.json` and
+  `assets/prefabs/quaternius-universal-base/1.0.0.json`.
+- `projects/demo-character/project.json` still carries `rightHandBone` and
+  `weaponGrips` only for the legacy Character migration path. Do not read,
+  update, or copy those fields when adding equipment to Prefabs.
 - `ProceduralCharacter.tsx` nests it under the right arm mesh at
   `position={[0, -0.28, 0]} rotation={[0, 0, Math.PI]}` — the arm capsule points
   down, hence the flip. Keep that group as-is and swap only the child.
@@ -42,22 +49,20 @@ it inside its own component; do not compensate in the grip.
 3. Render it in both `GltfCharacter.tsx` and `ProceduralCharacter.tsx` where
    `HeldSword` is used today — a weapon that only appears on one character path
    is a bug, not a scope cut.
-4. Add a `weaponGrips[<weaponId>]` entry to every character preset that supports
-   it (`quaterniusKnight.ts`, `quaterniusUniversalBase.ts`, …). Start from that
-   preset's `sword` grip; a same-family weapon usually needs no change.
-   Without this entry `gripSupported` is false in `App.tsx` and the grip editor
-   is unavailable.
-5. Tune in-app with the grip editor (`gripEditorMode`), then copy the saved
-   values back into the preset. The stored override in `store.ts` is a tuning
-   buffer, not the source of truth.
+4. Add or reuse an `EquipmentSockets.sockets[]` entry in every character Prefab
+   that supports the item. A sword-family item normally reuses
+   `right-hand-sword`; add its id to `acceptedItemTags` rather than duplicating
+   the transform.
+5. If the grip needs tuning, commit the result to that socket's `localPosition`
+   and `localRotation` in the Prefab.
 
 ## Must not
 
 - Bake a grip offset into the weapon component so it "looks right" on one
-  character. Per-character correction belongs in `weaponGrips`.
+  character. Per-character correction belongs in its Prefab socket.
 - Attach to the hand mesh or the model root instead of the hand bone — it will
   not follow the animation.
-- Ship an override left only in the store; commit the tuned numbers to the preset.
+- Add or change legacy `model.weaponGrips`; it is not an equipment source of truth.
 
 ## Verify
 

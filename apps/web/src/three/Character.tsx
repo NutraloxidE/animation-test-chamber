@@ -13,6 +13,8 @@ interface CharacterProps {
   presentation?: ResolvedCharacterPresentation;
   weapon: WeaponMode;
   grip?: WeaponGrip;
+  /** Bone named by the canonical EquipmentSocket; legacy routes leave it absent. */
+  attachmentBoneName?: string;
   gripEditorMode?: 'translate' | 'rotate' | null;
   onGripChange?(grip: WeaponGrip): void;
 }
@@ -35,6 +37,7 @@ export function Character(props: CharacterProps) {
         presentation={props.presentation}
         weapon={props.weapon}
         grip={props.grip}
+        attachmentBoneName={props.attachmentBoneName}
         gripEditorMode={props.gripEditorMode}
         onGripChange={props.onGripChange}
       />
