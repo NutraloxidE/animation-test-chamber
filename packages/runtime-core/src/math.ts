@@ -22,6 +22,12 @@ export function clamp(value: number, min: number, max: number): number {
   return value < min ? min : value > max ? max : value;
 }
 
+/** Keeps a continuously accumulated angle precise during long-running sessions. */
+export function wrapRadians(angle: number): number {
+  const turn = Math.PI * 2;
+  return ((angle + Math.PI) % turn + turn) % turn - Math.PI;
+}
+
 export function clamp01(value: number): number {
   return clamp(value, 0, 1);
 }

@@ -4,7 +4,7 @@ import type {
   TerrainPreset,
   SemanticEventKind,
 } from '@atc/schema';
-import { FixedStepAccumulator } from '@atc/runtime-core';
+import { FixedStepAccumulator, wrapRadians } from '@atc/runtime-core';
 import {
   BrowserInputSampler,
   emptyVirtualPad,
@@ -367,8 +367,8 @@ export class ChamberEngine {
   }
 
   setCameraYaw(yaw: number): void {
-    this.cameraYaw = yaw;
-    this.simulation.setCameraYaw(yaw);
+    this.cameraYaw = wrapRadians(yaw);
+    this.simulation.setCameraYaw(this.cameraYaw);
   }
 
   get camera(): { yaw: number; pitch: number } {
@@ -462,7 +462,7 @@ export class ChamberEngine {
   }
 
   private applyCameraLook(sample: ActionSample): void {
-    this.cameraYaw -= sample.lookX;
+    this.cameraYaw = wrapRadians(this.cameraYaw - sample.lookX);
     this.cameraPitch = Math.min(
       this.project.camera.maxPitchRad,
       Math.max(this.project.camera.minPitchRad, this.cameraPitch + sample.lookY),

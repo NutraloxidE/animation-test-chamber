@@ -6,6 +6,7 @@ import {
   applyDeadzone,
   createRandom,
   msToTicks,
+  wrapRadians,
 } from '@atc/runtime-core';
 import { InputState, decodeButtons, emptyButtons, encodeButtons } from '@atc/input-runtime';
 import { ChamberEngine } from '../../apps/web/src/engine.ts';
@@ -25,6 +26,11 @@ function sampleWith(buttons: Partial<Record<string, boolean>>, move = 0) {
 }
 
 describe('fixed timestep', () => {
+  it('keeps accumulated camera angles within one precise turn', () => {
+    expect(wrapRadians(1_000_000 * Math.PI * 2 + 0.25)).toBeCloseTo(0.25, 8);
+    expect(wrapRadians(-Math.PI)).toBe(-Math.PI);
+  });
+
   it('uses the same nonlinear progress for pose time and root displacement', () => {
     const clip = structuredClone(project.clips.find((entry) => entry.id === 'dodge')!);
     clip.timeCurve = { x1: 0.42, y1: 0, x2: 1, y2: 1 };

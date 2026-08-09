@@ -4,7 +4,7 @@ import { OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import { useParams } from "react-router-dom";
 import type { CameraProfile } from "@atc/schema";
-import { FixedStepAccumulator } from "@atc/runtime-core";
+import { FixedStepAccumulator, wrapRadians } from "@atc/runtime-core";
 import { BrowserInputSampler } from "@atc/input-runtime";
 import { instantiateScene, type RuntimeScene } from "@atc/game-object-runtime";
 import { gameplayScriptRegistry } from "@atc/gameplay";
@@ -51,7 +51,7 @@ function PlayClock({
       const sample = sampler.sample();
       runtime.injectHumanIntent(0, sample);
       if (cameraState && cameraProfile) {
-        cameraState.yaw -= sample.lookX;
+        cameraState.yaw = wrapRadians(cameraState.yaw - sample.lookX);
         cameraState.pitch = Math.min(
           cameraProfile.maxPitchRad,
           Math.max(cameraProfile.minPitchRad, cameraState.pitch + sample.lookY),

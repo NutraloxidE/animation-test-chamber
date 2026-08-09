@@ -8,7 +8,7 @@
  * why this file has no knowledge of states, clips or transitions.
  */
 import type { ProjectDefinition, WorldDefinition } from '@atc/schema';
-import { FixedStepAccumulator } from '@atc/runtime-core';
+import { FixedStepAccumulator, wrapRadians } from '@atc/runtime-core';
 import { BrowserInputSampler, type ActionSample } from '@atc/input-runtime';
 import type { AnimationAssetRegistry } from '@atc/animation-asset-runtime';
 import {
@@ -79,8 +79,8 @@ export class WorldChamberEngine {
   }
 
   setCameraYaw(yawRad: number): void {
-    this.cameraYaw = yawRad;
-    this.runtime.setCameraYaw(yawRad);
+    this.cameraYaw = wrapRadians(yawRad);
+    this.runtime.setCameraYaw(this.cameraYaw);
   }
 
   get camera(): { yaw: number } {
