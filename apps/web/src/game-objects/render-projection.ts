@@ -31,8 +31,8 @@ import type {
   LightComponent,
   RenderableModelBinding,
   TransformDefinition,
-} from '@atc/schema';
-import type { EquipmentSocketsComponent } from '@atc/schema';
+} from "@atc/schema";
+import type { EquipmentSocketsComponent } from "@atc/schema";
 import {
   AnimatorRuntime,
   type AnimatorPlaybackPlan,
@@ -45,15 +45,15 @@ import {
   type RuntimeComponent,
   type RuntimeGameObject,
   type RuntimeScene,
-} from '@atc/game-object-runtime';
+} from "@atc/game-object-runtime";
 
 /** A problem that must be visible, never rendered around (§3, last line). */
 export interface RenderProjectionIssue {
   code:
-    | 'motor-without-animator'
-    | 'active-camera-without-camera-component'
-    | 'unknown-active-camera'
-    | 'scene-resolution-failed'
+    | "motor-without-animator"
+    | "active-camera-without-camera-component"
+    | "unknown-active-camera"
+    | "scene-resolution-failed"
     /**
      * The Animator resolves, but the state it wants to play binds no imported
      * take on a node that has an imported model (§10.5). Reported rather than
@@ -61,9 +61,9 @@ export interface RenderProjectionIssue {
      * for a binding that names nothing, and "it animates" would stop being
      * evidence that the binding is right.
      */
-    | 'animator-take-unbound'
+    | "animator-take-unbound"
     /** The take resolves canonically but the loaded file has no such animation. */
-    | 'animator-clip-missing';
+    | "animator-clip-missing";
   message: string;
   gameObjectId?: string;
   /** The Animator this is about, when it is about one. */
@@ -79,7 +79,7 @@ export interface RenderModelFact {
 
 export interface RenderAnimatorFact {
   componentId: string;
-  assignment: AnimatorComponent['assignment'];
+  assignment: AnimatorComponent["assignment"];
   defaultContextKey: string | undefined;
   /**
    * What to play, per graph state, already resolved (§10.4).
@@ -94,13 +94,19 @@ export interface RenderAnimatorFact {
   /** The state playing right now, and how far into it, this frame. */
   stateId: string;
   normalizedTime: number;
+  previousStateId: string | null;
+  previousNormalizedTime: number;
+  /** Duration authored on the transition that entered this state. */
+  blendDurationSec: number;
+  /** Runtime-owned destination weight; render delta never advances it. */
+  blendWeight: number;
   /** Seconds of animation elapsed. Advanced by the shared Scene clock (§10.3). */
   animationSeconds: number;
 }
 
 export interface RenderLightFact {
   componentId: string;
-  lightType: LightComponent['lightType'];
+  lightType: LightComponent["lightType"];
   intensity: number;
   color: string;
   range: number | undefined;
@@ -109,14 +115,14 @@ export interface RenderLightFact {
 
 export interface RenderCameraFact {
   componentId: string;
-  projection: CameraComponent['projection'];
+  projection: CameraComponent["projection"];
   fieldOfViewDeg: number | undefined;
   orthographicSize: number | undefined;
 }
 
 export interface RenderSocketFact {
   componentId: string;
-  sockets: EquipmentSocketsComponent['sockets'];
+  sockets: EquipmentSocketsComponent["sockets"];
 }
 
 /**
@@ -152,7 +158,9 @@ export interface SceneRenderProjection extends GameObjectRenderProjection {
   activeCamera: GameObjectRenderNode | undefined;
 }
 
-function enabledOf<T extends { enabled: boolean }>(runtime: T | undefined): T | undefined {
+function enabledOf<T extends { enabled: boolean }>(
+  runtime: T | undefined,
+): T | undefined {
   /*
    * A disabled Component contributes nothing to the frame but still exists on
    * the object. Filtering here rather than at each draw site is what keeps
@@ -166,11 +174,15 @@ function find<T extends RuntimeComponent>(
   runtime: RuntimeGameObject,
   kind: abstract new (...args: never[]) => T,
 ): T | undefined {
-  return runtime.components.find((component): component is T => component instanceof kind);
+  return runtime.components.find(
+    (component): component is T => component instanceof kind,
+  );
 }
 
 /** One runtime object and its descendants, flattened into drawables. */
-export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderProjection {
+export function projectGameObject(
+  runtime: RuntimeGameObject,
+): GameObjectRenderProjection {
   const nodes: GameObjectRenderNode[] = [];
   const issues: RenderProjectionIssue[] = [];
 
@@ -192,7 +204,7 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
      */
     if (motor && !animator) {
       issues.push({
-        code: 'motor-without-animator',
+        code: "motor-without-animator",
         gameObjectId: object.id,
         message: `GameObject "${object.id}" has a character-motor but no animator to pose it`,
       });
@@ -213,18 +225,18 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
     if (
       animator &&
       playing &&
-      model?.model.kind === 'repository-model' &&
+      model?.model.kind === "repository-model" &&
       animator.playback.takeByStateId[playing.stateId] === undefined
     ) {
       issues.push({
-        code: 'animator-take-unbound',
+        code: "animator-take-unbound",
         gameObjectId: object.id,
         componentId: animator.componentId,
         message:
           `GameObject "${object.id}" plays state "${playing.stateId}" on ` +
           `animator "${animator.componentId}", but motion set ` +
           `"${animator.assignment.motionSet.assetId}@${animator.assignment.motionSet.version}" ` +
-          'binds no imported take to it',
+          "binds no imported take to it",
       });
     }
 
@@ -249,6 +261,10 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
             playback: animator.playback,
             stateId: playing?.stateId ?? animator.playback.initialStateId,
             normalizedTime: playing?.normalizedTime ?? 0,
+            previousStateId: playing?.previousStateId ?? null,
+            previousNormalizedTime: playing?.previousNormalizedTime ?? 0,
+            blendDurationSec: playing?.blendDurationSec ?? 0,
+            blendWeight: playing?.blendWeight ?? 1,
             animationSeconds: animator.animationSeconds,
           }
         : undefined,
@@ -270,8 +286,12 @@ export function projectGameObject(runtime: RuntimeGameObject): GameObjectRenderP
             orthographicSize: camera.orthographicSize,
           }
         : undefined,
-      sockets: sockets ? { componentId: sockets.componentId, sockets: sockets.sockets } : undefined,
-      capsule: capsule ? { radius: capsule.radius, height: capsule.height } : undefined,
+      sockets: sockets
+        ? { componentId: sockets.componentId, sockets: sockets.sockets }
+        : undefined,
+      capsule: capsule
+        ? { radius: capsule.radius, height: capsule.height }
+        : undefined,
       simulated: object.character !== undefined,
     });
   }
@@ -296,8 +316,11 @@ export function projectRuntimeScene(
   const issues: RenderProjectionIssue[] = [];
 
   for (const issue of scene.issues) {
-    if (issue.severity !== 'error') continue;
-    issues.push({ code: 'scene-resolution-failed', message: `${issue.code}: ${issue.message}` });
+    if (issue.severity !== "error") continue;
+    issues.push({
+      code: "scene-resolution-failed",
+      message: `${issue.code}: ${issue.message}`,
+    });
   }
 
   for (const object of scene.gameObjects) {
@@ -311,17 +334,19 @@ export function projectRuntimeScene(
     const runtime = scene.get(activeCameraGameObjectId);
     if (!runtime) {
       issues.push({
-        code: 'unknown-active-camera',
+        code: "unknown-active-camera",
         gameObjectId: activeCameraGameObjectId,
         message: `scene names active camera "${activeCameraGameObjectId}", which is not in the scene`,
       });
     } else {
       // The camera may sit on a child node — a Prefab that puts its lens under
       // a boom arm is ordinary — so the whole subtree is searched.
-      activeCamera = projectGameObject(runtime).nodes.find((node) => node.camera !== undefined);
+      activeCamera = projectGameObject(runtime).nodes.find(
+        (node) => node.camera !== undefined,
+      );
       if (!activeCamera) {
         issues.push({
-          code: 'active-camera-without-camera-component',
+          code: "active-camera-without-camera-component",
           gameObjectId: activeCameraGameObjectId,
           message: `GameObject "${activeCameraGameObjectId}" is the active camera but has no camera component`,
         });
@@ -339,6 +364,8 @@ export function drawableNodes(
   return projection.nodes.filter(
     (node) =>
       node.enabled &&
-      (node.model !== undefined || node.light !== undefined || node.camera !== undefined),
+      (node.model !== undefined ||
+        node.light !== undefined ||
+        node.camera !== undefined),
   );
 }

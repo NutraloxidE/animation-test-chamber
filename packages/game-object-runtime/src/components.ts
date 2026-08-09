@@ -21,6 +21,7 @@ import type {
   ModelRendererComponent,
   ProjectDefinition,
   RenderableModelBinding,
+  ScriptComponent,
 } from '@atc/schema';
 import type { ResolvedAnimationBundle } from '@atc/animation-asset-runtime';
 import {
@@ -28,6 +29,7 @@ import {
   type AnimatorPlaybackPlan,
 } from './animator-playback.ts';
 import type { GameObjectRuntimeServices } from './services.ts';
+import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
 
 /**
  * The context a factory is handed. Never the Scene, never the document.
@@ -364,6 +366,11 @@ export function defaultComponentRuntimeRegistry(): ComponentRuntimeRegistry {
     {
       componentType: 'light',
       create: (definition) => new LightRuntime(definition as LightComponent),
+    },
+    {
+      componentType: 'script',
+      create: (definition, context) =>
+        new GameplayScriptRuntime(definition as ScriptComponent, context),
     },
   ] as ComponentRuntimeFactory[]);
 }

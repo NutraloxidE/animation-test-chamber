@@ -11,6 +11,7 @@ import type { GameObjectPrefabAsset, GameObjectPrefabReference } from '@atc/sche
 import { prefabAssetFilePath } from '@atc/schema';
 import { PrefabAssetRegistry, type StoredPrefab } from '@atc/prefab-runtime';
 import { REPO_ROOT } from './lib.ts';
+import { gameplayScriptRegistry } from '@atc/gameplay';
 
 export const PREFAB_ROOT = 'assets/prefabs';
 export const PREFAB_LIBRARY_INDEX_PATH = 'generated/prefab-assets/library-index.json';
@@ -37,7 +38,7 @@ export function loadStoredPrefabs(root: string = REPO_ROOT): StoredPrefab[] {
 }
 
 export function loadPrefabRegistry(root: string = REPO_ROOT): PrefabAssetRegistry {
-  return new PrefabAssetRegistry(loadStoredPrefabs(root));
+  return new PrefabAssetRegistry(loadStoredPrefabs(root), gameplayScriptRegistry);
 }
 
 /** Repository path a stored Prefab belongs at. */

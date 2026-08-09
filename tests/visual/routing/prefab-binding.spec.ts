@@ -119,13 +119,14 @@ test('selecting the Animator opens the animation authoring workspace', async ({ 
   await expect(page.getByTestId('prefab-animator-assignment')).toContainText(
     'humanoid-third-person-base@',
   );
+  await page.goto('/edit/prefab/navigator/animation/root/animator');
   // The existing workspace, mounted — not a second graph editor.
   await expect(page.getByTestId('prefab-animation-workspace')).toBeVisible();
   await expect(page.getByTestId('hud')).toBeVisible();
 });
 
 test('Usage names the exact Scene instances standing on this version', async ({ page }) => {
-  await openPrefab(page, 'navigator');
+  await openPrefab(page, 'gameplay-quaternius');
   const usage = page.getByTestId('prefab-usage-panel');
   await expect(usage).toContainText('controlled-humanoid');
   await expect(usage).toContainText('scripted-humanoid');
@@ -154,11 +155,11 @@ test('the bare rig route lists every exact Animator workspace', async ({ page })
   await page.goto('/edit/rig');
   const list = page.getByTestId('rig-editor-list');
   await expect(list).toBeVisible();
-  await expect(list.getByRole('link', { name: /Navigator/ })).toHaveAttribute(
+  await expect(list.getByRole('link', { name: 'Navigator — Humanoid', exact: true })).toHaveAttribute(
     'href',
     '/edit/prefab/navigator/animation/root/animator',
   );
-  await list.getByRole('link', { name: /Navigator/ }).click();
+  await list.getByRole('link', { name: 'Navigator — Humanoid', exact: true }).click();
   await expect(page).toHaveURL('/edit/prefab/navigator/animation/root/animator');
   await expect(page.getByTestId('animation-subject-prefab')).toContainText('navigator');
 });

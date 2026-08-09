@@ -96,6 +96,18 @@ export interface RootMotionTrack {
   positions: Vec3[];
 }
 
+export interface ExternalMotionFrame {
+  speedScale?: number;
+  accelerationScale?: number;
+  turnScale?: number;
+  replaceHorizontal?: Vec3;
+  addVelocity?: Vec3;
+  replaceVertical?: number;
+  facingYawRad?: number;
+  teleport?: { position: Vec3; yawRad?: number; clearVelocity: boolean };
+  gameplayParameters?: Readonly<Record<string, boolean | number | string>>;
+}
+
 export interface TickRecord {
   tick: number;
   position: Vec3;
@@ -268,6 +280,7 @@ export class Simulation {
     return this.graph;
   }
 
+  private gameplayParameters: Readonly<Record<string, boolean | number | string>> = {};
   private parameterSource(): ParameterSource {
     const input = this.input;
     const terrain = this.lastTerrain;
@@ -291,8 +304,7 @@ export class Simulation {
             return this.project.movement.walkSpeed;
           case 'runSpeed':
             return this.project.movement.runSpeed;
-          default:
-            return 0;
+          default: return typeof this.gameplayParameters[name] === 'number' ? this.gameplayParameters[name] as number : 0;
         }
       },
       getBoolean: (name) => {
@@ -326,7 +338,7 @@ export class Simulation {
             // here: a new slot becomes a usable condition the moment it is
             // added to `equipment`, with no case to remember to write.
             const slot = this.project.equipment.find((entry) => entry.parameter === name);
-            return slot ? (this.equipped[slot.id] ?? slot.defaultEquipped) : false;
+            return slot ? (this.equipped[slot.id] ?? slot.defaultEquipped) : typeof this.gameplayParameters[name] === 'boolean' ? this.gameplayParameters[name] as boolean : false;
           }
         }
       },
@@ -338,8 +350,7 @@ export class Simulation {
             return terrain.surface.id;
           case 'weaponMode':
             return this.weaponModeId;
-          default:
-            return '';
+          default: return typeof this.gameplayParameters[name] === 'string' ? this.gameplayParameters[name] as string : '';
         }
       },
       isBuffered: (action, bufferMs) =>
@@ -355,7 +366,13 @@ export class Simulation {
   }
 
   /** Advances exactly one fixed timestep and returns the trace record. */
-  step(sample: ActionSample): TickRecord {
+  step(sample: ActionSample, external: ExternalMotionFrame = {}): TickRecord {
+    this.gameplayParameters = external.gameplayParameters ?? {};
+    if (external.teleport) {
+      this.position = { ...external.teleport.position };
+      if (external.teleport.yawRad !== undefined) this.yawRad = external.teleport.yawRad;
+      if (external.teleport.clearVelocity) this.velocity = vec3();
+    }
     this.input.beginTick(this.tickIndex, sample, (action) => this.acceptsActionPress(action));
     this.input.markGrounded(this.lastTerrain.grounded);
 
@@ -373,7 +390,7 @@ export class Simulation {
     }
 
     const previousPosition = { ...this.position };
-    this.integrateMovement();
+    this.integrateMovement(external);
     this.resolveGrounding();
 
     const events = graphResult.events.map((event) => event.kind);
@@ -425,7 +442,7 @@ export class Simulation {
     return clip?.events.some((event) => event.kind === 'JumpTakeoff') ?? false;
   }
 
-  private integrateMovement(): void {
+  private integrateMovement(external: ExternalMotionFrame): void {
     const movement = this.project.movement;
     const rootMotion = this.project.rootMotion;
     const terrain = this.lastTerrain;
@@ -476,13 +493,13 @@ export class Simulation {
     const airScale = terrain.grounded ? 1 : movement.airControl;
     const surfaceScale = terrain.grounded ? terrain.accelerationScale : 1;
 
-    const effectiveTarget = targetSpeed * terrain.speedScale * actionScale;
+    const effectiveTarget = targetSpeed * terrain.speedScale * actionScale * (external.speedScale ?? 1);
 
     const desiredVx = magnitude > 0 ? (desiredX / Math.max(magnitude, 1e-6)) * effectiveTarget : 0;
     const desiredVz = magnitude > 0 ? (desiredZ / Math.max(magnitude, 1e-6)) * effectiveTarget : 0;
 
     const accelerating = magnitude > 0;
-    const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT;
+    const rate = (accelerating ? movement.acceleration : movement.deceleration) * airScale * surfaceScale * FIXED_DT * (external.accelerationScale ?? 1);
 
     if (
       actionIsStationary ||
@@ -511,7 +528,7 @@ export class Simulation {
         : 1;
       const authority =
         actionIsStationary ? 0 : this.graph.isActionActive() ? this.currentRotationAuthority() * playbackScale : 1;
-      this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority);
+      this.yawRad = rotateTowardsAngle(this.yawRad, targetYaw, movement.rotationSpeed * FIXED_DT * authority * (external.turnScale ?? 1));
     }
 
     if (this.pendingJumpImpulse) {
@@ -523,6 +540,14 @@ export class Simulation {
     } else if (this.velocity.y < 0) {
       this.velocity.y = 0;
     }
+
+    if (external.replaceHorizontal) {
+      this.velocity.x = external.replaceHorizontal.x;
+      this.velocity.z = external.replaceHorizontal.z;
+    }
+    if (external.replaceVertical !== undefined) this.velocity.y = external.replaceVertical;
+    if (external.addVelocity) this.velocity = addVec3(this.velocity, external.addVelocity);
+    if (external.facingYawRad !== undefined) this.yawRad = external.facingYawRad;
 
     // Root motion contribution, blended against code-driven velocity by authority.
     const rootDelta = this.sampleRootMotionDelta(recoveryWeight);

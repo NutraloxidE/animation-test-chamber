@@ -15,6 +15,7 @@ import type {
 import { compareAssetVersions, prefabHasStoredRoot, prefabReferenceKey } from '@atc/schema';
 import { computeContentHash } from '@atc/animation-asset-runtime';
 import { type PrefabIssue, type PrefabValidationReport, prefabError } from './issues.ts';
+import type { GameplayScriptRegistry } from '@atc/gameplay-sdk';
 import {
   nestedPrefabReferences,
   referenceOf,
@@ -103,7 +104,7 @@ export class PrefabAssetRegistry {
   /** `id` -> versions, ascending. */
   private readonly versions = new Map<string, string[]>();
 
-  constructor(prefabs: readonly StoredPrefab[] = []) {
+  constructor(prefabs: readonly StoredPrefab[] = [], private readonly gameplayRegistry?: GameplayScriptRegistry) {
     for (const prefab of prefabs) this.add(prefab);
   }
 
@@ -239,7 +240,7 @@ export class PrefabAssetRegistry {
     if (issues.length > 0) return { valid: false, issues };
 
     const asset = this.get(reference);
-    issues.push(...validatePrefabDocument(asset));
+    issues.push(...validatePrefabDocument(asset, { gameplayRegistry: this.gameplayRegistry }));
     if (asset.metadata.contentHash !== '' && computeContentHash(asset) !== asset.metadata.contentHash) {
       issues.push(
         prefabError(

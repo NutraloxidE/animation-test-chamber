@@ -2856,3 +2856,7 @@ button.link {
   .animation-asset-library { max-height: 45vh; }
   .animation-subject-header { display: none; }
 }
+.play-surface { position: fixed; inset: 0; overflow: hidden; background: #080b11; color: white; }
+.play-surface canvas { display: block; width: 100%; height: 100%; }
+.game-overlay { position: absolute; inset: 0; pointer-events: none; padding: 1rem; font: 600 14px/1.2 system-ui, sans-serif; text-shadow: 0 1px 4px #000; }
+.play-surface--error, [data-testid='play-camera-unavailable'] { display: grid; place-items: center; font: 16px system-ui, sans-serif; }

@@ -45,6 +45,7 @@ import { AssetReference, CharacterAnimationAssignment } from './animation-assets
 import { TransformDefinition } from './transform.ts';
 
 export const GAME_OBJECT_PREFAB_ASSET_TYPE = 'game-object-prefab' as const;
+export const GAMEPLAY_SCRIPT_ASSET_TYPE = 'gameplay-script' as const;
 
 export const GameObjectPrefabAssetType = Type.Literal(GAME_OBJECT_PREFAB_ASSET_TYPE, {
   $id: 'GameObjectPrefabAssetType',
@@ -74,6 +75,17 @@ export const GameObjectPrefabReference = Type.Object(
   { $id: 'GameObjectPrefabReference', additionalProperties: false },
 );
 export type GameObjectPrefabReference = Static<typeof GameObjectPrefabReference>;
+
+export const GameplayScriptReference = Type.Object(
+  {
+    assetType: Type.Literal(GAMEPLAY_SCRIPT_ASSET_TYPE),
+    assetId: Id,
+    version: AssetVersion,
+    contentHash: PublishedContentHash,
+  },
+  { $id: 'GameplayScriptReference', additionalProperties: false },
+);
+export type GameplayScriptReference = Static<typeof GameplayScriptReference>;
 
 /**
  * Either family's reference, for the tooling that genuinely spans both: the
@@ -338,6 +350,32 @@ export const TagComponent = Type.Object(
 );
 export type TagComponent = Static<typeof TagComponent>;
 
+export const JsonValue = Type.Recursive(
+  (Self) => Type.Union([
+    Type.Null(),
+    Type.Boolean(),
+    Type.Number(),
+    Type.String(),
+    Type.Array(Self),
+    Type.Record(Type.String(), Self),
+  ]),
+  { $id: 'JsonValue' },
+);
+export type JsonValue = Static<typeof JsonValue>;
+
+export const JsonObject = Type.Record(Type.String(), JsonValue, { $id: 'JsonObject' });
+export type JsonObject = Static<typeof JsonObject>;
+
+export const ScriptComponent = Type.Object(
+  {
+    ...componentFields(Type.Literal('script')),
+    script: GameplayScriptReference,
+    properties: JsonObject,
+  },
+  { $id: 'ScriptComponent', additionalProperties: false },
+);
+export type ScriptComponent = Static<typeof ScriptComponent>;
+
 /**
  * The closed component union.
  *
@@ -356,6 +394,7 @@ export const GameObjectComponentDefinition = Type.Union(
     CameraComponent,
     LightComponent,
     TagComponent,
+    ScriptComponent,
   ],
   { $id: 'GameObjectComponentDefinition' },
 );
@@ -370,6 +409,7 @@ export const GAME_OBJECT_COMPONENT_TYPES = [
   'camera',
   'light',
   'tags',
+  'script',
 ] as const;
 export type GameObjectComponentType = (typeof GAME_OBJECT_COMPONENT_TYPES)[number];
 

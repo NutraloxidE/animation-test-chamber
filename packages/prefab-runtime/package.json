@@ -9,5 +9,6 @@
     "@atc/schema": "workspace:*",
     "@atc/runtime-core": "workspace:*",
     "@atc/animation-asset-runtime": "workspace:*"
+    ,"@atc/gameplay-sdk": "workspace:*"
   }
 }

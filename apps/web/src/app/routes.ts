@@ -20,6 +20,8 @@
 
 export const ROUTES = {
   root: '/',
+  playScene: '/play/:sceneId',
+  assets: '/edit/assets',
   characters: '/characters',
   scenes: '/scenes',
   prefabs: '/prefabs',
@@ -77,6 +79,8 @@ export function rigEditorPath(characterId: string): string {
 export function sceneEditorPath(sceneId: string): string {
   return `/edit/scene/${encodeURIComponent(sceneId)}`;
 }
+
+export function playScenePath(sceneId: string): string { return `/play/${encodeURIComponent(sceneId)}`; }
 
 /**
  * The id a route parameter carries.

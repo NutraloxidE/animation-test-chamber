@@ -1061,6 +1061,8 @@ namespace AnimationTestChamber.Generated
         public float range;
         public float spotAngleRad;
         public List<string> tags;
+        public GameplayScriptReference script;
+        public string properties;
     }
 
     [Serializable]
@@ -1084,6 +1086,15 @@ namespace AnimationTestChamber.Generated
         public List<string> localPosition;
         public List<string> localRotation;
         public List<string> acceptedItemTags;
+    }
+
+    [Serializable]
+    public class GameplayScriptReference
+    {
+        public string assetType;
+        public string assetId;
+        public string version;
+        public string contentHash;
     }
 
     [Serializable]

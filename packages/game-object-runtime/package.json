@@ -14,5 +14,6 @@
     "@atc/prefab-runtime": "workspace:*",
     "@atc/replay-runtime": "workspace:*",
     "@atc/terrain-runtime": "workspace:*"
+    ,"@atc/gameplay-sdk": "workspace:*"
   }
 }

@@ -10,9 +10,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 async function openLibrary(page: Page): Promise<void> {
-  // `/` is the Prefab inventory now; the authoring workspace opens from a
-  // Prefab's Animator, which is where the chamber lives.
-  await page.goto('/edit/prefab/navigator/animation/root/animator');
+  // The game owns `/`; the full repository Asset Library is an explicit editor route.
+  await page.goto('/edit/assets');
   await expect(page.getByTestId('hud')).toBeVisible();
   await page.getByTestId('workspace-asset-library').click();
   await expect(page.getByTestId('asset-library')).toBeVisible();
@@ -51,12 +50,12 @@ test('browses Prefabs with exact identity, usage, validation and delete policy',
   await showPane(page, 'types');
   await page.getByTestId('asset-type-game-object-prefab').click();
   await showPane(page, 'list');
-  await expect(page.getByTestId('prefab-card-navigator')).toBeVisible();
+  await expect(page.getByTestId('prefab-card-gameplay-quaternius')).toBeVisible();
   await expect(page.getByTestId('asset-card-idle')).toHaveCount(0);
 
-  await page.getByTestId('prefab-card-navigator').click();
+  await page.getByTestId('prefab-card-gameplay-quaternius').click();
   await showPane(page, 'detail');
-  await expect(page.getByTestId('prefab-detail')).toContainText('navigator@1.0.0');
+  await expect(page.getByTestId('prefab-detail')).toContainText('gameplay-quaternius@1.0.0');
   await expect(page.getByTestId('prefab-components')).toContainText('animator');
   await expect(page.getByTestId('prefab-dependencies')).toContainText('animation-behavior');
   await expect(page.getByTestId('prefab-usage')).toContainText('2 Scene instance(s)');

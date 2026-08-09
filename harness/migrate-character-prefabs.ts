@@ -45,14 +45,16 @@ import type {
   RenderableModelBinding,
   SceneDefinition,
   SceneEntityDefinition,
-} from '@atc/schema';
-import { IDENTITY_TRANSFORM, prefabAssetFilePath,
+} from "@atc/schema";
+import {
+  IDENTITY_TRANSFORM,
+  prefabAssetFilePath,
   LEGACY_CHARACTER_PREFAB_IDS,
-} from '@atc/schema';
-import { createBasePrefab, createPrefabVariant } from '@atc/prefab-runtime';
-import { computeContentHash } from '@atc/animation-asset-runtime';
-import { loadCanonicalProject, PROJECT_PATH } from './animation-assets.ts';
-import { readRepoFile, writeRepoFile } from './lib.ts';
+} from "@atc/schema";
+import { createBasePrefab, createPrefabVariant } from "@atc/prefab-runtime";
+import { computeContentHash } from "@atc/animation-asset-runtime";
+import { loadCanonicalProject, PROJECT_PATH } from "./animation-assets.ts";
+import { readRepoFile, writeRepoFile } from "./lib.ts";
 
 /**
  * A fixed authoring timestamp.
@@ -61,8 +63,8 @@ import { readRepoFile, writeRepoFile } from './lib.ts';
  * run, which would change every reference to it, which would make "the
  * migration is idempotent" false in the most expensive possible way.
  */
-const MIGRATION_TIMESTAMP = '2026-08-06T00:00:00.000Z';
-const MIGRATION_AUTHOR = 'prefabs:migrate';
+const MIGRATION_TIMESTAMP = "2026-08-06T00:00:00.000Z";
+const MIGRATION_AUTHOR = "prefabs:migrate";
 
 /**
  * Old Character id → new Prefab id (§11.3).
@@ -72,22 +74,22 @@ const MIGRATION_AUTHOR = 'prefabs:migrate';
  */
 export { LEGACY_CHARACTER_PREFAB_IDS };
 
-export const HUMANOID_BASE_PREFAB_ID = 'humanoid-character-base';
-export const DEFAULT_SCENE_CAMERA_PREFAB_ID = 'default-scene-camera';
+export const HUMANOID_BASE_PREFAB_ID = "humanoid-character-base";
+export const DEFAULT_SCENE_CAMERA_PREFAB_ID = "default-scene-camera";
 
 /** Component ids are stable within a node and are what every override addresses. */
 const COMPONENT_IDS = {
-  model: 'model',
-  animator: 'animator',
-  motor: 'character-motor',
-  capsule: 'capsule',
-  sockets: 'equipment-sockets',
-  camera: 'camera',
-  light: 'light',
-  tags: 'tags',
+  model: "model",
+  animator: "animator",
+  motor: "character-motor",
+  capsule: "capsule",
+  sockets: "equipment-sockets",
+  camera: "camera",
+  light: "light",
+  tags: "tags",
 } as const;
 
-const ROOT_NODE_ID = 'root';
+const ROOT_NODE_ID = "root";
 
 export interface MigratedPrefab {
   path: string;
@@ -105,7 +107,8 @@ export interface PrefabMigrationResult {
 }
 
 function node(
-  overrides: Partial<PrefabNodeDefinition> & Pick<PrefabNodeDefinition, 'displayName'>,
+  overrides: Partial<PrefabNodeDefinition> &
+    Pick<PrefabNodeDefinition, "displayName">,
 ): PrefabNodeDefinition {
   return {
     nodeId: ROOT_NODE_ID,
@@ -121,7 +124,7 @@ function animatorComponent(character: CharacterDefinition): AnimatorComponent {
   return {
     schemaVersion: 1,
     componentId: COMPONENT_IDS.animator,
-    componentType: 'animator',
+    componentType: "animator",
     enabled: true,
     // By value, from the character document. The four references and the
     // instance overrides move here unchanged (§5.4).
@@ -129,11 +132,13 @@ function animatorComponent(character: CharacterDefinition): AnimatorComponent {
   };
 }
 
-function capsuleComponent(character: CharacterDefinition): CapsuleColliderComponent {
+function capsuleComponent(
+  character: CharacterDefinition,
+): CapsuleColliderComponent {
   return {
     schemaVersion: 1,
     componentId: COMPONENT_IDS.capsule,
-    componentType: 'capsule-collider',
+    componentType: "capsule-collider",
     enabled: true,
     radius: character.capsuleRadius,
     height: character.capsuleHeight,
@@ -147,7 +152,7 @@ function modelComponent(model: RenderableModelBinding): ModelRendererComponent {
   return {
     schemaVersion: 1,
     componentId: COMPONENT_IDS.model,
-    componentType: 'model-renderer',
+    componentType: "model-renderer",
     enabled: true,
     model,
     castShadow: true,
@@ -162,13 +167,15 @@ function modelComponent(model: RenderableModelBinding): ModelRendererComponent {
  * up by `socketsComponent` below; dropping them without moving them would be
  * the one silent behaviour loss this migration could plausibly commit.
  */
-function renderableModel(character: CharacterDefinition): RenderableModelBinding {
+function renderableModel(
+  character: CharacterDefinition,
+): RenderableModelBinding {
   const model = character.model;
-  if (model.kind === 'procedural-humanoid') {
-    return { kind: 'procedural-humanoid', presetId: model.presetId };
+  if (model.kind === "procedural-humanoid") {
+    return { kind: "procedural-humanoid", presetId: model.presetId };
   }
   return {
-    kind: 'repository-model',
+    kind: "repository-model",
     assetPath: model.assetPath,
     scale: model.scale,
     rotationYRad: model.rotationYRad,
@@ -189,7 +196,8 @@ function socketsComponent(
   character: CharacterDefinition,
 ): EquipmentSocketsComponent | undefined {
   const model = character.model;
-  if (model.kind !== 'repository-model' || model.rightHandBone === undefined) return undefined;
+  if (model.kind !== "repository-model" || model.rightHandBone === undefined)
+    return undefined;
 
   const grips = model.weaponGrips ?? {};
   const sockets: EquipmentSocketDefinition[] = Object.keys(grips)
@@ -204,7 +212,7 @@ function socketsComponent(
 
   if (sockets.length === 0) {
     sockets.push({
-      socketId: 'right-hand',
+      socketId: "right-hand",
       boneName: model.rightHandBone,
       localPosition: [0, 0, 0],
       localRotation: [0, 0, 0],
@@ -215,7 +223,7 @@ function socketsComponent(
   return {
     schemaVersion: 1,
     componentId: COMPONENT_IDS.sockets,
-    componentType: 'equipment-sockets',
+    componentType: "equipment-sockets",
     enabled: true,
     sockets,
   };
@@ -225,9 +233,11 @@ function serialize(document: unknown): string {
   return `${JSON.stringify(document, null, 2)}\n`;
 }
 
-function referenceTo(document: GameObjectPrefabAsset): GameObjectPrefabReference {
+function referenceTo(
+  document: GameObjectPrefabAsset,
+): GameObjectPrefabReference {
   return {
-    assetType: 'game-object-prefab',
+    assetType: "game-object-prefab",
     assetId: document.metadata.id,
     version: document.metadata.version,
     contentHash: computeContentHash(document),
@@ -240,11 +250,16 @@ function referenceTo(document: GameObjectPrefabAsset): GameObjectPrefabReference
  * Returns rather than writes so the determinism stage can run it twice and
  * compare, and so the tests can assert on its output without touching disk.
  */
-export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationResult {
+export function runPrefabMigration(
+  project: ProjectDefinition,
+): PrefabMigrationResult {
   const prefabs: MigratedPrefab[] = [];
   const emit = (document: GameObjectPrefabAsset): GameObjectPrefabReference => {
     prefabs.push({
-      path: prefabAssetFilePath(document.metadata.id, document.metadata.version),
+      path: prefabAssetFilePath(
+        document.metadata.id,
+        document.metadata.version,
+      ),
       content: serialize(document),
       document,
     });
@@ -252,7 +267,8 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
   };
 
   const characters = project.characters;
-  const baseCharacter = characters.find((entry) => entry.id === 'demo-humanoid') ?? characters[0]!;
+  const baseCharacter =
+    characters.find((entry) => entry.id === "demo-humanoid") ?? characters[0]!;
 
   /* ---------------------------------------------------------------------- */
   /* The abstract humanoid base                                             */
@@ -262,28 +278,28 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
     createBasePrefab(
       {
         id: HUMANOID_BASE_PREFAB_ID,
-        displayName: 'Humanoid Character Base',
+        displayName: "Humanoid Character Base",
         description:
-          'The shared humanoid composition: an Animator on the project behaviour, a ' +
-          'CharacterMotor, and a capsule. Abstract — it carries no model, so it is a ' +
-          'shape to inherit rather than a thing to place.',
-        tags: ['character', 'humanoid', 'base'],
+          "The shared humanoid composition: an Animator on the project behaviour, a " +
+          "CharacterMotor, and a capsule. Abstract — it carries no model, so it is a " +
+          "shape to inherit rather than a thing to place.",
+        tags: ["character", "humanoid", "base"],
         createdAt: MIGRATION_TIMESTAMP,
         createdBy: MIGRATION_AUTHOR,
         abstract: true,
       },
       node({
-        displayName: 'Humanoid',
+        displayName: "Humanoid",
         components: [
           animatorComponent(baseCharacter),
           {
             schemaVersion: 1,
             componentId: COMPONENT_IDS.motor,
-            componentType: 'character-motor',
+            componentType: "character-motor",
             enabled: true,
             // The presence of this component — not a `kind` field — is what
             // makes every variant below controllable.
-            intentChannel: 'primary',
+            intentChannel: "primary",
             movementScale: 1,
             turnScale: 1,
           },
@@ -291,9 +307,9 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
           {
             schemaVersion: 1,
             componentId: COMPONENT_IDS.tags,
-            componentType: 'tags',
+            componentType: "tags",
             enabled: true,
-            tags: ['character', 'humanoid'],
+            tags: ["character", "humanoid"],
           },
         ],
       }),
@@ -310,7 +326,7 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
     const prefabId = LEGACY_CHARACTER_PREFAB_IDS[character.id] ?? character.id;
     const patches: PrefabPatch[] = [
       {
-        kind: 'add-component',
+        kind: "add-component",
         nodeId: ROOT_NODE_ID,
         component: modelComponent(renderableModel(character)),
       },
@@ -322,12 +338,16 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
     const baseAssignment = baseCharacter.animation;
     const assignment = character.animation;
     const animatorPatches = (
-      ['behavior', 'motionSet', 'rig', 'tuning', 'instanceOverrides'] as const
+      ["behavior", "motionSet", "rig", "tuning", "instanceOverrides"] as const
     )
-      .filter((field) => JSON.stringify(assignment[field]) !== JSON.stringify(baseAssignment[field]))
+      .filter(
+        (field) =>
+          JSON.stringify(assignment[field]) !==
+          JSON.stringify(baseAssignment[field]),
+      )
       .map((field) => ({
         path: `/assignment/${field}`,
-        op: 'set' as const,
+        op: "set" as const,
         value: assignment[field],
       }));
     // One override per component, not one per field: `PrefabComponentOverride`
@@ -335,7 +355,7 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
     // would make "what does this variant override?" a question with two answers.
     if (animatorPatches.length > 0) {
       patches.push({
-        kind: 'patch-component',
+        kind: "patch-component",
         nodeId: ROOT_NODE_ID,
         componentId: COMPONENT_IDS.animator,
         patches: animatorPatches,
@@ -344,15 +364,19 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
 
     const capsulePatches = (
       [
-        ['radius', character.capsuleRadius, baseCharacter.capsuleRadius],
-        ['height', character.capsuleHeight, baseCharacter.capsuleHeight],
+        ["radius", character.capsuleRadius, baseCharacter.capsuleRadius],
+        ["height", character.capsuleHeight, baseCharacter.capsuleHeight],
       ] as const
     )
       .filter(([, mine, theirs]) => mine !== theirs)
-      .map(([field, mine]) => ({ path: `/${field}`, op: 'set' as const, value: mine }));
+      .map(([field, mine]) => ({
+        path: `/${field}`,
+        op: "set" as const,
+        value: mine,
+      }));
     if (capsulePatches.length > 0) {
       patches.push({
-        kind: 'patch-component',
+        kind: "patch-component",
         nodeId: ROOT_NODE_ID,
         componentId: COMPONENT_IDS.capsule,
         patches: capsulePatches,
@@ -361,7 +385,11 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
 
     const sockets = socketsComponent(character);
     if (sockets) {
-      patches.push({ kind: 'add-component', nodeId: ROOT_NODE_ID, component: sockets });
+      patches.push({
+        kind: "add-component",
+        nodeId: ROOT_NODE_ID,
+        component: sockets,
+      });
     }
 
     identityMap[character.id] = emit(
@@ -370,7 +398,7 @@ export function runPrefabMigration(project: ProjectDefinition): PrefabMigrationR
           id: prefabId,
           displayName: character.displayName,
           description: `Migrated from Character "${character.id}".`,
-          tags: ['character', 'humanoid'],
+          tags: ["character", "humanoid"],
           createdAt: MIGRATION_TIMESTAMP,
           createdBy: MIGRATION_AUTHOR,
         },
@@ -426,7 +454,10 @@ interface SceneMigrationContext {
  * minting two. The key is derived from the payload rather than from a UUID
  * (§11.4), which is what keeps a second migration run producing the same ids.
  */
-function migrateScene(scene: SceneDefinition, context: SceneMigrationContext): SceneDefinition {
+function migrateScene(
+  scene: SceneDefinition,
+  context: SceneMigrationContext,
+): SceneDefinition {
   const gameObjects: GameObjectInstanceDefinition[] = [];
 
   /*
@@ -482,7 +513,7 @@ function migrateEntity(
   };
 
   switch (entity.kind) {
-    case 'character': {
+    case "character": {
       const character = entity as CharacterSceneEntity;
       const prefab = context.identityMap[character.characterId];
       if (!prefab) return undefined;
@@ -493,7 +524,7 @@ function migrateEntity(
         relations: {},
       };
     }
-    case 'camera': {
+    case "camera": {
       const camera = entity as CameraSceneEntity;
       const prefab = cameraPrefabFor(camera, context);
       return {
@@ -506,7 +537,7 @@ function migrateEntity(
             : {},
       };
     }
-    case 'light': {
+    case "light": {
       const light = entity as LightSceneEntity;
       return {
         ...common,
@@ -515,7 +546,7 @@ function migrateEntity(
         relations: {},
       };
     }
-    case 'prop':
+    case "prop":
       // Props migrate to a Prefab derived from the asset they render. The demo
       // project authors none, so rather than guess at a shape nothing exercises,
       // this stays unimplemented and says so: a migration that silently dropped
@@ -536,7 +567,11 @@ function cameraPrefabFor(
   camera: CameraSceneEntity,
   context: SceneMigrationContext,
 ): GameObjectPrefabReference {
-  const key = JSON.stringify([camera.projection, camera.fieldOfViewDeg, camera.orthographicSize]);
+  const key = JSON.stringify([
+    camera.projection,
+    camera.fieldOfViewDeg,
+    camera.orthographicSize,
+  ]);
   const existing = context.cameraPrefabs.get(key);
   if (existing) return existing;
 
@@ -549,27 +584,40 @@ function cameraPrefabFor(
     createBasePrefab(
       {
         id,
-        displayName: 'Scene Camera',
-        description: 'Generated from a migrated Scene camera entity.',
-        tags: ['camera'],
+        displayName: "Scene Camera",
+        description:
+          "Reusable target-follow camera rig: an empty root with an offset Camera child.",
+        tags: ["camera"],
         createdAt: MIGRATION_TIMESTAMP,
         createdBy: MIGRATION_AUTHOR,
       },
       node({
-        displayName: 'Camera',
-        components: [
+        displayName: "Camera Rig",
+        children: [
           {
-            schemaVersion: 1,
-            componentId: COMPONENT_IDS.camera,
-            componentType: 'camera',
-            enabled: true,
-            projection: camera.projection,
-            ...(camera.fieldOfViewDeg !== undefined
-              ? { fieldOfViewDeg: camera.fieldOfViewDeg }
-              : {}),
-            ...(camera.orthographicSize !== undefined
-              ? { orthographicSize: camera.orthographicSize }
-              : {}),
+            kind: "inline",
+            node: node({
+              nodeId: "camera",
+              displayName: "Camera",
+              // Scene placement belongs to the instance. The child is only the
+              // reusable lens node, not a second follow-offset authority.
+              transform: IDENTITY_TRANSFORM,
+              components: [
+                {
+                  schemaVersion: 1,
+                  componentId: COMPONENT_IDS.camera,
+                  componentType: "camera",
+                  enabled: true,
+                  projection: camera.projection,
+                  ...(camera.fieldOfViewDeg !== undefined
+                    ? { fieldOfViewDeg: camera.fieldOfViewDeg }
+                    : {}),
+                  ...(camera.orthographicSize !== undefined
+                    ? { orthographicSize: camera.orthographicSize }
+                    : {}),
+                },
+              ],
+            }),
           },
         ],
       }),
@@ -601,24 +649,26 @@ function lightPrefabFor(
       {
         id,
         displayName: `${light.lightType[0]!.toUpperCase()}${light.lightType.slice(1)} Light`,
-        description: 'Generated from a migrated Scene light entity.',
-        tags: ['light'],
+        description: "Generated from a migrated Scene light entity.",
+        tags: ["light"],
         createdAt: MIGRATION_TIMESTAMP,
         createdBy: MIGRATION_AUTHOR,
       },
       node({
-        displayName: 'Light',
+        displayName: "Light",
         components: [
           {
             schemaVersion: 1,
             componentId: COMPONENT_IDS.light,
-            componentType: 'light',
+            componentType: "light",
             enabled: true,
             lightType: light.lightType,
             intensity: light.intensity,
             color: light.color,
             ...(light.range !== undefined ? { range: light.range } : {}),
-            ...(light.spotAngleRad !== undefined ? { spotAngleRad: light.spotAngleRad } : {}),
+            ...(light.spotAngleRad !== undefined
+              ? { spotAngleRad: light.spotAngleRad }
+              : {}),
           },
         ],
       }),
@@ -634,7 +684,7 @@ export function runMigration(): PrefabMigrationResult {
 }
 
 function main(): void {
-  const check = process.argv.includes('--check');
+  const check = process.argv.includes("--check");
   const result = runMigration();
   const pending: { path: string; content: string }[] = [];
 
@@ -650,13 +700,15 @@ function main(): void {
   if (pending.length === 0) {
     console.log(
       `[OK] ${result.prefabs.length} Prefab(s) and ${Object.keys(result.identityMap).length} ` +
-        'migrated Character identities already current',
+        "migrated Character identities already current",
     );
     return;
   }
 
   if (check) {
-    console.error('[FAIL] the repository is not the migrated form; run `pnpm prefabs:migrate`');
+    console.error(
+      "[FAIL] the repository is not the migrated form; run `pnpm prefabs:migrate`",
+    );
     for (const entry of pending) console.error(`  ${entry.path}`);
     process.exit(1);
   }
@@ -667,4 +719,4 @@ function main(): void {
   }
 }
 
-if (process.argv[1]?.includes('migrate-character-prefabs')) main();
+if (process.argv[1]?.includes("migrate-character-prefabs")) main();

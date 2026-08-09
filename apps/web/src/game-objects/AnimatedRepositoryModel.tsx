@@ -39,12 +39,16 @@
  * frame took — so two runs of the same replay show the same pose at the same
  * tick, and a paused Scene stays paused instead of drifting.
  */
-import { useEffect, useMemo, useRef } from 'react';
-import { useGLTF } from '@react-three/drei';
-import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import * as THREE from 'three';
-import type { ExternalAnimationSource } from '@atc/schema';
-import type { RenderAnimatorFact, RenderProjectionIssue } from './render-projection.ts';
+import { useEffect, useMemo, useRef } from "react";
+import { useGLTF } from "@react-three/drei";
+import { clone as cloneSkinnedScene } from "three/examples/jsm/utils/SkeletonUtils.js";
+import * as THREE from "three";
+import type { ExternalAnimationSource } from "@atc/schema";
+import type {
+  RenderAnimatorFact,
+  RenderProjectionIssue,
+} from "./render-projection.ts";
+import { deterministicBlendWeights } from "./animation-blend.ts";
 
 /** A take's identity: the file it lives in plus its name inside that file. */
 function takeKey(source: ExternalAnimationSource): string {
@@ -53,6 +57,8 @@ function takeKey(source: ExternalAnimationSource): string {
 
 export interface AnimatedRepositoryModelProps {
   assetPath: string;
+  scale: number;
+  rotationYRad: number;
   castShadow: boolean;
   receiveShadow: boolean;
   animator: RenderAnimatorFact;
@@ -63,6 +69,8 @@ export interface AnimatedRepositoryModelProps {
 
 export function AnimatedRepositoryModel({
   assetPath,
+  scale,
+  rotationYRad,
   castShadow,
   receiveShadow,
   animator,
@@ -79,7 +87,10 @@ export function AnimatedRepositoryModel({
    * what gets fetched, with the model file appended so the mesh itself loads.
    */
   const files = useMemo(() => {
-    const unique = new Set<string>([assetPath, ...animator.playback.sourceFiles]);
+    const unique = new Set<string>([
+      assetPath,
+      ...animator.playback.sourceFiles,
+    ]);
     return [...unique];
   }, [assetPath, animator.playback.sourceFiles]);
 
@@ -100,7 +111,9 @@ export function AnimatedRepositoryModel({
 
   const animationsByFile = useMemo(() => {
     const byFile = new Map<string, THREE.AnimationClip[]>();
-    files.forEach((file, index) => byFile.set(file, loaded[index]?.animations ?? []));
+    files.forEach((file, index) =>
+      byFile.set(file, loaded[index]?.animations ?? []),
+    );
     return byFile;
   }, [files, loaded]);
 
@@ -129,11 +142,16 @@ export function AnimatedRepositoryModel({
       // Chamber movement owns the world root, but bone-local translation is
       // pose data: dropping only `root.position` keeps the roll on the ground
       // without flattening the pose.
-      clip.tracks = clip.tracks.filter((track) => track.name !== 'root.position');
+      clip.tracks = clip.tracks.filter(
+        (track) => track.name !== "root.position",
+      );
       const scale = source.positionScale ?? 1;
       if (scale !== 1) {
         clip.tracks = clip.tracks.map((track) => {
-          if (!(track instanceof THREE.VectorKeyframeTrack) || !track.name.endsWith('.position')) {
+          if (
+            !(track instanceof THREE.VectorKeyframeTrack) ||
+            !track.name.endsWith(".position")
+          ) {
             return track;
           }
           const scaled = track.clone() as THREE.VectorKeyframeTrack;
@@ -148,8 +166,6 @@ export function AnimatedRepositoryModel({
     return byTake;
   }, [animationsByFile, animator.playback.takeByStateId]);
 
-  const currentTake = useRef('');
-  const currentAction = useRef<THREE.AnimationAction | null>(null);
   /** Take keys already reported missing, so one gap is one issue, not one a frame. */
   const reported = useRef(new Set<string>());
 
@@ -162,15 +178,13 @@ export function AnimatedRepositoryModel({
     () => () => {
       mixer.stopAllAction();
       mixer.uncacheRoot(scene);
-      currentAction.current = null;
-      currentTake.current = '';
       reported.current.clear();
     },
     [mixer, scene],
   );
 
   const source = animator.playback.takeByStateId[animator.stateId];
-  const key = source ? takeKey(source) : '';
+  const key = source ? takeKey(source) : "";
 
   useEffect(() => {
     /*
@@ -183,13 +197,13 @@ export function AnimatedRepositoryModel({
       if (reported.current.has(gap)) return;
       reported.current.add(gap);
       onIssue?.({
-        code: 'animator-take-unbound',
+        code: "animator-take-unbound",
         gameObjectId,
         componentId: animator.componentId,
         message:
           `"${displayName}" (${gameObjectId}) plays state "${animator.stateId}", but ` +
           `motion set "${animator.assignment.motionSet.assetId}@${animator.assignment.motionSet.version}" ` +
-          'binds no imported take to it',
+          "binds no imported take to it",
       });
       return;
     }
@@ -197,7 +211,7 @@ export function AnimatedRepositoryModel({
     if (reported.current.has(key)) return;
     reported.current.add(key);
     onIssue?.({
-      code: 'animator-clip-missing',
+      code: "animator-clip-missing",
       gameObjectId,
       componentId: animator.componentId,
       message:
@@ -207,33 +221,60 @@ export function AnimatedRepositoryModel({
   }, [source, key, clipsByTake, animator, gameObjectId, displayName, onIssue]);
 
   /*
-   * Bind, then seek. The action is (re)started only when the *take* changes, so
-   * a state change that happens to play the same clip does not restart it; the
-   * seek runs every render, because that is what makes the pose a function of
-   * simulation time.
+   * Bind, weight and seek entirely from runtime state. `mixer.update(0)` only
+   * evaluates that state; render-wall-clock delta never advances a transition.
    */
   useEffect(() => {
-    const clip = key === '' ? undefined : clipsByTake.get(key);
+    const clip = key === "" ? undefined : clipsByTake.get(key);
     if (!clip) return;
-    if (key !== currentTake.current) {
-      const loop = animator.playback.loopByStateId[animator.stateId] ?? true;
-      const next = mixer
-        .clipAction(clip, scene)
-        .reset()
-        .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
-        .play();
-      next.clampWhenFinished = !loop;
-      currentAction.current?.stop();
-      currentAction.current = next;
-      currentTake.current = key;
-    }
-    const action = currentAction.current;
-    if (!action) return;
-    action.time = animator.normalizedTime * action.getClip().duration;
-    // `update(0)` applies the seek without advancing wall-clock time, so the
-    // pose on screen is exactly the one the simulation is at.
-    mixer.update(0);
-  }, [key, clipsByTake, mixer, scene, animator.normalizedTime, animator.stateId, animator.playback.loopByStateId]);
+    mixer.stopAllAction();
 
-  return <primitive object={scene} />;
+    const previousSource = animator.previousStateId
+      ? animator.playback.takeByStateId[animator.previousStateId]
+      : undefined;
+    const previousClip = previousSource
+      ? clipsByTake.get(takeKey(previousSource))
+      : undefined;
+    const weights = deterministicBlendWeights(
+      previousSource ? takeKey(previousSource) : undefined,
+      key,
+      animator.blendWeight,
+    );
+    if (previousClip && weights.previous > 0) {
+      const previous = mixer.clipAction(previousClip, scene).reset().play();
+      previous.time = animator.previousNormalizedTime * previousClip.duration;
+      previous.setEffectiveWeight(weights.previous);
+    }
+
+    const loop = animator.playback.loopByStateId[animator.stateId] ?? true;
+    const next = mixer
+      .clipAction(clip, scene)
+      .reset()
+      .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
+      .play();
+    next.clampWhenFinished = !loop;
+    next.time = animator.normalizedTime * clip.duration;
+    next.setEffectiveWeight(weights.current);
+    mixer.update(0);
+  }, [key, clipsByTake, mixer, scene, animator]);
+
+  return (
+    <group
+      name={`${gameObjectId}:repository-model`}
+      scale={[scale, scale, scale]}
+      rotation-y={rotationYRad}
+      userData={{
+        atcRenderedModel: true,
+        atcGameObjectId: gameObjectId,
+        atcModelAssetPath: assetPath,
+        atcModelScale: scale,
+        atcModelRotationYRad: rotationYRad,
+        atcAnimationState: animator.stateId,
+        atcAnimationTime: animator.normalizedTime,
+        atcBlendWeight: animator.blendWeight,
+      }}
+    >
+      <primitive object={scene} />
+    </group>
+  );
 }

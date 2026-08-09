@@ -11,6 +11,7 @@
  */
 import type {
   GameObjectInstanceDefinition,
+  JsonObject,
   ProjectDefinition,
   ReplayDefinition,
   SceneDefinition,
@@ -22,6 +23,9 @@ import { resolveGameObjectInstance, resolveSceneGameObjects } from './definition
 import { ComponentRuntimeRegistry } from './components.ts';
 import { RuntimeGameObject, instantiateGameObject, type GameObjectStepContext } from './runtime.ts';
 import type { GameObjectRuntimeServices } from './services.ts';
+import type { GameplayEvent, GameplayObjectApi, GameplayObjectView, GameplayWorld } from '@atc/gameplay-sdk';
+import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
+import { AiInjectedCharacterIntentSource, InjectedCharacterIntentSource, type CharacterIntent } from '@atc/character-control-runtime';
 
 export interface InstantiateSceneOptions {
   scene: SceneDefinition;
@@ -48,10 +52,47 @@ export class RuntimeScene {
   private readonly objectsById = new Map<string, RuntimeGameObject>();
   /** Declaration order is tick order; a Map preserves insertion order. */
   private tick = 0;
+  private queuedEvents: Array<{ target: string; event: GameplayEvent }> = [];
+  private pendingEvents: Array<{ target: string; event: GameplayEvent }> = [];
+  private pendingSpawns: RuntimeSpawnRequest[] = [];
+  private pendingDespawns: string[] = [];
+  private readonly maxOperationsPerTick = 1024;
+  private readonly gameplayWorld: GameplayWorld;
 
   constructor(private readonly options: InstantiateSceneOptions) {
     this.id = options.scene.id;
+    this.gameplayWorld = {
+      get: (id) => this.objectView(id),
+      findByTag: (tag) => this.gameObjects.flatMap((root) => root.walk()).filter((object) => object.definition.root.components.some((component) => component.componentType === 'tags' && component.tags.includes(tag))).map((object) => this.gameplayObject(object.id, 'world')!),
+      emit: (target, event) => { this.guardBudget(this.pendingEvents.length, 'event'); this.pendingEvents.push({ target, event: structuredClone(event) }); },
+      spawn: (request) => { this.guardBudget(this.pendingSpawns.length, 'spawn'); this.pendingSpawns.push(request); },
+      despawn: (id) => { this.guardBudget(this.pendingDespawns.length, 'despawn'); this.pendingDespawns.push(id); },
+    };
     this.build();
+  }
+
+  private runtimeServices(): GameObjectRuntimeServices { return { ...this.options.services, gameplayWorld: this.gameplayWorld, gameplaySceneId: this.id, gameplayObject: (id, originKey) => this.gameplayObject(id, originKey) }; }
+  private guardBudget(count: number, operation: string): void { if (count >= this.maxOperationsPerTick) throw new Error(`gameplay ${operation} budget exceeded in scene "${this.id}"`); }
+  private tagsOf(object: RuntimeGameObject): string[] { return object.definition.root.components.flatMap((component) => component.componentType === 'tags' ? component.tags : []); }
+  private objectView(id: string): GameplayObjectView | undefined { return this.gameplayObject(id, 'world'); }
+  getRuntimeNode(runtimeNodeId: string): RuntimeGameObject | undefined { return this.gameObjects.flatMap((root) => root.walk()).find((entry) => entry.id === runtimeNodeId); }
+  private gameplayObject(id: string, originKey: string): GameplayObjectApi | undefined {
+    const object = this.getRuntimeNode(id);
+    if (!object) return undefined;
+    const ok = { ok: true } as const;
+    const refused = { ok: false, code: 'simulation-owned-transform' as const, message: 'use ctx.self.character.command(...) instead' };
+    return {
+      id: object.id,
+      tags: this.tagsOf(object),
+      worldTransform: () => object.worldTransform,
+      transform: {
+        world: () => object.worldTransform,
+        local: () => structuredClone(object.localTransform),
+        setLocal: (transform) => { if (object.character) return refused; object.setLocalTransform(transform); return ok; },
+        translateLocal: (delta) => { if (object.character) return refused; object.localTransform.position.x += delta.x; object.localTransform.position.y += delta.y; object.localTransform.position.z += delta.z; return ok; },
+      },
+      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, originKey), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
+    };
   }
 
   private build(): void {
@@ -65,7 +106,7 @@ export class RuntimeScene {
         definition.gameObjectId,
         instantiateGameObject({
           definition,
-          services: this.options.services,
+          services: this.runtimeServices(),
           project: this.options.project,
           ...(this.options.terrain ? { terrain: this.options.terrain } : {}),
           tracks: this.options.scene.intentTracks,
@@ -76,6 +117,7 @@ export class RuntimeScene {
         }),
       );
     }
+    for (const gameObject of this.objectsById.values()) gameObject.start({ tick: 0, cameraYawRad: 0 });
   }
 
   /**
@@ -106,6 +148,13 @@ export class RuntimeScene {
     return this.objectsById.get(gameObjectId);
   }
 
+  injectHumanIntent(playerIndex: number, intent: CharacterIntent): void {
+    for (const object of this.gameObjects.flatMap((root) => root.walk())) {
+      const source = object.intentSource;
+      if (source instanceof InjectedCharacterIntentSource && !(source instanceof AiInjectedCharacterIntentSource) && source.playerIndex === playerIndex) source.inject(intent);
+    }
+  }
+
   /** The camera the Scene plays through, by GameObject id. */
   get activeCamera(): RuntimeGameObject | undefined {
     const id = this.options.scene.activeCameraGameObjectId;
@@ -114,10 +163,25 @@ export class RuntimeScene {
 
   step(context: Omit<GameObjectStepContext, 'tick'> & { tick?: number }): void {
     const tick = context.tick ?? this.tick;
+    for (const queued of this.queuedEvents) this.getRuntimeNode(queued.target)?.dispatchOwnGameplayEvent({ tick, cameraYawRad: context.cameraYawRad }, queued.event);
+    this.queuedEvents = [];
     for (const gameObject of this.objectsById.values()) {
       gameObject.step({ tick, cameraYawRad: context.cameraYawRad });
     }
+    for (const id of this.pendingDespawns) this.despawn(id);
+    for (const request of this.pendingSpawns) this.instantiate(request);
+    this.pendingDespawns = [];
+    this.pendingSpawns = [];
+    this.queuedEvents = this.pendingEvents;
+    this.pendingEvents = [];
     this.tick = tick + 1;
+  }
+
+  emit(targetGameObjectId: string, event: GameplayEvent): void { this.gameplayWorld.emit(targetGameObjectId, event); }
+  gameplaySnapshot(): Record<string, Record<string, JsonObject>> {
+    const snapshot: Record<string, Record<string, JsonObject>> = {};
+    for (const root of this.objectsById.values()) for (const object of root.walk()) for (const component of object.components) if (component instanceof GameplayScriptRuntime) (snapshot[object.id] ??= {})[component.componentId] = component.snapshot();
+    return snapshot;
   }
 
   /**
@@ -155,7 +219,7 @@ export class RuntimeScene {
     }
     const runtime = instantiateGameObject({
       definition: resolved.definition,
-      services: this.options.services,
+      services: this.runtimeServices(),
       project: this.options.project,
       ...(this.options.terrain ? { terrain: this.options.terrain } : {}),
       tracks: this.options.scene.intentTracks,
@@ -165,6 +229,7 @@ export class RuntimeScene {
         : {}),
     });
     this.objectsById.set(request.id, runtime);
+    runtime.start({ tick: this.tick, cameraYawRad: 0 });
     return runtime;
   }
 
@@ -179,6 +244,10 @@ export class RuntimeScene {
   dispose(): void {
     for (const runtime of this.objectsById.values()) runtime.dispose();
     this.objectsById.clear();
+    this.queuedEvents = [];
+    this.pendingEvents = [];
+    this.pendingSpawns = [];
+    this.pendingDespawns = [];
   }
 }
 

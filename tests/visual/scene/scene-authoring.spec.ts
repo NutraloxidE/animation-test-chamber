@@ -43,7 +43,7 @@ test.describe('scene authoring', () => {
     // is the contract the scene exists to demonstrate.
     for (const instanceId of [CONTROLLED, SCRIPTED]) {
       await expect(page.getByTestId(`scene-hierarchy-prefab-${instanceId}`)).toHaveText(
-        'navigator@1.0.0',
+        'gameplay-quaternius@1.0.0',
       );
     }
   });
@@ -127,8 +127,8 @@ test.describe('scene authoring', () => {
     await page.getByTestId(`scene-hierarchy-row-${CONTROLLED}`).click();
     await page.getByTestId('scene-open-prefab').click();
 
-    await expect(page).toHaveURL(/\/edit\/prefab\/navigator/);
-    await expect(page.getByTestId('prefab-target-id')).toContainText('navigator');
+    await expect(page).toHaveURL(/\/edit\/prefab\/gameplay-quaternius/);
+    await expect(page.getByTestId('prefab-target-id')).toContainText('gameplay-quaternius');
   });
 
   test('a transform edit moves only the selected GameObject', async ({ page }) => {
@@ -244,7 +244,7 @@ test.describe('scene authoring', () => {
 
   test('the prefab editor still opens and identifies its exact prefab', async ({ page }) => {
     await page.goto('/edit/prefab/navigator/animation/root/animator');
-    await expect(page.getByTestId('prefab-target-id')).toContainText('navigator');
+    await expect(page.getByTestId('animation-subject-prefab')).toContainText('navigator');
     // The chamber itself is unchanged underneath the route.
     await expect(page.getByTestId('hud')).toBeVisible();
   });

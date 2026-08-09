@@ -886,9 +886,9 @@
           "componentOverrides": [],
           "prefab": {
             "assetType": "game-object-prefab",
-            "assetId": "navigator",
+            "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
           },
           "bindings": {
             "characterIntent": {
@@ -924,9 +924,9 @@
           "componentOverrides": [],
           "prefab": {
             "assetType": "game-object-prefab",
-            "assetId": "navigator",
+            "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
           },
           "bindings": {
             "characterIntent": {
@@ -964,7 +964,7 @@
             "assetType": "game-object-prefab",
             "assetId": "default-scene-camera",
             "version": "1.0.0",
-            "contentHash": "47249ec3a5441475f51aa12048df0b30cc36e133573073598631a47f8d5a2a0e"
+            "contentHash": "c499b0e9b802aab07c58e2c5df9037fdec2838c333feb496544e84a207ec5bd0"
           },
           "bindings": {},
           "relations": {

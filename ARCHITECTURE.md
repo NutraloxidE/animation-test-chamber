@@ -609,3 +609,8 @@ Stated plainly, because the alternative is someone discovering them later.
 - The Unity adapter gains world DTOs and an `IChamberWorld` seam. It does not
   spawn instances, and `local-input`/`replay` sources are declarations the
   adapter must supply rather than things the bundle can evaluate.
+# Gameplay extension ABI
+
+The native Component union is closed and contains one generic `script` envelope. Canonical Script Components carry exact gameplay-script id/version/hash plus strict authored properties. `@atc/gameplay-sdk` owns the deterministic ABI, `@atc/gameplay` owns game scripts and its generated registry, and `RuntimeGameObject` remains the sole fixed-step authority. Script state is per runtime instance and never canonical.
+
+The browser root is a play-only runtime host. Editor routes remain explicit under `/edit`.

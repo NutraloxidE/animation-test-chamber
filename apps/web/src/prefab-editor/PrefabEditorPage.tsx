@@ -40,6 +40,7 @@ import { prefabAnimationWorkspacePath, prefabEditorPath, ROUTES, routeId } from 
 import { prefabParentReference, resolvePrefabEditorTarget } from './resolve-prefab-editor-target.ts';
 import { PrefabOverview } from './PrefabOverview.tsx';
 import { PrefabViewport } from './PrefabViewport.tsx';
+import { gameplayScriptRegistry } from '@atc/gameplay';
 
 /** One row of the resolved tree. Nested nodes say where they came from. */
 function HierarchyRow({
@@ -110,6 +111,19 @@ function ComponentInspector({
           {component.assignment.rig.assetId}@{component.assignment.rig.version}
         </p>
       )}
+      {component.componentType === 'script' && (() => {
+        const entry = gameplayScriptRegistry.find(component.script);
+        const mismatch = entry && entry.reference.contentHash !== component.script.contentHash;
+        if (!entry || mismatch) return <p data-testid="prefab-script-unavailable">Script unavailable: {component.script.assetId}@{component.script.version} {mismatch ? 'hash mismatch' : 'not found'}</p>;
+        return (
+          <div data-testid="prefab-script-properties">
+            <p>{component.script.assetId}@{component.script.version} <code>{component.script.contentHash}</code></p>
+            {Object.entries(entry.definition.properties).map(([key, descriptor]) => (
+              <label key={key}>{key}<input readOnly value={String(component.properties[key] ?? '')} data-kind={descriptor.kind} /></label>
+            ))}
+          </div>
+        );
+      })()}
       <pre data-testid="prefab-component-values">{JSON.stringify(component, null, 2)}</pre>
     </div>
   );

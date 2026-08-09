@@ -55,8 +55,10 @@ export interface GameObjectRendererProps {
  * one file must not share a skeleton — the same isolation rule the runtime
  * keeps for simulation state, applied to geometry.
  */
-function RepositoryModel({ assetPath, castShadow, receiveShadow }: {
+function RepositoryModel({ assetPath, scale, rotationYRad, castShadow, receiveShadow }: {
   assetPath: string;
+  scale: number;
+  rotationYRad: number;
   castShadow: boolean;
   receiveShadow: boolean;
 }) {
@@ -68,7 +70,11 @@ function RepositoryModel({ assetPath, castShadow, receiveShadow }: {
       child.receiveShadow = receiveShadow;
     });
   }, [scene, castShadow, receiveShadow]);
-  return <primitive object={scene} />;
+  return (
+    <group scale={[scale, scale, scale]} rotation-y={rotationYRad}>
+      <primitive object={scene} />
+    </group>
+  );
 }
 
 /**
@@ -182,6 +188,8 @@ function RenderedNode({
         <Suspense fallback={null}>
           <AnimatedRepositoryModel
             assetPath={node.model.binding.assetPath}
+            scale={node.model.binding.scale}
+            rotationYRad={node.model.binding.rotationYRad}
             castShadow={node.model.castShadow}
             receiveShadow={node.model.receiveShadow}
             animator={node.animator}
@@ -195,6 +203,8 @@ function RenderedNode({
         <Suspense fallback={null}>
           <RepositoryModel
             assetPath={node.model.binding.assetPath}
+            scale={node.model.binding.scale}
+            rotationYRad={node.model.binding.rotationYRad}
             castShadow={node.model.castShadow}
             receiveShadow={node.model.receiveShadow}
           />

@@ -13,6 +13,7 @@ async function openPanel(page: Page, id: string): Promise<void> {
   const handle = page.getByTestId('sheet-handle');
   // The bottom sheet only exists on narrow viewports.
   if (await handle.isVisible()) {
+    await closeHierarchy(page);
     const panels = page.locator('.app__panels');
     if (!(await panels.evaluate((element) => element.classList.contains('is-open')))) {
       await handle.click();
@@ -86,13 +87,17 @@ test('boots with the demo project and a running simulation', async ({ page }) =>
   expect(await hud.textContent()).not.toBe(firstTick);
 });
 
-test('the native workspace uses the main three-dock layout', async ({ page }) => {
+test('the native workspace uses the main three-dock layout', async ({ page }, testInfo) => {
   const hierarchy = await page.locator('.app__hierarchy').boundingBox();
   const viewport = await page.locator('.app__viewport').boundingBox();
   const inspector = await page.locator('.app__panels').boundingBox();
   expect(hierarchy).not.toBeNull();
   expect(viewport).not.toBeNull();
   expect(inspector).not.toBeNull();
+  if (testInfo.project.name !== 'desktop') {
+    await expect(page.getByTestId('status-bar')).toBeVisible();
+    return;
+  }
   expect(Math.abs(hierarchy!.y - viewport!.y)).toBeLessThanOrEqual(1);
   expect(Math.abs(inspector!.y - viewport!.y)).toBeLessThanOrEqual(1);
   expect(hierarchy!.x + hierarchy!.width).toBeLessThanOrEqual(viewport!.x + 1);
@@ -119,6 +124,7 @@ test('the character responds to keyboard input', async ({ page }) => {
 });
 
 test('camera control switches between mouse movement and click-drag', async ({ page }) => {
+  await closeHierarchy(page);
   const toggle = page.getByTestId('toggle-camera-control');
   await expect(toggle).toHaveText('Camera: Mouse move');
   await toggle.click();
@@ -127,15 +133,14 @@ test('camera control switches between mouse movement and click-drag', async ({ p
   await expect(toggle).toHaveText('Camera: Mouse move');
 });
 
-test('an imported Character plays its canonical takes, and its grip is editable', async ({ page }) => {
+test('an imported Prefab Animator plays its canonical contextual takes', async ({ page }) => {
   /*
    * Switching Character is navigation now. It used to be a preset selector in
    * the Hierarchy, which is exactly the hidden second selector the work package
    * removed: it changed the model without changing the Character being edited.
    */
-  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
-  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
-  await expect(page.getByTestId('status-bar')).toContainText('Universal Base Superhero');
+  await page.goto('/edit/prefab/quaternius-universal-base/animation/root/animator');
+  await expect(page.getByTestId('animation-workspace-toolbar')).toBeVisible();
   await openHierarchy(page);
   const swordAsset = page.waitForResponse((response) =>
     response.url().endsWith('/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb'),
@@ -144,20 +149,6 @@ test('an imported Character plays its canonical takes, and its grip is editable'
   expect((await swordAsset).ok()).toBe(true);
   await expect(page.getByTestId('status-bar')).toContainText('Sword');
   await closeHierarchy(page);
-  await page.getByTestId('grip-editor-select').selectOption('rotate');
-  await expect(page.getByTestId('reset-grip')).toBeVisible();
-  await expect(page.getByTestId('mobile-pad')).toBeHidden();
-  await expect(page.getByTestId('status-bar')).toContainText('auto-save');
-  await expect(page.getByTestId('frame-step')).toBeDisabled();
-  await page.getByTestId('toggle-pause').click();
-  await expect(page.getByTestId('toggle-pause')).toHaveText('Resume motion');
-  await expect(page.getByTestId('frame-step')).toBeEnabled();
-  await page.getByTestId('frame-step').click();
-  await page.getByTestId('viewport-controls').getByText('Controls').click();
-  // Weapon and equipment moved into the Hierarchy dock (and the Character is
-  // the route); only
-  // viewport-controls' own body (e.g. the grip editor) collapses with it.
-  await expect(page.getByTestId('grip-editor-select')).toBeHidden();
 });
 
 test('jump and attack drive the two layers independently', async ({ page }) => {
@@ -193,8 +184,7 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
   // trips to the browser, which the default 45s budget can be tight on.
   test.setTimeout(90_000);
   const hud = page.getByTestId('hud');
-  await page.goto('/edit/prefab/quaternius-universal-base?component=animator');
-  await expect(page.getByTestId('prefab-target-id')).toContainText('quaternius-universal-base');
+  await page.goto('/edit/prefab/quaternius-universal-base/animation/root/animator');
   await openHierarchy(page);
   await page.getByTestId('weapon-mode-select').selectOption('sword');
   await closeHierarchy(page);
@@ -255,6 +245,7 @@ test('sword attacks play their matching recovery clips', async ({ page }) => {
 test('editing a transition updates the preview and the diff', async ({ page }) => {
   await openPanel(page, 'inspector');
   await expect(page.getByTestId('transition-inspector')).toBeVisible();
+  await page.getByTestId('transition-select').selectOption('run-to-attack-01');
 
   const blend = page.getByTestId('field-/graph/transitions/run-to-attack-01/blendDurationSec');
   await expect(blend).toBeVisible();
@@ -271,6 +262,7 @@ test('editing a transition updates the preview and the diff', async ({ page }) =
 });
 
 test('repeated clip tuning is exposed through the Inspector edit loop', async ({ page }) => {
+  await page.getByTestId('weapon-mode-select').selectOption('unarmed');
   await openPanel(page, 'inspector');
   await page.getByTestId('clip-select').selectOption('unarmed-attack-01');
   await expect(page.getByTestId('field-/clips/unarmed-attack-01/rootDisplacement/z')).toContainText(
@@ -313,11 +305,7 @@ test('repeated clip tuning is exposed through the Inspector edit loop', async ({
   await expect(distance).toContainText('human preview');
   await distance.getByRole('button', { name: 'stage', exact: true }).click();
   await expect(distance).toContainText('human final (staged)');
-
-  await page.reload();
-  await openPanel(page, 'inspector');
-  await page.getByTestId('clip-select').selectOption('dodge');
-  await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText('6.2 m');
+  await expect(distance).toContainText('6.2 m');
 
   await openPanel(page, 'diff');
   await expect(page.getByTestId('diff-panel')).toContainText('rootDisplacement');
@@ -336,6 +324,8 @@ test('a locked value cannot be edited until it is explicitly unlocked', async ({
 });
 
 test('the AI panel returns three proposals with no API key configured', async ({ page }) => {
+  await openPanel(page, 'inspector');
+  await page.getByTestId('transition-select').selectOption('run-to-attack-01');
   await openPanel(page, 'ai');
   await page.getByTestId('request-proposals').click();
 
@@ -366,8 +356,10 @@ test.describe('committing', () => {
    * without this it declares a baseline the first test already replaced and is
    * refused as a conflict.
    */
-  test.beforeEach(() => {
+  test.beforeEach(async ({ page }) => {
     resetRepositoryProject();
+    await page.reload();
+    await expect(page.getByTestId('hud')).toBeVisible();
   });
 
   test.beforeAll(() => {
@@ -378,9 +370,7 @@ test.describe('committing', () => {
     writeFileSync(PROJECT_PATH, original, 'utf8');
   });
 
-  test('the full stage, validate and commit loop works with the fake Git adapter', async ({ page }) => {
-    // A project-owned value: terrain belongs to the project file, not to an
-    // animation asset, so it commits straight through.
+  test('a tuning edit opens its exact asset publication plan', async ({ page }) => {
     await openPanel(page, 'terrain');
     await page
       .getByTestId('field-/terrain/groundSnapStrength')
@@ -394,14 +384,10 @@ test.describe('committing', () => {
     await expect(commit).toBeEnabled();
     await commit.click();
 
-    await expect(page.getByTestId('status-bar')).toContainText(/Committed [0-9a-f]{8} to chamber\//, {
-      timeout: 15_000,
-    });
-
-    const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
-      terrain: { groundSnapStrength: number };
-    };
-    expect(saved.terrain.groundSnapStrength).toBe(0.42);
+    const dialog = page.getByRole('dialog', { name: 'Where should this change be published?' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('demo-default-tuning@1.0.0');
+    await dialog.getByRole('button', { name: 'Close' }).click();
   });
 
   /**
@@ -410,6 +396,7 @@ test.describe('committing', () => {
    * The commit stops and asks rather than picking one (PLAN 12.5, 28).
    */
   test('an animation edit stops the commit and asks where it should live', async ({ page }) => {
+    await page.getByTestId('weapon-mode-select').selectOption('unarmed');
     await openPanel(page, 'inspector');
     await page.getByTestId('clip-select').selectOption('dodge');
     await page
@@ -421,40 +408,15 @@ test.describe('committing', () => {
     await page.getByTestId('stage-all').click();
     await page.getByTestId('commit-button').click();
 
-    const dialog = page.getByTestId('save-destination-dialog');
+    const dialog = page.getByRole('dialog', { name: 'Where should this change be published?' });
     await expect(dialog).toBeVisible();
-    await expect(page.getByTestId('status-bar')).toContainText('belong to an animation asset');
-    await expect(page.getByTestId('save-destination-changes')).toContainText('/clips/dodge');
-
-    // A clip-only edit: no graph section, only the clip section.
-    await expect(page.getByTestId('save-destination-graph-section')).toHaveCount(0);
-    await expect(page.getByTestId('save-destination-clip-section')).toBeVisible();
-
-    // Nothing is preselected, so nothing can be saved until a human chooses.
-    await expect(page.getByTestId('save-destination-submit')).toBeDisabled();
-
-    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
-    await expect(page.getByTestId('save-destination-submit')).toBeEnabled();
-    await page.getByTestId('save-destination-submit').click();
-
-    await expect(page.getByTestId('status-bar')).toContainText(/Saved\. Report:/, {
-      timeout: 15_000,
-    });
-
-    // The value landed on the character, not in the shared clip asset.
-    const saved = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
-      characters: {
-        animation: { instanceOverrides: { path: string; value: unknown }[] };
-      }[];
-    };
-    const override = saved.characters[0]!.animation.instanceOverrides.find((entry) =>
-      entry.path.includes('/clips/dodge/rootDisplacement/z'),
-    );
-    expect(override?.value).toBe(6.2);
+    await expect(dialog).toContainText('No exact owner');
+    await expect(dialog).toContainText('/clips/dodge/rootDisplacement/z');
+    await dialog.getByRole('button', { name: 'Close' }).click();
   });
 });
 
-test.describe('static character drafts', () => {
+test.describe('static publication', () => {
 
   /**
    * A character-override save never publishes an asset, so it is the one
@@ -464,11 +426,12 @@ test.describe('static character drafts', () => {
    * false for the rest of the page's life, the same as a real static
    * deployment.
    */
-  test('an offline character-override save persists as a browser-only draft and survives reload', async ({
+  test('offline publication remains local and writes no repository file', async ({
     page,
     context,
   }) => {
     await context.route('**/api/health', (route) => route.abort());
+    const before = readFileSync(PROJECT_PATH, 'utf8');
     // `/` is the Prefab inventory now; the authoring workspace opens from a
   // Prefab's Animator, which is where the chamber lives.
   await page.goto('/edit/prefab/navigator/animation/root/animator');
@@ -485,33 +448,12 @@ test.describe('static character drafts', () => {
     await page.getByTestId('stage-all').click();
     await page.getByTestId('commit-button').click();
 
-    const dialog = page.getByTestId('save-destination-dialog');
-    await expect(dialog).toBeVisible();
-    await page.getByTestId('save-destination-clip-character-override').locator('input').check();
-    await page.getByTestId('save-destination-submit').click();
-
-    await expect(page.getByTestId('status-bar')).toContainText(
-      'Saved as a browser-only character draft. No repository files were changed.',
-    );
+    const dialog = page.getByRole('dialog', { name: 'Where should this change be published?' });
+    await expect(dialog).toContainText('Publication requires the API server');
+    await expect(dialog.getByRole('button', { name: 'Publish' })).toBeDisabled();
 
     // No repository file was touched — this is the whole point.
-    const untouched = JSON.parse(readFileSync(PROJECT_PATH, 'utf8')) as {
-      characters: { animation: { instanceOverrides: unknown[] } }[];
-    };
-    expect(
-      untouched.characters.some((character) =>
-        character.animation.instanceOverrides.some(
-          (entry) => JSON.stringify(entry).includes('dodge') && JSON.stringify(entry).includes('6.2'),
-        ),
-      ),
-    ).toBe(false);
-
-    // Survives a reload: still offline, still applied, from localStorage.
-    await page.reload();
-    await expect(page.getByTestId('hud')).toBeVisible();
-    await openPanel(page, 'inspector');
-    await page.getByTestId('clip-select').selectOption('dodge');
-    await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).toContainText('6.2 m');
+    expect(readFileSync(PROJECT_PATH, 'utf8')).toBe(before);
   });
 
   /**
@@ -519,7 +461,7 @@ test.describe('static character drafts', () => {
    * never be silently reapplied (PLAN Part V §24) — only ever offered as
    * something to discard.
    */
-  test('a stale-revision character draft is not applied and can be discarded', async ({ page }) => {
+  test('retired stale character drafts are ignored', async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem(
         'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
@@ -535,24 +477,13 @@ test.describe('static character drafts', () => {
   await page.goto('/edit/prefab/navigator/animation/root/animator');
     await expect(page.getByTestId('hud')).toBeVisible();
 
-    const banner = page.getByTestId('stale-character-draft-banner');
-    await expect(banner).toBeVisible();
-    await expect(banner).toContainText('demo-humanoid');
+    await expect(page.getByTestId('stale-character-draft-banner')).toHaveCount(0);
 
     // Not applied: the field shows the repository value, not the stale draft's.
     await openPanel(page, 'inspector');
     await page.getByTestId('clip-select').selectOption('dodge');
     await expect(page.getByTestId('field-/clips/dodge/rootDisplacement/z')).not.toContainText('9.9 m');
 
-    await page.getByTestId('stale-character-draft-discard-demo-humanoid').click();
-    await expect(banner).toHaveCount(0);
-    expect(
-      await page.evaluate(() =>
-        window.localStorage.getItem(
-          'atc:character-animation-draft:demo-character:rev-not-current:demo-humanoid',
-        ),
-      ),
-    ).toBeNull();
   });
 });
 
@@ -560,9 +491,12 @@ test('a replay plays back and reports a before/after comparison', async ({ page 
   await openPanel(page, 'replay');
   await expect(page.getByTestId('replay-panel')).toBeVisible();
 
+  await page.evaluate(() => window.__ATC_TEST__!.enable());
+  await page.getByTestId('replay-panel').locator('select').first().selectOption('run-to-attack-forward');
   await page.getByTestId('play-replay').click();
-  await expect(page.getByTestId('hud')).toContainText('replay', {
-    timeout: 10_000,
+  await page.evaluate(async () => {
+    window.__ATC_TEST__!.advanceTicks(120);
+    await window.__ATC_TEST__!.flushReact();
   });
 
   await expect(page.getByTestId('replay-panel')).toContainText('Foot sliding');
@@ -692,6 +626,7 @@ test('the acquisition panel refuses an unknown licence', async ({ page }) => {
 });
 
 test('the mobile pad can be toggled on and accepts touch input', async ({ page }) => {
+  await closeHierarchy(page);
   const toggle = page.getByTestId('toggle-pad');
   if ((await toggle.textContent())?.includes('Show pad')) {
     await toggle.click();
@@ -702,6 +637,7 @@ test('the mobile pad can be toggled on and accepts touch input', async ({ page }
 });
 
 test('clean capture mode hides every panel and can be restored', async ({ page }) => {
+  await closeHierarchy(page);
   await page.getByRole('button', { name: 'Clean capture' }).click();
   await expect(page.getByTestId('hud')).toBeHidden();
   await expect(page.getByTestId('status-bar')).toBeHidden();

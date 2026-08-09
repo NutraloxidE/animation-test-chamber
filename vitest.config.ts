@@ -26,6 +26,8 @@ export default defineConfig({
       '@atc/repository-transaction': pkg('repository-transaction'),
       '@atc/prefab-runtime': pkg('prefab-runtime'),
       '@atc/game-object-runtime': pkg('game-object-runtime'),
+      '@atc/gameplay-sdk': pkg('gameplay-sdk'),
+      '@atc/gameplay': pkg('gameplay'),
     },
   },
   test: {

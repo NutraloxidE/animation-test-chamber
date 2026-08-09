@@ -8,10 +8,11 @@
  */
 import prefabIndex from '@chamber/prefab-assets';
 import { registryFromPrefabLibraryIndex, type PrefabAssetRegistry } from '@atc/prefab-runtime';
+import { gameplayScriptRegistry } from '@atc/gameplay';
 
 let cached: PrefabAssetRegistry | null = null;
 
 export function browserPrefabRegistry(): PrefabAssetRegistry {
-  cached ??= registryFromPrefabLibraryIndex(prefabIndex);
+  cached ??= registryFromPrefabLibraryIndex(prefabIndex, gameplayScriptRegistry);
   return cached;
 }
