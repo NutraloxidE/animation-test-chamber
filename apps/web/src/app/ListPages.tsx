@@ -8,7 +8,7 @@
  */
 import { Link } from 'react-router-dom';
 import { useChamber } from '../store.ts';
-import { rigEditorPath, sceneEditorPath } from './routes.ts';
+import { playScenePath, rigEditorPath } from './routes.ts';
 
 export function CharacterListPage(): JSX.Element {
   const characters = useChamber((state) => state.canonicalProject.characters);
@@ -39,7 +39,7 @@ export function SceneListPage(): JSX.Element {
         <ul>
           {scenes.map((scene) => (
             <li key={scene.id}>
-              <Link to={sceneEditorPath(scene.id)}>
+              <Link to={playScenePath(scene.id)}>
                 {scene.displayName} <code>{scene.id}</code>
               </Link>
             </li>

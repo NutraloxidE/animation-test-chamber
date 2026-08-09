@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "grid-floor",
+    "version": "1.0.0",
+    "displayName": "Grid Floor",
+    "description": "A 20 by 20 metre visible floor with a one-metre grid.",
+    "tags": ["environment", "floor", "grid"],
+    "createdAt": "2026-08-10T00:00:00.000Z",
+    "createdBy": "codex",
+    "contentHash": "4728253e4e2307e769651ff082b1b910f8c7bc0bc742a79d042098e7580890fe"
+  },
+  "derivation": { "mode": "base" },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Grid Floor",
+    "enabled": true,
+    "transform": {
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "rotation": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    "components": [{
+      "schemaVersion": 1,
+      "componentId": "model",
+      "componentType": "model-renderer",
+      "enabled": true,
+      "model": {
+        "kind": "repository-model",
+        "assetPath": "/assets/environment/grid-floor.gltf",
+        "scale": 1,
+        "rotationYRad": 0
+      },
+      "castShadow": false,
+      "receiveShadow": true
+    }],
+    "children": []
+  }
+}

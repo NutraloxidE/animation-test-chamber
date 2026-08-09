@@ -234,12 +234,7 @@ export function PlayScenePage(): JSX.Element {
   const requestedId = routeId(useParams().sceneId);
   const project = useChamber((state) => state.canonicalProject);
   const animationRegistry = useChamber((state) => state.registry);
-  const implicitSceneId = project.scenes.some(
-    (candidate) => candidate.id === project.activeSceneId,
-  )
-    ? project.activeSceneId
-    : project.scenes[0]?.id;
-  const sceneId = requestedId ?? implicitSceneId;
+  const sceneId = requestedId ?? project.activeSceneId;
   const scene = project.scenes.find((candidate) => candidate.id === sceneId);
   const terrain =
     TERRAIN_PRESETS.find(

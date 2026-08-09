@@ -112,15 +112,15 @@ test.describe('client-side navigation', () => {
     await expect(page).not.toHaveURL(/component=/);
   });
 
-  test('navigating between the scene list and a scene editor rebuilds the page', async ({ page }) => {
+  test('selecting a scene from the scene list opens its play surface', async ({ page }) => {
     await page.goto('/scenes');
-    const sceneLink = page.locator('a[href^="/edit/scene/"]').first();
+    const sceneLink = page.locator('a[href^="/play/"]').first();
     const href = await sceneLink.getAttribute('href');
-    const sceneId = href!.replace('/edit/scene/', '');
+    const sceneId = href!.replace('/play/', '');
 
     await sceneLink.click();
 
-    await expect(page).toHaveURL(new RegExp(`/edit/scene/${sceneId}$`));
-    await expect(page.getByTestId('scene-target-id')).toContainText(sceneId);
+    await expect(page).toHaveURL(new RegExp(`/play/${sceneId}$`));
+    await expect(page.getByTestId('play-surface')).toHaveAttribute('data-scene-id', sceneId);
   });
 });

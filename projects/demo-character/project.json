@@ -970,6 +970,72 @@
           "relations": {
             "cameraTargetGameObjectId": "controlled-humanoid"
           }
+        },
+        {
+          "schemaVersion": 2,
+          "id": "scene-light",
+          "displayName": "Scene Light",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 4,
+              "y": 8,
+              "z": 4
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "componentOverrides": [],
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "default-scene-light",
+            "version": "1.0.0",
+            "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
+          },
+          "bindings": {},
+          "relations": {}
+        },
+        {
+          "schemaVersion": 2,
+          "id": "grid-floor",
+          "displayName": "Grid Floor",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "componentOverrides": [],
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "grid-floor",
+            "version": "1.0.0",
+            "contentHash": "4728253e4e2307e769651ff082b1b910f8c7bc0bc742a79d042098e7580890fe"
+          },
+          "bindings": {},
+          "relations": {}
         }
       ],
       "activeCameraGameObjectId": "scene-camera"
