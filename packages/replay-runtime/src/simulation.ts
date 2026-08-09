@@ -18,12 +18,12 @@ import { FIXED_DT, addVec3, clamp01, createRandom, horizontalLength, moveTowards
 import {
   AnimationGraphRuntime,
   resolveWeaponMode,
-  DEFAULT_DODGE_RECOVERY_START_NORMALIZED,
   dodgeRecoveryBlendWeight,
   isFootPlanted,
   motionResolverFor,
   normalizedTimeOf,
   sampleRootMotion,
+  recoveryStartFor,
   ACTION_LAYER,
   LOCOMOTION_LAYER,
   type LayerId,
@@ -381,6 +381,12 @@ export class Simulation {
     const previousLocomotion = this.graph.getLayer('locomotion').stateId;
     this.graph.setLayerSpeedScale('locomotion', this.locomotionSpeedScale());
     const graphResult = this.graph.tick(this.parameterSource());
+    for (const fired of graphResult.transitions) {
+      const transition = this.graph.getTransitionDefinition(fired.transitionId);
+      if (!transition) continue;
+      this.velocity.x *= transition.momentumRetention;
+      this.velocity.z *= transition.momentumRetention;
+    }
 
     // A jump impulse is applied on the tick the locomotion layer enters a state
     // whose clip emits JumpTakeoff, so the height comes from canonical data.
@@ -551,13 +557,17 @@ export class Simulation {
 
     // Root motion contribution, blended against code-driven velocity by authority.
     const rootDelta = this.sampleRootMotionDelta(recoveryWeight);
+    const rootMotionMode = this.actionOwnsRoot()
+      ? this.actionRootMotionMode()
+      : (this.graph.getClipFor(this.graph.getLayer(LOCOMOTION_LAYER).stateId)
+          ?.rootMotionMode ?? rootMotion.mode);
     // Locomotion root motion is the other half of the same movement the code
     // path damps during an action; leaving it at full authority is what made
     // upper-body attacks keep gliding forward.
     const locomotionRootScale =
       this.actionOwnsRoot() || attackRecoveryScale > 0 ? 1 : actionScale;
     const horizontalAuthority =
-      actionIsStationary || rootMotion.mode === 'InPlace'
+      actionIsStationary || rootMotionMode === 'InPlace'
         ? 0
         : rootMotion.horizontalAuthority * locomotionRootScale;
     const codeWeight = 1 - horizontalAuthority;
@@ -576,7 +586,7 @@ export class Simulation {
       this.authoredRootDisplacement += Math.hypot(worldX, worldZ) * horizontalAuthority;
     }
 
-    const verticalAuthority = rootMotion.mode === 'InPlace' ? 0 : rootMotion.verticalAuthority;
+    const verticalAuthority = rootMotionMode === 'InPlace' ? 0 : rootMotion.verticalAuthority;
     const deltaY = this.velocity.y * FIXED_DT * (1 - verticalAuthority) + rootDelta.y * verticalAuthority;
 
     const platform = terrain.platformVelocity;
@@ -611,7 +621,17 @@ export class Simulation {
    */
   private actionIsStationary(): boolean {
     if (!this.graph.isActionActive()) return false;
-    return this.graph.getClipFor(this.graph.getLayer('action').stateId)?.rootMotionMode === 'InPlace';
+    return this.actionRootMotionMode() === 'InPlace';
+  }
+
+  private actionRootMotionMode(): AnimationClipDefinition['rootMotionMode'] {
+    const layer = this.graph.getLayer(ACTION_LAYER);
+    const transition = this.graph.getTransitionDefinition(layer.lastTransitionId);
+    return (
+      transition?.rootMotionMode ??
+      this.graph.getClipFor(layer.stateId)?.rootMotionMode ??
+      this.project.rootMotion.mode
+    );
   }
 
   /**
@@ -636,8 +656,7 @@ export class Simulation {
 
   private currentRotationAuthority(): number {
     const layer = this.graph.getLayer('action');
-    const transitionId = layer.lastTransitionId;
-    const transition = this.project.graph.transitions.find((t) => t.id === transitionId);
+    const transition = this.graph.getTransitionDefinition(layer.lastTransitionId);
     return transition?.rotationAuthority ?? this.project.rootMotion.rotationAuthority;
   }
 
@@ -670,7 +689,7 @@ export class Simulation {
     const layer = this.graph.getLayer('action');
     const recoveryStart =
       this.graph.getClipFor(layer.stateId)?.recoveryTransitionStartNormalized ??
-      DEFAULT_DODGE_RECOVERY_START_NORMALIZED;
+      recoveryStartFor(this.actionStateDefinition(), undefined);
     return layer.normalizedTime < recoveryStart;
   }
 
@@ -678,11 +697,11 @@ export class Simulation {
   private actionOwnsRoot(): boolean {
     const stateId = this.graph.getLayer('action').stateId;
     if (!this.graph.isActionActive()) return false;
-    const clip = this.graph.getClipFor(stateId);
+    const mode = this.actionRootMotionMode();
     return (
       this.graph.getStateDefinition(stateId)?.bodyMask === 'full' ||
       (this.upperBodyActionRootMotionEnabled &&
-        (clip?.rootMotionMode === 'RootMotion' || clip?.rootMotionMode === 'Hybrid'))
+        (mode === 'RootMotion' || mode === 'Hybrid'))
     );
   }
 

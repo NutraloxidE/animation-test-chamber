@@ -290,6 +290,16 @@ export class AnimationGraphRuntime {
     return this.states.get(stateId);
   }
 
+  /** The context-resolved transition the runtime actually evaluates. */
+  getTransitionDefinition(transitionId: string | null): TransitionDefinition | undefined {
+    if (!transitionId) return undefined;
+    for (const transitions of this.transitionsByLayer.values()) {
+      const transition = transitions.find((entry) => entry.id === transitionId);
+      if (transition) return transition;
+    }
+    return undefined;
+  }
+
   /**
    * The clip this state plays right now. The graph knows a slot; the motion
    * resolver knows which of the character's clips fills it.
@@ -342,12 +352,18 @@ export class AnimationGraphRuntime {
     });
   }
 
-  private evaluateCondition(condition: TransitionCondition, params: ParameterSource): boolean {
+  private evaluateCondition(
+    condition: TransitionCondition,
+    params: ParameterSource,
+    inputBufferMs?: number,
+  ): boolean {
     const { parameter, operator, value } = condition;
 
     if (operator === 'buffered') {
-      // `value` carries the buffer window in milliseconds.
-      return params.isBuffered(parameter, typeof value === 'number' ? value : 0);
+      return params.isBuffered(
+        parameter,
+        inputBufferMs ?? (typeof value === 'number' ? value : 0),
+      );
     }
     if (operator === 'equals' || operator === 'notEquals') {
       let actual: number | boolean | string;
@@ -400,7 +416,9 @@ export class AnimationGraphRuntime {
       if (layer.normalizedTime < start || layer.normalizedTime > end) return false;
     }
 
-    return transition.conditions.every((condition) => this.evaluateCondition(condition, params));
+    return transition.conditions.every((condition) =>
+      this.evaluateCondition(condition, params, transition.inputBufferMs),
+    );
   }
 
   /**
@@ -425,7 +443,7 @@ export class AnimationGraphRuntime {
           if (condition.operator === 'buffered') {
             params.consumeBuffered(
               condition.parameter,
-              typeof condition.value === 'number' ? condition.value : 0,
+              chosen.inputBufferMs,
             );
           }
         }

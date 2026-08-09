@@ -55,7 +55,11 @@ import {
   seedOf,
   type CharacterIntentSource,
 } from "@atc/character-control-runtime";
-import { activeAnimationState } from "@atc/animation-runtime";
+import {
+  activeAnimationState,
+  DODGE_RECOVERY_BLEND_SEC,
+  dodgeRecoveryBlendWeight,
+} from "@atc/animation-runtime";
 import {
   composeTransforms,
   type ResolvedPrefabNode,
@@ -392,6 +396,34 @@ export class RuntimeGameObject {
       const layer = this.character.simulation.graphRuntime.getLayer(
         active.actionActive ? "action" : "locomotion",
       );
+      if (active.dodgeRecovery) {
+        const actionState = resolved.graph.states.find(
+          (state) => state.id === record.actionState,
+        );
+        const actionClip = this.character.simulation.graphRuntime.getClipFor(
+          record.actionState,
+        );
+        const locomotionState = resolved.graph.states.find(
+          (state) => state.id === record.locomotionState,
+        );
+        const blendDurationSec =
+          actionState?.recoveryPolicy?.blendDurationSec ??
+          DODGE_RECOVERY_BLEND_SEC;
+        return {
+          stateId: active.stateId,
+          normalizedTime: active.normalizedTime,
+          previousStateId: record.actionState,
+          previousNormalizedTime: record.actionNormalizedTime,
+          blendDurationSec,
+          blendWeight: dodgeRecoveryBlendWeight(
+            actionState,
+            record.actionNormalizedTime,
+            actionClip?.durationSec ?? 0,
+            locomotionState,
+            actionClip?.recoveryTransitionStartNormalized,
+          ),
+        };
+      }
       return {
         stateId: active.stateId,
         normalizedTime: active.normalizedTime,

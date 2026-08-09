@@ -237,6 +237,33 @@ describe("priority and forced ordering", () => {
     graph.tick(params);
     expect(params.consumed).toContain("Jump");
   });
+
+  it("uses the transition's authored input buffer for checks and consumption", () => {
+    const graph = new AnimationGraphRuntime(
+      project.graph,
+      motionResolverFor(project),
+    );
+    const transition = project.graph.transitions.find(
+      (entry) => entry.id === "any-to-jump",
+    )!;
+    const checked: number[] = [];
+    const consumed: number[] = [];
+    graph.tick({
+      getNumber: () => 0,
+      getBoolean: (name) => name === "grounded",
+      getString: () => "",
+      isBuffered: (_action, windowMs) => {
+        checked.push(windowMs);
+        return true;
+      },
+      consumeBuffered: (_action, windowMs) => {
+        consumed.push(windowMs);
+        return true;
+      },
+    });
+    expect(checked).toContain(transition.inputBufferMs);
+    expect(consumed).toContain(transition.inputBufferMs);
+  });
 });
 
 describe("cancel windows", () => {
@@ -655,6 +682,27 @@ describe("equipment", () => {
 });
 
 describe("weapon modes", () => {
+  it("keeps the context-resolved transition fields available to simulation", () => {
+    const edited = structuredClone(project);
+    const source = edited.graph.transitions.find(
+      (entry) => entry.id === "idle-to-walk",
+    )!;
+    source.weaponOverrides = {
+      test: { inputBufferMs: 321, blendDurationSec: 0.37 },
+    };
+    const resolved = resolveWeaponMode(edited, "test");
+    const graph = new AnimationGraphRuntime(
+      resolved.graph,
+      motionResolverFor(resolved),
+    );
+    graph.tick(makeParams({ numbers: { moveMagnitude: 0.3 } }));
+    expect(
+      graph.getTransitionDefinition(
+        graph.getLayer("locomotion").lastTransitionId,
+      ),
+    ).toMatchObject({ inputBufferMs: 321, blendDurationSec: 0.37 });
+  });
+
   it("binds each attack state to its own weapon clip and hides the others", () => {
     const magic = resolveWeaponMode(project, "magic");
     const sword = resolveWeaponMode(project, "sword");

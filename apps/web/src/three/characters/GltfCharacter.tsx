@@ -267,7 +267,7 @@ export function GltfCharacter({
         currentAction.current?.crossFadeTo(
           nextAction,
           dodgeRecovery
-            ? DODGE_RECOVERY_BLEND_SEC
+            ? (actionState?.recoveryPolicy?.blendDurationSec ?? DODGE_RECOVERY_BLEND_SEC)
             : (engine.graphLayers[layer]?.blendDurationSec ?? 0),
           false,
         );

@@ -124,6 +124,36 @@ describe("two instances of one Prefab", () => {
     expect(controlled.animationState).toEqual(atTick);
     scene.dispose();
   });
+
+  it("projects the authored action recovery blend into Scene rendering state", () => {
+    const scene = runtimeScene();
+    const controlled = scene.get("controlled-humanoid")!;
+    const moving = { ...emptySample(), moveY: 1 };
+    scene.injectHumanIntent(0, {
+      ...moving,
+      buttons: { ...moving.buttons, Dodge: true },
+    });
+    scene.step({ cameraYawRad: 0 });
+    scene.injectHumanIntent(0, moving);
+
+    let recovery = controlled.animationState;
+    for (let tick = 1; tick < 120; tick += 1) {
+      scene.step({ cameraYawRad: 0 });
+      recovery = controlled.animationState;
+      if (recovery?.previousStateId === "dodge") break;
+    }
+
+    const dodge = controlled.character!.resolvedProject.graph.states.find(
+      (state) => state.id === "dodge",
+    )!;
+    expect(recovery?.previousStateId).toBe("dodge");
+    expect(recovery?.blendDurationSec).toBe(
+      dodge.recoveryPolicy?.blendDurationSec,
+    );
+    expect(recovery?.blendWeight).toBeGreaterThan(0);
+    expect(recovery?.blendWeight).toBeLessThan(1);
+    scene.dispose();
+  });
 });
 
 describe("two Prefabs sharing Animator assets", () => {
