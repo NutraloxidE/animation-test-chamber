@@ -41,29 +41,38 @@ import type {
   ReplayDefinition,
   TerrainPreset,
   TransformDefinition,
-} from '@atc/schema';
-import { componentOfType } from '@atc/schema';
-import { materializeResolvedProject, resolveCharacterAnimationBundle } from '@atc/animation-asset-runtime';
-import type { AssetIssue } from '@atc/schema';
+} from "@atc/schema";
+import { componentOfType } from "@atc/schema";
+import {
+  materializeResolvedProject,
+  resolveCharacterAnimationBundle,
+} from "@atc/animation-asset-runtime";
+import type { AssetIssue } from "@atc/schema";
 import {
   ControllableCharacter,
   buildCharacterIntentSource,
   neutralSource,
   seedOf,
   type CharacterIntentSource,
-} from '@atc/character-control-runtime';
-import { activeAnimationState } from '@atc/animation-runtime';
-import { composeTransforms, type ResolvedPrefabNode } from '@atc/prefab-runtime';
-import { characterViewOfGameObject, projectForGameObjectResolution } from './character-adapter.ts';
+} from "@atc/character-control-runtime";
+import { activeAnimationState } from "@atc/animation-runtime";
+import {
+  composeTransforms,
+  type ResolvedPrefabNode,
+} from "@atc/prefab-runtime";
+import {
+  characterViewOfGameObject,
+  projectForGameObjectResolution,
+} from "./character-adapter.ts";
 import {
   AnimatorRuntime,
   ComponentRuntimeRegistry,
   defaultComponentRuntimeRegistry,
   type RuntimeComponent,
-} from './components.ts';
-import type { ResolvedGameObjectDefinition } from './definition.ts';
-import type { GameObjectRuntimeServices } from './services.ts';
-import { GameplayScriptRuntime } from './gameplay-script-runtime.ts';
+} from "./components.ts";
+import type { ResolvedGameObjectDefinition } from "./definition.ts";
+import type { GameObjectRuntimeServices } from "./services.ts";
+import { GameplayScriptRuntime } from "./gameplay-script-runtime.ts";
 
 /** What the host supplies per tick. Seconds come from the clock, not from here. */
 export interface GameObjectStepContext {
@@ -136,7 +145,8 @@ export class RuntimeGameObject {
       ? cloneTransform(definition.root.transform)
       : composeTransforms(definition.transform, definition.root.transform);
 
-    const registry = options.componentRuntimes ?? defaultComponentRuntimeRegistry();
+    const registry =
+      options.componentRuntimes ?? defaultComponentRuntimeRegistry();
     /*
      * The project a Component sees, with `characters` emptied.
      *
@@ -185,7 +195,7 @@ export class RuntimeGameObject {
      * on, and it is a different question from "does this node drive one?".
      */
     const ownComponents = definition.root.components;
-    const motor = componentOfType(ownComponents, 'character-motor');
+    const motor = componentOfType(ownComponents, "character-motor");
     const view = motor
       ? characterViewOfGameObject({
           gameObjectId: definition.gameObjectId,
@@ -208,7 +218,8 @@ export class RuntimeGameObject {
      * bind through one and the simulation would step through the other.
      */
     const animator = this.components.find(
-      (component): component is AnimatorRuntime => component instanceof AnimatorRuntime,
+      (component): component is AnimatorRuntime =>
+        component instanceof AnimatorRuntime,
     );
     const resolvedBundle = animator
       ? { bundle: animator.bundle, issues: animator.issues }
@@ -332,7 +343,8 @@ export class RuntimeGameObject {
   /** This node's Animator, if it declares one. */
   get animator(): AnimatorRuntime | undefined {
     return this.components.find(
-      (component): component is AnimatorRuntime => component instanceof AnimatorRuntime,
+      (component): component is AnimatorRuntime =>
+        component instanceof AnimatorRuntime,
     );
   }
 
@@ -352,7 +364,16 @@ export class RuntimeGameObject {
    * `undefined` means there is no Animator, which is not a failure — a crate
    * with a mesh and no Animator is a perfectly ordinary GameObject.
    */
-  get animationState(): { stateId: string; normalizedTime: number; blendDurationSec: number } | undefined {
+  get animationState():
+    | {
+        stateId: string;
+        normalizedTime: number;
+        previousStateId: string | null;
+        previousNormalizedTime: number;
+        blendDurationSec: number;
+        blendWeight: number;
+      }
+    | undefined {
     const animator = this.animator;
     if (!animator?.enabled) return undefined;
 
@@ -368,36 +389,66 @@ export class RuntimeGameObject {
         locomotionStateId: record.locomotionState,
         locomotionNormalizedTime: record.locomotionNormalizedTime,
       });
-      const layer = this.character.simulation.graphRuntime.getLayer(active.actionActive ? 'action' : 'locomotion');
+      const layer = this.character.simulation.graphRuntime.getLayer(
+        active.actionActive ? "action" : "locomotion",
+      );
       return {
         stateId: active.stateId,
         normalizedTime: active.normalizedTime,
+        previousStateId: layer.previousStateId,
+        previousNormalizedTime: layer.previousNormalizedTime,
         blendDurationSec: layer.blendDurationSec,
+        blendWeight: layer.blendWeight,
       };
     }
 
     const stateId = animator.playback.initialStateId;
-    return { stateId, normalizedTime: animator.normalizedTimeFor(stateId) ?? 0, blendDurationSec: 0 };
+    return {
+      stateId,
+      normalizedTime: animator.normalizedTimeFor(stateId) ?? 0,
+      previousStateId: null,
+      previousNormalizedTime: 0,
+      blendDurationSec: 0,
+      blendWeight: 1,
+    };
   }
 
   componentRuntime(componentId: string): RuntimeComponent | undefined {
-    return this.components.find((component) => component.componentId === componentId);
+    return this.components.find(
+      (component) => component.componentId === componentId,
+    );
   }
 
   start(context: GameObjectStepContext): void {
-    const step = { tick: context.tick, deltaSeconds: this.services.clock.fixedDeltaSeconds };
-    for (const component of this.components) if (component instanceof GameplayScriptRuntime) component.start(step);
+    const step = {
+      tick: context.tick,
+      deltaSeconds: this.services.clock.fixedDeltaSeconds,
+    };
+    for (const component of this.components)
+      if (component instanceof GameplayScriptRuntime) component.start(step);
     for (const child of this.children) child.start(context);
   }
 
-  dispatchGameplayEvent(context: GameObjectStepContext, event: import('@atc/gameplay-sdk').GameplayEvent): void {
+  dispatchGameplayEvent(
+    context: GameObjectStepContext,
+    event: import("@atc/gameplay-sdk").GameplayEvent,
+  ): void {
     this.dispatchOwnGameplayEvent(context, event);
-    for (const child of this.children) child.dispatchGameplayEvent(context, event);
+    for (const child of this.children)
+      child.dispatchGameplayEvent(context, event);
   }
 
-  dispatchOwnGameplayEvent(context: GameObjectStepContext, event: import('@atc/gameplay-sdk').GameplayEvent): void {
-    const step = { tick: context.tick, deltaSeconds: this.services.clock.fixedDeltaSeconds };
-    for (const component of this.components) if (component instanceof GameplayScriptRuntime) component.event(step, event);
+  dispatchOwnGameplayEvent(
+    context: GameObjectStepContext,
+    event: import("@atc/gameplay-sdk").GameplayEvent,
+  ): void {
+    const step = {
+      tick: context.tick,
+      deltaSeconds: this.services.clock.fixedDeltaSeconds,
+    };
+    for (const component of this.components)
+      if (component instanceof GameplayScriptRuntime)
+        component.event(step, event);
   }
 
   /** This object and every descendant, in deterministic declaration order. */
@@ -413,11 +464,15 @@ export class RuntimeGameObject {
   }
 }
 
-export function instantiateGameObject(options: InstantiateGameObjectOptions): RuntimeGameObject {
+export function instantiateGameObject(
+  options: InstantiateGameObjectOptions,
+): RuntimeGameObject {
   return new RuntimeGameObject(options);
 }
 
 /** Id-keyed view of a declaration-ordered list, as the intent builder wants it. */
-function byId<T extends { id: string }>(items: readonly T[]): ReadonlyMap<string, T> {
+function byId<T extends { id: string }>(
+  items: readonly T[],
+): ReadonlyMap<string, T> {
   return new Map(items.map((item) => [item.id, item]));
 }

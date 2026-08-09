@@ -14,12 +14,20 @@
  * see reports/gameobject-prefab-migration-audit.md. These tests pin the
  * decision procedure, which is the part that was ambiguous.
  */
-import { describe, expect, it } from 'vitest';
-import type { PublishAnimationAndUpdatePrefabsRequest } from '@atc/schema';
-import { validateAgainst } from '@atc/schema';
-import { createAnimationPublicationPlan, describePrefabUsage, planAnimationAdoption, planPrefabAdoption } from '@atc/prefab-runtime';
-import { loadAssetRegistry, loadCanonicalProject } from '../../../harness/animation-assets.ts';
-import { loadPrefabRegistry } from '../../../harness/prefabs.ts';
+import { describe, expect, it } from "vitest";
+import type { PublishAnimationAndUpdatePrefabsRequest } from "@atc/schema";
+import { validateAgainst } from "@atc/schema";
+import {
+  createAnimationPublicationPlan,
+  describePrefabUsage,
+  planAnimationAdoption,
+  planPrefabAdoption,
+} from "@atc/prefab-runtime";
+import {
+  loadAssetRegistry,
+  loadCanonicalProject,
+} from "../../../harness/animation-assets.ts";
+import { loadPrefabRegistry } from "../../../harness/prefabs.ts";
 
 const project = loadCanonicalProject();
 const prefabRegistry = loadPrefabRegistry();
@@ -43,7 +51,7 @@ function holderIds(): string[] {
 
 function animationRequest(
   targetPrefabIds: string[],
-  overrides: Partial<PublishAnimationAndUpdatePrefabsRequest['expected']> = {},
+  overrides: Partial<PublishAnimationAndUpdatePrefabsRequest["expected"]> = {},
 ): PublishAnimationAndUpdatePrefabsRequest {
   return {
     source: sharedBehavior,
@@ -60,65 +68,92 @@ function animationRequest(
   };
 }
 
-describe('the request contract', () => {
+describe("the request contract", () => {
   it('has no scope field to express "shared" or "all"', () => {
-    const withScope = { ...animationRequest([]), updateScope: 'shared' };
-    expect(validateAgainst('PublishAnimationAndUpdatePrefabsRequest', withScope).valid).toBe(false);
+    const withScope = { ...animationRequest([]), updateScope: "shared" };
+    expect(
+      validateAgainst("PublishAnimationAndUpdatePrefabsRequest", withScope)
+        .valid,
+    ).toBe(false);
   });
 
-  it('accepts an enumerated target list, including an empty one', () => {
+  it("accepts an enumerated target list, including an empty one", () => {
     expect(
-      validateAgainst('PublishAnimationAndUpdatePrefabsRequest', animationRequest([])).valid,
+      validateAgainst(
+        "PublishAnimationAndUpdatePrefabsRequest",
+        animationRequest([]),
+      ).valid,
     ).toBe(true);
     expect(
-      validateAgainst('PublishAnimationAndUpdatePrefabsRequest', animationRequest(['navigator']))
-        .valid,
+      validateAgainst(
+        "PublishAnimationAndUpdatePrefabsRequest",
+        animationRequest(["navigator"]),
+      ).valid,
     ).toBe(true);
   });
 });
 
-describe('planning an animation adoption', () => {
-  it('builds a stable exact publication plan, including publish-only', () => {
-    const publishOnly = createAnimationPublicationPlan({ usage, registry: prefabRegistry, request: animationRequest([]), currentProjectRevisionId: project.revisionId });
+describe("planning an animation adoption", () => {
+  it("builds a stable exact publication plan, including publish-only", () => {
+    const publishOnly = createAnimationPublicationPlan({
+      usage,
+      registry: prefabRegistry,
+      request: animationRequest([]),
+      currentProjectRevisionId: project.revisionId,
+    });
     expect(publishOnly.selectedTargets).toEqual([]);
     expect(publishOnly.nonTargets).toEqual(publishOnly.currentHolders);
-    expect('scope' in publishOnly.request).toBe(false);
+    expect("scope" in publishOnly.request).toBe(false);
 
-    const plan = createAnimationPublicationPlan({ usage, registry: prefabRegistry, request: animationRequest(['sentinel', 'navigator']), currentProjectRevisionId: project.revisionId });
-    expect(plan.selectedTargets.map((target) => target.assetId)).toEqual(['navigator', 'sentinel']);
-    expect(plan.nonTargets.map((target) => target.assetId)).not.toContain('navigator');
+    const plan = createAnimationPublicationPlan({
+      usage,
+      registry: prefabRegistry,
+      request: animationRequest(["sentinel", "navigator"]),
+      currentProjectRevisionId: project.revisionId,
+    });
+    expect(plan.selectedTargets.map((target) => target.assetId)).toEqual([
+      "navigator",
+      "sentinel",
+    ]);
+    expect(plan.nonTargets.map((target) => target.assetId)).not.toContain(
+      "navigator",
+    );
   });
-  it('names the holders the Prefab graph actually has', () => {
+  it("names the holders the Prefab graph actually has", () => {
     // Every migrated character carries the shared Behavior, plus the abstract
     // base they all inherit it from.
-    expect(holderIds()).toContain('navigator');
-    expect(holderIds()).toContain('humanoid-character-base');
+    expect(holderIds()).toContain("navigator");
+    expect(holderIds()).toContain("humanoid-character-base");
   });
 
-  it('changes exactly one Prefab when one is named', () => {
+  it("changes exactly one Prefab when one is named", () => {
     const plan = planAnimationAdoption({
       usage,
-      request: animationRequest(['navigator']),
+      request: animationRequest(["navigator"]),
       currentProjectRevisionId: project.revisionId,
     });
     expect(plan.conflicts).toEqual([]);
-    expect(plan.targets.map((target) => target.assetId)).toEqual(['navigator']);
-    expect(plan.untouched.map((target) => target.assetId)).not.toContain('navigator');
+    expect(plan.targets.map((target) => target.assetId)).toEqual(["navigator"]);
+    expect(plan.untouched.map((target) => target.assetId)).not.toContain(
+      "navigator",
+    );
     expect(plan.untouched.length).toBe(holderIds().length - 1);
   });
 
-  it('changes exactly the three named when three are named', () => {
-    const named = ['navigator', 'relay', 'sentinel'];
+  it("changes exactly the three named when three are named", () => {
+    const named = ["navigator", "relay", "sentinel"];
     const plan = planAnimationAdoption({
       usage,
       request: animationRequest(named),
       currentProjectRevisionId: project.revisionId,
     });
     expect(plan.conflicts).toEqual([]);
-    expect(plan.targets.map((target) => target.assetId).sort()).toEqual([...named].sort());
+    expect(plan.targets.map((target) => target.assetId).sort()).toEqual(
+      [...named].sort(),
+    );
   });
 
-  it('changes nothing when the target list is empty', () => {
+  it("changes nothing when the target list is empty", () => {
     const plan = planAnimationAdoption({
       usage,
       request: animationRequest([]),
@@ -129,89 +164,112 @@ describe('planning an animation adoption', () => {
     expect(plan.untouched.length).toBe(holderIds().length);
   });
 
-  it('keeps the planned change set equal to the request target set', () => {
-    for (const named of [[], ['relay'], ['navigator', 'quaternius-knight']]) {
+  it("keeps the planned change set equal to the request target set", () => {
+    for (const named of [[], ["relay"], ["navigator", "quaternius-knight"]]) {
       const request = animationRequest(named);
       const plan = planAnimationAdoption({
         usage,
         request,
         currentProjectRevisionId: project.revisionId,
       });
-      expect(plan.targets.map((target) => target.assetId).sort()).toEqual([...named].sort());
+      expect(plan.targets.map((target) => target.assetId).sort()).toEqual(
+        [...named].sort(),
+      );
       expect([...request.targetPrefabIds].sort()).toEqual([...named].sort());
     }
   });
 
-  it('refuses a stale holder snapshot rather than recomputing it', () => {
-    const request = animationRequest(['navigator'], { holderPrefabReferences: [] });
+  it("refuses a stale holder snapshot rather than recomputing it", () => {
+    const request = animationRequest(["navigator"], {
+      holderPrefabReferences: [],
+    });
     const plan = planAnimationAdoption({
       usage,
       request,
       currentProjectRevisionId: project.revisionId,
     });
-    expect(plan.conflicts.map((conflict) => conflict.code)).toContain('stale-holder-snapshot');
+    expect(plan.conflicts.map((conflict) => conflict.code)).toContain(
+      "stale-holder-snapshot",
+    );
   });
 
-  it('refuses a stale project revision', () => {
+  it("refuses a stale project revision", () => {
     const plan = planAnimationAdoption({
       usage,
-      request: animationRequest(['navigator']),
-      currentProjectRevisionId: 'rev-moved-on',
+      request: animationRequest(["navigator"]),
+      currentProjectRevisionId: "rev-moved-on",
     });
-    expect(plan.conflicts.map((conflict) => conflict.code)).toContain('stale-holder-snapshot');
+    expect(plan.conflicts.map((conflict) => conflict.code)).toContain(
+      "stale-holder-snapshot",
+    );
   });
 
-  it('refuses a target that does not hold the source', () => {
+  it("refuses a target that does not hold the source", () => {
     const plan = planAnimationAdoption({
       usage,
-      request: animationRequest(['default-scene-camera']),
+      request: animationRequest(["default-scene-camera"]),
       currentProjectRevisionId: project.revisionId,
     });
     expect(plan.conflicts.map((conflict) => conflict.code)).toContain(
-      'target-does-not-hold-source',
+      "target-does-not-hold-source",
     );
   });
 });
 
-describe('planning a prefab adoption', () => {
-  const navigator = usage.find((entry) => entry.prefab.assetId === 'gameplay-navigator')!;
+describe("planning a prefab adoption", () => {
+  const playable = usage.find(
+    (entry) => entry.prefab.assetId === "gameplay-quaternius",
+  )!;
 
-  it('re-points exactly the named Scene instance', () => {
-    expect(navigator.sceneInstances.length).toBeGreaterThan(1);
-    const first = navigator.sceneInstances[0]!;
+  it("re-points exactly the named Scene instance", () => {
+    expect(playable.sceneInstances.length).toBeGreaterThan(1);
+    const first = playable.sceneInstances[0]!;
     const plan = planPrefabAdoption({
       usage,
       request: {
-        source: navigator.prefab,
+        source: playable.prefab,
         expected: {
-          sourceContentHash: navigator.prefab.contentHash,
+          sourceContentHash: playable.prefab.contentHash,
           projectRevisionId: project.revisionId,
-          sceneInstanceReferences: navigator.sceneInstances,
+          sceneInstanceReferences: playable.sceneInstances,
         },
         targets: [{ sceneId: first.sceneId, gameObjectId: first.gameObjectId }],
       },
       currentProjectRevisionId: project.revisionId,
     });
     expect(plan.conflicts).toEqual([]);
-    expect(plan.targets.map((target) => target.gameObjectId)).toEqual([first.gameObjectId]);
-    expect(plan.untouched.map((target) => target.gameObjectId)).not.toContain(first.gameObjectId);
-    expect(plan.targets.length + plan.untouched.length).toBe(navigator.sceneInstances.length);
+    expect(plan.targets.map((target) => target.gameObjectId)).toEqual([
+      first.gameObjectId,
+    ]);
+    expect(plan.untouched.map((target) => target.gameObjectId)).not.toContain(
+      first.gameObjectId,
+    );
+    expect(plan.targets.length + plan.untouched.length).toBe(
+      playable.sceneInstances.length,
+    );
   });
 
-  it('refuses a target that is not standing on the source version', () => {
+  it("refuses a target that is not standing on the source version", () => {
     const plan = planPrefabAdoption({
       usage,
       request: {
-        source: navigator.prefab,
+        source: playable.prefab,
         expected: {
-          sourceContentHash: navigator.prefab.contentHash,
+          sourceContentHash: playable.prefab.contentHash,
           projectRevisionId: project.revisionId,
-          sceneInstanceReferences: navigator.sceneInstances,
+          sceneInstanceReferences: playable.sceneInstances,
         },
-        targets: [{ sceneId: 'two-humanoids-shared-animation', gameObjectId: 'scene-camera' }],
+        targets: [
+          {
+            sceneId: "two-humanoids-shared-animation",
+            gameObjectId: "scene-camera",
+          },
+        ],
       },
       currentProjectRevisionId: project.revisionId,
     });
-    expect(plan.conflicts.map((conflict) => conflict.code)).toContain('unknown-target');
+    expect(plan.conflicts.map((conflict) => conflict.code)).toContain(
+      "unknown-target",
+    );
   });
 });
