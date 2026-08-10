@@ -975,6 +975,2932 @@
             "relations": {
               "cameraTargetGameObjectId": "controlled-humanoid"
             }
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scene-light",
+            "displayName": "Scene Light",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": 4,
+                "y": 8,
+                "z": 4
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "default-scene-light",
+              "version": "1.0.0",
+              "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
+            },
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "grid-floor",
+            "displayName": "Grid Floor",
+            "enabled": true,
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "grid-floor",
+              "version": "1.0.0",
+              "contentHash": "4728253e4e2307e769651ff082b1b910f8c7bc0bc742a79d042098e7580890fe"
+            },
+            "bindings": {},
+            "relations": {}
+          }
+        ],
+        "activeCameraGameObjectId": "scene-camera"
+      },
+      {
+        "schemaVersion": 2,
+        "id": "wildlands-skirmish",
+        "displayName": "Wildlands Skirmish",
+        "entities": [],
+        "intentTracks": [],
+        "gameObjects": [
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-ground",
+            "displayName": "Grassland",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ground",
+              "version": "1.0.0",
+              "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35"
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-landmark",
+            "displayName": "Sunspire Monolith",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-landmark",
+              "version": "1.0.0",
+              "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02"
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.14943813247359922,
+                "z": 0,
+                "w": 0.9887710779360422
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-shop",
+            "displayName": "Quartermaster",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-shop",
+              "version": "1.0.0",
+              "contentHash": "b494a68c39b35cbb8c5d0f03a7e4faa22853dee8ca9dfa65115d2fff6b78beaa"
+            },
+            "transform": {
+              "position": {
+                "x": 6,
+                "y": 0,
+                "z": 34
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-camp",
+            "displayName": "Raider Camp",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-camp",
+              "version": "1.0.0",
+              "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953"
+            },
+            "transform": {
+              "position": {
+                "x": -6,
+                "y": 0,
+                "z": -34
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-1",
+            "displayName": "wildlands-tree-1",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 33.40326258309075,
+                "y": 0,
+                "z": 10.293051518998883
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9761205677318463,
+                "z": 0,
+                "w": -0.21722945760383877
+              },
+              "scale": {
+                "x": 0.9285891720559448,
+                "y": 0.9285891720559448,
+                "z": 0.9285891720559448
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-2",
+            "displayName": "wildlands-tree-2",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": 40.435122151178135,
+                "y": 0,
+                "z": 11.485214153105236
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.6228631853450513,
+                "z": 0,
+                "w": 0.782330781921443
+              },
+              "scale": {
+                "x": 1.393421090138145,
+                "y": 1.393421090138145,
+                "z": 1.393421090138145
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-3",
+            "displayName": "wildlands-tree-3",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 31.307033334876238,
+                "y": 0,
+                "z": 7.96792399420946
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.6050694691889338,
+                "z": 0,
+                "w": 0.7961726806763856
+              },
+              "scale": {
+                "x": 0.9207022841088474,
+                "y": 0.9207022841088474,
+                "z": 0.9207022841088474
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-4",
+            "displayName": "wildlands-tree-4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": 10.725432106041414,
+                "y": 0,
+                "z": 21.144586188505617
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9968277854280596,
+                "z": 0,
+                "w": 0.07958873160561303
+              },
+              "scale": {
+                "x": 1.2002264180220663,
+                "y": 1.2002264180220663,
+                "z": 1.2002264180220663
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-5",
+            "displayName": "wildlands-tree-5",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 5.971586657901359,
+                "y": 0,
+                "z": 17.608118537367535
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7330608937420826,
+                "z": 0,
+                "w": -0.680163014332637
+              },
+              "scale": {
+                "x": 0.8896228651516139,
+                "y": 0.8896228651516139,
+                "z": 0.8896228651516139
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-6",
+            "displayName": "wildlands-tree-6",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": -22.73629748698307,
+                "y": 0,
+                "z": 30.42877333391688
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9685333960956554,
+                "z": 0,
+                "w": -0.24888362872518624
+              },
+              "scale": {
+                "x": 1.2181123106507585,
+                "y": 1.2181123106507585,
+                "z": 1.2181123106507585
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-7",
+            "displayName": "wildlands-tree-7",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -28.79320824721811,
+                "y": 0,
+                "z": 31.109586399646915
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9369077856515431,
+                "z": 0,
+                "w": -0.3495766027432645
+              },
+              "scale": {
+                "x": 1.2963748640962875,
+                "y": 1.2963748640962875,
+                "z": 1.2963748640962875
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-8",
+            "displayName": "wildlands-tree-8",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -20.652974935415962,
+                "y": 0,
+                "z": 26.57449286863438
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9976910218083445,
+                "z": 0,
+                "w": 0.06791630881475802
+              },
+              "scale": {
+                "x": 1.3324073554365896,
+                "y": 1.3324073554365896,
+                "z": 1.3324073554365896
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-9",
+            "displayName": "wildlands-tree-9",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -24.97593214565871,
+                "y": 0,
+                "z": 34.2268916230113
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.30425359008006453,
+                "z": 0,
+                "w": 0.9525910732960876
+              },
+              "scale": {
+                "x": 1.2272152756573633,
+                "y": 1.2272152756573633,
+                "z": 1.2272152756573633
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-10",
+            "displayName": "wildlands-tree-10",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": -29.5416090622822,
+                "y": 0,
+                "z": 33.69208401873938
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.5283132187970347,
+                "z": 0,
+                "w": -0.8490495526436113
+              },
+              "scale": {
+                "x": 1.2226304471492768,
+                "y": 1.2226304471492768,
+                "z": 1.2226304471492768
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-11",
+            "displayName": "wildlands-tree-11",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -12.974856403354728,
+                "y": 0,
+                "z": 9.018300816027807
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9226911588610974,
+                "z": 0,
+                "w": -0.3855399140939432
+              },
+              "scale": {
+                "x": 1.1181297806440853,
+                "y": 1.1181297806440853,
+                "z": 1.1181297806440853
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-12",
+            "displayName": "wildlands-tree-12",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -21.917922061566436,
+                "y": 0,
+                "z": 3.649929316558304
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.0971901120687221,
+                "z": 0,
+                "w": -0.9952658348984301
+              },
+              "scale": {
+                "x": 1.0732873405329884,
+                "y": 1.0732873405329884,
+                "z": 1.0732873405329884
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-13",
+            "displayName": "wildlands-tree-13",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": -18.602471115464517,
+                "y": 0,
+                "z": 1.635939125048357
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.6050345795411918,
+                "z": 0,
+                "w": 0.7961991946488097
+              },
+              "scale": {
+                "x": 0.8655620358069427,
+                "y": 0.8655620358069427,
+                "z": 0.8655620358069427
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-14",
+            "displayName": "wildlands-tree-14",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": -18.342585077583976,
+                "y": 0,
+                "z": -9.837975770025182
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8548322748266918,
+                "z": 0,
+                "w": -0.5189044053721489
+              },
+              "scale": {
+                "x": 0.9985941182123497,
+                "y": 0.9985941182123497,
+                "z": 0.9985941182123497
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-15",
+            "displayName": "wildlands-tree-15",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": -20.86856746261958,
+                "y": 0,
+                "z": -15.776799091859388
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9358090654692119,
+                "z": 0,
+                "w": -0.3525072949396087
+              },
+              "scale": {
+                "x": 0.9074774919310584,
+                "y": 0.9074774919310584,
+                "z": 0.9074774919310584
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-16",
+            "displayName": "wildlands-tree-16",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": -21.231192704830505,
+                "y": 0,
+                "z": -7.191391048277396
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9882034673836921,
+                "z": 0,
+                "w": 0.1531466847530434
+              },
+              "scale": {
+                "x": 0.9993876396678388,
+                "y": 0.9993876396678388,
+                "z": 0.9993876396678388
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-17",
+            "displayName": "wildlands-tree-17",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 13.401991180874795,
+                "y": 0,
+                "z": -26.326071016013287
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9711988818738643,
+                "z": 0,
+                "w": 0.2382702915744129
+              },
+              "scale": {
+                "x": 1.2187957713380455,
+                "y": 1.2187957713380455,
+                "z": 1.2187957713380455
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-18",
+            "displayName": "wildlands-tree-18",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": 10.181975703951359,
+                "y": 0,
+                "z": -17.45078271579709
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.05752300818654495,
+                "z": 0,
+                "w": 0.998344180896133
+              },
+              "scale": {
+                "x": 1.185792036273051,
+                "y": 1.185792036273051,
+                "z": 1.185792036273051
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-19",
+            "displayName": "wildlands-tree-19",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 15.70784370068872,
+                "y": 0,
+                "z": -20.195300243317746
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.4344534843688372,
+                "z": 0,
+                "w": -0.9006942710597068
+              },
+              "scale": {
+                "x": 1.1033681352622806,
+                "y": 1.1033681352622806,
+                "z": 1.1033681352622806
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-20",
+            "displayName": "wildlands-tree-20",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 15.960752537506089,
+                "y": 0,
+                "z": -27.028614866302945
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9999995748874629,
+                "z": 0,
+                "w": -0.0009220764032409191
+              },
+              "scale": {
+                "x": 1.05130810032133,
+                "y": 1.05130810032133,
+                "z": 1.05130810032133
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-21",
+            "displayName": "wildlands-tree-21",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-pine",
+              "version": "1.0.0",
+              "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+            },
+            "transform": {
+              "position": {
+                "x": 22.548922068189405,
+                "y": 0,
+                "z": -2.6559656482308576
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9979664180689035,
+                "z": 0,
+                "w": -0.06374188894849639
+              },
+              "scale": {
+                "x": 1.0650992824579588,
+                "y": 1.0650992824579588,
+                "z": 1.0650992824579588
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-22",
+            "displayName": "wildlands-tree-22",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": 31.031063914747484,
+                "y": 0,
+                "z": -5.737273221707664
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7205789777304276,
+                "z": 0,
+                "w": -0.6933728700006743
+              },
+              "scale": {
+                "x": 0.9076431302702985,
+                "y": 0.9076431302702985,
+                "z": 0.9076431302702985
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-tree-23",
+            "displayName": "wildlands-tree-23",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-tree-broadleaf",
+              "version": "1.0.0",
+              "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+            },
+            "transform": {
+              "position": {
+                "x": 26.78690677902805,
+                "y": 0,
+                "z": -6.91903013513679
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9982981282127372,
+                "z": 0,
+                "w": 0.05831678323557672
+              },
+              "scale": {
+                "x": 1.0061015991843305,
+                "y": 1.0061015991843305,
+                "z": 1.0061015991843305
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-1",
+            "displayName": "wildlands-rock-1",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": -23.133973146641814,
+                "y": 0,
+                "z": -31.65965745146711
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7837964208488784,
+                "z": 0,
+                "w": -0.6210178505200056
+              },
+              "scale": {
+                "x": 0.9475498144049197,
+                "y": 0.9475498144049197,
+                "z": 0.9475498144049197
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-4",
+            "displayName": "wildlands-rock-4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 21.44063230785955,
+                "y": 0,
+                "z": 31.260070142034195
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.22480429981037575,
+                "z": 0,
+                "w": 0.9744039340985682
+              },
+              "scale": {
+                "x": 2.1343357626348736,
+                "y": 2.1343357626348736,
+                "z": 2.1343357626348736
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-6",
+            "displayName": "wildlands-rock-6",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 21.61148434430344,
+                "y": 0,
+                "z": -19.328500103979923
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7164695142571007,
+                "z": 0,
+                "w": -0.6976184022373508
+              },
+              "scale": {
+                "x": 1.929013922275044,
+                "y": 1.929013922275044,
+                "z": 1.929013922275044
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-7",
+            "displayName": "wildlands-rock-7",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": -37.64320424223471,
+                "y": 0,
+                "z": -3.6334211855371263
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9856025205510291,
+                "z": 0,
+                "w": -0.16907889130065357
+              },
+              "scale": {
+                "x": 0.8633412309456616,
+                "y": 0.8633412309456616,
+                "z": 0.8633412309456616
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-8",
+            "displayName": "wildlands-rock-8",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 25.977353802683265,
+                "y": 0,
+                "z": -14.90958671167259
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.3180051993319557,
+                "z": 0,
+                "w": -0.9480889690307778
+              },
+              "scale": {
+                "x": 1.0454236622201278,
+                "y": 1.0454236622201278,
+                "z": 1.0454236622201278
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-10",
+            "displayName": "wildlands-rock-10",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 13.370281608681186,
+                "y": 0,
+                "z": 20.794048557128548
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7599555054405822,
+                "z": 0,
+                "w": -0.6499750993311584
+              },
+              "scale": {
+                "x": 1.5205804044846445,
+                "y": 1.5205804044846445,
+                "z": 1.5205804044846445
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-12",
+            "displayName": "wildlands-rock-12",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 39.611028960930724,
+                "y": 0,
+                "z": 8.53687352160875
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8243668337653447,
+                "z": 0,
+                "w": 0.5660559366243768
+              },
+              "scale": {
+                "x": 1.29683212346863,
+                "y": 1.29683212346863,
+                "z": 1.29683212346863
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-13",
+            "displayName": "wildlands-rock-13",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 32.22981276879562,
+                "y": 0,
+                "z": -3.4038551730288673
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8933766423890624,
+                "z": 0,
+                "w": -0.4493085519257842
+              },
+              "scale": {
+                "x": 1.07111745076254,
+                "y": 1.07111745076254,
+                "z": 1.07111745076254
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-rock-15",
+            "displayName": "wildlands-rock-15",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-rock",
+              "version": "1.0.0",
+              "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+            },
+            "transform": {
+              "position": {
+                "x": 11.965654188072044,
+                "y": 0,
+                "z": 39.07701183491307
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.5721175125748748,
+                "z": 0,
+                "w": 0.8201716599621923
+              },
+              "scale": {
+                "x": 1.773642537696287,
+                "y": 1.773642537696287,
+                "z": 1.773642537696287
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-1",
+            "displayName": "wildlands-hill-1",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": 37.0098737911269,
+                "y": 0,
+                "z": 15.647523665243675
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7931549037847941,
+                "z": 0,
+                "w": -0.6090199492644999
+              },
+              "scale": {
+                "x": 1.239948774781078,
+                "y": 1.239948774781078,
+                "z": 1.239948774781078
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-2",
+            "displayName": "wildlands-hill-2",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": 11.005503355219412,
+                "y": 0,
+                "z": 39.2766680074799
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.3767363784596109,
+                "z": 0,
+                "w": 0.9263205175019804
+              },
+              "scale": {
+                "x": 1.1418722709873692,
+                "y": 1.1418722709873692,
+                "z": 1.1418722709873692
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-3",
+            "displayName": "wildlands-hill-3",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": -25.0780027380243,
+                "y": 0,
+                "z": 34.80292416580582
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.4591491145530165,
+                "z": 0,
+                "w": 0.8883592125965605
+              },
+              "scale": {
+                "x": 1.4637347633950413,
+                "y": 1.4637347633950413,
+                "z": 1.4637347633950413
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-4",
+            "displayName": "wildlands-hill-4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": -44.60992659564407,
+                "y": 0,
+                "z": 2.178647239772881
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.4758611700587779,
+                "z": 0,
+                "w": 0.8795204072847262
+              },
+              "scale": {
+                "x": 1.6288930862443523,
+                "y": 1.6288930862443523,
+                "z": 1.6288930862443523
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-5",
+            "displayName": "wildlands-hill-5",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": -28.54459191574426,
+                "y": 0,
+                "z": -32.414642156449034
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.29651567336148227,
+                "z": 0,
+                "w": -0.955027986737031
+              },
+              "scale": {
+                "x": 1.5818786432966592,
+                "y": 1.5818786432966592,
+                "z": 1.5818786432966592
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-6",
+            "displayName": "wildlands-hill-6",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": 7.564816270490997,
+                "y": 0,
+                "z": -42.63598240099229
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8670756180479864,
+                "z": 0,
+                "w": -0.4981765476080767
+              },
+              "scale": {
+                "x": 1.3366752909263595,
+                "y": 1.3366752909263595,
+                "z": 1.3366752909263595
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-hill-7",
+            "displayName": "wildlands-hill-7",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-hill",
+              "version": "1.0.0",
+              "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+            },
+            "transform": {
+              "position": {
+                "x": 37.067736724419774,
+                "y": 0,
+                "z": -20.134734010213496
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.31238930688226524,
+                "z": 0,
+                "w": -0.9499541678131729
+              },
+              "scale": {
+                "x": 1.8782318984391169,
+                "y": 1.8782318984391169,
+                "z": 1.8782318984391169
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-1",
+            "displayName": "wildlands-mountain-1",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 61.39629241568131,
+                "y": 0,
+                "z": 10.539092449104688
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.70573105410852,
+                "z": 0,
+                "w": -0.7084798368809639
+              },
+              "scale": {
+                "x": 1.0348940695868805,
+                "y": 1.0348940695868805,
+                "z": 1.0348940695868805
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-2",
+            "displayName": "wildlands-mountain-2",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 52.11963576402828,
+                "y": 0,
+                "z": 39.89546640408172
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9702737227298528,
+                "z": 0,
+                "w": 0.2420101299118544
+              },
+              "scale": {
+                "x": 1.4374490216607227,
+                "y": 1.4374490216607227,
+                "z": 1.4374490216607227
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-3",
+            "displayName": "wildlands-mountain-3",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 29.6481776678954,
+                "y": 0,
+                "z": 63.944276813415776
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.7199714896293865,
+                "z": 0,
+                "w": 0.6940036412878842
+              },
+              "scale": {
+                "x": 1.0233281714143232,
+                "y": 1.0233281714143232,
+                "z": 1.0233281714143232
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-4",
+            "displayName": "wildlands-mountain-4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -3.478924355709751,
+                "y": 0,
+                "z": 70.69665880356425
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9773121067918307,
+                "z": 0,
+                "w": -0.2118042632198734
+              },
+              "scale": {
+                "x": 0.9783357184380292,
+                "y": 0.9783357184380292,
+                "z": 0.9783357184380292
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-5",
+            "displayName": "wildlands-mountain-5",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -35.47798760264412,
+                "y": 0,
+                "z": 60.20680949291764
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.489854661435806,
+                "z": 0,
+                "w": 0.8718041125560327
+              },
+              "scale": {
+                "x": 1.3612076863879339,
+                "y": 1.3612076863879339,
+                "z": 1.3612076863879339
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-6",
+            "displayName": "wildlands-mountain-6",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -56.77793005711795,
+                "y": 0,
+                "z": 35.2013099481315
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9551842766230634,
+                "z": 0,
+                "w": -0.29601182018979433
+              },
+              "scale": {
+                "x": 0.9575981358299032,
+                "y": 0.9575981358299032,
+                "z": 0.9575981358299032
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-7",
+            "displayName": "wildlands-mountain-7",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -64.05073440583803,
+                "y": 0,
+                "z": 4.597811039434892
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.9905645851811445,
+                "z": 0,
+                "w": -0.13704671679725483
+              },
+              "scale": {
+                "x": 0.9438552614767104,
+                "y": 0.9438552614767104,
+                "z": 0.9438552614767104
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-8",
+            "displayName": "wildlands-mountain-8",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -60.54806772690412,
+                "y": 0,
+                "z": -26.435732691685992
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8034473773322499,
+                "z": 0,
+                "w": -0.5953757736572166
+              },
+              "scale": {
+                "x": 1.622267176769674,
+                "y": 1.622267176769674,
+                "z": 1.622267176769674
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-9",
+            "displayName": "wildlands-mountain-9",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -41.853073832733074,
+                "y": 0,
+                "z": -52.20147602232147
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.6316692715261449,
+                "z": 0,
+                "w": -0.7752379837247587
+              },
+              "scale": {
+                "x": 1.1606595136690885,
+                "y": 1.1606595136690885,
+                "z": 1.1606595136690885
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-10",
+            "displayName": "wildlands-mountain-10",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": -13.039787683485415,
+                "y": 0,
+                "z": -66.90340539398537
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.8485102854442221,
+                "z": 0,
+                "w": 0.5291788879909749
+              },
+              "scale": {
+                "x": 1.39439862400759,
+                "y": 1.39439862400759,
+                "z": 1.39439862400759
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-11",
+            "displayName": "wildlands-mountain-11",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 18.537006293116004,
+                "y": 0,
+                "z": -61.93092360245234
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.1465843745110998,
+                "z": 0,
+                "w": 0.9891981708177536
+              },
+              "scale": {
+                "x": 0.8956549743190407,
+                "y": 0.8956549743190407,
+                "z": 0.8956549743190407
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-12",
+            "displayName": "wildlands-mountain-12",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 47.63836791696563,
+                "y": 0,
+                "z": -48.72205692263963
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.38703070356055325,
+                "z": 0,
+                "w": -0.9220668275680581
+              },
+              "scale": {
+                "x": 1.7071032587671653,
+                "y": 1.7071032587671653,
+                "z": 1.7071032587671653
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "wildlands-mountain-13",
+            "displayName": "wildlands-mountain-13",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-mountain",
+              "version": "1.0.0",
+              "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+            },
+            "transform": {
+              "position": {
+                "x": 60.318463959865916,
+                "y": 0,
+                "z": -19.54283434968866
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0.3458057839742183,
+                "z": 0,
+                "w": 0.9383061119751785
+              },
+              "scale": {
+                "x": 1.1761239781277255,
+                "y": 1.1761239781277255,
+                "z": 1.1761239781277255
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-player",
+            "displayName": "Player",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ally-combatant",
+              "version": "1.0.0",
+              "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            },
+            "transform": {
+              "position": {
+                "x": 4.2,
+                "y": 0.2,
+                "z": 32
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "ally"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 1
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": true
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "nodeId": "root",
+                "componentId": "tags",
+                "patches": [
+                  {
+                    "path": "/tags",
+                    "op": "set",
+                    "value": [
+                      "character",
+                      "humanoid",
+                      "skirmish-combatant",
+                      "skirmish-ally",
+                      "skirmish-player"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "human",
+                "playerIndex": 0
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-ally-2",
+            "displayName": "Ally 2",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ally-combatant",
+              "version": "1.0.0",
+              "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            },
+            "transform": {
+              "position": {
+                "x": 1.2978713763747793,
+                "y": 0.2,
+                "z": 35.99443736843965
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "ally"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 2
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 1
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-ally-2-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-ally-3",
+            "displayName": "Ally 3",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ally-combatant",
+              "version": "1.0.0",
+              "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            },
+            "transform": {
+              "position": {
+                "x": -3.3978713763747788,
+                "y": 0.2,
+                "z": 34.46869805962839
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "ally"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 3
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 2
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-ally-3-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-ally-4",
+            "displayName": "Ally 4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ally-combatant",
+              "version": "1.0.0",
+              "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            },
+            "transform": {
+              "position": {
+                "x": -3.3978713763747797,
+                "y": 0.2,
+                "z": 29.531301940371613
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "ally"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 4
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 3
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-ally-4-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-ally-5",
+            "displayName": "Ally 5",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-ally-combatant",
+              "version": "1.0.0",
+              "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            },
+            "transform": {
+              "position": {
+                "x": 1.2978713763747785,
+                "y": 0.2,
+                "z": 28.005562631560355
+              },
+              "rotation": {
+                "x": 0,
+                "y": 1,
+                "z": 0,
+                "w": 6.123233995736766e-17
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "ally"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 5
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 0
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-ally-5-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-enemy-1",
+            "displayName": "Raider 1",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-enemy-combatant",
+              "version": "1.0.0",
+              "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            },
+            "transform": {
+              "position": {
+                "x": 4.2,
+                "y": 0.2,
+                "z": -32
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "enemy"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 1
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": -32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 0
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-enemy-1-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-enemy-2",
+            "displayName": "Raider 2",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-enemy-combatant",
+              "version": "1.0.0",
+              "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            },
+            "transform": {
+              "position": {
+                "x": 1.2978713763747793,
+                "y": 0.2,
+                "z": -28.005562631560355
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "enemy"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 2
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": -32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 1
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-enemy-2-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-enemy-3",
+            "displayName": "Raider 3",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-enemy-combatant",
+              "version": "1.0.0",
+              "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            },
+            "transform": {
+              "position": {
+                "x": -3.3978713763747788,
+                "y": 0.2,
+                "z": -29.531301940371613
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "enemy"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 3
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": -32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 2
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-enemy-3-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-enemy-4",
+            "displayName": "Raider 4",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-enemy-combatant",
+              "version": "1.0.0",
+              "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            },
+            "transform": {
+              "position": {
+                "x": -3.3978713763747797,
+                "y": 0.2,
+                "z": -34.46869805962839
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "enemy"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 4
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": -32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 3
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-enemy-4-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "skirmish-enemy-5",
+            "displayName": "Raider 5",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-enemy-combatant",
+              "version": "1.0.0",
+              "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            },
+            "transform": {
+              "position": {
+                "x": 1.2978713763747785,
+                "y": 0.2,
+                "z": -35.99443736843965
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "combatant",
+                "patches": [
+                  {
+                    "path": "/properties/team",
+                    "op": "set",
+                    "value": "enemy"
+                  },
+                  {
+                    "path": "/properties/seat",
+                    "op": "set",
+                    "value": 5
+                  },
+                  {
+                    "path": "/properties/isPlayer",
+                    "op": "set",
+                    "value": false
+                  },
+                  {
+                    "path": "/properties/spawnX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/spawnZ",
+                    "op": "set",
+                    "value": -32
+                  },
+                  {
+                    "path": "/properties/safeZoneX",
+                    "op": "set",
+                    "value": 0
+                  },
+                  {
+                    "path": "/properties/safeZoneZ",
+                    "op": "set",
+                    "value": 32
+                  },
+                  {
+                    "path": "/properties/startingLoadout",
+                    "op": "set",
+                    "value": 0
+                  }
+                ]
+              }
+            ],
+            "bindings": {
+              "characterIntent": {
+                "kind": "ai",
+                "channelId": "skirmish-enemy-5-ai"
+              }
+            },
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "match-director",
+            "displayName": "Match Director",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "wildlands-director",
+              "version": "1.0.0",
+              "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb"
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "director",
+                "patches": [
+                  {
+                    "path": "/properties/pickupPrefabHash",
+                    "op": "set",
+                    "value": "b27ff008c481567351af331ec708704b133f710aff82121eb203bb6a63f5224a"
+                  },
+                  {
+                    "path": "/properties/debugEnabled",
+                    "op": "set",
+                    "value": true
+                  }
+                ]
+              }
+            ],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scene-light",
+            "displayName": "Scene Fill Light",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "default-scene-light",
+              "version": "1.0.0",
+              "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
+            },
+            "transform": {
+              "position": {
+                "x": 30,
+                "y": 60,
+                "z": 20
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [
+              {
+                "nodeId": "root",
+                "componentId": "light",
+                "patches": [
+                  {
+                    "path": "/intensity",
+                    "op": "set",
+                    "value": 0.35
+                  },
+                  {
+                    "path": "/color",
+                    "op": "set",
+                    "value": "#cfe0ff"
+                  }
+                ]
+              }
+            ],
+            "bindings": {},
+            "relations": {}
+          },
+          {
+            "schemaVersion": 2,
+            "id": "scene-camera",
+            "displayName": "Scene Camera",
+            "enabled": true,
+            "prefab": {
+              "assetType": "game-object-prefab",
+              "assetId": "default-scene-camera",
+              "version": "1.0.0",
+              "contentHash": "c499b0e9b802aab07c58e2c5df9037fdec2838c333feb496544e84a207ec5bd0"
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 3.4,
+                "z": 39
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "componentOverrides": [],
+            "bindings": {},
+            "relations": {
+              "cameraTargetGameObjectId": "skirmish-player"
+            }
           }
         ],
         "activeCameraGameObjectId": "scene-camera"

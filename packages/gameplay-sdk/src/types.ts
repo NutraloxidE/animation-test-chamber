@@ -1,4 +1,5 @@
 import type {
+  ButtonAction,
   JsonObject,
   GameplayScriptReference,
   GameObjectPrefabReference,
@@ -33,9 +34,32 @@ export type GameplayCommandResult =
         | "invalid-command"
         | "invalid-parameter-name"
         | "operation-budget-exceeded"
-        | "target-not-found";
+        | "target-not-found"
+        /**
+         * The character's intent is owned by a device, a track or a replay, so
+         * a Script may not also drive it. Refused rather than merged: two
+         * authorities over one intent frame is exactly the ambiguity the single
+         * `CharacterIntentSource` boundary exists to prevent.
+         */
+        | "intent-not-scriptable";
       message: string;
     };
+/**
+ * One frame of normalized intent, as a Script-driven AI produces it.
+ *
+ * Deliberately the same vocabulary a device sampler produces — sticks in
+ * [-1, 1] and named button actions — so an AI decision and a human press reach
+ * the state machine through one path. Omitted fields read as neutral, which is
+ * what makes "walk forward without pressing anything" the default rather than
+ * something a caller has to remember to clear.
+ */
+export interface GameplayIntentFrame {
+  moveX?: number;
+  moveY?: number;
+  lookX?: number;
+  lookY?: number;
+  buttons?: Partial<Record<ButtonAction, boolean>>;
+}
 export type CharacterMotionCommand =
   | {
       type: "impulse";
@@ -76,6 +100,8 @@ export interface GameplayCharacterSnapshot {
   locomotionStateId: string;
   actionStateId: string;
   intentSourceKind: string;
+  /** The motion context the character is currently resolved for. */
+  motionContextKey: string;
   gameplayParameters: Readonly<Record<string, boolean | number | string>>;
   activeMotionOverrides: readonly {
     key: string;
@@ -93,6 +119,32 @@ export interface GameplayCharacterSnapshot {
 export interface GameplayCharacterApi {
   snapshot(): GameplayCharacterSnapshot;
   command(command: CharacterMotionCommand): GameplayCommandResult;
+  /**
+   * Drives one frame of normalized intent, for a character bound to an AI
+   * channel.
+   *
+   * This is the *decision* half of "AI decisions belong in game code": the
+   * Script decides what the character wants, and the same state machine, input
+   * windows, recovery rules and root-motion policy a human drives then decide
+   * what it does. A Script that reached for a clip instead would be
+   * puppeteering an animation, which is the failure this boundary exists to
+   * make unrepresentable.
+   *
+   * The frame is consumed by the character's next step, so the one-tick
+   * latency is the same for every AI character and does not depend on
+   * component order.
+   */
+  setIntent(intent: GameplayIntentFrame): GameplayCommandResult;
+  /**
+   * Switches the motion context (the demo's weapon mode) this character
+   * resolves its clips in.
+   *
+   * Ordinary equipment is a game rule, but "which contextual take does this
+   * state play" is animation resolution, and the resolver, the simulation and
+   * the renderer must agree on it. So the Script names the context and the
+   * existing contextual-binding machinery answers the rest.
+   */
+  setMotionContext(contextKey: string): GameplayCommandResult;
   setGameplayParameter(
     name: string,
     value: boolean | number | string,
@@ -117,6 +169,8 @@ export type GameplayObjectView = GameplayObjectApi;
 export interface GameplayContext {
   tick: number;
   deltaSeconds: number;
+  /** Camera yaw for this tick, in radians; the definition of "forward". */
+  cameraYawRad: number;
   random(): number;
   self: GameplayObjectApi;
   world: GameplayWorld;

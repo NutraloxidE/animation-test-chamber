@@ -22,13 +22,13 @@ function runtime(): GameplayScriptRuntime {
 describe('GameplayScriptRuntime', () => {
   it('owns state per instance and advances from fixed delta', () => {
     const a = runtime(); const b = runtime();
-    a.step({ tick: 0, deltaSeconds: 0.5 });
+    a.step({ tick: 0, deltaSeconds: 0.5, cameraYawRad: 0 });
     expect(a.snapshot()).toEqual({ value: 1 });
     expect(b.snapshot()).toEqual({ value: 0 });
   });
   it('validates and delivers declared events', () => {
     const value = runtime();
-    value.event({ tick: 0, deltaSeconds: 0.5 }, { type: 'add', payload: { amount: 4 } });
+    value.event({ tick: 0, deltaSeconds: 0.5, cameraYawRad: 0 }, { type: 'add', payload: { amount: 4 } });
     expect(value.snapshot()).toEqual({ value: 4 });
   });
   it('disables a stale exact reference', () => {
@@ -39,7 +39,7 @@ describe('GameplayScriptRuntime', () => {
   it('scopes cross-object APIs to the calling script identity', () => {
     const origins: string[] = [];
     const value = new GameplayScriptRuntime(component, { gameObjectId: 'hero', displayName: 'Hero', nodeId: 'root', nodePath: 'root', project: {} as never, services: { animationRegistry: {} as never, prefabRegistry: {} as never, clock: { fixedDeltaSeconds: 0.5 }, gameplayRegistry: registry, gameplayWorld: { get: () => undefined, findByTag: () => [], emit: () => {}, spawn: () => {}, despawn: () => {} }, gameplayObject: (id, origin) => { origins.push(`${id}:${origin}`); return { id, tags: [], worldTransform: () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: { x: 1, y: 1, z: 1 } }), transform: {} as never }; } } });
-    value.step({ tick: 0, deltaSeconds: 0.5 });
+    value.step({ tick: 0, deltaSeconds: 0.5, cameraYawRad: 0 });
     expect(origins).toContain('hero:standalone/hero/hero/counter-script/counter@1.0.0');
   });
 });

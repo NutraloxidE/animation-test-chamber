@@ -16,10 +16,11 @@
  * renderer never re-derives a world position from a parent chain — that would
  * be a second answer to where things are.
  */
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { clone as cloneSkinnedScene } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useMemo } from 'react';
+import type { EquipmentSocketDefinition } from '@atc/schema';
 import type { RuntimeGameObject } from '@atc/game-object-runtime';
 import { AnimatedRepositoryModel } from './AnimatedRepositoryModel.tsx';
 import {
@@ -30,10 +31,26 @@ import {
   type RenderProjectionIssue,
 } from './render-projection.ts';
 
+/**
+ * What a host hangs in an authored socket (§3, `EquipmentSockets`).
+ *
+ * The renderer owns *where* — the bone the socket names and the local offset it
+ * was authored with — and the host owns *what*. That split is what keeps a held
+ * item out of the renderer's vocabulary: a hand may hold a sword, a lantern or
+ * nothing, and only the game knows which, while only the renderer knows where
+ * `hand_r` currently is. Returning `null` leaves the socket empty.
+ */
+export type SocketAttachmentRenderer = (input: {
+  gameObjectId: string;
+  socket: EquipmentSocketDefinition;
+}) => ReactNode;
+
 export interface GameObjectRendererProps {
   /** One running object, or a projection already derived from one. */
   gameObject?: RuntimeGameObject;
   projection?: GameObjectRenderProjection;
+  /** Fills authored sockets. Absent means every socket renders empty. */
+  renderAttachment?: SocketAttachmentRenderer;
   selectedGameObjectId?: string | null;
   onSelect?: (gameObjectId: string) => void;
   /**
@@ -149,16 +166,53 @@ function CameraGizmo({ selected }: { selected: boolean }) {
   );
 }
 
+/**
+ * The sockets that ride the *node* rather than a bone.
+ *
+ * A socket with no `boneName` is authored relative to the object itself, so it
+ * is drawn beside the model rather than inside the skeleton — which is what
+ * makes an overhead marker stay level while the head it floats above turns.
+ */
+function NodeSockets({
+  gameObjectId,
+  sockets,
+  renderAttachment,
+}: {
+  gameObjectId: string;
+  sockets: EquipmentSocketDefinition[];
+  renderAttachment: SocketAttachmentRenderer;
+}) {
+  return (
+    <>
+      {sockets.map((socket) => {
+        const content = renderAttachment({ gameObjectId, socket });
+        if (!content) return null;
+        return (
+          <group
+            key={socket.socketId}
+            position={socket.localPosition}
+            rotation={socket.localRotation}
+          >
+            {content}
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 function RenderedNode({
   node,
   selected,
   onSelect,
   onIssue,
+  renderAttachment,
 }: {
   node: GameObjectRenderNode;
   selected: boolean;
   onSelect?: (gameObjectId: string) => void;
   onIssue?: (issue: RenderProjectionIssue) => void;
+  renderAttachment?: SocketAttachmentRenderer;
 }) {
   const { position, rotation, scale } = node.worldTransform;
   return (
@@ -195,6 +249,8 @@ function RenderedNode({
             animator={node.animator}
             gameObjectId={node.gameObjectId}
             displayName={node.displayName}
+            boneSockets={node.sockets?.sockets.filter((socket) => socket.boneName !== undefined) ?? []}
+            {...(renderAttachment ? { renderAttachment } : {})}
             {...(onIssue ? { onIssue } : {})}
           />
         </Suspense>
@@ -220,6 +276,13 @@ function RenderedNode({
       {node.model?.binding.kind === 'procedural-humanoid' && (
         <ProceduralModel presetId={node.model.binding.presetId} selected={selected} />
       )}
+      {node.sockets && renderAttachment && (
+        <NodeSockets
+          gameObjectId={node.gameObjectId}
+          sockets={node.sockets.sockets.filter((socket) => socket.boneName === undefined)}
+          renderAttachment={renderAttachment}
+        />
+      )}
       {node.light && <NodeLight light={node.light} />}
       {node.camera && <CameraGizmo selected={selected} />}
     </group>
@@ -239,6 +302,7 @@ export function GameObjectRenderer({
   selectedGameObjectId,
   onSelect,
   onIssue,
+  renderAttachment,
 }: GameObjectRendererProps): JSX.Element | null {
   const resolved = projection ?? (gameObject ? projectGameObject(gameObject) : undefined);
   if (!resolved) return null;
@@ -261,6 +325,7 @@ export function GameObjectRenderer({
           }
           {...(onSelect ? { onSelect } : {})}
           {...(onIssue ? { onIssue } : {})}
+          {...(renderAttachment ? { renderAttachment } : {})}
         />
       ))}
     </>

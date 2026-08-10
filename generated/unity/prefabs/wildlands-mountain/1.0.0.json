@@ -1,0 +1,79 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "wildlands-mountain",
+      "version": "1.0.0",
+      "displayName": "Wildlands Mountain",
+      "description": "Wildlands Skirmish scenery: Wildlands Mountain.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "boundary"
+      ],
+      "createdAt": "2026-08-09T00:00:00.000Z",
+      "createdBy": "assets:wildlands",
+      "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+    },
+    "derivation": {
+      "mode": "base"
+    },
+    "abstract": false,
+    "root": {
+      "nodeId": "root",
+      "displayName": "Wildlands Mountain",
+      "enabled": true,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "components": [
+        {
+          "schemaVersion": 1,
+          "componentId": "model",
+          "componentType": "model-renderer",
+          "enabled": true,
+          "model": {
+            "kind": "repository-model",
+            "assetPath": "/assets/environment/wildlands/mountain.gltf",
+            "scale": 1,
+            "rotationYRad": 0
+          },
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "schemaVersion": 1,
+          "componentId": "tags",
+          "componentType": "tags",
+          "enabled": true,
+          "tags": [
+            "wildlands",
+            "scenery",
+            "boundary"
+          ]
+        }
+      ],
+      "children": []
+    }
+  }
+}

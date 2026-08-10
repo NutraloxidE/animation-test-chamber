@@ -37,9 +37,12 @@ import {
   type TickRecord,
   type ExternalMotionFrame,
 } from '@atc/replay-runtime';
-import type { CharacterMotionCommand, GameplayCharacterSnapshot, GameplayCommandResult } from '@atc/gameplay-sdk';
+import type { CharacterMotionCommand, GameplayCharacterSnapshot, GameplayCommandResult, GameplayIntentFrame } from '@atc/gameplay-sdk';
+import { BUTTON_ACTIONS, type ButtonAction } from '@atc/schema';
+import { DEFAULT_MOTION_CONTEXT_KEY } from '@atc/schema';
 import { ACTION_LAYER, LOCOMOTION_LAYER, type LayerId } from '@atc/animation-runtime';
 import {
+  AiInjectedCharacterIntentSource,
   NeutralCharacterIntentSource,
   neutralIntent,
   type CharacterIntent,
@@ -139,8 +142,10 @@ export class ControllableCharacter {
   private overrides: Array<{ command: Extract<CharacterMotionCommand, { type: 'motion-override' }>; componentId: string; key: string; remainingTicks: number }> = [];
   private scales: Array<{ command: Extract<CharacterMotionCommand, { type: 'movement-scale' }>; componentId: string; key: string; remainingTicks: number }> = [];
   private parameters = new Map<string, { value: boolean | number | string; remainingTicks?: number }>();
+  private motionContextValue: string;
 
   constructor(private readonly options: ControllableCharacterOptions) {
+    this.motionContextValue = options.overrides?.weaponModeId ?? DEFAULT_MOTION_CONTEXT_KEY;
     this.instanceId = options.instanceId;
     this.resolvedProject = options.resolvedProject;
     this.spawnTransform = options.initialTransform;
@@ -249,6 +254,49 @@ export class ControllableCharacter {
 
   clearGameplayParameter(name: string): GameplayCommandResult { this.parameters.delete(name); return { ok: true }; }
 
+  /**
+   * Hands a Script-produced frame to an AI channel.
+   *
+   * Refused on any other source. A device, a track and a replay each already
+   * *are* the answer to "what does this character want this tick", and a second
+   * writer would make the winner depend on call order rather than on which
+   * controller the Scene bound.
+   */
+  setScriptedIntent(frame: GameplayIntentFrame): GameplayCommandResult {
+    const source = this.source;
+    if (!(source instanceof AiInjectedCharacterIntentSource))
+      return { ok: false, code: 'intent-not-scriptable', message: `intent source "${source.kind}" is not a scriptable AI channel` };
+    const axis = (value: number | undefined): number => (typeof value === 'number' && Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0);
+    const intent = neutralIntent();
+    intent.moveX = axis(frame.moveX);
+    intent.moveY = axis(frame.moveY);
+    intent.lookX = axis(frame.lookX);
+    intent.lookY = axis(frame.lookY);
+    for (const action of BUTTON_ACTIONS) intent.buttons[action as ButtonAction] = frame.buttons?.[action as ButtonAction] === true;
+    source.inject(intent);
+    return { ok: true };
+  }
+
+  /** The motion context the simulation currently resolves clips in. */
+  get motionContextKey(): string { return this.motionContextValue; }
+
+  /**
+   * Switches the motion context.
+   *
+   * One call into the simulation rather than a parallel table here: the
+   * simulation already re-resolves its document for a context, and a second
+   * notion of "which context am I in" is how the renderer ends up drawing a
+   * sword swing while the state machine steps an unarmed one.
+   */
+  setMotionContext(contextKey: string): GameplayCommandResult {
+    if (typeof contextKey !== 'string' || contextKey.length === 0 || contextKey.length > 96)
+      return { ok: false, code: 'invalid-command', message: 'motion context key must be a short non-empty string' };
+    if (contextKey === this.motionContextValue) return { ok: true };
+    this.motionContextValue = contextKey;
+    this.simulationValue.setWeaponModeId(contextKey);
+    return { ok: true };
+  }
+
   /** Advances exactly one fixed step. */
   step(tick: number, context: CharacterControlContext): CharacterTickRecord {
     this.simulationValue.setCameraYaw(context.cameraYawRad);
@@ -342,7 +390,7 @@ export class ControllableCharacter {
 
   gameplaySnapshot(): GameplayCharacterSnapshot {
     const observed = this.observe();
-    return { tick: observed.tick, worldTransform: observed.transform, velocity: observed.velocity, grounded: observed.grounded, locomotionStateId: observed.locomotionStateId, actionStateId: observed.actionStateId, intentSourceKind: observed.intentSourceKind, gameplayParameters: Object.fromEntries([...this.parameters].map(([name, entry]) => [name, entry.value])), activeMotionOverrides: this.overrides.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })), activeMovementScales: this.scales.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })) };
+    return { tick: observed.tick, worldTransform: observed.transform, velocity: observed.velocity, grounded: observed.grounded, locomotionStateId: observed.locomotionStateId, actionStateId: observed.actionStateId, intentSourceKind: observed.intentSourceKind, motionContextKey: this.motionContextValue, gameplayParameters: Object.fromEntries([...this.parameters].map(([name, entry]) => [name, entry.value])), activeMotionOverrides: this.overrides.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })), activeMovementScales: this.scales.map((entry) => ({ key: entry.command.key, sourceComponentId: entry.componentId, remainingTicks: entry.remainingTicks, priority: entry.command.priority ?? 0 })) };
   }
 
   /**

@@ -1,0 +1,90 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-coin",
+    "version": "1.0.0",
+    "displayName": "Wildlands Scrip",
+    "description": "Wildlands Skirmish scenery: Wildlands Scrip.",
+    "tags": [
+      "wildlands",
+      "pickup",
+      "skirmish-pickup"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "b27ff008c481567351af331ec708704b133f710aff82121eb203bb6a63f5224a"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Wildlands Scrip",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "model",
+        "componentType": "model-renderer",
+        "enabled": true,
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/environment/wildlands/coin.gltf",
+          "scale": 1,
+          "rotationYRad": 0
+        },
+        "castShadow": true,
+        "receiveShadow": true
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "pickup",
+          "skirmish-pickup"
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "spin",
+        "componentType": "script",
+        "enabled": true,
+        "script": {
+          "assetType": "gameplay-script",
+          "assetId": "spin-and-bob",
+          "version": "1.0.0",
+          "contentHash": "8c2f7038e11304214f7796f1ae6d3cdd84f2b808e49157a5d0ae26d94fea6b0e"
+        },
+        "properties": {
+          "turnsPerSecond": 0.7,
+          "bobHeight": 0.18,
+          "bobPerSecond": 0.8
+        }
+      }
+    ],
+    "children": []
+  }
+}

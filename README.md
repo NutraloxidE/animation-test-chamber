@@ -140,6 +140,17 @@ The root URL is the game front door:
 /edit/prefab/:id   Prefab Editor
 ```
 
+The repository ships a complete game built this way — a 5 v 5 third-person
+skirmish with a 300-second day/night match, economy, equipment and progression,
+all of it Gameplay Scripts and authored data:
+
+```text
+/play/wildlands-skirmish
+```
+
+See [`docs/wildlands-skirmish.md`](docs/wildlands-skirmish.md). It is the worked
+example to read before building a game of your own here.
+
 `/` mounts the play surface without Scene Editor or Prefab Editor chrome.
 
 With an empty `.env` the local project remains usable. Git and AI capabilities

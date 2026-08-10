@@ -1,0 +1,79 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "wildlands-tree-broadleaf",
+      "version": "1.0.0",
+      "displayName": "Wildlands Broadleaf",
+      "description": "Wildlands Skirmish scenery: Wildlands Broadleaf.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "tree"
+      ],
+      "createdAt": "2026-08-09T00:00:00.000Z",
+      "createdBy": "assets:wildlands",
+      "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+    },
+    "derivation": {
+      "mode": "base"
+    },
+    "abstract": false,
+    "root": {
+      "nodeId": "root",
+      "displayName": "Wildlands Broadleaf",
+      "enabled": true,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "components": [
+        {
+          "schemaVersion": 1,
+          "componentId": "model",
+          "componentType": "model-renderer",
+          "enabled": true,
+          "model": {
+            "kind": "repository-model",
+            "assetPath": "/assets/environment/wildlands/tree-broadleaf.gltf",
+            "scale": 1,
+            "rotationYRad": 0
+          },
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "schemaVersion": 1,
+          "componentId": "tags",
+          "componentType": "tags",
+          "enabled": true,
+          "tags": [
+            "wildlands",
+            "scenery",
+            "tree"
+          ]
+        }
+      ],
+      "children": []
+    }
+  }
+}

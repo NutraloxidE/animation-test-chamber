@@ -2,10 +2,16 @@
 import { GameplayScriptRegistry } from '@atc/gameplay-sdk';
 import script0 from './scripts/air-dash/1.0.0.ts';
 import script1 from './scripts/health/1.0.0.ts';
-import script2 from './scripts/stamina/1.0.0.ts';
+import script2 from './scripts/skirmish-combatant/1.0.0.ts';
+import script3 from './scripts/skirmish-director/1.0.0.ts';
+import script4 from './scripts/spin-and-bob/1.0.0.ts';
+import script5 from './scripts/stamina/1.0.0.ts';
 
 export const gameplayScriptRegistry = new GameplayScriptRegistry([
   { reference: { assetType: 'gameplay-script', assetId: 'air-dash', version: '1.0.0', contentHash: 'a33fe764d6262949bab3b134f62469d75b384644dde66a53a92a0ddde36c00a3' }, definition: script0 },
   { reference: { assetType: 'gameplay-script', assetId: 'health', version: '1.0.0', contentHash: '4a0bcb103eed8f88870ab2a025966f51f0ec51848cdc843b361571236aab91c7' }, definition: script1 },
-  { reference: { assetType: 'gameplay-script', assetId: 'stamina', version: '1.0.0', contentHash: 'fd9d5256dbdf0ca73be54db0250e7c335a25f914b4bcd9b4145b45eb4c9b8cfb' }, definition: script2 },
+  { reference: { assetType: 'gameplay-script', assetId: 'skirmish-combatant', version: '1.0.0', contentHash: '77ac8bb66ee318328f3f076046090b45b67544cc53da006a100bbe84e4e9e83f' }, definition: script2 },
+  { reference: { assetType: 'gameplay-script', assetId: 'skirmish-director', version: '1.0.0', contentHash: 'a5d8f4f5cbd5480b81433b54a6bfdd9ddc50aa4a61845e54a5a4cb539e0f3ef5' }, definition: script3 },
+  { reference: { assetType: 'gameplay-script', assetId: 'spin-and-bob', version: '1.0.0', contentHash: '8c2f7038e11304214f7796f1ae6d3cdd84f2b808e49157a5d0ae26d94fea6b0e' }, definition: script4 },
+  { reference: { assetType: 'gameplay-script', assetId: 'stamina', version: '1.0.0', contentHash: 'fd9d5256dbdf0ca73be54db0250e7c335a25f914b4bcd9b4145b45eb4c9b8cfb' }, definition: script5 },
 ]);

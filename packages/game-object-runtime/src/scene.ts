@@ -91,7 +91,7 @@ export class RuntimeScene {
         setLocal: (transform) => { if (object.character) return refused; object.setLocalTransform(transform); return ok; },
         translateLocal: (delta) => { if (object.character) return refused; object.localTransform.position.x += delta.x; object.localTransform.position.y += delta.y; object.localTransform.position.z += delta.z; return ok; },
       },
-      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, originKey), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
+      ...(object.character ? { character: { snapshot: () => object.character!.gameplaySnapshot(), command: (command) => object.character!.enqueueCommand(command, originKey), setIntent: (intent) => object.character!.setScriptedIntent(intent), setMotionContext: (contextKey) => object.character!.setMotionContext(contextKey), setGameplayParameter: (name, value, duration) => object.character!.setGameplayParameter(name, value, duration), clearGameplayParameter: (name) => object.character!.clearGameplayParameter(name) } } : {}),
     };
   }
 

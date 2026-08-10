@@ -952,6 +952,1375 @@
         },
         "abstract": false
       }
+    },
+    {
+      "id": "wildlands-ally-combatant",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-ally-combatant",
+          "version": "1.0.0",
+          "displayName": "Wildlands Ally",
+          "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+          "tags": [
+            "character",
+            "humanoid",
+            "wildlands",
+            "skirmish-ally"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "quaternius-universal-base",
+            "version": "1.0.0",
+            "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+          },
+          "patches": [
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "tags",
+              "patches": [
+                {
+                  "path": "/tags",
+                  "op": "set",
+                  "value": [
+                    "character",
+                    "humanoid",
+                    "skirmish-combatant",
+                    "skirmish-ally"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": [
+                    {
+                      "path": "/graph/transitions/any-to-hit/conditions",
+                      "op": "set",
+                      "value": [
+                        {
+                          "parameter": "gameplay.damaged",
+                          "operator": "equals",
+                          "value": true
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "equipment-sockets",
+              "patches": [
+                {
+                  "path": "/sockets",
+                  "op": "set",
+                  "value": [
+                    {
+                      "socketId": "right-hand-sword",
+                      "boneName": "hand_r",
+                      "localPosition": [
+                        0,
+                        -0.035,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        1.5707963267948966,
+                        -0.18
+                      ],
+                      "acceptedItemTags": [
+                        "sword"
+                      ]
+                    },
+                    {
+                      "socketId": "left-hand",
+                      "boneName": "hand_l",
+                      "localPosition": [
+                        0,
+                        -0.03,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        -1.5707963267948966,
+                        0.18
+                      ],
+                      "acceptedItemTags": [
+                        "shield",
+                        "focus"
+                      ]
+                    },
+                    {
+                      "socketId": "head",
+                      "boneName": "Head",
+                      "localPosition": [
+                        0,
+                        0.06,
+                        0.01
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "helmet"
+                      ]
+                    },
+                    {
+                      "socketId": "chest",
+                      "boneName": "spine_03",
+                      "localPosition": [
+                        0,
+                        0.02,
+                        0.02
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "chest-armor"
+                      ]
+                    },
+                    {
+                      "socketId": "pelvis",
+                      "boneName": "pelvis",
+                      "localPosition": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "leg-armor"
+                      ]
+                    },
+                    {
+                      "socketId": "overhead",
+                      "localPosition": [
+                        0,
+                        2.15,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "marker"
+                      ]
+                    },
+                    {
+                      "socketId": "ground",
+                      "localPosition": [
+                        0,
+                        0.02,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "team-ring"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "combatant",
+                "componentType": "script",
+                "enabled": true,
+                "script": {
+                  "assetType": "gameplay-script",
+                  "assetId": "skirmish-combatant",
+                  "version": "1.0.0",
+                  "contentHash": "77ac8bb66ee318328f3f076046090b45b67544cc53da006a100bbe84e4e9e83f"
+                },
+                "properties": {
+                  "team": "ally",
+                  "seat": 1,
+                  "isPlayer": false,
+                  "directorId": "match-director",
+                  "spawnX": 0,
+                  "spawnZ": 32,
+                  "baseMaxHp": 120,
+                  "baseMaxStamina": 100,
+                  "baseAttack": 22,
+                  "baseDefense": 5,
+                  "staminaRegenPerSecond": 11,
+                  "dodgeStaminaCost": 24,
+                  "attackWindupSeconds": 0.22,
+                  "aggroRadius": 26,
+                  "leashRadius": 40,
+                  "arenaRadius": 46,
+                  "respawnSeconds": 3,
+                  "spawnProtectionSeconds": 2,
+                  "safeZoneRadius": 11,
+                  "safeZoneX": 0,
+                  "safeZoneZ": 32,
+                  "startingLoadout": 0
+                }
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "wildlands-camp",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-camp",
+          "version": "1.0.0",
+          "displayName": "Raider Camp",
+          "description": "Wildlands Skirmish scenery: Raider Camp.",
+          "tags": [
+            "wildlands",
+            "landmark",
+            "camp"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Raider Camp",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/camp.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "landmark",
+                "camp"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-coin",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-coin",
+          "version": "1.0.0",
+          "displayName": "Wildlands Scrip",
+          "description": "Wildlands Skirmish scenery: Wildlands Scrip.",
+          "tags": [
+            "wildlands",
+            "pickup",
+            "skirmish-pickup"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "b27ff008c481567351af331ec708704b133f710aff82121eb203bb6a63f5224a"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Scrip",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/coin.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "pickup",
+                "skirmish-pickup"
+              ]
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "spin",
+              "componentType": "script",
+              "enabled": true,
+              "script": {
+                "assetType": "gameplay-script",
+                "assetId": "spin-and-bob",
+                "version": "1.0.0",
+                "contentHash": "8c2f7038e11304214f7796f1ae6d3cdd84f2b808e49157a5d0ae26d94fea6b0e"
+              },
+              "properties": {
+                "turnsPerSecond": 0.7,
+                "bobHeight": 0.18,
+                "bobPerSecond": 0.8
+              }
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-director",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-director",
+          "version": "1.0.0",
+          "displayName": "Wildlands Match Director",
+          "description": "The match lifecycle, day clock, score, economy and progression for Wildlands Skirmish.",
+          "tags": [
+            "wildlands",
+            "skirmish-director"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Match Director",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "skirmish-director"
+              ]
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "director",
+              "componentType": "script",
+              "enabled": true,
+              "script": {
+                "assetType": "gameplay-script",
+                "assetId": "skirmish-director",
+                "version": "1.0.0",
+                "contentHash": "a5d8f4f5cbd5480b81433b54a6bfdd9ddc50aa4a61845e54a5a4cb539e0f3ef5"
+              },
+              "properties": {
+                "playerId": "skirmish-player",
+                "matchSeconds": 300,
+                "endingSeconds": 7,
+                "bannerSeconds": 2.6,
+                "koXp": 40,
+                "assistXp": 15,
+                "koCurrency": 14,
+                "potionHeal": 45,
+                "startingPotions": 1,
+                "pickupLifetimeSeconds": 26,
+                "pickupRadius": 2.4,
+                "pickupPrefabId": "wildlands-coin",
+                "pickupPrefabVersion": "1.0.0",
+                "pickupPrefabHash": "",
+                "debugEnabled": true
+              }
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-enemy-combatant",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-enemy-combatant",
+          "version": "1.0.0",
+          "displayName": "Wildlands Raider",
+          "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+          "tags": [
+            "character",
+            "humanoid",
+            "wildlands",
+            "skirmish-enemy"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+        },
+        "derivation": {
+          "mode": "variant",
+          "parent": {
+            "assetType": "game-object-prefab",
+            "assetId": "quaternius-universal-base",
+            "version": "1.0.0",
+            "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+          },
+          "patches": [
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "tags",
+              "patches": [
+                {
+                  "path": "/tags",
+                  "op": "set",
+                  "value": [
+                    "character",
+                    "humanoid",
+                    "skirmish-combatant",
+                    "skirmish-enemy"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "animator",
+              "patches": [
+                {
+                  "path": "/assignment/instanceOverrides",
+                  "op": "set",
+                  "value": [
+                    {
+                      "path": "/graph/transitions/any-to-hit/conditions",
+                      "op": "set",
+                      "value": [
+                        {
+                          "parameter": "gameplay.damaged",
+                          "operator": "equals",
+                          "value": true
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "patch-component",
+              "nodeId": "root",
+              "componentId": "equipment-sockets",
+              "patches": [
+                {
+                  "path": "/sockets",
+                  "op": "set",
+                  "value": [
+                    {
+                      "socketId": "right-hand-sword",
+                      "boneName": "hand_r",
+                      "localPosition": [
+                        0,
+                        -0.035,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        1.5707963267948966,
+                        -0.18
+                      ],
+                      "acceptedItemTags": [
+                        "sword"
+                      ]
+                    },
+                    {
+                      "socketId": "left-hand",
+                      "boneName": "hand_l",
+                      "localPosition": [
+                        0,
+                        -0.03,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        -1.5707963267948966,
+                        0.18
+                      ],
+                      "acceptedItemTags": [
+                        "shield",
+                        "focus"
+                      ]
+                    },
+                    {
+                      "socketId": "head",
+                      "boneName": "Head",
+                      "localPosition": [
+                        0,
+                        0.06,
+                        0.01
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "helmet"
+                      ]
+                    },
+                    {
+                      "socketId": "chest",
+                      "boneName": "spine_03",
+                      "localPosition": [
+                        0,
+                        0.02,
+                        0.02
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "chest-armor"
+                      ]
+                    },
+                    {
+                      "socketId": "pelvis",
+                      "boneName": "pelvis",
+                      "localPosition": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "leg-armor"
+                      ]
+                    },
+                    {
+                      "socketId": "overhead",
+                      "localPosition": [
+                        0,
+                        2.15,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "marker"
+                      ]
+                    },
+                    {
+                      "socketId": "ground",
+                      "localPosition": [
+                        0,
+                        0.02,
+                        0
+                      ],
+                      "localRotation": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "acceptedItemTags": [
+                        "team-ring"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "add-component",
+              "nodeId": "root",
+              "component": {
+                "schemaVersion": 1,
+                "componentId": "combatant",
+                "componentType": "script",
+                "enabled": true,
+                "script": {
+                  "assetType": "gameplay-script",
+                  "assetId": "skirmish-combatant",
+                  "version": "1.0.0",
+                  "contentHash": "77ac8bb66ee318328f3f076046090b45b67544cc53da006a100bbe84e4e9e83f"
+                },
+                "properties": {
+                  "team": "enemy",
+                  "seat": 1,
+                  "isPlayer": false,
+                  "directorId": "match-director",
+                  "spawnX": 0,
+                  "spawnZ": -32,
+                  "baseMaxHp": 120,
+                  "baseMaxStamina": 100,
+                  "baseAttack": 22,
+                  "baseDefense": 5,
+                  "staminaRegenPerSecond": 11,
+                  "dodgeStaminaCost": 24,
+                  "attackWindupSeconds": 0.22,
+                  "aggroRadius": 26,
+                  "leashRadius": 40,
+                  "arenaRadius": 46,
+                  "respawnSeconds": 3,
+                  "spawnProtectionSeconds": 2,
+                  "safeZoneRadius": 11,
+                  "safeZoneX": 0,
+                  "safeZoneZ": 32,
+                  "startingLoadout": 0
+                }
+              }
+            }
+          ]
+        },
+        "abstract": false
+      }
+    },
+    {
+      "id": "wildlands-ground",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-ground",
+          "version": "1.0.0",
+          "displayName": "Wildlands Ground",
+          "description": "Wildlands Skirmish scenery: Wildlands Ground.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "ground"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Ground",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/ground.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "ground"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-hill",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-hill",
+          "version": "1.0.0",
+          "displayName": "Wildlands Hill",
+          "description": "Wildlands Skirmish scenery: Wildlands Hill.",
+          "tags": [
+            "wildlands",
+            "scenery"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Hill",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/hill.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-landmark",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-landmark",
+          "version": "1.0.0",
+          "displayName": "Sunspire Monolith",
+          "description": "Wildlands Skirmish scenery: Sunspire Monolith.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "landmark"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Sunspire Monolith",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/landmark.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "landmark"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-mountain",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-mountain",
+          "version": "1.0.0",
+          "displayName": "Wildlands Mountain",
+          "description": "Wildlands Skirmish scenery: Wildlands Mountain.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "boundary"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Mountain",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/mountain.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "boundary"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-rock",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-rock",
+          "version": "1.0.0",
+          "displayName": "Wildlands Rock",
+          "description": "Wildlands Skirmish scenery: Wildlands Rock.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "rock"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Rock",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/rock.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "rock"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-shop",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-shop",
+          "version": "1.0.0",
+          "displayName": "Quartermaster Stall",
+          "description": "Wildlands Skirmish scenery: Quartermaster Stall.",
+          "tags": [
+            "wildlands",
+            "landmark",
+            "shop"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "b494a68c39b35cbb8c5d0f03a7e4faa22853dee8ca9dfa65115d2fff6b78beaa"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Quartermaster Stall",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/shop.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "landmark",
+                "shop"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-tree-broadleaf",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-tree-broadleaf",
+          "version": "1.0.0",
+          "displayName": "Wildlands Broadleaf",
+          "description": "Wildlands Skirmish scenery: Wildlands Broadleaf.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "tree"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Broadleaf",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/tree-broadleaf.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "tree"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "wildlands-tree-pine",
+      "version": "1.0.0",
+      "document": {
+        "metadata": {
+          "schemaVersion": 1,
+          "assetType": "game-object-prefab",
+          "id": "wildlands-tree-pine",
+          "version": "1.0.0",
+          "displayName": "Wildlands Pine",
+          "description": "Wildlands Skirmish scenery: Wildlands Pine.",
+          "tags": [
+            "wildlands",
+            "scenery",
+            "tree"
+          ],
+          "createdAt": "2026-08-09T00:00:00.000Z",
+          "createdBy": "assets:wildlands",
+          "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+        },
+        "derivation": {
+          "mode": "base"
+        },
+        "abstract": false,
+        "root": {
+          "nodeId": "root",
+          "displayName": "Wildlands Pine",
+          "enabled": true,
+          "transform": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          },
+          "components": [
+            {
+              "schemaVersion": 1,
+              "componentId": "model",
+              "componentType": "model-renderer",
+              "enabled": true,
+              "model": {
+                "kind": "repository-model",
+                "assetPath": "/assets/environment/wildlands/tree-pine.gltf",
+                "scale": 1,
+                "rotationYRad": 0
+              },
+              "castShadow": true,
+              "receiveShadow": true
+            },
+            {
+              "schemaVersion": 1,
+              "componentId": "tags",
+              "componentType": "tags",
+              "enabled": true,
+              "tags": [
+                "wildlands",
+                "scenery",
+                "tree"
+              ]
+            }
+          ],
+          "children": []
+        }
+      }
     }
   ],
   "prefabs": [
@@ -1256,6 +2625,437 @@
         "character",
         "humanoid",
         "humanoid-character-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-ally-combatant",
+      "version": "1.0.0",
+      "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68",
+      "displayName": "Wildlands Ally",
+      "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+      "tags": [
+        "character",
+        "humanoid",
+        "wildlands",
+        "skirmish-ally"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-ally-combatant",
+        "Wildlands Ally",
+        "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+        "character",
+        "humanoid",
+        "wildlands",
+        "skirmish-ally",
+        "quaternius-universal-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-camp",
+      "version": "1.0.0",
+      "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953",
+      "displayName": "Raider Camp",
+      "description": "Wildlands Skirmish scenery: Raider Camp.",
+      "tags": [
+        "wildlands",
+        "landmark",
+        "camp"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-camp",
+        "Raider Camp",
+        "Wildlands Skirmish scenery: Raider Camp.",
+        "wildlands",
+        "landmark",
+        "camp",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/camp.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-coin",
+      "version": "1.0.0",
+      "contentHash": "b27ff008c481567351af331ec708704b133f710aff82121eb203bb6a63f5224a",
+      "displayName": "Wildlands Scrip",
+      "description": "Wildlands Skirmish scenery: Wildlands Scrip.",
+      "tags": [
+        "wildlands",
+        "pickup",
+        "skirmish-pickup"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "script",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-coin",
+        "Wildlands Scrip",
+        "Wildlands Skirmish scenery: Wildlands Scrip.",
+        "wildlands",
+        "pickup",
+        "skirmish-pickup",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/coin.gltf",
+        "tags",
+        "script",
+        "spin"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-director",
+      "version": "1.0.0",
+      "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb",
+      "displayName": "Wildlands Match Director",
+      "description": "The match lifecycle, day clock, score, economy and progression for Wildlands Skirmish.",
+      "tags": [
+        "wildlands",
+        "skirmish-director"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "script",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-director",
+        "Wildlands Match Director",
+        "The match lifecycle, day clock, score, economy and progression for Wildlands Skirmish.",
+        "wildlands",
+        "skirmish-director",
+        "root",
+        "Match Director",
+        "tags",
+        "script",
+        "director"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-enemy-combatant",
+      "version": "1.0.0",
+      "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef",
+      "displayName": "Wildlands Raider",
+      "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+      "tags": [
+        "character",
+        "humanoid",
+        "wildlands",
+        "skirmish-enemy"
+      ],
+      "derivation": "variant",
+      "abstract": false,
+      "componentTypes": [],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-enemy-combatant",
+        "Wildlands Raider",
+        "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+        "character",
+        "humanoid",
+        "wildlands",
+        "skirmish-enemy",
+        "quaternius-universal-base"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-ground",
+      "version": "1.0.0",
+      "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35",
+      "displayName": "Wildlands Ground",
+      "description": "Wildlands Skirmish scenery: Wildlands Ground.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "ground"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-ground",
+        "Wildlands Ground",
+        "Wildlands Skirmish scenery: Wildlands Ground.",
+        "wildlands",
+        "scenery",
+        "ground",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/ground.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-hill",
+      "version": "1.0.0",
+      "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6",
+      "displayName": "Wildlands Hill",
+      "description": "Wildlands Skirmish scenery: Wildlands Hill.",
+      "tags": [
+        "wildlands",
+        "scenery"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-hill",
+        "Wildlands Hill",
+        "Wildlands Skirmish scenery: Wildlands Hill.",
+        "wildlands",
+        "scenery",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/hill.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-landmark",
+      "version": "1.0.0",
+      "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02",
+      "displayName": "Sunspire Monolith",
+      "description": "Wildlands Skirmish scenery: Sunspire Monolith.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "landmark"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-landmark",
+        "Sunspire Monolith",
+        "Wildlands Skirmish scenery: Sunspire Monolith.",
+        "wildlands",
+        "scenery",
+        "landmark",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/landmark.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-mountain",
+      "version": "1.0.0",
+      "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501",
+      "displayName": "Wildlands Mountain",
+      "description": "Wildlands Skirmish scenery: Wildlands Mountain.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "boundary"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-mountain",
+        "Wildlands Mountain",
+        "Wildlands Skirmish scenery: Wildlands Mountain.",
+        "wildlands",
+        "scenery",
+        "boundary",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/mountain.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-rock",
+      "version": "1.0.0",
+      "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583",
+      "displayName": "Wildlands Rock",
+      "description": "Wildlands Skirmish scenery: Wildlands Rock.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "rock"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-rock",
+        "Wildlands Rock",
+        "Wildlands Skirmish scenery: Wildlands Rock.",
+        "wildlands",
+        "scenery",
+        "rock",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/rock.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-shop",
+      "version": "1.0.0",
+      "contentHash": "b494a68c39b35cbb8c5d0f03a7e4faa22853dee8ca9dfa65115d2fff6b78beaa",
+      "displayName": "Quartermaster Stall",
+      "description": "Wildlands Skirmish scenery: Quartermaster Stall.",
+      "tags": [
+        "wildlands",
+        "landmark",
+        "shop"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-shop",
+        "Quartermaster Stall",
+        "Wildlands Skirmish scenery: Quartermaster Stall.",
+        "wildlands",
+        "landmark",
+        "shop",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/shop.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-tree-broadleaf",
+      "version": "1.0.0",
+      "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524",
+      "displayName": "Wildlands Broadleaf",
+      "description": "Wildlands Skirmish scenery: Wildlands Broadleaf.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "tree"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-tree-broadleaf",
+        "Wildlands Broadleaf",
+        "Wildlands Skirmish scenery: Wildlands Broadleaf.",
+        "wildlands",
+        "scenery",
+        "tree",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/tree-broadleaf.gltf",
+        "tags"
+      ],
+      "valid": true,
+      "issueCodes": []
+    },
+    {
+      "id": "wildlands-tree-pine",
+      "version": "1.0.0",
+      "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2",
+      "displayName": "Wildlands Pine",
+      "description": "Wildlands Skirmish scenery: Wildlands Pine.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "tree"
+      ],
+      "derivation": "base",
+      "abstract": false,
+      "componentTypes": [
+        "model-renderer",
+        "tags"
+      ],
+      "protectionLevel": "editable",
+      "searchTerms": [
+        "wildlands-tree-pine",
+        "Wildlands Pine",
+        "Wildlands Skirmish scenery: Wildlands Pine.",
+        "wildlands",
+        "scenery",
+        "tree",
+        "root",
+        "model-renderer",
+        "model",
+        "/assets/environment/wildlands/tree-pine.gltf",
+        "tags"
       ],
       "valid": true,
       "issueCodes": []

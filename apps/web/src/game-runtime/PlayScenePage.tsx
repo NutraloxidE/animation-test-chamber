@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { useParams } from "react-router-dom";
 import type { CameraProfile } from "@atc/schema";
 import { FixedStepAccumulator, wrapRadians } from "@atc/runtime-core";
-import { BrowserInputSampler } from "@atc/input-runtime";
+import { BrowserInputSampler, emptySample } from "@atc/input-runtime";
 import { instantiateScene, type RuntimeScene } from "@atc/game-object-runtime";
 import { gameplayScriptRegistry } from "@atc/gameplay";
 import { TERRAIN_PRESETS } from "@atc/terrain-runtime";
@@ -18,6 +18,16 @@ import {
   type SceneRenderProjection,
 } from "../game-objects/render-projection.ts";
 import { GameOverlay } from "../game-ui/GameOverlay.tsx";
+import {
+  GameWorldLayer,
+  gameSocketAttachments,
+} from "../game-ui/GameWorldLayer.tsx";
+import {
+  isGameplayInputSuppressed,
+  isPaused,
+  resetGameplayInputSuppression,
+  resetPause,
+} from "../game-ui/game-session.ts";
 import {
   isPlayTestDriven,
   registerPlayRuntime,
@@ -47,8 +57,20 @@ function PlayClock({
     if (isPlayTestDriven()) return;
     const steps = accumulator.current.advance(delta);
     if (!steps) return;
+    /*
+     * One pause authority. A held simulation advances nothing — not the match
+     * clock, not the AI, not a queued gameplay event — so a modal menu cannot
+     * leave the battle running invisibly behind it.
+     */
+    if (isPaused()) return;
     for (let index = 0; index < steps; index += 1) {
-      const sample = sampler.sample();
+      /*
+       * The device is still sampled while a menu owns input, so held keys do
+       * not survive the menu as a press; the character is simply handed a
+       * neutral frame instead.
+       */
+      const device = sampler.sample();
+      const sample = isGameplayInputSuppressed() ? emptySample() : device;
       runtime.injectHumanIntent(0, sample);
       if (cameraState && cameraProfile) {
         cameraState.yaw = wrapRadians(cameraState.yaw - sample.lookX);
@@ -69,6 +91,22 @@ function PlayClock({
 }
 
 /**
+ * Whether a hit object is part of the followed GameObject's own hierarchy.
+ *
+ * Walked up the parent chain rather than matched on the hit object's own name:
+ * the meshes inside an imported model carry the artist's names, so a camera
+ * that only checked the leaf would treat the character's own arm as an
+ * obstruction and slam the boom into their back.
+ */
+function belongsTo(object: THREE.Object3D, gameObjectId: string | undefined): boolean {
+  if (!gameObjectId) return false;
+  for (let node: THREE.Object3D | null = object; node; node = node.parent) {
+    if (node.name === gameObjectId || node.name.startsWith(`${gameObjectId}:`)) return true;
+  }
+  return false;
+}
+
+/**
  * Temporary camera-authority contract:
  * Scene selects the active Camera and target; its instance transform is the
  * authored initial placement; Camera Component owns the lens; project.camera
@@ -86,8 +124,9 @@ function TargetCameraFollow({
   state: PlayCameraState;
   initialPosition: THREE.Vector3;
 }) {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
   const smoothed = useRef(initialPosition.clone());
+  const raycaster = useRef(new THREE.Raycaster());
   const targetId =
     runtime.activeCamera?.definition.relations.cameraTargetGameObjectId;
 
@@ -95,20 +134,46 @@ function TargetCameraFollow({
     const target = targetId ? runtime.get(targetId) : undefined;
     if (!target) return;
     const position = target.worldTransform.position;
-    const desired = new THREE.Vector3(
-      position.x -
-        Math.sin(state.yaw) * profile.distance * Math.cos(state.pitch),
-      position.y + profile.height + Math.sin(state.pitch) * profile.distance,
-      position.z -
-        Math.cos(state.yaw) * profile.distance * Math.cos(state.pitch),
+    const pivot = new THREE.Vector3(
+      position.x,
+      position.y + profile.lookAtHeight,
+      position.z,
     );
+    const offset = new THREE.Vector3(
+      -Math.sin(state.yaw) * profile.distance * Math.cos(state.pitch),
+      profile.height - profile.lookAtHeight + Math.sin(state.pitch) * profile.distance,
+      -Math.cos(state.yaw) * profile.distance * Math.cos(state.pitch),
+    );
+    /*
+     * Obstruction handling: cast from the character out to where the camera
+     * wants to be and pull the boom in to the first thing in the way. Without
+     * it a third-person camera spends half a wooded arena inside a tree trunk,
+     * which is the one camera failure a player cannot work around.
+     */
+    const distance = offset.length();
+    if (distance > 0.01) {
+      raycaster.current.set(pivot, offset.clone().normalize());
+      raycaster.current.far = distance;
+      const blocking = raycaster.current
+        .intersectObjects(scene.children, true)
+        .find(
+          (hit) =>
+            hit.distance > 0.35 &&
+            hit.object.visible &&
+            (hit.object as THREE.Mesh).isMesh === true &&
+            !belongsTo(hit.object, targetId),
+        );
+      if (blocking) offset.setLength(Math.max(0.9, blocking.distance - 0.35));
+    }
+    const desired = pivot.clone().add(offset);
     const alpha =
       profile.followLagSec <= 0
         ? 1
         : 1 - Math.exp(-delta / profile.followLagSec);
-    smoothed.current.lerp(desired, alpha);
+    /* Snapping *in* keeps geometry out of frame; easing out stays smooth. */
+    smoothed.current.lerp(desired, desired.distanceTo(pivot) < smoothed.current.distanceTo(pivot) ? 1 : alpha);
     camera.position.copy(smoothed.current);
-    camera.lookAt(position.x, position.y + profile.lookAtHeight, position.z);
+    camera.lookAt(pivot);
   });
   return null;
 }
@@ -170,6 +235,16 @@ function PlayCanvas({
     () => projectRuntimeScene(runtime, activeCameraGameObjectId),
     [runtime, activeCameraGameObjectId, frame],
   );
+  /*
+   * Re-derived on a slice of the frames. An equip is a human action, so a
+   * one-or-two-frame delay is invisible, while re-projecting every Script's
+   * state per frame is not.
+   */
+  const attachmentEpoch = Math.floor(frame / 3);
+  const renderAttachment = useMemo(
+    () => gameSocketAttachments(runtime),
+    [runtime, attachmentEpoch],
+  );
   const authoredCameraPosition =
     projection.activeCamera?.worldTransform.position;
   const targetId =
@@ -223,8 +298,12 @@ function PlayCanvas({
             initialPosition={initialCameraPosition.current}
           />
         )}
-        <ambientLight intensity={0.5} />
-        <GameObjectRenderer projection={projection} />
+        <ambientLight intensity={0.22} />
+        <GameWorldLayer runtime={runtime} />
+        <GameObjectRenderer
+          projection={projection}
+          {...(renderAttachment ? { renderAttachment } : {})}
+        />
       </Canvas>
     </>
   );
@@ -249,7 +328,12 @@ export function PlayScenePage(): JSX.Element {
 
   useEffect(() => {
     sampler.attach();
-    return () => sampler.detach();
+    return () => {
+      sampler.detach();
+      /* A modal that never closed must not wedge the next Scene. */
+      resetPause();
+      resetGameplayInputSuppression();
+    };
   }, [sampler]);
 
   useEffect(() => {
@@ -313,7 +397,7 @@ export function PlayScenePage(): JSX.Element {
           cameraProfile={project.camera}
         />
       )}
-      <GameOverlay sceneName={scene.displayName} />
+      <GameOverlay sceneName={scene.displayName} runtime={runtime} />
     </main>
   );
 }

@@ -1,0 +1,61 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "default-scene-light",
+      "version": "1.0.0",
+      "displayName": "Scene Light",
+      "description": "Reusable white directional light for playable scenes.",
+      "tags": [
+        "light"
+      ],
+      "createdAt": "2026-08-10T00:00:00.000Z",
+      "createdBy": "codex",
+      "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
+    },
+    "derivation": {
+      "mode": "base"
+    },
+    "abstract": false,
+    "root": {
+      "nodeId": "root",
+      "displayName": "Directional Light",
+      "enabled": true,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "components": [
+        {
+          "schemaVersion": 1,
+          "componentId": "light",
+          "componentType": "light",
+          "enabled": true,
+          "lightType": "directional",
+          "intensity": 2,
+          "color": "#ffffff"
+        }
+      ],
+      "children": []
+    }
+  }
+}

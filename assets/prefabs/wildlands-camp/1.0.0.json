@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-camp",
+    "version": "1.0.0",
+    "displayName": "Raider Camp",
+    "description": "Wildlands Skirmish scenery: Raider Camp.",
+    "tags": [
+      "wildlands",
+      "landmark",
+      "camp"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Raider Camp",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "model",
+        "componentType": "model-renderer",
+        "enabled": true,
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/environment/wildlands/camp.gltf",
+          "scale": 1,
+          "rotationYRad": 0
+        },
+        "castShadow": true,
+        "receiveShadow": true
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "landmark",
+          "camp"
+        ]
+      }
+    ],
+    "children": []
+  }
+}
