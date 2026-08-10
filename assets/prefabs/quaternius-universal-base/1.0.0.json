@@ -12,7 +12,7 @@
     ],
     "createdAt": "2026-08-06T00:00:00.000Z",
     "createdBy": "prefabs:migrate",
-    "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+    "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
   },
   "derivation": {
     "mode": "variant",
@@ -53,7 +53,7 @@
               "assetType": "animation-motion-set",
               "assetId": "quaternius-universal-motion-set",
               "version": "1.0.0",
-              "contentHash": "ddc6c69ffc2e200301e2cdbd19df63ca57cbcf0d3c3c794f1f455b7721a87944"
+              "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
             }
           },
           {
@@ -87,13 +87,13 @@
               "boneName": "hand_r",
               "localPosition": [
                 0,
-                -0.035,
+                0.035,
                 0
               ],
               "localRotation": [
                 0,
                 1.5707963267948966,
-                -0.18
+                1.3907963267948966
               ],
               "acceptedItemTags": [
                 "sword"

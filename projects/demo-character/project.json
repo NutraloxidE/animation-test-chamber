@@ -676,13 +676,13 @@
           "sword": {
             "position": [
               0,
-              -0.035,
+              0.035,
               0
             ],
             "rotation": [
               0,
               1.5707963267948966,
-              -0.18
+              1.3907963267948966
             ]
           }
         }
@@ -700,7 +700,7 @@
           "assetType": "animation-motion-set",
           "assetId": "quaternius-universal-motion-set",
           "version": "1.0.0",
-          "contentHash": "ddc6c69ffc2e200301e2cdbd19df63ca57cbcf0d3c3c794f1f455b7721a87944"
+          "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
         },
         "rig": {
           "assetType": "humanoid-rig",
@@ -888,7 +888,7 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
+            "contentHash": "f3b5fde4b72a762334e73339aef330d75aa4297442cf6344aadbc7ea24c33366"
           },
           "bindings": {
             "characterIntent": {
@@ -926,7 +926,7 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
+            "contentHash": "f3b5fde4b72a762334e73339aef330d75aa4297442cf6344aadbc7ea24c33366"
           },
           "bindings": {
             "characterIntent": {
@@ -2904,7 +2904,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+            "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
           },
           "transform": {
             "position": {
@@ -3006,7 +3006,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+            "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
           },
           "transform": {
             "position": {
@@ -3091,7 +3091,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+            "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
           },
           "transform": {
             "position": {
@@ -3176,7 +3176,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+            "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
           },
           "transform": {
             "position": {
@@ -3261,7 +3261,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+            "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
           },
           "transform": {
             "position": {
@@ -3346,7 +3346,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+            "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
           },
           "transform": {
             "position": {
@@ -3431,7 +3431,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+            "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
           },
           "transform": {
             "position": {
@@ -3516,7 +3516,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+            "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
           },
           "transform": {
             "position": {
@@ -3601,7 +3601,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+            "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
           },
           "transform": {
             "position": {
@@ -3686,7 +3686,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+            "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
           },
           "transform": {
             "position": {

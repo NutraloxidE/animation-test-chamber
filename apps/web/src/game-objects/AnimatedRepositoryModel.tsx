@@ -305,7 +305,6 @@ export function AnimatedRepositoryModel({
   return (
     <group
       name={`${gameObjectId}:repository-model`}
-      scale={[scale, scale, scale]}
       rotation-y={rotationYRad}
       userData={{
         atcRenderedModel: true,
@@ -318,7 +317,15 @@ export function AnimatedRepositoryModel({
         atcBlendWeight: animator.blendWeight,
       }}
     >
-      <primitive object={scene} />
+      {/*
+       * Keep the model/hand hierarchy identical to the pre-native-rig renderer:
+       * model scale belongs to the model wrapper, while socket portals mount
+       * directly into the hand bone. Moving scale onto this outer attachment
+       * host changes the coordinate space in which the authored grip is read.
+       */}
+      <group scale={[scale, scale, scale]}>
+        <primitive object={scene} />
+      </group>
       {renderAttachment &&
         socketMounts.map(({ socket, bone }) => {
           const content = renderAttachment({ gameObjectId, socket });

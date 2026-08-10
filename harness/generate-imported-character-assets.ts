@@ -433,11 +433,8 @@ const UNIVERSAL_TAKES: Record<Slot, TakeBinding> = {
  */
 const UNIVERSAL_CONTEXT_TAKES: Record<string, Partial<Record<Slot, TakeBinding>>> = {
   sword: {
-    // Preserve the pre-native-rig sword-ready pose. `Idle_No_Loop` leaves the
-    // arm hanging at the side, which makes the blade look like it grows
-    // straight out of the hand even when the authored grip is correct.
-    'locomotion.idle': fromLibrary1('Rig|Sword_Idle'),
-    'state.action-none': fromLibrary1('Rig|Sword_Idle'),
+    'locomotion.idle': fromLibrary2('Idle_No_Loop'),
+    'state.action-none': fromLibrary2('Idle_No_Loop'),
     'state.guard': fromLibrary2('Sword_Block'),
     'state.guard-shield': fromLibrary2('Idle_Shield_Loop'),
     'action.primary.01': fromLibrary2('Sword_Regular_A'),

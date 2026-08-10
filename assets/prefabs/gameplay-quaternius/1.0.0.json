@@ -6,10 +6,14 @@
     "version": "1.0.0",
     "displayName": "Gameplay Quaternius",
     "description": "Playable Quaternius composition with deterministic gameplay scripts.",
-    "tags": ["character", "humanoid", "gameplay-demo"],
+    "tags": [
+      "character",
+      "humanoid",
+      "gameplay-demo"
+    ],
     "createdAt": "2026-08-09T00:00:00.000Z",
     "createdBy": "scene-rendering-canonicalization",
-    "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
+    "contentHash": "f3b5fde4b72a762334e73339aef330d75aa4297442cf6344aadbc7ea24c33366"
   },
   "derivation": {
     "mode": "variant",
@@ -17,7 +21,7 @@
       "assetType": "game-object-prefab",
       "assetId": "quaternius-universal-base",
       "version": "1.0.0",
-      "contentHash": "de788dc341715c18ca3e937e1e13d43c78ddb77edcde7274829f13eb4b8ca7a3"
+      "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
     },
     "patches": [
       {
@@ -34,7 +38,10 @@
             "version": "1.0.0",
             "contentHash": "4a0bcb103eed8f88870ab2a025966f51f0ec51848cdc843b361571236aab91c7"
           },
-          "properties": { "maxHp": 100, "regenPerSecond": 1 }
+          "properties": {
+            "maxHp": 100,
+            "regenPerSecond": 1
+          }
         }
       },
       {

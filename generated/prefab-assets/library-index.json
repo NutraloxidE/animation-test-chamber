@@ -264,7 +264,7 @@
           ],
           "createdAt": "2026-08-09T00:00:00.000Z",
           "createdBy": "scene-rendering-canonicalization",
-          "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
+          "contentHash": "f3b5fde4b72a762334e73339aef330d75aa4297442cf6344aadbc7ea24c33366"
         },
         "derivation": {
           "mode": "variant",
@@ -272,7 +272,7 @@
             "assetType": "game-object-prefab",
             "assetId": "quaternius-universal-base",
             "version": "1.0.0",
-            "contentHash": "de788dc341715c18ca3e937e1e13d43c78ddb77edcde7274829f13eb4b8ca7a3"
+            "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
           },
           "patches": [
             {
@@ -719,7 +719,7 @@
           ],
           "createdAt": "2026-08-06T00:00:00.000Z",
           "createdBy": "prefabs:migrate",
-          "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+          "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
         },
         "derivation": {
           "mode": "variant",
@@ -760,7 +760,7 @@
                     "assetType": "animation-motion-set",
                     "assetId": "quaternius-universal-motion-set",
                     "version": "1.0.0",
-                    "contentHash": "ddc6c69ffc2e200301e2cdbd19df63ca57cbcf0d3c3c794f1f455b7721a87944"
+                    "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
                   }
                 },
                 {
@@ -794,13 +794,13 @@
                     "boneName": "hand_r",
                     "localPosition": [
                       0,
-                      -0.035,
+                      0.035,
                       0
                     ],
                     "localRotation": [
                       0,
                       1.5707963267948966,
-                      -0.18
+                      1.3907963267948966
                     ],
                     "acceptedItemTags": [
                       "sword"
@@ -975,7 +975,7 @@
           ],
           "createdAt": "2026-08-09T00:00:00.000Z",
           "createdBy": "assets:wildlands",
-          "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+          "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049"
         },
         "derivation": {
           "mode": "variant",
@@ -983,7 +983,7 @@
             "assetType": "game-object-prefab",
             "assetId": "quaternius-universal-base",
             "version": "1.0.0",
-            "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+            "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
           },
           "patches": [
             {
@@ -1041,13 +1041,13 @@
                       "boneName": "hand_r",
                       "localPosition": [
                         0,
-                        -0.035,
+                        0.035,
                         0
                       ],
                       "localRotation": [
                         0,
                         1.5707963267948966,
-                        -0.18
+                        1.3907963267948966
                       ],
                       "acceptedItemTags": [
                         "sword"
@@ -1483,7 +1483,7 @@
           ],
           "createdAt": "2026-08-09T00:00:00.000Z",
           "createdBy": "assets:wildlands",
-          "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+          "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
         },
         "derivation": {
           "mode": "variant",
@@ -1491,7 +1491,7 @@
             "assetType": "game-object-prefab",
             "assetId": "quaternius-universal-base",
             "version": "1.0.0",
-            "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+            "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
           },
           "patches": [
             {
@@ -1549,13 +1549,13 @@
                       "boneName": "hand_r",
                       "localPosition": [
                         0,
-                        -0.035,
+                        0.035,
                         0
                       ],
                       "localRotation": [
                         0,
                         1.5707963267948966,
-                        -0.18
+                        1.3907963267948966
                       ],
                       "acceptedItemTags": [
                         "sword"
@@ -2410,7 +2410,7 @@
     {
       "id": "gameplay-quaternius",
       "version": "1.0.0",
-      "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf",
+      "contentHash": "f3b5fde4b72a762334e73339aef330d75aa4297442cf6344aadbc7ea24c33366",
       "displayName": "Gameplay Quaternius",
       "description": "Playable Quaternius composition with deterministic gameplay scripts.",
       "tags": [
@@ -2431,10 +2431,8 @@
         "gameplay-demo",
         "quaternius-universal-base"
       ],
-      "valid": false,
-      "issueCodes": [
-        "prefab-hash-mismatch"
-      ]
+      "valid": true,
+      "issueCodes": []
     },
     {
       "id": "grid-floor",
@@ -2562,7 +2560,7 @@
     {
       "id": "quaternius-universal-base",
       "version": "1.0.0",
-      "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920",
+      "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc",
       "displayName": "Universal Base Superhero",
       "description": "Migrated from Character \"quaternius-universal-base\".",
       "tags": [
@@ -2637,7 +2635,7 @@
     {
       "id": "wildlands-ally-combatant",
       "version": "1.0.0",
-      "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a",
+      "contentHash": "2edc2d5df8f6dfe4733fb285b6aa7da809cc63586c7d653b0107eb1adb5a9049",
       "displayName": "Wildlands Ally",
       "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
       "tags": [
@@ -2769,7 +2767,7 @@
     {
       "id": "wildlands-enemy-combatant",
       "version": "1.0.0",
-      "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5",
+      "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df",
       "displayName": "Wildlands Raider",
       "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
       "tags": [

@@ -14,7 +14,7 @@
     ],
     "createdAt": "2026-08-09T00:00:00.000Z",
     "createdBy": "assets:wildlands",
-    "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
+    "contentHash": "240f3a6e8299338e2f5e00ad4987c47cbac220aa511258726cf58d78929bd3df"
   },
   "derivation": {
     "mode": "variant",
@@ -22,7 +22,7 @@
       "assetType": "game-object-prefab",
       "assetId": "quaternius-universal-base",
       "version": "1.0.0",
-      "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+      "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
     },
     "patches": [
       {
@@ -80,13 +80,13 @@
                 "boneName": "hand_r",
                 "localPosition": [
                   0,
-                  -0.035,
+                  0.035,
                   0
                 ],
                 "localRotation": [
                   0,
                   1.5707963267948966,
-                  -0.18
+                  1.3907963267948966
                 ],
                 "acceptedItemTags": [
                   "sword"

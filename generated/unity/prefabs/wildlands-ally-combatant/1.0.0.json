@@ -19,7 +19,7 @@
       ],
       "createdAt": "2026-08-09T00:00:00.000Z",
       "createdBy": "assets:wildlands",
-      "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
+      "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
     },
     "derivation": {
       "mode": "variant",
@@ -27,7 +27,7 @@
         "assetType": "game-object-prefab",
         "assetId": "quaternius-universal-base",
         "version": "1.0.0",
-        "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
+        "contentHash": "c1388af5da1472e6d5ba667ee606e0c06f2cfafd808e14fd7d39a5c5c25162ed"
       },
       "patches": [
         {
@@ -91,7 +91,7 @@
                   "localRotation": [
                     0,
                     1.5707963267948966,
-                    -0.18
+                    1.3907963267948966
                   ],
                   "acceptedItemTags": [
                     "sword"

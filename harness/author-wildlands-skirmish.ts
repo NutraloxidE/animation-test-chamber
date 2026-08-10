@@ -486,7 +486,7 @@ function combatantPrefab(team: 'ally' | 'enemy'): GameObjectPrefabAsset {
               op: 'set',
               value: [
                 /* The authored grip stays exactly as the base Prefab had it. */
-                { socketId: 'right-hand-sword', boneName: 'hand_r', localPosition: [0, -0.035, 0], localRotation: [0, 1.5707963267948966, -0.18], acceptedItemTags: ['sword'] },
+                { socketId: 'right-hand-sword', boneName: 'hand_r', localPosition: [0, 0.035, 0], localRotation: [0, 1.5707963267948966, 1.3907963267948966], acceptedItemTags: ['sword'] },
                 { socketId: 'left-hand', boneName: 'hand_l', localPosition: [0, -0.03, 0], localRotation: [0, -1.5707963267948966, 0.18], acceptedItemTags: ['shield', 'focus'] },
                 { socketId: 'head', boneName: 'Head', localPosition: [0, 0.06, 0.01], localRotation: [0, 0, 0], acceptedItemTags: ['helmet'] },
                 { socketId: 'chest', boneName: 'spine_03', localPosition: [0, 0.02, 0.02], localRotation: [0, 0, 0], acceptedItemTags: ['chest-armor'] },
