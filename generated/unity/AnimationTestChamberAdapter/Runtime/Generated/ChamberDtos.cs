@@ -1045,6 +1045,7 @@ namespace AnimationTestChamber.Generated
         public bool receiveShadow;
         public CharacterAnimationAssignment assignment;
         public string defaultContextKey;
+        public List<string> actionRootMotionContextKeys;
         public string intentChannel;
         public float movementScale;
         public float turnScale;

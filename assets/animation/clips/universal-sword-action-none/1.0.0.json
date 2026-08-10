@@ -5,7 +5,7 @@
     "id": "universal-sword-action-none",
     "version": "1.0.0",
     "displayName": "Universal Base action none (sword)",
-    "description": "Universal Base: \"Idle_No_Loop\" from /assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb. Timing inherited from the demo Character's state.action-none clip.",
+    "description": "Universal Base: \"Rig|Sword_Idle\" from /assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb. Timing inherited from the demo Character's state.action-none clip.",
     "tags": [
       "imported",
       "cc0",
@@ -13,12 +13,12 @@
     ],
     "createdAt": "2026-08-05T00:00:00.000Z",
     "createdBy": "imported-character-asset-authoring",
-    "contentHash": "98d65e17725d4af2c959b3fc8e719e118cf5070ac7802558eb1b851286925465"
+    "contentHash": "52627677630e23880ba6f9af436f4e2a5504a3a8bee6e3a04629f3cbaca83baf"
   },
   "clip": {
     "schemaVersion": 2,
     "id": "universal-sword-action-none",
-    "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
+    "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
     "durationSec": 0.5,
     "loop": true,
     "rootDisplacement": {
@@ -33,8 +33,9 @@
       "right": []
     },
     "externalSource": {
-      "assetPath": "/assets/animations/quaternius-universal-2/UAL2_Standard_RM.glb",
-      "animationName": "Idle_No_Loop"
+      "assetPath": "/assets/animations/quaternius-universal/AnimationLibrary_UE_Standard.glb",
+      "animationName": "Rig|Sword_Idle",
+      "positionScale": 100
     }
   },
   "compatibleRigIds": [

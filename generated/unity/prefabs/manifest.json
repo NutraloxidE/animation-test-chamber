@@ -25,7 +25,7 @@
     {
       "id": "gameplay-navigator",
       "version": "1.0.0",
-      "contentHash": "ff542872379c41f9144b0cc5dd3b4dfc96eab271f27d5ab5668fca078dc7c58c",
+      "contentHash": "bdd199e1da95d55730169428beba6cdc97e2ea68b3d8b6b2dda85bad16d5f5af",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/gameplay-navigator/1.0.0.json",
@@ -34,7 +34,7 @@
     {
       "id": "gameplay-quaternius",
       "version": "1.0.0",
-      "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469",
+      "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/gameplay-quaternius/1.0.0.json",
@@ -52,7 +52,7 @@
     {
       "id": "humanoid-character-base",
       "version": "1.0.0",
-      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0",
+      "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf",
       "abstract": true,
       "derivation": "base",
       "canonicalPath": "assets/prefabs/humanoid-character-base/1.0.0.json",
@@ -61,7 +61,7 @@
     {
       "id": "navigator",
       "version": "1.0.0",
-      "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7",
+      "contentHash": "7360f3dc8f74d4fd28336c462ff531c0cba86a14af3588e77d5d3eaa04ee60e5",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/navigator/1.0.0.json",
@@ -70,7 +70,7 @@
     {
       "id": "quaternius-knight",
       "version": "1.0.0",
-      "contentHash": "c7a7366ec8f73a27980948a5eeecc36f673575f0f3c0f44992fa04f05bddda78",
+      "contentHash": "34e314a7c84fba02e833d8905a1bec1f59bee5b5b0a818986666b7c2523f8542",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/quaternius-knight/1.0.0.json",
@@ -79,7 +79,7 @@
     {
       "id": "quaternius-universal-base",
       "version": "1.0.0",
-      "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be",
+      "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/quaternius-universal-base/1.0.0.json",
@@ -88,7 +88,7 @@
     {
       "id": "relay",
       "version": "1.0.0",
-      "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635",
+      "contentHash": "af5e28563a8f6c162575cc1bf1598d21cd55b4cffc5bd796e77d492adcc6ad16",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/relay/1.0.0.json",
@@ -97,7 +97,7 @@
     {
       "id": "sentinel",
       "version": "1.0.0",
-      "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183",
+      "contentHash": "b4ac85964e2c9baf38738d61366f408c1cfdb20b3255cff2b71c9740a9725d12",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/sentinel/1.0.0.json",
@@ -106,7 +106,7 @@
     {
       "id": "wildlands-ally-combatant",
       "version": "1.0.0",
-      "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68",
+      "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/wildlands-ally-combatant/1.0.0.json",
@@ -142,7 +142,7 @@
     {
       "id": "wildlands-enemy-combatant",
       "version": "1.0.0",
-      "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef",
+      "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/wildlands-enemy-combatant/1.0.0.json",
@@ -232,7 +232,7 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
+            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
           }
         },
         {
@@ -241,7 +241,7 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
+            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
           }
         },
         {
@@ -787,7 +787,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
           }
         },
         {
@@ -796,7 +796,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
           }
         },
         {
@@ -805,7 +805,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
           }
         },
         {
@@ -814,7 +814,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
           }
         },
         {
@@ -823,7 +823,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-ally-combatant",
             "version": "1.0.0",
-            "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+            "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
           }
         },
         {
@@ -832,7 +832,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
           }
         },
         {
@@ -841,7 +841,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
           }
         },
         {
@@ -850,7 +850,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
           }
         },
         {
@@ -859,7 +859,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
           }
         },
         {
@@ -868,7 +868,7 @@
             "assetType": "game-object-prefab",
             "assetId": "wildlands-enemy-combatant",
             "version": "1.0.0",
-            "contentHash": "33839a8abd0bd487dfe94711cb46760175c0095eb60b98a2bc8098c8608927ef"
+            "contentHash": "3bd0eec84e4571929ad132d24910d054bc55f6b0df9ee9d4266d9f517ac050d5"
           }
         },
         {

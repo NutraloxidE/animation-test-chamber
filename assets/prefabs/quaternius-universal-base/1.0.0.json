@@ -12,7 +12,7 @@
     ],
     "createdAt": "2026-08-06T00:00:00.000Z",
     "createdBy": "prefabs:migrate",
-    "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+    "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
   },
   "derivation": {
     "mode": "variant",
@@ -20,7 +20,7 @@
       "assetType": "game-object-prefab",
       "assetId": "humanoid-character-base",
       "version": "1.0.0",
-      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+      "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf"
     },
     "patches": [
       {
@@ -53,7 +53,7 @@
               "assetType": "animation-motion-set",
               "assetId": "quaternius-universal-motion-set",
               "version": "1.0.0",
-              "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
+              "contentHash": "ddc6c69ffc2e200301e2cdbd19df63ca57cbcf0d3c3c794f1f455b7721a87944"
             }
           },
           {

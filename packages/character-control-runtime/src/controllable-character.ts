@@ -78,6 +78,7 @@ export interface ControllableCharacterOptions {
    * to disagree about what "hybrid" means.
    */
   upperBodyActionRootMotionEnabled?: boolean;
+  actionRootMotionContextKeys?: readonly string[];
   actionRootMotionTracks?: Record<string, RootMotionTrack>;
 }
 
@@ -168,7 +169,9 @@ export class ControllableCharacter {
       ...(overrides.weaponModeId ? { weaponModeId: overrides.weaponModeId } : {}),
       equipped: { ...defaultEquipped(options.resolvedProject), ...(overrides.equipped ?? {}) },
       ...(options.upperBodyActionRootMotionEnabled === undefined
-        ? {}
+        ? options.actionRootMotionContextKeys
+          ? { upperBodyActionRootMotionEnabled: options.actionRootMotionContextKeys.includes(this.motionContextValue) }
+          : {}
         : { upperBodyActionRootMotionEnabled: options.upperBodyActionRootMotionEnabled }),
       ...(options.actionRootMotionTracks ? { actionRootMotionTracks: options.actionRootMotionTracks } : {}),
     });
@@ -294,6 +297,11 @@ export class ControllableCharacter {
     if (contextKey === this.motionContextValue) return { ok: true };
     this.motionContextValue = contextKey;
     this.simulationValue.setWeaponModeId(contextKey);
+    if (this.options.actionRootMotionContextKeys) {
+      this.simulationValue.setUpperBodyActionRootMotionEnabled(
+        this.options.actionRootMotionContextKeys.includes(contextKey),
+      );
+    }
     return { ok: true };
   }
 

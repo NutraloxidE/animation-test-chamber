@@ -17,7 +17,7 @@
       ],
       "createdAt": "2026-08-06T00:00:00.000Z",
       "createdBy": "prefabs:migrate",
-      "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7"
+      "contentHash": "7360f3dc8f74d4fd28336c462ff531c0cba86a14af3588e77d5d3eaa04ee60e5"
     },
     "derivation": {
       "mode": "variant",
@@ -25,7 +25,7 @@
         "assetType": "game-object-prefab",
         "assetId": "humanoid-character-base",
         "version": "1.0.0",
-        "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+        "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf"
       },
       "patches": [
         {

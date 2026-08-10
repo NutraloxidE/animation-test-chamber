@@ -18,7 +18,7 @@
       ],
       "createdAt": "2026-08-06T00:00:00.000Z",
       "createdBy": "prefabs:migrate",
-      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+      "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf"
     },
     "derivation": {
       "mode": "base"
@@ -51,6 +51,9 @@
           "componentId": "animator",
           "componentType": "animator",
           "enabled": true,
+          "actionRootMotionContextKeys": [
+            "sword"
+          ],
           "assignment": {
             "behavior": {
               "assetType": "animation-behavior",

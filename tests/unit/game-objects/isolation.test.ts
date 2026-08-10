@@ -154,6 +154,48 @@ describe("two instances of one Prefab", () => {
     expect(recovery?.blendWeight).toBeLessThan(1);
     scene.dispose();
   });
+
+  it("applies authored root displacement to Scene character placement", () => {
+    const scene = runtimeScene();
+    const controlled = scene.get("controlled-humanoid")!;
+    const before = controlled.worldTransform.position.z;
+    const neutral = emptySample();
+    scene.injectHumanIntent(0, {
+      ...neutral,
+      buttons: { ...neutral.buttons, Dodge: true },
+    });
+    scene.step({ cameraYawRad: 0 });
+    scene.injectHumanIntent(0, neutral);
+
+    for (let tick = 1; tick < 90; tick += 1) {
+      scene.step({ cameraYawRad: 0 });
+    }
+
+    expect(controlled.worldTransform.position.z - before).toBeGreaterThan(3);
+    scene.dispose();
+  });
+
+  it("applies upper-body attack root motion in an authored motion context", () => {
+    const scene = runtimeScene();
+    const controlled = scene.get("controlled-humanoid")!;
+    expect(controlled.character!.setMotionContext("sword")).toEqual({ ok: true });
+    const before = controlled.worldTransform.position;
+    const neutral = emptySample();
+    scene.injectHumanIntent(0, {
+      ...neutral,
+      buttons: { ...neutral.buttons, PrimaryAction: true },
+    });
+    scene.step({ cameraYawRad: 0 });
+    scene.injectHumanIntent(0, neutral);
+
+    for (let tick = 1; tick < 50; tick += 1) {
+      scene.step({ cameraYawRad: 0 });
+    }
+
+    const after = controlled.worldTransform.position;
+    expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(0.15);
+    scene.dispose();
+  });
 });
 
 describe("two Prefabs sharing Animator assets", () => {

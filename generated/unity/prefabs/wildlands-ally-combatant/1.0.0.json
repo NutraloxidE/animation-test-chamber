@@ -19,7 +19,7 @@
       ],
       "createdAt": "2026-08-09T00:00:00.000Z",
       "createdBy": "assets:wildlands",
-      "contentHash": "226073ab023a78f6b0c13c68d07aee6a843ce5869a609914a0c8553197725f68"
+      "contentHash": "cf984a0aade713b6d13d1df80799a56e6546b52240dd88c08a5a0f374fc3ca9a"
     },
     "derivation": {
       "mode": "variant",
@@ -27,7 +27,7 @@
         "assetType": "game-object-prefab",
         "assetId": "quaternius-universal-base",
         "version": "1.0.0",
-        "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+        "contentHash": "5d4fe87399a4a82bddb8aba18c074c49a19d3159777b8f3a51c5bc95d10c5920"
       },
       "patches": [
         {

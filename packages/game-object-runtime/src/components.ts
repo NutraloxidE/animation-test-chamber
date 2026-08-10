@@ -150,6 +150,7 @@ export class AnimatorRuntime implements RuntimeComponent {
   readonly componentId: string;
   readonly assignment: AnimatorComponent['assignment'];
   readonly defaultContextKey: string | undefined;
+  readonly actionRootMotionContextKeys: readonly string[];
   /** What this Animator plays, per graph state (§10.4). Resolved once. */
   readonly playback: AnimatorPlaybackPlan;
   /** The shared half of the resolution, so the object beside it resolves once. */
@@ -177,6 +178,7 @@ export class AnimatorRuntime implements RuntimeComponent {
     this.componentId = definition.componentId;
     this.assignment = definition.assignment;
     this.defaultContextKey = definition.defaultContextKey;
+    this.actionRootMotionContextKeys = definition.actionRootMotionContextKeys ?? [];
     this.enabled = definition.enabled;
     this.resolveContext = (contextKey) =>
       resolveAnimatorPlayback({

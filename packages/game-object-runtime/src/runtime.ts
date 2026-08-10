@@ -266,6 +266,7 @@ export class RuntimeGameObject {
           terrain,
           intentSource: this.intentSource,
           seed: seedOf(definition.gameObjectId),
+          actionRootMotionContextKeys: animator?.actionRootMotionContextKeys ?? [],
           ...(view.defaultContextKey
             ? { overrides: { weaponModeId: view.defaultContextKey } }
             : {}),

@@ -126,6 +126,7 @@ function animatorComponent(character: CharacterDefinition): AnimatorComponent {
     componentId: COMPONENT_IDS.animator,
     componentType: "animator",
     enabled: true,
+    actionRootMotionContextKeys: ["sword"],
     // By value, from the character document. The four references and the
     // instance overrides move here unchanged (§5.4).
     assignment: character.animation,

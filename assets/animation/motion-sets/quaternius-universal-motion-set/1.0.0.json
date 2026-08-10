@@ -12,7 +12,7 @@
     ],
     "createdAt": "2026-08-05T00:00:00.000Z",
     "createdBy": "imported-character-asset-authoring",
-    "contentHash": "e957a8f8690e3e00d96344c1c3933c1080ff6d7604ec5f5ccba1f1600f7c7f1b"
+    "contentHash": "ddc6c69ffc2e200301e2cdbd19df63ca57cbcf0d3c3c794f1f455b7721a87944"
   },
   "compatibleBehaviorIds": [
     "humanoid-third-person-base"
@@ -394,7 +394,7 @@
         "assetType": "animation-clip",
         "assetId": "universal-sword-idle",
         "version": "1.0.0",
-        "contentHash": "c48b5c300bb52f7cfce6d7d8cedf5289a4267a5078e00d4b3728f81db4ff6849"
+        "contentHash": "a731c017b29954ad7e96a781d2ab6e5804b29dac8f10588e6b6cf3384c2d8d6e"
       },
       "contextualKey": "sword"
     },
@@ -404,7 +404,7 @@
         "assetType": "animation-clip",
         "assetId": "universal-sword-action-none",
         "version": "1.0.0",
-        "contentHash": "98d65e17725d4af2c959b3fc8e719e118cf5070ac7802558eb1b851286925465"
+        "contentHash": "52627677630e23880ba6f9af436f4e2a5504a3a8bee6e3a04629f3cbaca83baf"
       },
       "contextualKey": "sword"
     },
