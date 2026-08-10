@@ -1,0 +1,86 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-director",
+    "version": "1.0.0",
+    "displayName": "Wildlands Match Director",
+    "description": "The match lifecycle, day clock, score, economy and progression for Wildlands Skirmish.",
+    "tags": [
+      "wildlands",
+      "skirmish-director"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Match Director",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "skirmish-director"
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "director",
+        "componentType": "script",
+        "enabled": true,
+        "script": {
+          "assetType": "gameplay-script",
+          "assetId": "skirmish-director",
+          "version": "1.0.0",
+          "contentHash": "a5d8f4f5cbd5480b81433b54a6bfdd9ddc50aa4a61845e54a5a4cb539e0f3ef5"
+        },
+        "properties": {
+          "playerId": "skirmish-player",
+          "matchSeconds": 300,
+          "endingSeconds": 7,
+          "bannerSeconds": 2.6,
+          "koXp": 40,
+          "assistXp": 15,
+          "koCurrency": 14,
+          "potionHeal": 45,
+          "startingPotions": 1,
+          "pickupLifetimeSeconds": 26,
+          "pickupRadius": 2.4,
+          "pickupPrefabId": "wildlands-coin",
+          "pickupPrefabVersion": "1.0.0",
+          "pickupPrefabHash": "",
+          "debugEnabled": true
+        }
+      }
+    ],
+    "children": []
+  }
+}

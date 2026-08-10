@@ -1,0 +1,249 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "wildlands-enemy-combatant",
+      "version": "1.0.0",
+      "displayName": "Wildlands Raider",
+      "description": "Universal Base Superhero composed for Wildlands Skirmish: canonical rig, motion set and behaviour, plus the sockets the game hangs equipment and team markers on.",
+      "tags": [
+        "character",
+        "humanoid",
+        "wildlands",
+        "skirmish-enemy"
+      ],
+      "createdAt": "2026-08-09T00:00:00.000Z",
+      "createdBy": "assets:wildlands",
+      "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+    },
+    "derivation": {
+      "mode": "variant",
+      "parent": {
+        "assetType": "game-object-prefab",
+        "assetId": "quaternius-universal-base",
+        "version": "1.0.0",
+        "contentHash": "c1388af5da1472e6d5ba667ee606e0c06f2cfafd808e14fd7d39a5c5c25162ed"
+      },
+      "patches": [
+        {
+          "kind": "patch-component",
+          "nodeId": "root",
+          "componentId": "tags",
+          "patches": [
+            {
+              "path": "/tags",
+              "op": "set",
+              "value": [
+                "character",
+                "humanoid",
+                "skirmish-combatant",
+                "skirmish-enemy"
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "patch-component",
+          "nodeId": "root",
+          "componentId": "animator",
+          "patches": [
+            {
+              "path": "/assignment/instanceOverrides",
+              "op": "set",
+              "value": [
+                {
+                  "path": "/graph/transitions/any-to-hit/conditions",
+                  "op": "set",
+                  "value": [
+                    {
+                      "parameter": "gameplay.damaged",
+                      "operator": "equals",
+                      "value": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "patch-component",
+          "nodeId": "root",
+          "componentId": "equipment-sockets",
+          "patches": [
+            {
+              "path": "/sockets",
+              "op": "set",
+              "value": [
+                {
+                  "socketId": "right-hand-sword",
+                  "boneName": "hand_r",
+                  "localPosition": [
+                    0,
+                    -0.035,
+                    0
+                  ],
+                  "localRotation": [
+                    0,
+                    1.5707963267948966,
+                    1.3907963267948966
+                  ],
+                  "acceptedItemTags": [
+                    "sword"
+                  ]
+                },
+                {
+                  "socketId": "left-hand",
+                  "boneName": "hand_l",
+                  "localPosition": [
+                    0,
+                    -0.03,
+                    0
+                  ],
+                  "localRotation": [
+                    0,
+                    -1.5707963267948966,
+                    0.18
+                  ],
+                  "acceptedItemTags": [
+                    "shield",
+                    "focus"
+                  ]
+                },
+                {
+                  "socketId": "head",
+                  "boneName": "Head",
+                  "localPosition": [
+                    0,
+                    0.06,
+                    0.01
+                  ],
+                  "localRotation": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "acceptedItemTags": [
+                    "helmet"
+                  ]
+                },
+                {
+                  "socketId": "chest",
+                  "boneName": "spine_03",
+                  "localPosition": [
+                    0,
+                    0.02,
+                    0.02
+                  ],
+                  "localRotation": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "acceptedItemTags": [
+                    "chest-armor"
+                  ]
+                },
+                {
+                  "socketId": "pelvis",
+                  "boneName": "pelvis",
+                  "localPosition": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "localRotation": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "acceptedItemTags": [
+                    "leg-armor"
+                  ]
+                },
+                {
+                  "socketId": "overhead",
+                  "localPosition": [
+                    0,
+                    2.15,
+                    0
+                  ],
+                  "localRotation": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "acceptedItemTags": [
+                    "marker"
+                  ]
+                },
+                {
+                  "socketId": "ground",
+                  "localPosition": [
+                    0,
+                    0.02,
+                    0
+                  ],
+                  "localRotation": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "acceptedItemTags": [
+                    "team-ring"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "add-component",
+          "nodeId": "root",
+          "component": {
+            "schemaVersion": 1,
+            "componentId": "combatant",
+            "componentType": "script",
+            "enabled": true,
+            "script": {
+              "assetType": "gameplay-script",
+              "assetId": "skirmish-combatant",
+              "version": "1.0.0",
+              "contentHash": "77ac8bb66ee318328f3f076046090b45b67544cc53da006a100bbe84e4e9e83f"
+            },
+            "properties": {
+              "team": "enemy",
+              "seat": 1,
+              "isPlayer": false,
+              "directorId": "match-director",
+              "spawnX": 0,
+              "spawnZ": -32,
+              "baseMaxHp": 120,
+              "baseMaxStamina": 100,
+              "baseAttack": 22,
+              "baseDefense": 5,
+              "staminaRegenPerSecond": 11,
+              "dodgeStaminaCost": 24,
+              "attackWindupSeconds": 0.22,
+              "aggroRadius": 26,
+              "leashRadius": 40,
+              "arenaRadius": 46,
+              "respawnSeconds": 3,
+              "spawnProtectionSeconds": 2,
+              "safeZoneRadius": 11,
+              "safeZoneX": 0,
+              "safeZoneZ": 32,
+              "startingLoadout": 0
+            }
+          }
+        }
+      ]
+    },
+    "abstract": false
+  }
+}

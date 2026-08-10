@@ -66,6 +66,16 @@ export interface ComponentRuntimeContext {
 export interface RuntimeComponentStepContext {
   tick: number;
   deltaSeconds: number;
+  /**
+   * Camera yaw for this tick, in radians.
+   *
+   * The same number the character simulation is stepped with, handed on rather
+   * than re-derived. A Script that steers a character toward a world position
+   * has to express that as normalized intent, and intent is camera-relative
+   * when the project says movement is — so a component with no access to this
+   * would have to guess which way "forward" currently points.
+   */
+  cameraYawRad: number;
 }
 
 export interface RuntimeComponent {
@@ -140,6 +150,7 @@ export class AnimatorRuntime implements RuntimeComponent {
   readonly componentId: string;
   readonly assignment: AnimatorComponent['assignment'];
   readonly defaultContextKey: string | undefined;
+  readonly actionRootMotionContextKeys: readonly string[];
   /** What this Animator plays, per graph state (§10.4). Resolved once. */
   readonly playback: AnimatorPlaybackPlan;
   /** The shared half of the resolution, so the object beside it resolves once. */
@@ -151,11 +162,36 @@ export class AnimatorRuntime implements RuntimeComponent {
   /** Seconds of animation this Animator has advanced. Per instance, never shared. */
   private elapsed = 0;
 
+  /**
+   * Plans for contexts other than the authored default, resolved on first use.
+   *
+   * An object whose motion context changes at runtime — a character that draws
+   * a sword — plays different takes for the same graph states, and the renderer
+   * needs the plan for the context the simulation is actually in. Resolved
+   * lazily and kept, because a context is usually entered many times and the
+   * resolution is pure with respect to the assignment.
+   */
+  private readonly contextPlans = new Map<string, AnimatorPlaybackPlan>();
+  private readonly resolveContext: (contextKey: string) => AnimatorPlaybackPlan;
+
   constructor(definition: AnimatorComponent, context: ComponentRuntimeContext) {
     this.componentId = definition.componentId;
     this.assignment = definition.assignment;
     this.defaultContextKey = definition.defaultContextKey;
+    this.actionRootMotionContextKeys = definition.actionRootMotionContextKeys ?? [];
     this.enabled = definition.enabled;
+    this.resolveContext = (contextKey) =>
+      resolveAnimatorPlayback({
+        registry: context.services.animationRegistry,
+        project: context.project,
+        assignment: definition.assignment,
+        defaultContextKey: contextKey,
+        identity: {
+          gameObjectId: context.gameObjectId,
+          displayName: context.displayName,
+          componentId: definition.componentId,
+        },
+      }).plan;
 
     const resolved = resolveAnimatorPlayback({
       registry: context.services.animationRegistry,
@@ -176,6 +212,21 @@ export class AnimatorRuntime implements RuntimeComponent {
   /** Seconds of animation elapsed. Zero at instantiation and after a reset. */
   get animationSeconds(): number {
     return this.elapsed;
+  }
+
+  /**
+   * This Animator's plan in one motion context.
+   *
+   * The authored default is returned as-is rather than resolved again, so an
+   * object that never changes context costs exactly what it did before.
+   */
+  planFor(contextKey: string | undefined): AnimatorPlaybackPlan {
+    if (contextKey === undefined || contextKey === this.playback.contextKey) return this.playback;
+    const cached = this.contextPlans.get(contextKey);
+    if (cached) return cached;
+    const plan = this.resolveContext(contextKey);
+    this.contextPlans.set(contextKey, plan);
+    return plan;
   }
 
   /**

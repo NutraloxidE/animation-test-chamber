@@ -76,6 +76,7 @@ export { LEGACY_CHARACTER_PREFAB_IDS };
 
 export const HUMANOID_BASE_PREFAB_ID = "humanoid-character-base";
 export const DEFAULT_SCENE_CAMERA_PREFAB_ID = "default-scene-camera";
+const GAMEPLAY_QUATERNIUS_PREFAB_ID = "gameplay-quaternius";
 
 /** Component ids are stable within a node and are what every override addresses. */
 const COMPONENT_IDS = {
@@ -126,6 +127,7 @@ function animatorComponent(character: CharacterDefinition): AnimatorComponent {
     componentId: COMPONENT_IDS.animator,
     componentType: "animator",
     enabled: true,
+    actionRootMotionContextKeys: ["sword"],
     // By value, from the character document. The four references and the
     // instance overrides move here unchanged (§5.4).
     assignment: character.animation,
@@ -408,6 +410,41 @@ export function runPrefabMigration(
     );
   }
 
+  /*
+   * `gameplay-quaternius` is a hand-authored gameplay layer over the generated
+   * Universal Base. Refresh it here so changing a Character socket cannot leave
+   * its exact parent hash — and every Scene instance of it — stale.
+   */
+  let gameplayQuaterniusReference: GameObjectPrefabReference | undefined;
+  const gameplayQuaterniusPath = prefabAssetFilePath(
+    GAMEPLAY_QUATERNIUS_PREFAB_ID,
+    "1.0.0",
+  );
+  const gameplayQuaterniusSource = readRepoFile(gameplayQuaterniusPath);
+  const universalBaseReference = identityMap["quaternius-universal-base"];
+  if (gameplayQuaterniusSource && universalBaseReference) {
+    const storedGameplayQuaternius = JSON.parse(
+      gameplayQuaterniusSource,
+    ) as GameObjectPrefabAsset;
+    if (storedGameplayQuaternius.derivation.mode === "variant") {
+      const refreshedGameplayQuaternius = {
+        ...storedGameplayQuaternius,
+        derivation: {
+          ...storedGameplayQuaternius.derivation,
+          parent: universalBaseReference,
+        },
+      };
+      const gameplayQuaternius = {
+        ...refreshedGameplayQuaternius,
+        metadata: {
+          ...refreshedGameplayQuaternius.metadata,
+          contentHash: computeContentHash(refreshedGameplayQuaternius),
+        },
+      } as GameObjectPrefabAsset;
+      gameplayQuaterniusReference = emit(gameplayQuaternius);
+    }
+  }
+
   /* ---------------------------------------------------------------------- */
   /* Scenes                                                                 */
   /* ---------------------------------------------------------------------- */
@@ -424,7 +461,19 @@ export function runPrefabMigration(
     }),
   );
 
-  const migratedProject: ProjectDefinition = { ...project, scenes };
+  const migratedProject: ProjectDefinition = {
+    ...project,
+    scenes: gameplayQuaterniusReference
+      ? scenes.map((scene) => ({
+          ...scene,
+          gameObjects: scene.gameObjects?.map((object) =>
+            object.prefab.assetId === GAMEPLAY_QUATERNIUS_PREFAB_ID
+              ? { ...object, prefab: gameplayQuaterniusReference! }
+              : object,
+          ),
+        }))
+      : scenes,
+  };
 
   return {
     prefabs,

@@ -266,6 +266,7 @@ export class RuntimeGameObject {
           terrain,
           intentSource: this.intentSource,
           seed: seedOf(definition.gameObjectId),
+          actionRootMotionContextKeys: animator?.actionRootMotionContextKeys ?? [],
           ...(view.defaultContextKey
             ? { overrides: { weaponModeId: view.defaultContextKey } }
             : {}),
@@ -339,6 +340,7 @@ export class RuntimeGameObject {
     const componentContext = {
       tick: context.tick,
       deltaSeconds: this.services.clock.fixedDeltaSeconds,
+      cameraYawRad: context.cameraYawRad,
     };
     for (const component of this.components) component.step?.(componentContext);
     for (const child of this.children) child.step(context);
@@ -455,6 +457,7 @@ export class RuntimeGameObject {
     const step = {
       tick: context.tick,
       deltaSeconds: this.services.clock.fixedDeltaSeconds,
+      cameraYawRad: context.cameraYawRad,
     };
     for (const component of this.components)
       if (component instanceof GameplayScriptRuntime) component.start(step);
@@ -477,6 +480,7 @@ export class RuntimeGameObject {
     const step = {
       tick: context.tick,
       deltaSeconds: this.services.clock.fixedDeltaSeconds,
+      cameraYawRad: context.cameraYawRad,
     };
     for (const component of this.components)
       if (component instanceof GameplayScriptRuntime)

@@ -39,11 +39,12 @@
  * frame took — so two runs of the same replay show the same pose at the same
  * tick, and a paused Scene stays paused instead of drifting.
  */
-import { useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createPortal } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { clone as cloneSkinnedScene } from "three/examples/jsm/utils/SkeletonUtils.js";
 import * as THREE from "three";
-import type { ExternalAnimationSource } from "@atc/schema";
+import type { EquipmentSocketDefinition, ExternalAnimationSource } from "@atc/schema";
 import type {
   RenderAnimatorFact,
   RenderProjectionIssue,
@@ -64,6 +65,12 @@ export interface AnimatedRepositoryModelProps {
   animator: RenderAnimatorFact;
   gameObjectId: string;
   displayName: string;
+  /** Authored sockets that ride a bone. Node-riding ones are drawn outside. */
+  boneSockets?: readonly EquipmentSocketDefinition[];
+  renderAttachment?: (input: {
+    gameObjectId: string;
+    socket: EquipmentSocketDefinition;
+  }) => ReactNode;
   onIssue?: (issue: RenderProjectionIssue) => void;
 }
 
@@ -76,6 +83,8 @@ export function AnimatedRepositoryModel({
   animator,
   gameObjectId,
   displayName,
+  boneSockets,
+  renderAttachment,
   onIssue,
 }: AnimatedRepositoryModelProps): JSX.Element {
   /*
@@ -220,48 +229,82 @@ export function AnimatedRepositoryModel({
     });
   }, [source, key, clipsByTake, animator, gameObjectId, displayName, onIssue]);
 
+  const previousSource = animator.previousStateId
+    ? animator.playback.takeByStateId[animator.previousStateId]
+    : undefined;
+  const previousKey = previousSource ? takeKey(previousSource) : "";
+  const bound = useRef<{ current: THREE.AnimationAction; previous: THREE.AnimationAction | undefined } | null>(null);
+
   /*
-   * Bind, weight and seek entirely from runtime state. `mixer.update(0)` only
-   * evaluates that state; render-wall-clock delta never advances a transition.
+   * Binding and seeking are split, and the split is a performance property with
+   * a correctness consequence. Which clips are playing changes only when the
+   * state or the transition does, so tearing down and rebuilding every action
+   * each frame — for every character on screen — is work proportional to the
+   * cast rather than to what actually changed.
    */
   useEffect(() => {
     const clip = key === "" ? undefined : clipsByTake.get(key);
-    if (!clip) return;
-    mixer.stopAllAction();
-
-    const previousSource = animator.previousStateId
-      ? animator.playback.takeByStateId[animator.previousStateId]
-      : undefined;
-    const previousClip = previousSource
-      ? clipsByTake.get(takeKey(previousSource))
-      : undefined;
-    const weights = deterministicBlendWeights(
-      previousSource ? takeKey(previousSource) : undefined,
-      key,
-      animator.blendWeight,
-    );
-    if (previousClip && weights.previous > 0) {
-      const previous = mixer.clipAction(previousClip, scene).reset().play();
-      previous.time = animator.previousNormalizedTime * previousClip.duration;
-      previous.setEffectiveWeight(weights.previous);
+    if (!clip) {
+      bound.current = null;
+      return;
     }
-
+    mixer.stopAllAction();
+    const previousClip = previousKey === "" ? undefined : clipsByTake.get(previousKey);
+    const previous = previousClip ? mixer.clipAction(previousClip, scene).reset().play() : undefined;
     const loop = animator.playback.loopByStateId[animator.stateId] ?? true;
-    const next = mixer
+    const current = mixer
       .clipAction(clip, scene)
       .reset()
       .setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1)
       .play();
-    next.clampWhenFinished = !loop;
-    next.time = animator.normalizedTime * clip.duration;
-    next.setEffectiveWeight(weights.current);
+    current.clampWhenFinished = !loop;
+    bound.current = { current, previous };
+    /*
+     * `key` and `previousKey` already encode which takes these are; depending on
+     * the whole animator fact would rebind on every frame, which is the cost
+     * this split exists to remove.
+     */
+  }, [key, previousKey, clipsByTake, mixer, scene, animator.stateId, animator.playback]);
+
+  /*
+   * Weight and seek entirely from runtime state, every render. `mixer.update(0)`
+   * only evaluates that state; render-wall-clock delta never advances a
+   * transition, so the pose stays a function of simulation time.
+   */
+  useEffect(() => {
+    const actions = bound.current;
+    if (!actions) return;
+    const weights = deterministicBlendWeights(previousKey === "" ? undefined : previousKey, key, animator.blendWeight);
+    if (actions.previous) {
+      actions.previous.time = animator.previousNormalizedTime * actions.previous.getClip().duration;
+      actions.previous.setEffectiveWeight(weights.previous);
+    }
+    actions.current.time = animator.normalizedTime * actions.current.getClip().duration;
+    actions.current.setEffectiveWeight(weights.current);
     mixer.update(0);
-  }, [key, clipsByTake, mixer, scene, animator]);
+  });
+
+  /*
+   * Authored bone sockets, resolved against *this instance's* cloned skeleton.
+   *
+   * Portalled into the bone rather than positioned beside the model: a held
+   * item has to inherit the bone's animated world matrix every frame, and a
+   * sibling group would have to re-derive it — which is the "sword floating at
+   * the origin" bug in a slightly more expensive form. The socket's authored
+   * local transform is applied inside the portal, so the grip stays canonical
+   * Prefab data rather than a correction baked into the item mesh.
+   */
+  const socketMounts = useMemo(() => {
+    if (!boneSockets || boneSockets.length === 0 || !renderAttachment) return [];
+    return boneSockets.flatMap((socket) => {
+      const bone = socket.boneName ? scene.getObjectByName(socket.boneName) : undefined;
+      return bone ? [{ socket, bone }] : [];
+    });
+  }, [boneSockets, renderAttachment, scene]);
 
   return (
     <group
       name={`${gameObjectId}:repository-model`}
-      scale={[scale, scale, scale]}
       rotation-y={rotationYRad}
       userData={{
         atcRenderedModel: true,
@@ -274,7 +317,33 @@ export function AnimatedRepositoryModel({
         atcBlendWeight: animator.blendWeight,
       }}
     >
-      <primitive object={scene} />
+      {/*
+       * Keep the model/hand hierarchy identical to the pre-native-rig renderer:
+       * model scale belongs to the model wrapper, while socket portals mount
+       * directly into the hand bone. Moving scale onto this outer attachment
+       * host changes the coordinate space in which the authored grip is read.
+       */}
+      <group scale={[scale, scale, scale]}>
+        <primitive object={scene} />
+      </group>
+      {renderAttachment &&
+        socketMounts.map(({ socket, bone }) => {
+          const content = renderAttachment({ gameObjectId, socket });
+          if (!content) return null;
+          return (
+            <Fragment key={socket.socketId}>
+              {createPortal(
+                <group
+                  position={socket.localPosition}
+                  rotation={socket.localRotation}
+                >
+                  {content}
+                </group>,
+                bone,
+              )}
+            </Fragment>
+          );
+        })}
     </group>
   );
 }

@@ -12,7 +12,7 @@
     ],
     "createdAt": "2026-08-06T00:00:00.000Z",
     "createdBy": "prefabs:migrate",
-    "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be"
+    "contentHash": "b64c2fdc15f7f597fee16b2b10209d997b325df507617ddc60649ad507df48cc"
   },
   "derivation": {
     "mode": "variant",
@@ -20,7 +20,7 @@
       "assetType": "game-object-prefab",
       "assetId": "humanoid-character-base",
       "version": "1.0.0",
-      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0"
+      "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf"
     },
     "patches": [
       {
@@ -87,13 +87,13 @@
               "boneName": "hand_r",
               "localPosition": [
                 0,
-                -0.035,
+                0.035,
                 0
               ],
               "localRotation": [
                 0,
                 1.5707963267948966,
-                -0.18
+                1.3907963267948966
               ],
               "acceptedItemTags": [
                 "sword"

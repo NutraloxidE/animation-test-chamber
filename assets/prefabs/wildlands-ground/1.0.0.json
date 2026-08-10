@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-ground",
+    "version": "1.0.0",
+    "displayName": "Wildlands Ground",
+    "description": "Wildlands Skirmish scenery: Wildlands Ground.",
+    "tags": [
+      "wildlands",
+      "scenery",
+      "ground"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Wildlands Ground",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "model",
+        "componentType": "model-renderer",
+        "enabled": true,
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/environment/wildlands/ground.gltf",
+          "scale": 1,
+          "rotationYRad": 0
+        },
+        "castShadow": true,
+        "receiveShadow": true
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "scenery",
+          "ground"
+        ]
+      }
+    ],
+    "children": []
+  }
+}

@@ -236,6 +236,10 @@ export const AnimatorComponent = Type.Object(
     assignment: CharacterAnimationAssignment,
     /** Motion context (the demo's weapon mode) this object opens in. */
     defaultContextKey: Type.Optional(Type.String({ minLength: 1, maxLength: 96 })),
+    /** Contexts whose upper-body actions are allowed to drive world translation. */
+    actionRootMotionContextKeys: Type.Optional(
+      Type.Array(Type.String({ minLength: 1, maxLength: 96 }), { uniqueItems: true }),
+    ),
   },
   { $id: 'AnimatorComponent', additionalProperties: false },
 );

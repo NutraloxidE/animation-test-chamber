@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-rock",
+    "version": "1.0.0",
+    "displayName": "Wildlands Rock",
+    "description": "Wildlands Skirmish scenery: Wildlands Rock.",
+    "tags": [
+      "wildlands",
+      "scenery",
+      "rock"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Wildlands Rock",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "model",
+        "componentType": "model-renderer",
+        "enabled": true,
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/environment/wildlands/rock.gltf",
+          "scale": 1,
+          "rotationYRad": 0
+        },
+        "castShadow": true,
+        "receiveShadow": true
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "scenery",
+          "rock"
+        ]
+      }
+    ],
+    "children": []
+  }
+}

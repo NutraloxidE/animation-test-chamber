@@ -211,6 +211,13 @@ export function projectGameObject(
     }
 
     const playing = animator ? object.animationState : undefined;
+    /*
+     * The plan for the context the *simulation* is in, not the one the Prefab
+     * opened in. A character that switched to sword mode steps sword states;
+     * drawing it through the authored default plan would put an unarmed swing
+     * on screen for an armed attack, and nothing would say which half is wrong.
+     */
+    const playback = animator?.planFor(object.character?.motionContextKey);
 
     /*
      * An Animator on a node with an imported model, whose current state binds no
@@ -225,8 +232,9 @@ export function projectGameObject(
     if (
       animator &&
       playing &&
+      playback &&
       model?.model.kind === "repository-model" &&
-      animator.playback.takeByStateId[playing.stateId] === undefined
+      playback.takeByStateId[playing.stateId] === undefined
     ) {
       issues.push({
         code: "animator-take-unbound",
@@ -253,13 +261,13 @@ export function projectGameObject(
             receiveShadow: model.receiveShadow,
           }
         : undefined,
-      animator: animator
+      animator: animator && playback
         ? {
             componentId: animator.componentId,
             assignment: animator.assignment,
             defaultContextKey: animator.defaultContextKey,
-            playback: animator.playback,
-            stateId: playing?.stateId ?? animator.playback.initialStateId,
+            playback,
+            stateId: playing?.stateId ?? playback.initialStateId,
             normalizedTime: playing?.normalizedTime ?? 0,
             previousStateId: playing?.previousStateId ?? null,
             previousNormalizedTime: playing?.previousNormalizedTime ?? 0,

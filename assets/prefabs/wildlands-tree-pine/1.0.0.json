@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "assetType": "game-object-prefab",
+    "id": "wildlands-tree-pine",
+    "version": "1.0.0",
+    "displayName": "Wildlands Pine",
+    "description": "Wildlands Skirmish scenery: Wildlands Pine.",
+    "tags": [
+      "wildlands",
+      "scenery",
+      "tree"
+    ],
+    "createdAt": "2026-08-09T00:00:00.000Z",
+    "createdBy": "assets:wildlands",
+    "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+  },
+  "derivation": {
+    "mode": "base"
+  },
+  "abstract": false,
+  "root": {
+    "nodeId": "root",
+    "displayName": "Wildlands Pine",
+    "enabled": true,
+    "transform": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      }
+    },
+    "components": [
+      {
+        "schemaVersion": 1,
+        "componentId": "model",
+        "componentType": "model-renderer",
+        "enabled": true,
+        "model": {
+          "kind": "repository-model",
+          "assetPath": "/assets/environment/wildlands/tree-pine.gltf",
+          "scale": 1,
+          "rotationYRad": 0
+        },
+        "castShadow": true,
+        "receiveShadow": true
+      },
+      {
+        "schemaVersion": 1,
+        "componentId": "tags",
+        "componentType": "tags",
+        "enabled": true,
+        "tags": [
+          "wildlands",
+          "scenery",
+          "tree"
+        ]
+      }
+    ],
+    "children": []
+  }
+}

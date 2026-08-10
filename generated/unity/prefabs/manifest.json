@@ -14,9 +14,18 @@
       "sourcePath": "prefabs/default-scene-camera/1.0.0.json"
     },
     {
+      "id": "default-scene-light",
+      "version": "1.0.0",
+      "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/default-scene-light/1.0.0.json",
+      "sourcePath": "prefabs/default-scene-light/1.0.0.json"
+    },
+    {
       "id": "gameplay-navigator",
       "version": "1.0.0",
-      "contentHash": "ff542872379c41f9144b0cc5dd3b4dfc96eab271f27d5ab5668fca078dc7c58c",
+      "contentHash": "bdd199e1da95d55730169428beba6cdc97e2ea68b3d8b6b2dda85bad16d5f5af",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/gameplay-navigator/1.0.0.json",
@@ -25,16 +34,25 @@
     {
       "id": "gameplay-quaternius",
       "version": "1.0.0",
-      "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469",
+      "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/gameplay-quaternius/1.0.0.json",
       "sourcePath": "prefabs/gameplay-quaternius/1.0.0.json"
     },
     {
+      "id": "grid-floor",
+      "version": "1.0.0",
+      "contentHash": "4728253e4e2307e769651ff082b1b910f8c7bc0bc742a79d042098e7580890fe",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/grid-floor/1.0.0.json",
+      "sourcePath": "prefabs/grid-floor/1.0.0.json"
+    },
+    {
       "id": "humanoid-character-base",
       "version": "1.0.0",
-      "contentHash": "41e7ef9bf81a7aa5749c4e7778ff3e22ee18ba8749a53a802bb0c4fcf905a1a0",
+      "contentHash": "e38c78574a05d278c32af0945f15a904868eb0c881082ba7084908bb8ae25baf",
       "abstract": true,
       "derivation": "base",
       "canonicalPath": "assets/prefabs/humanoid-character-base/1.0.0.json",
@@ -43,7 +61,7 @@
     {
       "id": "navigator",
       "version": "1.0.0",
-      "contentHash": "e5ea5de669c36f6bbdbbe86e07d9bd092bc53ef44cf48a4272b68c6d1db4c3f7",
+      "contentHash": "7360f3dc8f74d4fd28336c462ff531c0cba86a14af3588e77d5d3eaa04ee60e5",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/navigator/1.0.0.json",
@@ -52,7 +70,7 @@
     {
       "id": "quaternius-knight",
       "version": "1.0.0",
-      "contentHash": "c7a7366ec8f73a27980948a5eeecc36f673575f0f3c0f44992fa04f05bddda78",
+      "contentHash": "34e314a7c84fba02e833d8905a1bec1f59bee5b5b0a818986666b7c2523f8542",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/quaternius-knight/1.0.0.json",
@@ -61,7 +79,7 @@
     {
       "id": "quaternius-universal-base",
       "version": "1.0.0",
-      "contentHash": "fe72de039d631c2dc12fe8126672eeb3fb1986d3305c735d1ccef0156b0093be",
+      "contentHash": "c1388af5da1472e6d5ba667ee606e0c06f2cfafd808e14fd7d39a5c5c25162ed",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/quaternius-universal-base/1.0.0.json",
@@ -70,7 +88,7 @@
     {
       "id": "relay",
       "version": "1.0.0",
-      "contentHash": "8f29fdbac374895c85aa865922a889de2283e8979dfe34c0851493d05d5b1635",
+      "contentHash": "af5e28563a8f6c162575cc1bf1598d21cd55b4cffc5bd796e77d492adcc6ad16",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/relay/1.0.0.json",
@@ -79,11 +97,128 @@
     {
       "id": "sentinel",
       "version": "1.0.0",
-      "contentHash": "8928bda7d392944f8e12b97cfa05af1dbbd91d73b1673de62ca9fdfaa7755183",
+      "contentHash": "b4ac85964e2c9baf38738d61366f408c1cfdb20b3255cff2b71c9740a9725d12",
       "abstract": false,
       "derivation": "variant",
       "canonicalPath": "assets/prefabs/sentinel/1.0.0.json",
       "sourcePath": "prefabs/sentinel/1.0.0.json"
+    },
+    {
+      "id": "wildlands-ally-combatant",
+      "version": "1.0.0",
+      "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/wildlands-ally-combatant/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-ally-combatant/1.0.0.json"
+    },
+    {
+      "id": "wildlands-camp",
+      "version": "1.0.0",
+      "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-camp/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-camp/1.0.0.json"
+    },
+    {
+      "id": "wildlands-coin",
+      "version": "1.0.0",
+      "contentHash": "b27ff008c481567351af331ec708704b133f710aff82121eb203bb6a63f5224a",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-coin/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-coin/1.0.0.json"
+    },
+    {
+      "id": "wildlands-director",
+      "version": "1.0.0",
+      "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-director/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-director/1.0.0.json"
+    },
+    {
+      "id": "wildlands-enemy-combatant",
+      "version": "1.0.0",
+      "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2",
+      "abstract": false,
+      "derivation": "variant",
+      "canonicalPath": "assets/prefabs/wildlands-enemy-combatant/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-enemy-combatant/1.0.0.json"
+    },
+    {
+      "id": "wildlands-ground",
+      "version": "1.0.0",
+      "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-ground/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-ground/1.0.0.json"
+    },
+    {
+      "id": "wildlands-hill",
+      "version": "1.0.0",
+      "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-hill/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-hill/1.0.0.json"
+    },
+    {
+      "id": "wildlands-landmark",
+      "version": "1.0.0",
+      "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-landmark/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-landmark/1.0.0.json"
+    },
+    {
+      "id": "wildlands-mountain",
+      "version": "1.0.0",
+      "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-mountain/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-mountain/1.0.0.json"
+    },
+    {
+      "id": "wildlands-rock",
+      "version": "1.0.0",
+      "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-rock/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-rock/1.0.0.json"
+    },
+    {
+      "id": "wildlands-shop",
+      "version": "1.0.0",
+      "contentHash": "b494a68c39b35cbb8c5d0f03a7e4faa22853dee8ca9dfa65115d2fff6b78beaa",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-shop/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-shop/1.0.0.json"
+    },
+    {
+      "id": "wildlands-tree-broadleaf",
+      "version": "1.0.0",
+      "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-tree-broadleaf/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-tree-broadleaf/1.0.0.json"
+    },
+    {
+      "id": "wildlands-tree-pine",
+      "version": "1.0.0",
+      "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2",
+      "abstract": false,
+      "derivation": "base",
+      "canonicalPath": "assets/prefabs/wildlands-tree-pine/1.0.0.json",
+      "sourcePath": "prefabs/wildlands-tree-pine/1.0.0.json"
     }
   ],
   "scenes": [
@@ -97,7 +232,7 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
+            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
           }
         },
         {
@@ -106,7 +241,652 @@
             "assetType": "game-object-prefab",
             "assetId": "gameplay-quaternius",
             "version": "1.0.0",
-            "contentHash": "a7b6273277538fed40c3fc9c5f9444377b1ca0a51c169e84b602408cf9ea0469"
+            "contentHash": "cd565e7aeacb555d70edad441d1179f03e2e9acb4ac4b341f97c894e7268f1cf"
+          }
+        },
+        {
+          "id": "scene-camera",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "default-scene-camera",
+            "version": "1.0.0",
+            "contentHash": "c499b0e9b802aab07c58e2c5df9037fdec2838c333feb496544e84a207ec5bd0"
+          }
+        },
+        {
+          "id": "scene-light",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "default-scene-light",
+            "version": "1.0.0",
+            "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
+          }
+        },
+        {
+          "id": "grid-floor",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "grid-floor",
+            "version": "1.0.0",
+            "contentHash": "4728253e4e2307e769651ff082b1b910f8c7bc0bc742a79d042098e7580890fe"
+          }
+        }
+      ]
+    },
+    {
+      "id": "wildlands-skirmish",
+      "activeCameraGameObjectId": "scene-camera",
+      "gameObjects": [
+        {
+          "id": "wildlands-ground",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ground",
+            "version": "1.0.0",
+            "contentHash": "b5c58ca2f578c50bb36ee6072bb8681874a7d9f7f72a718271e1ec98107b2e35"
+          }
+        },
+        {
+          "id": "wildlands-landmark",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-landmark",
+            "version": "1.0.0",
+            "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02"
+          }
+        },
+        {
+          "id": "wildlands-shop",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-shop",
+            "version": "1.0.0",
+            "contentHash": "b494a68c39b35cbb8c5d0f03a7e4faa22853dee8ca9dfa65115d2fff6b78beaa"
+          }
+        },
+        {
+          "id": "wildlands-camp",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-camp",
+            "version": "1.0.0",
+            "contentHash": "7d652c845347752ac11ed679167fec88605d49c9e848f63fd6b32fdfd5548953"
+          }
+        },
+        {
+          "id": "wildlands-tree-1",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-2",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-3",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-5",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-6",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-7",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-8",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-9",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-10",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-11",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-12",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-13",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-14",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-15",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-16",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-17",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-18",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-19",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-20",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-21",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-pine",
+            "version": "1.0.0",
+            "contentHash": "8152f35deb65bc082abc1b22934588b9a153876329dd5a7a7e0dbd7d42b453c2"
+          }
+        },
+        {
+          "id": "wildlands-tree-22",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-tree-23",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-tree-broadleaf",
+            "version": "1.0.0",
+            "contentHash": "04468a6c999d097078cb1fe3b37ea0a0c73ef326192cdf939a34cb8613362524"
+          }
+        },
+        {
+          "id": "wildlands-rock-1",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-6",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-7",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-8",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-10",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-12",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-13",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-rock-15",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-rock",
+            "version": "1.0.0",
+            "contentHash": "d4f5508febe9752f2c35551d832594daff8892732a46daff0660d02dc9a14583"
+          }
+        },
+        {
+          "id": "wildlands-hill-1",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-2",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-3",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-5",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-6",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-hill-7",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-hill",
+            "version": "1.0.0",
+            "contentHash": "3f60b0da1e8657a27270a0ba7e0d86a4815eb231233fea56591203e71a211da6"
+          }
+        },
+        {
+          "id": "wildlands-mountain-1",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-2",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-3",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-5",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-6",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-7",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-8",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-9",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-10",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-11",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-12",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "wildlands-mountain-13",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-mountain",
+            "version": "1.0.0",
+            "contentHash": "718dfb97d3b6a7b8c97f676b0d9223ca792cc89fb6ee94b088a78968be376501"
+          }
+        },
+        {
+          "id": "skirmish-player",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ally-combatant",
+            "version": "1.0.0",
+            "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
+          }
+        },
+        {
+          "id": "skirmish-ally-2",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ally-combatant",
+            "version": "1.0.0",
+            "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
+          }
+        },
+        {
+          "id": "skirmish-ally-3",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ally-combatant",
+            "version": "1.0.0",
+            "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
+          }
+        },
+        {
+          "id": "skirmish-ally-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ally-combatant",
+            "version": "1.0.0",
+            "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
+          }
+        },
+        {
+          "id": "skirmish-ally-5",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-ally-combatant",
+            "version": "1.0.0",
+            "contentHash": "c9ba656cafe610fdaac0a38314ec3ee245ddbe5fe98e49853db73f558a20affe"
+          }
+        },
+        {
+          "id": "skirmish-enemy-1",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-enemy-combatant",
+            "version": "1.0.0",
+            "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+          }
+        },
+        {
+          "id": "skirmish-enemy-2",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-enemy-combatant",
+            "version": "1.0.0",
+            "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+          }
+        },
+        {
+          "id": "skirmish-enemy-3",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-enemy-combatant",
+            "version": "1.0.0",
+            "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+          }
+        },
+        {
+          "id": "skirmish-enemy-4",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-enemy-combatant",
+            "version": "1.0.0",
+            "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+          }
+        },
+        {
+          "id": "skirmish-enemy-5",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-enemy-combatant",
+            "version": "1.0.0",
+            "contentHash": "4392a120d044bc6cedbe401d2a1614683e0a01c6ac281d1e74a73094e10db6d2"
+          }
+        },
+        {
+          "id": "match-director",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "wildlands-director",
+            "version": "1.0.0",
+            "contentHash": "c1af858ab2260c9504d81c1e018898f8853abed75e43a230d2241911d1a354bb"
+          }
+        },
+        {
+          "id": "scene-light",
+          "prefab": {
+            "assetType": "game-object-prefab",
+            "assetId": "default-scene-light",
+            "version": "1.0.0",
+            "contentHash": "db6af6a9a51ba4793afbeb178a2df4126ea2bc5a5602ab109657b4dc8af70cb9"
           }
         },
         {

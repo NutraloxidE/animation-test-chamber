@@ -1,0 +1,79 @@
+{
+  "_generated": true,
+  "_source": "Animation Test Chamber browser runtime",
+  "_generatedAt": "revision:rev-0008",
+  "_warning": "Regenerate with `pnpm unity:export`. Edits here are overwritten and never imported back.",
+  "prefab": {
+    "metadata": {
+      "schemaVersion": 1,
+      "assetType": "game-object-prefab",
+      "id": "wildlands-landmark",
+      "version": "1.0.0",
+      "displayName": "Sunspire Monolith",
+      "description": "Wildlands Skirmish scenery: Sunspire Monolith.",
+      "tags": [
+        "wildlands",
+        "scenery",
+        "landmark"
+      ],
+      "createdAt": "2026-08-09T00:00:00.000Z",
+      "createdBy": "assets:wildlands",
+      "contentHash": "f24db10f3c93d76515ab2becb13a24910ddd92e91a49bc71672865b20e2b5e02"
+    },
+    "derivation": {
+      "mode": "base"
+    },
+    "abstract": false,
+    "root": {
+      "nodeId": "root",
+      "displayName": "Sunspire Monolith",
+      "enabled": true,
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "components": [
+        {
+          "schemaVersion": 1,
+          "componentId": "model",
+          "componentType": "model-renderer",
+          "enabled": true,
+          "model": {
+            "kind": "repository-model",
+            "assetPath": "/assets/environment/wildlands/landmark.gltf",
+            "scale": 1,
+            "rotationYRad": 0
+          },
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        {
+          "schemaVersion": 1,
+          "componentId": "tags",
+          "componentType": "tags",
+          "enabled": true,
+          "tags": [
+            "wildlands",
+            "scenery",
+            "landmark"
+          ]
+        }
+      ],
+      "children": []
+    }
+  }
+}
